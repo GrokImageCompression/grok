@@ -568,6 +568,7 @@ bool TileCodingParams::readCoc(uint8_t* headerData, uint16_t headerSize)
   uint16_t comp_room;
   uint16_t comp_no;
   assert(headerData != nullptr);
+  sawCoc_ = true;
   comp_room = numComps_ <= 256 ? 1 : 2;
 
   /* make sure room is sufficient*/

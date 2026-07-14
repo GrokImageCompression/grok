@@ -55,6 +55,7 @@
 #include "SparseCanvas.h"
 #include "intmath.h"
 #include "ImageComponentFlow.h"
+#include "mercury_fastpath.h"
 #include "TileFutureManager.h"
 #include "MarkerCache.h"
 #include "SlabPool.h"
@@ -612,6 +613,9 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
   }
 
   streamParams->is_read_stream = true;
+  // LOCAL-ONLY: record the input file for the mercury fast path
+  // (mercury_fastpath.cpp); buffer/callback streams leave it unset.
+  mercurySetInputFile(streamParams->file);
   StreamGenerator sg(streamParams);
   grk::IStream* stream = nullptr;
   try

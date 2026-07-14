@@ -235,6 +235,14 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   }
 
   multiTileComposite_->postReadHeader(&cp_);
+  // LOCAL-ONLY: mercury streaming fast path — decodes eligible streams
+  // through grok T1 via the mercury shim, either streaming rows_per_strip
+  // bands into ioBandCallback_ (O(strip) memory) or filling
+  // multiTileComposite_ when no band callback is set. Ineligible/rejected
+  // streams fall through unchanged; a true return means the fast path
+  // owned the decode and success_ reflects its outcome.
+  if(mercuryFastPath(*this))
+    return success_;
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
   // create TileCompletion for band callback if set after header read
   if(ioBandCallback_ && !tileCompletion_)

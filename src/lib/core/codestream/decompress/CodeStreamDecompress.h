@@ -35,6 +35,9 @@ namespace grk
  */
 class CodeStreamDecompress final : public CodeStream, public IDecompressor
 {
+  // LOCAL-ONLY: mercury full-image fast path (mercury_fastpath.cpp)
+  friend bool mercuryFastPath(CodeStreamDecompress& cs);
+
 public:
   /**
    * @brief Constructs a CodeStreamDecompress

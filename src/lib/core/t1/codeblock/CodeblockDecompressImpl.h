@@ -310,6 +310,10 @@ struct CodeblockDecompressImpl : public CodeblockImpl
         newSegment(cblk_sty);
 
     } while(remainingPassesInLayer > 0);
+    // LOCAL-ONLY debug: mirror mercury's MERCURY_PKT_DEBUG block dump
+    if(std::getenv("GRK_PKT_DEBUG"))
+      fprintf(stderr, "  GBLK passes=%u numbps=%u len=%u\n", signalledPassesByLayer_[layno],
+              numbps(), segs_.back()->signalledBytesInLayer_[layno]);
   }
 
   /**
@@ -530,6 +534,37 @@ struct CodeblockDecompressImpl : public CodeblockImpl
 
     return true;
   }
+  /**
+   * @brief LOCAL-ONLY mercury bench hook: populate segments directly from a
+   * contiguous codeword, bypassing packet-header/data parsing. Pass counts
+   * per segment follow the same newSegment() mode rules the packet parser
+   * uses. numbps = band max bit planes - missing MSBs.
+   * @return true if all passes were assigned to segments
+   */
+  bool directInit(uint8_t cblk_sty, uint8_t numbps, int32_t numPasses, uint8_t* data,
+                  int32_t dataLen, const int32_t* segLens, int32_t numSegs)
+  {
+    setNumBps(numbps);
+    dataParsedLayers_ = numLayers_; // whole codeword is present up front
+    int32_t remaining = numPasses;
+    uint8_t* p = data;
+    for(int32_t i = 0; i < numSegs && remaining > 0; ++i)
+    {
+      newSegment(cblk_sty);
+      auto seg = segs_.back();
+      uint8_t passes = (uint8_t)std::min<int32_t>(seg->maxPasses_, remaining);
+      seg->totalPasses_ = passes;
+      seg->headerTotalPasses_ = passes;
+      remaining -= passes;
+      int32_t len = (numSegs <= 1) ? dataLen : segLens[i];
+      seg->data_chunks_.push_back(new Buffer8(p, (size_t)len));
+      seg->totalBytes_ = (uint32_t)len;
+      p += len;
+      numDataParsedSegments_++;
+    }
+    return remaining <= 0;
+  }
+
   /**
    * @brief Gets number of segments whose layer data has been parsed
    * @return number of segments
