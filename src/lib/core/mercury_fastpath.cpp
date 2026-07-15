@@ -5,6 +5,10 @@
  * shim), filling multiTileComposite_'s planes directly.
  */
 
+#include "mercury_fastpath.h"
+
+#if defined(GRK_MERCURY_BUILD)
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -24,7 +28,6 @@
 #include <mutex>
 #include <optional>
 #include <string>
-#include <unistd.h>
 
 #include "TFSingleton.h"
 #include "grk_fseek.h"
@@ -68,7 +71,6 @@ struct ITileProcessor;
 
 #include "lanes.h"
 
-#include "mercury_fastpath.h"
 #include "mercury_capi.h"
 
 /* grok's part-1 block coder behind mercury's BlockCoder contract —
@@ -624,3 +626,16 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 }
 
 } // namespace grk
+
+#else // GRK_MERCURY_BUILD: fast path unavailable (Windows / no cargo)
+
+namespace grk
+{
+void mercurySetInputFile(const char*) {}
+bool mercuryFastPath(CodeStreamDecompress&)
+{
+  return false;
+}
+} // namespace grk
+
+#endif // GRK_MERCURY_BUILD

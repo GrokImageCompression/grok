@@ -184,7 +184,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/Coder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_base.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_backup.cpp
@@ -279,43 +278,93 @@ if(UNIX)
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
 
-# LOCAL-ONLY: mercury streaming fast path — compile mercury's DWT kernels
-# against grok's Highway (byte-identical vs mercury's vendored 1.4.0, gated
-# 2026-07-13) and link the extern-kernels mercury staticlib. The mercury
-# source is vendored in-tree under ${CMAKE_SOURCE_DIR}/mercury; the staticlib
-# is built from it by cargo as part of this build (see mercury_lib below), so
-# building grok also builds libmercury.a — no separate cargo step.
+# mercury streaming fast path — compile mercury's DWT kernels against grok's
+# Highway and link the extern-kernels mercury staticlib (built in-tree by
+# cargo). requires cargo: when it is absent (e.g. the Alpine musl guard job)
+# the fast path is dropped and mercury_fastpath.cpp compiles to a no-op
+# fallback. run cargo --version rather than trusting find_program: the
+# oss-fuzz base-builder image puts a cargo wrapper on PATH without a rust
+# toolchain behind it.
 set(MERCURY_DIR ${CMAKE_SOURCE_DIR}/mercury)
-set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/libmercury.a)
+find_program(CARGO_EXECUTABLE cargo)
+set(GRK_ENABLE_MERCURY OFF)
+if(CARGO_EXECUTABLE AND EXISTS ${MERCURY_DIR}/Cargo.toml)
+  execute_process(COMMAND ${CARGO_EXECUTABLE} --version
+    RESULT_VARIABLE CARGO_VERSION_RESULT OUTPUT_QUIET ERROR_QUIET)
+  if(CARGO_VERSION_RESULT EQUAL 0)
+    set(GRK_ENABLE_MERCURY ON)
+  endif()
+endif()
 
-find_program(CARGO_EXECUTABLE cargo REQUIRED)
-file(GLOB_RECURSE MERCURY_RUST_SRCS CONFIGURE_DEPENDS ${MERCURY_DIR}/src/*.rs)
-add_custom_command(
-  OUTPUT ${MERCURY_LIB}
-  COMMAND ${CARGO_EXECUTABLE} build --release --lib
-          --no-default-features --features extern-kernels
-          --target-dir ${MERCURY_DIR}/target-grok
-  WORKING_DIRECTORY ${MERCURY_DIR}
-  DEPENDS ${MERCURY_RUST_SRCS}
-          ${MERCURY_DIR}/Cargo.toml ${MERCURY_DIR}/Cargo.lock ${MERCURY_DIR}/build.rs
-  COMMENT "Building mercury staticlib (cargo)"
-  VERBATIM)
-add_custom_target(mercury_lib DEPENDS ${MERCURY_LIB})
-add_dependencies(${GROK_CORE_NAME} mercury_lib)
-
-set(MERCURY_KERNEL_SRCS
-  ${MERCURY_DIR}/native/transform/hwy_dwt.cpp
-  ${MERCURY_DIR}/native/transform/mercury_dwt_bridge.cpp)
-target_sources(${GROK_CORE_NAME} PRIVATE
-  ${MERCURY_KERNEL_SRCS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp)
-set_source_files_properties(${MERCURY_KERNEL_SRCS} PROPERTIES
-  COMPILE_OPTIONS "-O2;-msse2;-std=gnu++23;-w"
-  COMPILE_DEFINITIONS "HWY_STATIC_DEFINE;TOOLCHAIN_MISS_ASM_HWCAP_H;NDEBUG"
-  INCLUDE_DIRECTORIES "${MERCURY_DIR}/native;${CMAKE_CURRENT_SOURCE_DIR}/highway")
+target_sources(${GROK_CORE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp)
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
   INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
-target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} dl)
+
+if(GRK_ENABLE_MERCURY)
+  if(MSVC)
+    set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/mercury.lib)
+  else()
+    set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/libmercury.a)
+  endif()
+  file(GLOB_RECURSE MERCURY_RUST_SRCS CONFIGURE_DEPENDS ${MERCURY_DIR}/src/*.rs)
+  add_custom_command(
+    OUTPUT ${MERCURY_LIB}
+    COMMAND ${CARGO_EXECUTABLE} build --release --lib
+            --no-default-features --features extern-kernels
+            --target-dir ${MERCURY_DIR}/target-grok
+    WORKING_DIRECTORY ${MERCURY_DIR}
+    DEPENDS ${MERCURY_RUST_SRCS}
+            ${MERCURY_DIR}/Cargo.toml ${MERCURY_DIR}/Cargo.lock ${MERCURY_DIR}/build.rs
+    COMMENT "Building mercury staticlib (cargo)"
+    VERBATIM)
+  add_custom_target(mercury_lib DEPENDS ${MERCURY_LIB})
+  add_dependencies(${GROK_CORE_NAME} mercury_lib)
+
+  # the kernels live in their own archive, not inside grokj2k: the rust lib
+  # pulls mercury_hwy_* from them, so static consumer links must resolve
+  # left to right as grokj2k -> mercury -> kernels -> hwy.
+  add_library(mercury_kernels STATIC
+    ${MERCURY_DIR}/native/transform/hwy_dwt.cpp
+    ${MERCURY_DIR}/native/transform/mercury_dwt_bridge.cpp)
+  set_target_properties(mercury_kernels PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  # -msse2 is the x86 SSE baseline for the Highway kernels; on non-x86
+  # targets (e.g. arm64 macOS) it is invalid, so omit it there. msvc gets
+  # sse2 by default on x64 and uses per-config optimization flags.
+  if(MSVC)
+    set(MERCURY_KERNEL_OPTS "/w")
+  else()
+    set(MERCURY_KERNEL_OPTS "-O2;-std=gnu++23;-w")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64|amd64|i[3-6]86)")
+      list(APPEND MERCURY_KERNEL_OPTS "-msse2")
+    endif()
+  endif()
+  target_compile_options(mercury_kernels PRIVATE ${MERCURY_KERNEL_OPTS})
+  target_compile_definitions(mercury_kernels PRIVATE
+    HWY_STATIC_DEFINE TOOLCHAIN_MISS_ASM_HWCAP_H NDEBUG)
+  target_include_directories(mercury_kernels PRIVATE
+    ${MERCURY_DIR}/native ${CMAKE_CURRENT_SOURCE_DIR}/highway)
+  target_link_libraries(mercury_kernels PRIVATE hwy)
+
+  target_sources(${GROK_CORE_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp)
+
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
+    COMPILE_DEFINITIONS GRK_MERCURY_BUILD)
+  if(WIN32)
+    # system libs rust's std needs (rustc --print native-static-libs)
+    target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels
+      advapi32 bcrypt ntdll userenv ws2_32 synchronization)
+  else()
+    target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels dl)
+  endif()
+  if(NOT BUILD_SHARED_LIBS)
+    # static grokj2k keeps mercury_kernels in its link interface, so the
+    # export set must carry it
+    install(TARGETS mercury_kernels EXPORT GrokTargets
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries)
+  endif()
+endif()
 if(GRK_USE_SCX_SCHEDULING)
   target_link_libraries(${GROK_CORE_NAME} PRIVATE scx_scheduling)
   target_include_directories(${GROK_CORE_NAME} PRIVATE "${SCX_SCHEDULING_DIR}/src/scheduling")
