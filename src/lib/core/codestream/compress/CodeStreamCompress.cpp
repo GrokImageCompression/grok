@@ -58,6 +58,7 @@ struct ITileProcessor;
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
 #include "TileProcessorCompress.h"
+#include "XYZTransform.h"
 
 namespace grk
 {
@@ -200,6 +201,16 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   if(parameters->apply_icc)
     image->applyICC<int32_t>();
 
+  if(parameters->apply_xyz_transform)
+  {
+    // skip when the caller (e.g. the CLI) already transformed this image
+    if(image->color_space != GRK_CLRSPC_CUSTOM_CIE && !applyXYZTransform(image))
+    {
+      grklog.error("Failed to apply XYZ colour transform");
+      return false;
+    }
+  }
+
   // create private sanitized copy of image
   headerImage_ = new GrkImage();
   image->copyHeaderTo(headerImage_);
@@ -282,55 +293,62 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   }
 
   /* Manage profiles and applications and set RSIZ */
-  /* set cinema parameters if required */
+  /* An explicitly requested profile that cannot be honoured is a hard error:
+   * silently downgrading to GRK_PROFILE_NONE produced code streams that pass
+   * here but fail downstream conformance checks. */
   if(isHT)
     parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
   if(GRK_IS_CINEMA(parameters->rsiz))
   {
     if((parameters->rsiz == GRK_PROFILE_CINEMA_S2K) || (parameters->rsiz == GRK_PROFILE_CINEMA_S4K))
     {
-      grklog.warn("JPEG 2000 Scalable Digital Cinema profiles not supported");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("JPEG 2000 Scalable Digital Cinema profiles not supported");
+      return false;
     }
-    else
+    if(!Profile::isCinemaCompliant(image, parameters->rsiz))
     {
-      if(Profile::isCinemaCompliant(image, parameters->rsiz))
-        Profile::setCinemaParams(parameters, image);
-      else
-        parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("Input is not compliant with requested cinema profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
     }
+    Profile::setCinemaParams(parameters, image);
   }
   else if(GRK_IS_STORAGE(parameters->rsiz))
   {
-    grklog.warn("JPEG 2000 Long Term Storage profile not supported");
-    parameters->rsiz = GRK_PROFILE_NONE;
+    grklog.error("JPEG 2000 Long Term Storage profile not supported");
+    return false;
   }
   else if(GRK_IS_BROADCAST(parameters->rsiz))
   {
     Profile::setBroadcastParams(parameters);
     if(!Profile::isBroadcastCompliant(parameters, image))
-      parameters->rsiz = GRK_PROFILE_NONE;
+    {
+      grklog.error("Parameters are not compliant with requested broadcast profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
+    }
   }
   else if(GRK_IS_IMF(parameters->rsiz))
   {
     Profile::setImfParams(parameters, image);
     if(!Profile::isImfCompliant(parameters, image))
-      parameters->rsiz = GRK_PROFILE_NONE;
+    {
+      grklog.error("Parameters are not compliant with requested IMF profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
+    }
   }
   else if(GRK_IS_PART2(parameters->rsiz))
   {
     if(parameters->rsiz == ((GRK_PROFILE_PART2) | (GRK_EXTENSION_NONE)))
     {
-      grklog.warn("JPEG 2000 Part-2 profile defined\n"
-                  "but no Part-2 extension enabled.\n"
-                  "Profile set to NONE.");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("JPEG 2000 Part-2 profile defined but no Part-2 extension enabled");
+      return false;
     }
-    else if(parameters->rsiz != ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT)))
+    if(parameters->rsiz != ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT)))
     {
-      grklog.warn("Unsupported Part-2 extension enabled\n"
-                  "Profile set to NONE.");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("Unsupported Part-2 extension enabled");
+      return false;
     }
   }
 

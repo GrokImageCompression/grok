@@ -2232,12 +2232,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   }
 
   /* Decide if MCT should be used */
-  if(parameters->apply_xyz_transform)
-  {
-    // XYZ-encoded data must not have MCT applied
-    parameters->mct = 0;
-  }
-  else if(parameters->mct == 255)
+  if(parameters->mct == 255)
   { /* mct mode has not been set in commandline */
     parameters->mct = (image->numcomps >= 3) ? 1 : 0;
   }
