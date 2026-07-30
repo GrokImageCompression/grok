@@ -21,7 +21,7 @@
 #include "BlockCoder.h"
 #include "CodeblockDecompress.h"
 
-extern "C" __attribute__((visibility("default"))) int32_t mercury_grok_t1_decode(
+extern "C" int32_t mercury_grok_t1_decode(
     const uint8_t* coded_data, int32_t coded_length, int32_t num_passes, int32_t missing_msbs,
     int32_t k_max_prime, int32_t orientation, int32_t modes, int32_t num_cols, int32_t num_rows,
     const int32_t* segment_lengths, int32_t num_segments, int32_t* out)
