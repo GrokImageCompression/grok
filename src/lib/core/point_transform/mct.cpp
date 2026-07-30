@@ -406,9 +406,14 @@ namespace HWY_NAMESPACE
       auto chan2 = w2.buf_;
 
       const HWY_FULL(int16_t) di16;
+#if HWY_TARGET != HWY_SCALAR
       const hwy::HWY_NAMESPACE::Half<decltype(di16)> di16h;
       const hwy::HWY_NAMESPACE::Repartition<int32_t, decltype(di16)> di32;
       const hwy::HWY_NAMESPACE::Repartition<float, decltype(di16)> df;
+#else
+      const hwy::HWY_NAMESPACE::Rebind<int32_t, decltype(di16)> di32;
+      const hwy::HWY_NAMESPACE::Rebind<float, decltype(di16)> df;
+#endif
 
       int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
       int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
@@ -454,6 +459,7 @@ namespace HWY_NAMESPACE
         auto gl = Clamp(NearestInt((yl - ul * vgu - vl * vgv) * vInvScale) + vdcg, ming, maxg);
         auto bl = Clamp(NearestInt((yl + ul * vbu) * vInvScale) + vdcb, minb, maxb);
 
+#if HWY_TARGET != HWY_SCALAR
         // upper half
         auto yh = ConvertTo(df, PromoteUpperTo(di32, y16));
         auto uh = ConvertTo(df, PromoteUpperTo(di32, u16));
@@ -466,6 +472,12 @@ namespace HWY_NAMESPACE
         Store(Combine(di16, DemoteTo(di16h, rh), DemoteTo(di16h, rl)), di16, chan0 + j);
         Store(Combine(di16, DemoteTo(di16h, gh), DemoteTo(di16h, gl)), di16, chan1 + j);
         Store(Combine(di16, DemoteTo(di16h, bh), DemoteTo(di16h, bl)), di16, chan2 + j);
+#else
+        // scalar target: one lane, no upper half or Combine, see #414
+        chan0[j] = (int16_t)GetLane(rl);
+        chan1[j] = (int16_t)GetLane(gl);
+        chan2[j] = (int16_t)GetLane(bl);
+#endif
       }
     }
   };

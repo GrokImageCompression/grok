@@ -932,7 +932,9 @@ namespace HWY_NAMESPACE
       uint32_t fn = (parity == 0) ? sn : dn;
       uint32_t sn2 = (parity == 0) ? dn : sn;
       uint32_t i = 0, d = 0;
+#if HWY_TARGET != HWY_SCALAR
       /* SIMD interleave: L elements of first + L of second → 2L dest */
+      /* InterleaveWhole* is unavailable on the scalar target, see #414 */
       for(; i + L <= fn && i + L <= sn2; i += L)
       {
         auto f = LoadU(di, first + i);
@@ -941,6 +943,7 @@ namespace HWY_NAMESPACE
         StoreU(InterleaveWholeUpper(di, f, s), di, dest + d + L);
         d += 2 * L;
       }
+#endif
       /* Scalar interleave for remainder */
       for(; i < fn || i < sn2; i++)
       {
