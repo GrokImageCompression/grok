@@ -47,13 +47,6 @@ public:
     }
   }
 
-  static bool isFreebyrd()
-  {
-    const char* env = std::getenv("GRK_SCHEDULER");
-    if(!env)
-      return false;
-    return std::string(env) == "freebyrd";
-  }
 };
 
 } // namespace grk

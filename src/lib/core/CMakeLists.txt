@@ -58,7 +58,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/flow
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd
   ${CMAKE_CURRENT_SOURCE_DIR}/stream
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/s3
@@ -150,8 +149,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/DecompressSchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/CompressSchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/SchedulerExcalibur.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd/SchedulerFreebyrd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd/StripDecompressor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 
@@ -364,13 +361,6 @@ if(GRK_ENABLE_MERCURY)
     install(TARGETS mercury_kernels EXPORT GrokTargets
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries)
   endif()
-endif()
-if(GRK_USE_SCX_SCHEDULING)
-  target_link_libraries(${GROK_CORE_NAME} PRIVATE scx_scheduling)
-  target_include_directories(${GROK_CORE_NAME} PRIVATE "${SCX_SCHEDULING_DIR}/src/scheduling")
-  target_compile_definitions(${GROK_CORE_NAME} PRIVATE GRK_USE_SCX_SCHEDULING)
-  target_sources(${GROK_CORE_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd/ScxEngineSingleton.cpp)
 endif()
 if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
   target_link_libraries(${GROK_CORE_NAME} PRIVATE ${GRK_CURL_TARGET})

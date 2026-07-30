@@ -24,7 +24,6 @@
 namespace grk
 {
 
-class SchedulerFreebyrd;
 
 template<typename ST>
 struct dwt_scratch
@@ -112,9 +111,6 @@ struct DcShiftParam
 
 class WaveletReverse
 {
-  friend class SchedulerFreebyrd;
-  friend class StripDecompressor;
-
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,

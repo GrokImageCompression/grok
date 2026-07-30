@@ -26,8 +26,6 @@
 namespace grk
 {
 
-class SchedulerFreebyrd;
-
 /**
  * @struct TileProcesor
  * @brief Manages tile compression/decompression
@@ -356,10 +354,6 @@ struct TileProcessor : virtual public ITileProcessor
   bool scheduledForDecompression(void) override;
   void resetSOTParsing() override;
   bool reinitForReDecompress(void) override;
-  bool isStripOutputWritten() const override
-  {
-    return stripOutputWritten_;
-  }
 
   void setSelectiveFetch(bool selective)
   {
@@ -423,12 +417,6 @@ protected:
    *
    */
   CodecScheduler* scheduler_ = nullptr;
-
-  /**
-   * @brief @ref SchedulerFreebyrd — strip-based decompression via freebyrd pool
-   *
-   */
-  SchedulerFreebyrd* schedulerFreebyrd_ = nullptr;
 
 private:
   std::vector<tf::Task> blockTasks_;
@@ -539,11 +527,6 @@ private:
 
   std::vector<uint8_t> threadTilePart_;
   std::mutex pltMutex_;
-
-  // band callback for strip-mode ImageFormat output
-  grk_io_band_callback ioBandCallback_ = nullptr;
-  void* ioBandUserData_ = nullptr;
-  bool stripOutputWritten_ = false;
 };
 
 } // namespace grk

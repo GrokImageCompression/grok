@@ -305,42 +305,24 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
             // after resolution reduction).
             if(band.yEnd > band.yBegin)
             {
-              // Check if any tile in this row already wrote strip output directly
-              bool stripOutputHandled = false;
+              // Composite all tiles in this row into the strip buffer
               for(uint16_t col = 0; col < band.numCols; col++)
               {
                 uint16_t tileIndex =
                     static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
                 auto cacheEntry = tileCache_->get(tileIndex);
-                if(cacheEntry && cacheEntry->processor &&
-                   cacheEntry->processor->isStripOutputWritten())
+                if(!cacheEntry || !cacheEntry->processor)
+                  continue;
+                auto tileImage = cacheEntry->processor->getImage();
+                if(tileImage)
                 {
-                  stripOutputHandled = true;
-                  break;
+                  if(!scratchImage_->composite(tileImage))
+                    success_ = false;
                 }
               }
 
-              if(!stripOutputHandled)
-              {
-                // Composite all tiles in this row into the strip buffer
-                for(uint16_t col = 0; col < band.numCols; col++)
-                {
-                  uint16_t tileIndex =
-                      static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
-                  auto cacheEntry = tileCache_->get(tileIndex);
-                  if(!cacheEntry || !cacheEntry->processor)
-                    continue;
-                  auto tileImage = cacheEntry->processor->getImage();
-                  if(tileImage)
-                  {
-                    if(!scratchImage_->composite(tileImage))
-                      success_ = false;
-                  }
-                }
-
-                if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
-                  success_ = false;
-              }
+              if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+                success_ = false;
 
               // Release tile processors for this completed row
               for(uint16_t col = 0; col < band.numCols; col++)
