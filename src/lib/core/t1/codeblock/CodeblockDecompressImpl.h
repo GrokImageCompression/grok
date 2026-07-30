@@ -552,6 +552,10 @@ struct CodeblockDecompressImpl : public CodeblockImpl
    */
   std::vector<Segment*>::iterator nextDataParsedSegment(void)
   {
+    // corrupt stream can signal more layer passes than created segments can hold:
+    // saturate so numDataParsedSegments_ never exceeds segs_.size()
+    if(numDataParsedSegments_ >= segs_.size())
+      return segs_.end();
     numDataParsedSegments_++;
     return currDataParsedSegment();
   }
