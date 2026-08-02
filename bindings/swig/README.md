@@ -44,6 +44,10 @@ cmake -B build
 cmake --build build --target grok_core
 ```
 
+`cmake --install build` installs the Python modules into the interpreter's
+site-packages so `import grok_core` works without any environment setup.
+Override the destination with `GRK_PYTHON_INSTALL_DIR`.
+
 ### C#
 
 Enable with `GRK_BUILD_CSHARP_SWIG_BINDINGS`:

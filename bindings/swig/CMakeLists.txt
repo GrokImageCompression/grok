@@ -56,6 +56,14 @@ if(GRK_BUILD_PYTHON_SWIG)
 
     set(GROK_PYTHON_DEST_PATH "${CMAKE_BINARY_DIR}/bin")
 
+    set(GRK_PYTHON_INSTALL_DIR "${Python3_SITEARCH}" CACHE PATH
+        "install directory for the python bindings")
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${GROK_SWIG_CORE_NAME}.py
+        DESTINATION ${GRK_PYTHON_INSTALL_DIR})
+    install(TARGETS ${GROK_SWIG_CORE_NAME}
+        LIBRARY DESTINATION ${GRK_PYTHON_INSTALL_DIR})
+
     # Force the native module (.so/.pyd) into bin/ on all configurations.
     # Without this, multi-config generators (e.g. Visual Studio) place it in
     # bin/<Config>/ which is not on PYTHONPATH and causes ModuleNotFoundError.
@@ -112,6 +120,11 @@ if(GRK_BUILD_PYTHON_SWIG)
                 ${GROK_PYTHON_DEST_PATH}/${GROK_SWIG_CODEC_NAME}.py
             COMMENT "Copying grok_codec.py to bin directory"
         )
+
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${GROK_SWIG_CODEC_NAME}.py
+            DESTINATION ${GRK_PYTHON_INSTALL_DIR})
+        install(TARGETS ${GROK_SWIG_CODEC_NAME}
+            LIBRARY DESTINATION ${GRK_PYTHON_INSTALL_DIR})
     endif()
 
 endif()
