@@ -141,9 +141,9 @@ using System.Runtime.InteropServices;
 
 class Program {
     static void Main() {
-        grok_core.grk_initialize(null, 0, null);
-        Console.WriteLine(grok_core.grk_version());
-        grok_core.grk_deinitialize();
+        grok_core_csharp.grk_initialize(null, 0, null);
+        Console.WriteLine(grok_core_csharp.grk_version());
+        grok_core_csharp.grk_deinitialize();
     }
 }
 ```
@@ -157,9 +157,9 @@ public class GrokDemo {
     static { System.loadLibrary("grok_core_java"); }
 
     public static void main(String[] args) {
-        grok_core.grk_initialize(null, 0, null);
-        System.out.println(grok_core.grk_version());
-        grok_core.grk_deinitialize();
+        grok_core_java.grk_initialize(null, 0, null);
+        System.out.println(grok_core_java.grk_version());
+        grok_core_java.grk_deinitialize();
     }
 }
 ```
@@ -174,7 +174,8 @@ java -Djava.library.path=build/bin -cp classes:build/bin/java org.grok.core.Grok
 
 The SWIG bindings expose the same C API across all three languages. The
 examples below use Python; the function names and constants are identical
-in C# and Java (accessed via the `grok_core` wrapper class).
+in C# and Java (accessed via the `grok_core_csharp` and `grok_core_java`
+wrapper classes).
 
 ### Library lifecycle
 
