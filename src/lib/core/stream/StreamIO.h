@@ -17,14 +17,7 @@
 
 #pragma once
 
-// byteswap.h must be included at file scope: musl defines its bswap_* as
-// static inline functions, and including the header inside a function body
-// (as was done below) creates illegal nested function definitions on musl.
-// glibc's are macros/builtins, which is why the in-body include only broke
-// on Alpine/musl.
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#include <byteswap.h>
-#endif
+#include <bit>
 
 namespace grk
 {
@@ -51,6 +44,7 @@ void grk_write(uint8_t** dest, TYPE value)
   *dest += sizeof(TYPE);
 }
 
+// stream data is big endian
 template<typename TYPE>
 void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
 {
@@ -59,55 +53,16 @@ void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
     throw std::runtime_error("read size too large");
 
   *value = 0;
-  memcpy(value, src, numBytes); // Copy bytes directly
-#if defined(_MSC_VER) // MSVC
-  if(numBytes == 8)
+  if constexpr(std::endian::native == std::endian::big)
   {
-    *value = (TYPE)_byteswap_uint64((uint64_t)*value); // Big-endian to little-endian
+    memcpy((uint8_t*)value + sizeof(TYPE) - numBytes, src, numBytes);
   }
-  else if(numBytes == 4)
+  else
   {
-    *value = (TYPE)_byteswap_ulong((uint32_t)*value);
+    auto dest = (uint8_t*)value;
+    for(uint32_t i = 0; i < numBytes; ++i)
+      dest[i] = src[numBytes - 1 - i];
   }
-  else if(numBytes == 2)
-  {
-    *value = (TYPE)_byteswap_ushort((uint16_t)*value);
-  }
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || \
-    defined(__OpenBSD__) // POSIX with byteswap.h (included at file scope)
-  if(numBytes == 8)
-  {
-    *value = (TYPE)bswap_64((uint64_t)*value);
-  }
-  else if(numBytes == 4)
-  {
-    *value = (TYPE)bswap_32((uint32_t)*value);
-  }
-  else if(numBytes == 2)
-  {
-    *value = (TYPE)bswap_16((uint16_t)*value);
-  }
-#else // Fallback for other POSIX systems
-  if(numBytes == 8)
-  {
-    uint64_t tmp = *(uint64_t*)value;
-    *value = (TYPE)(((tmp >> 56) & 0xFF) | ((tmp >> 40) & 0xFF00) | ((tmp >> 24) & 0xFF0000) |
-                    ((tmp >> 8) & 0xFF000000) | ((tmp << 8) & 0xFF00000000) |
-                    ((tmp << 24) & 0xFF0000000000) | ((tmp << 40) & 0xFF000000000000) |
-                    ((tmp << 56) & 0xFF00000000000000));
-  }
-  else if(numBytes == 4)
-  {
-    uint32_t tmp = *(uint32_t*)value;
-    *value = (TYPE)(((tmp >> 24) & 0xFF) | ((tmp >> 8) & 0xFF00) | ((tmp << 8) & 0xFF0000) |
-                    ((tmp << 24) & 0xFF000000));
-  }
-  else if(numBytes == 2)
-  {
-    uint16_t tmp = *(uint16_t*)value;
-    *value = (TYPE)(((tmp >> 8) & 0xFF) | ((tmp << 8) & 0xFF00));
-  }
-#endif
 }
 
 template<typename TYPE>

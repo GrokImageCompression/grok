@@ -766,6 +766,14 @@ namespace HWY_NAMESPACE
   static void Hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
                                       uint32_t w, int32_t adjust)
   {
+    // native lanes are already big-endian on BE hosts
+    const auto toBE16 = [](auto v) {
+#if HWY_IS_LITTLE_ENDIAN
+      return ReverseLaneBytes(v);
+#else
+      return v;
+#endif
+    };
     const HWY_FULL(int32_t) di;
     const hn::Rebind<uint16_t, decltype(di)> du16;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -777,9 +785,9 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
-        auto v1 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
-        auto v2 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        auto v0 = toBE16(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = toBE16(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = toBE16(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
         StoreInterleaved3(v0, v1, v2, du16, dest16 + i * 3);
       }
       for(; i < w; ++i)
@@ -801,10 +809,10 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
-        auto v1 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
-        auto v2 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
-        auto v3 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[3] + i), vAdj)));
+        auto v0 = toBE16(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = toBE16(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = toBE16(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        auto v3 = toBE16(DemoteTo(du16, Add(LoadU(di, src[3] + i), vAdj)));
         StoreInterleaved4(v0, v1, v2, v3, du16, dest16 + i * 4);
       }
       for(; i < w; ++i)

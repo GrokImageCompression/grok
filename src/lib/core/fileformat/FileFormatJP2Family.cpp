@@ -15,6 +15,7 @@
  *
  */
 
+#include <bit>
 #include <cinttypes>
 
 #include "CodeStreamLimits.h"
@@ -234,12 +235,10 @@ bool FileFormatJP2Family::readHeader(grk_header_info* header_info, GrkImage* hea
 
 static uint32_t toBigEndian(uint32_t value)
 {
-#ifdef GROK_BIG_ENDIAN
-  return value; // Already in big-endian
-#else
-  return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) | ((value & 0x0000FF00) << 8) |
-         ((value & 0x000000FF) << 24);
-#endif
+  if constexpr(std::endian::native == std::endian::big)
+    return value;
+  else
+    return std::byteswap(value);
 }
 
 void FileFormatJP2Family::updateSuperBoxes(uint64_t boxBytes)

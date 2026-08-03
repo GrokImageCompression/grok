@@ -114,12 +114,6 @@ if (APPLE)
 	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_FULL_LIBDIR}")
 endif()
 
-# Big endian test:
-include(TestBigEndian)
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-  test_big_endian(GROK_BIG_ENDIAN)
-endif()
-
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")

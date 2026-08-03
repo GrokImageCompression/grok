@@ -647,21 +647,11 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
   {
     if constexpr(std::is_same_v<T, int32_t>)
     {
-#ifdef GROK_BIG_ENDIAN
-      /* On big-endian host the packed bytes are already native-order uint16 */
-      grk::hwy_unpack_16le_to_i32((const uint16_t*)src, dest, w, invert);
-#else
       /* convert from big endian (PNG) */
       grk::hwy_unpack_16be_to_i32(src, dest, w, invert);
-#endif
     }
     else
     {
-#ifdef GROK_BIG_ENDIAN
-      const uint16_t* typedSrc = (uint16_t*)src;
-      for(size_t i = 0; i < w; i++)
-        dest[i] = INV(typedSrc[i], 0xFFFF, invert);
-#else
       // convert from big endian (PNG)
       size_t i;
       for(i = 0; i < w; i++)
@@ -670,7 +660,6 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
         T val1 = *src++;
         dest[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
       }
-#endif
     }
   }
 }

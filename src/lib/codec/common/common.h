@@ -26,6 +26,7 @@
 #include <cstring>
 #include <fcntl.h>
 #endif /* _WIN32 */
+#include <bit>
 #include <chrono>
 
 #include "grok.h"
@@ -124,42 +125,26 @@ uint32_t get_num_images(char* imgdirpath);
 char* actual_path(const char* outfile, bool* mem_allocated);
 bool isFinalOutputSubsampled(grk_image* image);
 
-// swap endian for 16 bit integer
 template<typename T>
 inline T swap(T x)
 {
-  return (T)((x >> 8) | ((x & 0x00ff) << 8));
-}
-// specialization for 32 bit unsigned
-template<>
-inline uint32_t swap(uint32_t x)
-{
-  return (uint32_t)((x >> 24) | ((x & 0x00ff0000) >> 8) | ((x & 0x0000ff00) << 8) |
-                    ((x & 0x000000ff) << 24));
-}
-// no-op specialization for unsigned 8 bit
-template<>
-inline uint8_t swap(uint8_t x)
-{
-  return x;
-}
-// no-op specialization for signed 8 bit
-template<>
-inline int8_t swap(int8_t x)
-{
-  return x;
+  static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
+  if constexpr(sizeof(T) == 1)
+    return x;
+  else if constexpr(sizeof(T) == 2)
+    return (T)std::byteswap((uint16_t)x);
+  else if constexpr(sizeof(T) == 4)
+    return (T)std::byteswap((uint32_t)x);
+  else
+    return (T)std::byteswap((uint64_t)x);
 }
 template<typename T>
 inline T endian(T x, bool to_big_endian)
 {
-#ifdef GROK_BIG_ENDIAN
-  if(!to_big_endian)
-    return swap<T>(x);
-#else
-  if(to_big_endian)
-    return swap<T>(x);
-#endif
-  return x;
+  if constexpr(std::endian::native == std::endian::big)
+    return to_big_endian ? x : swap<T>(x);
+  else
+    return to_big_endian ? swap<T>(x) : x;
 }
 
 template<typename T>
