@@ -39,6 +39,7 @@
 #ifndef OJPH_ARCH_H
 #define OJPH_ARCH_H
 
+#include <bit>
 #include <cstdio>
 #include <cstdint>
 #include <cmath>
@@ -151,6 +152,32 @@ namespace  grk::t1::ojph {
     ARM_CPU_EXT_LEVEL_SVE = 2,
     ARM_CPU_EXT_LEVEL_SVE2 = 3,
   };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Ported from upstream OpenJPH PR #290 (big-endian support).
+  // Loads 4 bytes from p as a little-endian 32-bit integer; that is, the
+  // byte at the lowest address goes into the least-significant byte of the
+  // result, irrespective of the machine's endianness.
+  static inline ui32 load_le_ui32(const ui8 *p)
+  {
+    if constexpr (std::endian::native == std::endian::little)
+      return *(const ui32 *)p;
+    else
+      return (ui32)p[0] | ((ui32)p[1] << 8)
+        | ((ui32)p[2] << 16) | ((ui32)p[3] << 24);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Loads two consecutive ui16 values from p, placing the one at the lower
+  // address in the least-significant 16 bits of the result, irrespective
+  // of the machine's endianness.
+  static inline ui32 load_le_ui16x2(const ui16 *p)
+  {
+    if constexpr (std::endian::native == std::endian::little)
+      return *(const ui32 *)p;
+    else
+      return (ui32)p[0] | ((ui32)p[1] << 16);
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   static inline ui32 population_count(ui32 val)

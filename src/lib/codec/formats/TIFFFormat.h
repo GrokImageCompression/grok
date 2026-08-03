@@ -2027,8 +2027,13 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
       }
       color_space = GRK_CLRSPC_SYCC;
       numcomps = (uint16_t)(numcomps + 3);
-      TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
-                            &chroma_subsample_y);
+      // the tag holds uint16 values, larger types break on big-endian hosts
+      {
+        uint16_t subsample_x = 0, subsample_y = 0;
+        TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRSUBSAMPLING, &subsample_x, &subsample_y);
+        chroma_subsample_x = subsample_x;
+        chroma_subsample_y = subsample_y;
+      }
       if(chroma_subsample_x == 0 || chroma_subsample_y == 0)
       {
         spdlog::error("TIFFFormat<T>::readImage: chroma subsampling factors must be positive.");
