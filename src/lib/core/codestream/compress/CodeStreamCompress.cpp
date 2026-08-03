@@ -15,6 +15,8 @@
  *
  */
 
+#include <optional>
+
 #include "TFSingleton.h"
 
 #include "CodeStreamLimits.h"
@@ -687,11 +689,27 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   grk_free(parameters->mct_data);
   parameters->mct_data = nullptr;
 
+  // num_threads == 1 requests a single-threaded codec: give it its own inline
+  // (0-worker) executor so concurrent compresses run on their own thread
+  // instead of contending on (or resizing) the global singleton.  Also used
+  // when the global pool itself is single-threaded, mirroring decompress.
+  if(parameters->num_threads == 1 || TFSingleton::isSingleThreaded())
+    localExecutor_ = std::make_unique<tf::Executor>(0);
+
   return true;
 }
 
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this compress is in flight.
+  auto pinnedExec = TFSingleton::acquire();
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // compressing (single-threaded mode only; no-op when localExecutor_ is null).
+  std::optional<TFSingleton::ScopedExecutor> scopedExec;
+  if(localExecutor_)
+    scopedExec.emplace(localExecutor_.get(), 1);
+
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)
   {

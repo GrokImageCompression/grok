@@ -306,6 +306,17 @@ private:
   bool init_mct_encoding(TileCodingParams* tcp, GrkImage* image);
 
   uint32_t totalTileParts_;
+
+  /**
+   * @brief Per-codec inline executor, owned only in single-threaded mode
+   * (cparameters num_threads == 1, or a single-threaded global pool).
+   *
+   * When set, the compress runs on this executor (activated via
+   * TFSingleton::ScopedExecutor for the duration of compress()) instead of
+   * the process-global singleton, so concurrent single-threaded compresses
+   * are independent and lock-free.  Null in multi-threaded mode.
+   */
+  std::unique_ptr<tf::Executor> localExecutor_;
 };
 
 } // namespace grk

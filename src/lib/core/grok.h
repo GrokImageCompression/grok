@@ -1247,6 +1247,10 @@ GRK_API bool GRK_CALLCONV grk_detect_format(const char* file_path, GRK_CODEC_FOR
  * operations. Pass @p num_threads = 0 to use all available logical CPUs.
  * The thread pool persists for the lifetime of the process.
  *
+ * Calling again with a different @p num_threads resizes the pool by swapping
+ * in a new executor; codecs already in flight keep running on the executor
+ * they started with and release it when they finish.
+ *
  * @param plugin_path       path to an optional hardware-accelerator plugin .so;
  *                          pass NULL for CPU-only operation
  * @param num_threads       number of worker threads (0 = use all CPUs)
@@ -1261,6 +1265,7 @@ GRK_API void GRK_CALLCONV grk_initialize(const char* plugin_path, uint32_t num_t
  *
  * Cleans up the plugin and thread pool. Call at the end of main()
  * to ensure GPU resources are freed before CUDA runtime unloads.
+ * Codecs still in flight keep the thread pool alive until they finish.
  */
 GRK_API void GRK_CALLCONV grk_deinitialize(void);
 
@@ -1791,7 +1796,9 @@ typedef struct _grk_cparameters
   bool apply_icc; /* apply ICC */
 
   GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm; /* rate control algorithm */
-  uint32_t num_threads; /* number of threads */
+  uint32_t num_threads; /* number of threads. 1 => the codec compresses on its own
+                           inline executor instead of the global thread pool, so
+                           concurrent single-threaded compresses are independent */
   int32_t device_id; /* device ID */
   uint32_t duration; /* duration seconds */
   uint32_t kernel_build_options; /* kernel build options */

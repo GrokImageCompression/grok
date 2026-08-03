@@ -173,6 +173,9 @@ void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* 
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this decode is in flight.
+  auto pinnedExec = TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   std::optional<TFSingleton::ScopedExecutor> scopedExec;
@@ -931,6 +934,9 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
 
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this decode is in flight.
+  auto pinnedExec = TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   std::optional<TFSingleton::ScopedExecutor> scopedExec;

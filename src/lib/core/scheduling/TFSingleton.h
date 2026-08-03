@@ -19,6 +19,7 @@
 
 #include <stdexcept>
 #include <unordered_map>
+#include <memory>
 #include <mutex>
 #include <vector>
 #include <cassert>
@@ -46,7 +47,29 @@ public:
     numThreads_ = numThreads;
     // numThreads == 1 => inline executor (0 workers): all work runs on the
     // calling thread, keeping the process truly single-threaded.
-    instance_ = std::make_unique<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
+    // Swap rather than destroy: codecs pin the executor via acquire(), so a
+    // resize can never free an executor that still has tasks in flight.
+    instance_ = std::make_shared<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
+  }
+
+  /**
+   * @brief Pins the current global executor (creating it with full hardware
+   * concurrency if null).
+   *
+   * Codec entry points hold the returned shared_ptr for the duration of a
+   * compress/decompress, so a concurrent grk_initialize resize or
+   * grk_deinitialize swaps the global instance out without destroying the
+   * executor this codec is running on.
+   */
+  static std::shared_ptr<tf::Executor> acquire(void)
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!instance_)
+    {
+      numThreads_ = std::thread::hardware_concurrency();
+      instance_ = std::make_shared<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
+    }
+    return instance_;
   }
 
   /**
@@ -61,15 +84,7 @@ public:
   {
     if(tlsActive_)
       return *tlsExec_;
-    std::lock_guard<std::mutex> lock(mutex_);
-    if(!instance_)
-    {
-      // Initialize with default thread count if instance is null
-      numThreads_ = std::thread::hardware_concurrency();
-      instance_ = std::make_unique<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
-    }
-    assert(instance_); // Should always be valid now
-    return *instance_;
+    return *acquire();
   }
 
   /**
@@ -162,7 +177,7 @@ private:
   /**
    * @brief Taskflow Executor instance
    */
-  static std::unique_ptr<tf::Executor> instance_;
+  static std::shared_ptr<tf::Executor> instance_;
 
   /**
    * @brief std::mutex to control access to instance_
