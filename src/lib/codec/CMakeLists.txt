@@ -35,6 +35,7 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDump.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkCompareImages.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkImageCanonDump.cpp
 )
 
 if(GROK_HAVE_LIBTIFF)

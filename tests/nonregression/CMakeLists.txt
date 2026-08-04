@@ -229,6 +229,7 @@ function(add_decoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
                        -DREFFILE:STRING=${CMAKE_CURRENT_SOURCE_DIR}/md5refs.txt
                        -DOUTFILENAME:STRING=${OUTPUT_FILENAME}
                        -DPLATFORM_KEY:STRING=${_md5_platform}
+                       -DCANON_TOOL:STRING=${EXECUTABLE_OUTPUT_PATH}/image_canon_dump
                        -P ${CMAKE_CURRENT_SOURCE_DIR}/checkmd5refs.cmake)
       set_tests_properties(NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                            PROPERTIES DEPENDS NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode)

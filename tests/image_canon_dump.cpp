@@ -16,29 +16,8 @@
  */
 
 #include "grok_codec.h"
-#include "GrkDump.h"
-#include "GrkDecompress.h"
-#include "GrkCompress.h"
-#include "GrkCompareImages.h"
-#include "GrkImageCanonDump.h"
 
-int grk_codec_dump(int argc, const char* argv[])
+int main(int argc, const char* argv[])
 {
-  return grk::GrkDump().main(argc, argv);
-}
-int grk_codec_compress(int argc, const char* argv[], grk_image* in_image, grk_stream_params* stream)
-{
-  return grk::GrkCompress().main(argc, argv, in_image, stream);
-}
-int grk_codec_decompress(int argc, const char* argv[])
-{
-  return grk::GrkDecompress().main(argc, argv);
-}
-int grk_codec_compare_images(int argc, const char* argv[])
-{
-  return grk::GrkCompareImages().main(argc, argv);
-}
-int grk_codec_image_canon_dump(int argc, const char* argv[])
-{
-  return grk::GrkImageCanonDump().main(argc, argv);
+  return grk_codec_image_canon_dump(argc, argv);
 }

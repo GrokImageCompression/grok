@@ -27,6 +27,9 @@ find_package(Threads REQUIRED)
 add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images ${GROK_CODEC_NAME})
 
+add_executable(image_canon_dump image_canon_dump.cpp)
+target_link_libraries(image_canon_dump ${GROK_CODEC_NAME})
+
 add_executable(compare_dump_files compare_dump_files.cpp GrkCompareDumpFiles.cpp )
 target_link_libraries(compare_dump_files ${GROK_CORE_NAME} spdlog::spdlog)
 

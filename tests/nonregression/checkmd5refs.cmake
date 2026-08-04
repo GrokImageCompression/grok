@@ -104,9 +104,28 @@ endif()
 
 # Loop through all globbed files and compare MD5 hash
 foreach(file_path ${globfiles})
-  # Get MD5 hash and filename
-  file(MD5 ${file_path} file_md5)
   get_filename_component(file_name ${file_path} NAME)
+
+  # PNG and TIFF are deflate-compressed, so their raw bytes depend on the
+  # zlib implementation. Hash a canonical dump of the decoded image instead
+  # (CANON_TOOL may be a command list, e.g. with an emulator prefix).
+  string(TOLOWER "${file_name}" _file_name_lower)
+  if(CANON_TOOL AND _file_name_lower MATCHES "\\.(png|tiff?)$")
+    # md5 tests with overlapping globs run in parallel, so the sidecar name
+    # must be unique to this test invocation
+    get_filename_component(_outfile_full ${OUTFILENAME} NAME)
+    set(_canon_file "${file_path}.${_outfile_full}.canon")
+    execute_process(COMMAND ${CANON_TOOL} ${file_path} ${_canon_file}
+                    RESULT_VARIABLE _canon_rc)
+    if(NOT _canon_rc EQUAL 0)
+        message(SEND_ERROR "image_canon_dump failed for ${file_name}")
+        continue()
+    endif()
+    file(MD5 ${_canon_file} file_md5)
+    file(REMOVE ${_canon_file})
+  else()
+    file(MD5 ${file_path} file_md5)
+  endif()
 
   # Skip files that are blacklisted for this platform.
   # A blacklist entry of "*" means skip ALL md5 checks for this platform.
