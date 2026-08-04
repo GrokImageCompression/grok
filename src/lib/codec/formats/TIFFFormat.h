@@ -1583,8 +1583,6 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     uint32_t height = 0;
     // if width % chroma_subsample_x != 0...
     size_t planeUnits = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
-    // each coded row will be padded to fill unit
-    size_t padding = (planeUnits * chroma_subsample_x - comp->w);
     if(subsampled)
       rowStride = (tsize_t)(planeUnits * unitSize);
     size_t xpos = 0;
@@ -1731,7 +1729,6 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             xpos += chroma_subsample_x;
             if(xpos >= comp->w)
             {
-              datau8 += padding;
               xpos = 0;
               planes[0] += comp->stride * chroma_subsample_y;
               planes[1] += strideDiffCb;
