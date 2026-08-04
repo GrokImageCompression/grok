@@ -674,11 +674,13 @@ namespace HWY_NAMESPACE
 
     // This is the synthesis sink: round the Q-format fractional bits back out,
     // apply DC shift and clamp, scatter to strided destination column.
-    int32_t round = qShift > 0 ? (1 << (qShift - 1)) : 0;
+    // Must stay bit-identical to hwy_v_synth_16_97's sink (int16 wrapping adds),
+    // since strip boundaries decide per column whether SIMD or scalar runs.
+    int16_t round = (int16_t)(qShift > 0 ? (1 << (qShift - 1)) : 0);
     for(uint32_t i = 0; i < height; ++i)
     {
-      int32_t s = ((int32_t)scratch[i] + round) >> qShift;
-      *dest = (int16_t)std::clamp<int32_t>(s + dc, dcMin, dcMax);
+      int16_t s = (int16_t)((int16_t)(scratch[i] + round) >> qShift);
+      *dest = std::clamp((int16_t)(s + dc), dcMin, dcMax);
       dest += strideDest;
     }
   }
