@@ -56,8 +56,10 @@ if(GRK_BUILD_PYTHON_SWIG)
 
     set(GROK_PYTHON_DEST_PATH "${CMAKE_BINARY_DIR}/bin")
 
-    set(GRK_PYTHON_INSTALL_DIR "${Python3_SITEARCH}" CACHE PATH
-        "install directory for the python bindings")
+    # relative to CMAKE_INSTALL_PREFIX so prefixed installs don't require root
+    set(GRK_PYTHON_INSTALL_DIR
+        "${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
+        CACHE PATH "install directory for the python bindings")
 
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${GROK_SWIG_CORE_NAME}.py
         DESTINATION ${GRK_PYTHON_INSTALL_DIR})

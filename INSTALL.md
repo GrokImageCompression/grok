@@ -199,6 +199,11 @@ Third party libraries such as `libtiff` are built by default. To disable
 Grok provides bindings for Python, C#, Java, and Rust.
 
 - **Python/C#/Java** (SWIG): see [bindings/swig/README.md](bindings/swig/README.md) for build instructions, API reference, and test information.
+
+  The Python modules install under the install prefix. When using a custom
+  `CMAKE_INSTALL_PREFIX`, add them to `PYTHONPATH`, e.g.:
+
+  `export PYTHONPATH=$HOME/bin/grok/lib64/python3.14/site-packages:$PYTHONPATH`
 - **Rust** (bindgen): see [bindings/rust/README.md](bindings/rust/README.md) for build and usage instructions.
 
 ## GPU Plugin Integration
