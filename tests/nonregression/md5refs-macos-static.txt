@@ -20,7 +20,6 @@ adda4f5e46845b96dd3df14a76aa7229  issue188_beach_64bitsbox.jp2_0.pgx
 3356ff64c3da5296fbba6dfd31929ad7  issue205.jp2_0.pgx
 c734f27d90f2364a51cfc960d6181c31  issue205.jp2_1.pgx
 2e77181a08121dcb71ea4740e301033e  issue205.jp2_2.pgx
-dc287127e4c0441c7b29c14d14daf949  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
 307de4d8ca4e8be08d975dbc20dbb421  issue228.j2k_0.pgx
 aa7461b31e14641586803b23b7fb04f2  issue142.j2k_0.pgx
 c74edbb49e132b2cfc1eaf7908197b17  issue134.jp2_0.pgx

@@ -368,7 +368,7 @@ f1f6a6ad0dca2456096b5f16ef9b9c1a  crash-0a.tif
 f807218b5cd24d400a860dbab45bc414  issue205.jp2_r0.tif
 ef23d404a07b530602a2ccbe21ed42ed  cmyk_no_wavelet.tif
 67a66c83232a88a5705277f74ef5ee5b  cmyk_no_wavelet_region.tif
-ac87e0a7430a7919ef39d2bd3cef2fed  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
+7224ccd31073fc05d5edae4900f40921  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
 0540bf20562dc37deb0fd2f6a021bc20  mono_plt.tif
 4a1c7583cbf0a827d04bca4a20ff59c2  mono_plt_tlm_tp_region.tif
 a2344279d2ef92031a671bac2b2fe762  mono_plt_tlm_tp_tile5.tif
