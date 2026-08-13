@@ -33,14 +33,19 @@ namespace grk
  *   2. Rec.709 OETF⁻¹ (gamma → linear)
  *   3. 3×3 matrix (linear Rec.709 RGB → linear CIE XYZ, D65 white point)
  *   4. DCI 2.6 gamma (linear → X'Y'Z')
- *   5. Quantize back to [0, (1<<prec)-1]
+ *   5. Quantize to [0, (1<<targetPrec)-1] and update component precision
  *
  * Uses Highway SIMD for the matrix multiply; scalar powf for gamma curves
  * (with optional LUT acceleration for common precisions).
  *
- * @param image  Image with ≥3 components. Only components 0,1,2 are modified.
+ * @param image       Image with ≥3 components. Only components 0,1,2 are modified.
+ * @param targetPrec  Output precision. 0 keeps the input precision. Values
+ *                    below the input precision quantize the transform output
+ *                    at the lower precision (e.g. 12 for DCI cinema profiles),
+ *                    keeping full input precision through linearization.
+ *                    Values above the input precision are ignored.
  * @return true on success, false if image has <3 components.
  */
-GRK_API bool applyXYZTransform(grk_image* image);
+GRK_API bool applyXYZTransform(grk_image* image, uint8_t targetPrec = 0);
 
 } // namespace grk

@@ -76,10 +76,12 @@ namespace HWY_NAMESPACE
    * uses Highway SIMD float vectors.
    */
   static void Hwy_rgb_to_xyz(int32_t* HWY_RESTRICT rBuf, int32_t* HWY_RESTRICT gBuf,
-                             int32_t* HWY_RESTRICT bBuf, uint64_t numPixels, uint32_t prec)
+                             int32_t* HWY_RESTRICT bBuf, uint64_t numPixels, uint32_t prec,
+                             uint32_t outPrec)
   {
     const uint32_t maxVal = (1u << prec) - 1;
     const float scale = 1.0f / (float)maxVal;
+    const float outScale = (float)((1u << outPrec) - 1);
 
     // Build linearization LUT: [0..maxVal] → float linear
     const uint32_t lutSize = maxVal + 1;
@@ -128,9 +130,9 @@ namespace HWY_NAMESPACE
         return (uint32_t)(v * gammaScale + 0.5f);
       };
 
-      rBuf[i] = (int32_t)(gammaLut[quantize(x)] * gammaScale + 0.5f);
-      gBuf[i] = (int32_t)(gammaLut[quantize(y)] * gammaScale + 0.5f);
-      bBuf[i] = (int32_t)(gammaLut[quantize(z)] * gammaScale + 0.5f);
+      rBuf[i] = (int32_t)(gammaLut[quantize(x)] * outScale + 0.5f);
+      gBuf[i] = (int32_t)(gammaLut[quantize(y)] * outScale + 0.5f);
+      bBuf[i] = (int32_t)(gammaLut[quantize(z)] * outScale + 0.5f);
     }
   }
 
@@ -144,7 +146,7 @@ namespace grk
 
 HWY_EXPORT(Hwy_rgb_to_xyz);
 
-bool applyXYZTransform(grk_image* image)
+bool applyXYZTransform(grk_image* image, uint8_t targetPrec)
 {
   if(!image || image->numcomps < 3)
   {
@@ -173,6 +175,7 @@ bool applyXYZTransform(grk_image* image)
   uint32_t w = compR.w;
   uint32_t h = compR.h;
   uint32_t prec = compR.prec;
+  uint32_t outPrec = (targetPrec && targetPrec < prec) ? targetPrec : prec;
 
   grklog.info("XYZ transform: %ux%u, %u-bit, strides: R=%u G=%u B=%u, data_type: R=%d G=%d B=%d", w,
               h, prec, compR.stride, compG.stride, compB.stride, (int)compR.data_type,
@@ -188,7 +191,7 @@ bool applyXYZTransform(grk_image* image)
     auto rBuf = (int32_t*)compR.data;
     auto gBuf = (int32_t*)compG.data;
     auto bBuf = (int32_t*)compB.data;
-    HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rBuf, gBuf, bBuf, numPixels, prec);
+    HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rBuf, gBuf, bBuf, numPixels, prec, outPrec);
   }
   else
   {
@@ -209,7 +212,7 @@ bool applyXYZTransform(grk_image* image)
       memcpy(gRow.get(), gPtr, w * sizeof(int32_t));
       memcpy(bRow.get(), bPtr, w * sizeof(int32_t));
 
-      HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rRow.get(), gRow.get(), bRow.get(), w, prec);
+      HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rRow.get(), gRow.get(), bRow.get(), w, prec, outPrec);
 
       // Copy back
       memcpy(rPtr, rRow.get(), w * sizeof(int32_t));
@@ -220,8 +223,15 @@ bool applyXYZTransform(grk_image* image)
 
   // Update colour space to XYZ
   image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+  if(outPrec != prec)
+  {
+    compR.prec = (uint8_t)outPrec;
+    compG.prec = (uint8_t)outPrec;
+    compB.prec = (uint8_t)outPrec;
+  }
 
-  grklog.info("Applied Rec.709 RGB → DCI X'Y'Z' colour transform (%ux%u, %u-bit)", w, h, prec);
+  grklog.info("Applied Rec.709 RGB → DCI X'Y'Z' colour transform (%ux%u, %u-bit → %u-bit)", w, h,
+              prec, outPrec);
   return true;
 }
 

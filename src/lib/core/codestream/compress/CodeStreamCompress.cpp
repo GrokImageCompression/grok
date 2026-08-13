@@ -164,6 +164,22 @@ bool CodeStreamCompress::start(void)
   /* write header */
   return exec(procedureList_);
 }
+// round-to-nearest right shift of unsigned int32 samples to targetPrec
+static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
+{
+  uint32_t shift = (uint32_t)(comp->prec - targetPrec);
+  int32_t half = 1 << (shift - 1);
+  int32_t maxVal = (1 << targetPrec) - 1;
+  auto data = (int32_t*)comp->data;
+  for(uint32_t y = 0; y < comp->h; ++y)
+  {
+    auto row = data + (uint64_t)y * comp->stride;
+    for(uint32_t x = 0; x < comp->w; ++x)
+      row[x] = std::min((row[x] + half) >> shift, maxVal);
+  }
+  comp->prec = targetPrec;
+}
+
 bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
   if(!parameters || !image)
@@ -205,11 +221,30 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
   if(parameters->apply_xyz_transform)
   {
+    // cinema profiles require 12-bit samples: emit the transform at 12 bits so
+    // deeper sources keep full precision through linearization
+    uint8_t xyzTargetPrec = GRK_IS_CINEMA(parameters->rsiz) ? 12 : 0;
     // skip when the caller (e.g. the CLI) already transformed this image
-    if(image->color_space != GRK_CLRSPC_CUSTOM_CIE && !applyXYZTransform(image))
+    if(image->color_space != GRK_CLRSPC_CUSTOM_CIE && !applyXYZTransform(image, xyzTargetPrec))
     {
       grklog.error("Failed to apply XYZ colour transform");
       return false;
+    }
+  }
+
+  // reduce unsigned sources deeper than 12 bits (e.g. 16-bit already in
+  // X'Y'Z') to the 12 bits cinema profiles require, instead of failing the
+  // profile compliance check below
+  if(GRK_IS_CINEMA(parameters->rsiz))
+  {
+    for(uint16_t i = 0; i < image->numcomps; ++i)
+    {
+      auto comp = image->comps + i;
+      if(comp->prec > 12 && !comp->sgnd && comp->data)
+      {
+        reduceComponentPrecision(comp, 12);
+        grklog.info("Reduced component %u to 12-bit for cinema profile", i);
+      }
     }
   }
 
