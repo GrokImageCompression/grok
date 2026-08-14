@@ -107,10 +107,11 @@ foreach(file_path ${globfiles})
   get_filename_component(file_name ${file_path} NAME)
 
   # PNG and TIFF are deflate-compressed, so their raw bytes depend on the
-  # zlib implementation. Hash a canonical dump of the decoded image instead
+  # zlib implementation, and PNM writers stamp the grok version into the
+  # header. Hash a canonical dump of the decoded image instead
   # (CANON_TOOL may be a command list, e.g. with an emulator prefix).
   string(TOLOWER "${file_name}" _file_name_lower)
-  if(CANON_TOOL AND _file_name_lower MATCHES "\\.(png|tiff?)$")
+  if(CANON_TOOL AND _file_name_lower MATCHES "\\.(png|tiff?|p[gpbn]m|pam)$")
     # md5 tests with overlapping globs run in parallel, so the sidecar name
     # must be unique to this test invocation
     get_filename_component(_outfile_full ${OUTFILENAME} NAME)

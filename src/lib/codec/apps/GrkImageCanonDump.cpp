@@ -24,6 +24,8 @@
 #include "grok.h"
 #include "spdlogwrapper.h"
 #include "common.h"
+// must precede the TIFF headers, which redefine ftell
+#include "PNMFormat.h"
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
 #endif
@@ -37,7 +39,8 @@
 // samples, and reader-surfaced metadata (ICC, resolution, XMP, IPTC, EXIF),
 // written explicitly little-endian. Hashing this instead of the container file
 // keeps md5 refs independent of the zlib implementation used by PNG/TIFF
-// writers and of host endianness.
+// writers, of the version string PNM writers put in the header, and of host
+// endianness.
 
 namespace grk
 {
@@ -159,6 +162,12 @@ namespace
       spdlog::error("image_canon_dump: TIFF support not compiled in");
       return CanonImagePtr(nullptr);
 #endif
+    }
+    else if(ext == "pgm" || ext == "ppm" || ext == "pnm" || ext == "pam" || ext == "pbm")
+    {
+      parameters.decod_format = GRK_FMT_PXM;
+      PNMFormat<int32_t> pnm(false);
+      return CanonImagePtr(pnm.readImage(filename, &parameters));
     }
     spdlog::error("image_canon_dump: unsupported extension .{}", ext);
     return CanonImagePtr(nullptr);
