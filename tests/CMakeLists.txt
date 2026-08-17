@@ -51,6 +51,10 @@ add_test(NAME grk_lru_cache_test COMMAND grk_lru_cache_test)
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 
+add_executable(grk_rate_control_test GrkRateControlTest.cpp)
+target_link_libraries(grk_rate_control_test ${GROK_CORE_NAME})
+add_test(NAME grk_rate_control_test COMMAND grk_rate_control_test)
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util

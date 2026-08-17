@@ -1068,9 +1068,8 @@ bool CodeStreamCompress::updateRates(void)
     {
       uint16_t tileId = (uint16_t)(tile_y * cp->t_grid_width_ + tile_x);
       auto tcp = cp->tcps_.get(tileId);
-      double stride = 0;
-      if(cp->codingParams_.enc_.enableTilePartGeneration_)
-        stride = (tcp->signalledNumTileParts_ - 1) * 14;
+      // every tile part costs SOT (12) + SOD (2) bytes, the first one included
+      double stride = (double)tcp->signalledNumTileParts_ * 14;
       double offset = stride / tcp->numLayers_;
       auto tileBounds = cp->getTileBounds(image->getBounds(), tile_x, tile_y);
       uint64_t numTilePixels = tileBounds.area();
