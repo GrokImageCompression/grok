@@ -1531,7 +1531,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
     }
   }
 
-  tmcc = ((uint32_t)((!p_mcc_record->is_irreversible_) & 1U)) << 16;
+  tmcc = (p_mcc_record->is_irreversible_ ? 0U : 1U) << 16;
 
   if(p_mcc_record->decorrelation_array_)
     tmcc |= p_mcc_record->decorrelation_array_->index_;

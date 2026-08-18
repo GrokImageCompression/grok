@@ -802,7 +802,7 @@ struct Messenger
     char fname[512];
     if(!compressedPtr || !compressedLength)
       return 0;
-    sprintf(fname, "%s/test_%d.j2k", dir.c_str(), (int)clientFrameId);
+    snprintf(fname, sizeof(fname), "%s/test_%d.j2k", dir.c_str(), (int)clientFrameId);
     auto fp = fopen(fname, "wb");
     if(!fp)
       return 0;
@@ -820,11 +820,11 @@ struct Messenger
   bool initBuffers(void)
   {
     char temp[512];
-    sprintf(temp,
-            "Initializing shared memory buffers: num frames %zu, "
-            "					uncompressed frame size %zu, "
-            "						compressed frame size %zu ",
-            init_.numFrames_, init_.uncompressedFrameSize_, init_.compressedFrameSize_);
+    snprintf(temp, sizeof(temp),
+             "Initializing shared memory buffers: num frames %zu, "
+             "					uncompressed frame size %zu, "
+             "						compressed frame size %zu ",
+             init_.numFrames_, init_.uncompressedFrameSize_, init_.compressedFrameSize_);
     getMessengerLogger()->info(temp);
     if(init_.uncompressedFrameSize_)
     {
@@ -1209,8 +1209,6 @@ struct ScheduledMessenger : public Messenger
   }
   bool scheduleCompress(F const& proxy, std::function<void(BufferSrc const&)> converter)
   {
-    size_t frameSize = init_.uncompressedFrameSize_;
-    assert(frameSize >= init_.uncompressedFrameSize_);
     BufferSrc src;
     if(!availableBuffers_.waitAndPop(src))
       return false;

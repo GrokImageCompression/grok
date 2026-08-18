@@ -540,16 +540,6 @@ namespace HWY_NAMESPACE
     return (int16_t)(x + mf15(x, scale_invK_frac));
   }
 
-  /**
-   * @brief Round-to-nearest right shift by `u` bits (the inverse of the
-   * fractional upshift applied at the H-synthesis input).  Returns x unchanged
-   * when u == 0.  See the "FRACTIONAL UPSHIFT" note in hwy_h_synth_16_97.
-   */
-  static inline int16_t down_round(int16_t x, int u)
-  {
-    return u > 0 ? (int16_t)(((int32_t)x + (1 << (u - 1))) >> u) : x;
-  }
-
   /**************************************************************************
    *  Scalar Vertical 1D 16-bit 9/7 Synthesis (column-at-a-time)
    *

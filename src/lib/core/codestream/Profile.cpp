@@ -342,7 +342,7 @@ bool Profile::isImfCompliant(grk_cparameters* parameters, GrkImage* image)
   {
     case GRK_PROFILE_IMF_2K:
     case GRK_PROFILE_IMF_2K_R:
-      if(((image->comps[0].w > 2048) | (image->comps[0].h > 1556)))
+      if((image->comps[0].w > 2048) || (image->comps[0].h > 1556))
       {
         grklog.warn("IMF 2K/2K_R profiles require:\n"
                     "width <= 2048 and height <= 1556\n"
@@ -354,7 +354,7 @@ bool Profile::isImfCompliant(grk_cparameters* parameters, GrkImage* image)
       break;
     case GRK_PROFILE_IMF_4K:
     case GRK_PROFILE_IMF_4K_R:
-      if(((image->comps[0].w > 4096) | (image->comps[0].h > 3112)))
+      if((image->comps[0].w > 4096) || (image->comps[0].h > 3112))
       {
         grklog.warn("IMF 4K/4K_R profiles require:\n"
                     "width <= 4096 and height <= 3112\n"
@@ -366,7 +366,7 @@ bool Profile::isImfCompliant(grk_cparameters* parameters, GrkImage* image)
       break;
     case GRK_PROFILE_IMF_8K:
     case GRK_PROFILE_IMF_8K_R:
-      if(((image->comps[0].w > 8192) | (image->comps[0].h > 6224)))
+      if((image->comps[0].w > 8192) || (image->comps[0].h > 6224))
       {
         grklog.warn("IMF 8K/8K_R profiles require:\n"
                     "width <= 8192 and height <= 6224\n"
@@ -1187,7 +1187,7 @@ bool Profile::isCinemaCompliant(GrkImage* image, uint16_t rsiz)
   switch(rsiz)
   {
     case GRK_PROFILE_CINEMA_2K:
-      if(((image->comps[0].w > 2048) | (image->comps[0].h > 1080)))
+      if((image->comps[0].w > 2048) || (image->comps[0].h > 1080))
       {
         grklog.warn("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
                     "width <= 2048 and height <= 1080\n"
@@ -1198,7 +1198,7 @@ bool Profile::isCinemaCompliant(GrkImage* image, uint16_t rsiz)
       }
       break;
     case GRK_PROFILE_CINEMA_4K:
-      if(((image->comps[0].w > 4096) | (image->comps[0].h > 2160)))
+      if((image->comps[0].w > 4096) || (image->comps[0].h > 2160))
       {
         grklog.warn("JPEG 2000 profile 4 (4k digital cinema) requires:\n"
                     "width <= 4096 and height <= 2160\n"

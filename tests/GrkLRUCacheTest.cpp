@@ -1453,8 +1453,6 @@ static bool testProgressiveLayerDecompress()
     removeQuietly(testFile);
     return false;
   }
-  auto layer1Pixels =
-      readPixels(layer1Img->comps[0], layer1Img->comps[0].w * layer1Img->comps[0].h);
   spdlog::info("Layer 1 decompress: {}x{}", layer1Img->comps[0].w, layer1Img->comps[0].h);
 
   // Verify dimensions match reference

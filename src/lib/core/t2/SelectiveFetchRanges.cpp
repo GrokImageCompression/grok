@@ -313,7 +313,7 @@ TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerData, size_t h
       continue;
     }
 
-    uint16_t markerId = ((uint16_t)headerData[pos] << 8) | headerData[pos + 1];
+    uint16_t markerId = (uint16_t)((headerData[pos] << 8) | headerData[pos + 1]);
 
     if(markerId == SOD_MARKER)
     {
@@ -326,7 +326,7 @@ TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerData, size_t h
     if(pos + 3 >= headerSize)
       break; // not enough data for length field
 
-    uint16_t markerLen = ((uint16_t)headerData[pos + 2] << 8) | headerData[pos + 3];
+    uint16_t markerLen = (uint16_t)((headerData[pos + 2] << 8) | headerData[pos + 3]);
 
     if(markerId == PLT_MARKER)
     {

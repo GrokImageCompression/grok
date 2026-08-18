@@ -136,8 +136,8 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     // schedule blocks
     auto tccp = tcp->tccps_ + compno;
     // nominal code block dimensions
-    uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)1 << tccp->cblkw_expn_ : 0;
-    uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)1 << tccp->cblkh_expn_ : 0;
+    uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)(1 << tccp->cblkw_expn_) : 0;
+    uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)(1 << tccp->cblkh_expn_) : 0;
     auto activePool = &coderPool_;
     if(streamPool_ && streamPool_->contains(tccp->cblkw_expn_, tccp->cblkh_expn_))
       activePool = streamPool_;

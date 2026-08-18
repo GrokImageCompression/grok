@@ -344,7 +344,7 @@ bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     int16_t const* planes16[4];
     for(uint16_t compno = 0; compno < nr_comp_; ++compno)
       planes16[compno] = (int16_t*)image_->comps[compno].data + (uint64_t)yBegin * stride;
-    int16_t adjust16 = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0);
     if(!interleaver16_)
     {
       interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(

@@ -254,7 +254,7 @@ bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     }
     for(uint32_t i = 0U; i < decompress_num_comps; ++i)
       planes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
-    int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
     if(!interleaver16_)
     {
       interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(
@@ -363,7 +363,7 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
       auto planes16 = std::make_unique<int16_t*[]>(decompress_num_comps);
       for(uint32_t i = 0U; i < decompress_num_comps; ++i)
         planes16[i] = (int16_t*)image_->comps[i].data;
-      int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
       auto iter16 = grk::InterleaverFactory<int16_t>::makeInterleaver(
           image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
       if(!iter16)
@@ -509,7 +509,7 @@ bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno
   bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
   if(isInt16)
   {
-    int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
     int16_t* compPtr16[4] = {nullptr, nullptr, nullptr, nullptr};
     for(uint16_t comp = start; comp < end; ++comp)
       compPtr16[comp] =

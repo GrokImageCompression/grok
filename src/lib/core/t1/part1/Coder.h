@@ -38,7 +38,6 @@ public:
 private:
   bool preCompress(CompressBlockExec* block, uint32_t& max);
   BlockCoder* blockCoder_;
-  uint32_t cacheStrategy_;
 };
 
 } // namespace  grk::t1::part1

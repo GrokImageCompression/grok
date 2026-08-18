@@ -42,8 +42,8 @@
 namespace grk
 {
 
-class TPFetchSeq;
-class TPSeq;
+struct TPFetchSeq;
+struct TPSeq;
 using TPSEQ_VEC = std::vector<std::unique_ptr<TPSeq>>;
 
 struct TileFetchContext;
