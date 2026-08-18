@@ -103,8 +103,29 @@ struct DcShiftParam
   bool enabled = false;
 };
 
+// exported hooks for grk_dwt_bench: drive the TU-local SIMD kernels directly,
+// single-threaded, on synthetic data. Each returns best seconds per full
+// multi-level inverse transform, or a negative value on failure.
+#if defined(_WIN32)
+#define GRK_DWT_BENCH_API __declspec(dllexport)
+#else
+#define GRK_DWT_BENCH_API __attribute__((visibility("default")))
+#endif
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_97(uint32_t width, uint32_t height,
+                                                     uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_16_97(uint32_t width, uint32_t height,
+                                                        uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_53(uint32_t width, uint32_t height,
+                                                     uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_16_53(uint32_t width, uint32_t height,
+                                                        uint8_t numres, uint32_t iters);
+
 class WaveletReverse
 {
+  // the 5/3 bench hooks call the private strip methods on a dummy instance
+  friend double grk_bench_dwt_53(uint32_t, uint32_t, uint8_t, uint32_t);
+  friend double grk_bench_dwt_16_53(uint32_t, uint32_t, uint8_t, uint32_t);
+
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,

@@ -22,8 +22,10 @@
  ***********************************/
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 
 #include "hwy_arm_disable_targets.h"
@@ -998,6 +1000,65 @@ bool WaveletReverse::tile_97(void)
   }
 
   return true;
+}
+
+// bench hook: single-threaded multi-level inverse on the canonical in-place
+// quadrant layout, same kernels and aliasing as tile_97 minus the task graph
+extern "C" double grk_bench_dwt_97(uint32_t width, uint32_t height, uint8_t numres, uint32_t iters)
+{
+  if(numres < 2 || !width || !height || !iters)
+    return -1.0;
+  auto dim = [](uint32_t full, uint32_t shift) { return (full + (1u << shift) - 1) >> shift; };
+  auto window = (float*)grk_aligned_malloc((uint64_t)width * height * sizeof(float));
+  if(!window)
+    return -1.0;
+  size_t dataLength = std::max(width, height);
+  dwt_scratch<vec4f> horiz;
+  if(!horiz.alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
+  {
+    grk_aligned_free(window);
+    return -1.0;
+  }
+  double best = std::numeric_limits<double>::max();
+  for(uint32_t it = 0; it < iters; ++it)
+  {
+    for(size_t i = 0; i < (size_t)width * height; ++i)
+      window[i] = (float)((i * 2654435761u) & 1023u) - 512.0f;
+    auto start = std::chrono::steady_clock::now();
+    for(uint8_t res = 1; res < numres; ++res)
+    {
+      uint32_t pw = dim(width, (uint32_t)(numres - res));
+      uint32_t ph = dim(height, (uint32_t)(numres - res));
+      uint32_t rw = dim(width, (uint32_t)(numres - 1 - res));
+      uint32_t rh = dim(height, (uint32_t)(numres - 1 - res));
+      horiz.sn = pw;
+      horiz.dn = rw - pw;
+      horiz.parity = 0;
+      horiz.win_l = Line32(0, horiz.sn);
+      horiz.win_h = Line32(0, horiz.dn);
+      auto splitH = window + (size_t)ph * width;
+      HWY_DYNAMIC_DISPATCH(hwy_h_strip_97)
+      ((float*)horiz.mem, horiz.sn, horiz.dn, horiz.parity, horiz.win_l, horiz.win_h, ph, window,
+       width, window + pw, width, window, width);
+      HWY_DYNAMIC_DISPATCH(hwy_h_strip_97)
+      ((float*)horiz.mem, horiz.sn, horiz.dn, horiz.parity, horiz.win_l, horiz.win_h, rh - ph,
+       splitH, width, splitH + pw, width, splitH, width);
+      dwt_scratch<vec4f> vert;
+      vert.mem = horiz.mem;
+      vert.sn = ph;
+      vert.dn = rh - ph;
+      vert.parity = 0;
+      vert.win_l = Line32(0, vert.sn);
+      vert.win_h = Line32(0, vert.dn);
+      HWY_DYNAMIC_DISPATCH(hwy_v_strip_97)
+      ((float*)vert.mem, vert.sn, vert.dn, vert.parity, vert.win_l, vert.win_h, rw, rh, window,
+       width, splitH, width, window, width, 0, 0, 0);
+    }
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+    best = std::min(best, elapsed.count());
+  }
+  grk_aligned_free(window);
+  return best;
 }
 
 } // namespace grk

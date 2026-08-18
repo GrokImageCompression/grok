@@ -48,6 +48,8 @@ odd += (previous + next) >> 1;
 #include "PLMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
+#include <chrono>
+#include <limits>
 namespace grk
 {
 struct ITileProcessor;
@@ -1658,6 +1660,80 @@ bool WaveletReverse::decompress(void)
       return tile_16_97();
     return tile_97();
   }
+}
+
+// bench hooks: single-threaded multi-level 5/3 inverse via the private strip
+// methods on a dummy instance, same kernels and in-place quadrant layout as
+// tile_53 / tile_16_53 minus the task graph
+template<typename T>
+static double bench_dwt_53_impl(
+    uint32_t width, uint32_t height, uint8_t numres, uint32_t iters, uint32_t pllCols,
+    void (WaveletReverse::*hStrip)(const dwt_scratch<T>*, uint32_t, uint32_t, Buffer2dSimple<T>,
+                                   Buffer2dSimple<T>, Buffer2dSimple<T>),
+    void (WaveletReverse::*vStrip)(const dwt_scratch<T>*, uint32_t, uint32_t, Buffer2dSimple<T>,
+                                   Buffer2dSimple<T>, Buffer2dSimple<T>, DcShiftParam))
+{
+  if(numres < 2 || !width || !height || !iters)
+    return -1.0;
+  auto dim = [](uint32_t full, uint32_t shift) { return (full + (1u << shift) - 1) >> shift; };
+  auto window = (T*)grk_aligned_malloc((uint64_t)width * height * sizeof(T));
+  if(!window)
+    return -1.0;
+  size_t dataLength = std::max(width, height);
+  dwt_scratch<T> horiz, vert;
+  if(!horiz.alloc(dataLength * pllCols) || !vert.alloc(dataLength * pllCols))
+  {
+    grk_aligned_free(window);
+    return -1.0;
+  }
+  WaveletReverse inst(nullptr, nullptr, 0, Rect32(), numres, 1, 0, true, nullptr, {});
+  double best = std::numeric_limits<double>::max();
+  for(uint32_t it = 0; it < iters; ++it)
+  {
+    for(size_t i = 0; i < (size_t)width * height; ++i)
+      window[i] = (T)(((i * 2654435761u) & 1023u) - 512);
+    auto start = std::chrono::steady_clock::now();
+    for(uint8_t res = 1; res < numres; ++res)
+    {
+      uint32_t pw = dim(width, (uint32_t)(numres - res));
+      uint32_t ph = dim(height, (uint32_t)(numres - res));
+      uint32_t rw = dim(width, (uint32_t)(numres - 1 - res));
+      uint32_t rh = dim(height, (uint32_t)(numres - 1 - res));
+      horiz.sn = pw;
+      horiz.dn = rw - pw;
+      horiz.parity = 0;
+      vert.sn = ph;
+      vert.dn = rh - ph;
+      vert.parity = 0;
+      auto splitH = window + (size_t)ph * width;
+      (inst.*hStrip)(&horiz, 0, ph, Buffer2dSimple<T>(window, width, ph),
+                     Buffer2dSimple<T>(window + pw, width, ph),
+                     Buffer2dSimple<T>(window, width, ph));
+      (inst.*hStrip)(&horiz, 0, rh - ph, Buffer2dSimple<T>(splitH, width, rh - ph),
+                     Buffer2dSimple<T>(splitH + pw, width, rh - ph),
+                     Buffer2dSimple<T>(splitH, width, rh - ph));
+      (inst.*vStrip)(&vert, 0, rw, Buffer2dSimple<T>(window, width, ph),
+                     Buffer2dSimple<T>(splitH, width, rh - ph),
+                     Buffer2dSimple<T>(window, width, rh), DcShiftParam{});
+    }
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+    best = std::min(best, elapsed.count());
+  }
+  grk_aligned_free(window);
+  return best;
+}
+
+extern "C" double grk_bench_dwt_53(uint32_t width, uint32_t height, uint8_t numres, uint32_t iters)
+{
+  return bench_dwt_53_impl<int32_t>(width, height, numres, iters, get_PLL_COLS_53(),
+                                    &WaveletReverse::h_strip_53, &WaveletReverse::v_strip_53);
+}
+
+extern "C" double grk_bench_dwt_16_53(uint32_t width, uint32_t height, uint8_t numres,
+                                      uint32_t iters)
+{
+  return bench_dwt_53_impl<int16_t>(width, height, numres, iters, get_PLL_COLS_16_53(),
+                                    &WaveletReverse::h_strip_16_53, &WaveletReverse::v_strip_16_53);
 }
 
 } // namespace grk

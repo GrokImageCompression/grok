@@ -460,6 +460,146 @@ unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
     (ok != 0).then_some(out)
 }
 
+/// DWT-only benchmark: run a full multi-level inverse synthesis pyramid on
+/// synthetic subband rows, single-threaded, bypassing T1 and the weft
+/// scheduler. `kind`: 0 = f32 9/7, 1 = i16 5/3, 2 = i32 5/3. Returns best
+/// seconds per full pyramid over `iters` runs, negative on bad arguments.
+/// Counterpart of the grk_bench_dwt_* hooks in grok's wavelet TUs.
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_bench_dwt(
+    kind: i32,
+    width: i32,
+    height: i32,
+    levels: i32,
+    iters: i32,
+) -> f64 {
+    use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7};
+    use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, SamplePrec, Synthesis};
+    use std::collections::VecDeque;
+
+    if width < 2 || height < 2 || levels < 1 || iters < 1 {
+        return -1.0;
+    }
+    let dim = |full: i32, shift: i32| (full + (1 << shift) - 1) >> shift;
+    let fibre = match kind {
+        0 | 2 => 4usize,
+        1 => 2usize,
+        _ => return -1.0,
+    };
+
+    // per-level geometry, bottom (smallest) first
+    let mut specs = Vec::with_capacity(levels as usize);
+    for l in 0..levels {
+        let bd = |w: i32, h: i32| BandDims { x0: 0, y0: 0, w, h };
+        let nw = dim(width, levels - 1 - l);
+        let nh = dim(height, levels - 1 - l);
+        let lw = dim(width, levels - l);
+        let lh = dim(height, levels - l);
+        specs.push(LevelSpec {
+            node: bd(nw, nh),
+            ll: bd(lw, lh),
+            hl: bd(nw - lw, lh),
+            lh: bd(lw, nh - lh),
+        });
+    }
+
+    // one prefilled synthetic row per level, reused for every leaf subband row
+    let max_row_bytes = (width as usize + 64) * fibre + 128;
+    let mut leaf_row = AlignedVec::bare(max_row_bytes);
+    for (i, b) in unsafe {
+        std::slice::from_raw_parts_mut(leaf_row.as_mut_ptr(), max_row_bytes)
+            .iter_mut()
+            .enumerate()
+    } {
+        *b = (i.wrapping_mul(2654435761) >> 3) as u8;
+    }
+
+    struct BenchSource {
+        leaf: *const u8,
+        fibre: usize,
+        ll: VecDeque<AlignedVec>,
+        free: Vec<AlignedVec>,
+        is_level0: bool,
+    }
+    impl RowSource for BenchSource {
+        fn subband_ready(&self, subband_idx: i32) -> bool {
+            subband_idx != 0 || self.is_level0 || !self.ll.is_empty()
+        }
+        unsafe fn pack(&mut self, subband_idx: i32, buf: *mut u8, w: i32) {
+            let bytes = w as usize * self.fibre;
+            if subband_idx == 0 && !self.is_level0 {
+                let row = self.ll.pop_front().unwrap();
+                unsafe { std::ptr::copy_nonoverlapping(row.as_ptr(), buf, bytes) };
+                self.free.push(row);
+            } else {
+                unsafe { std::ptr::copy_nonoverlapping(self.leaf, buf, bytes) };
+            }
+        }
+    }
+
+    let mut best = f64::MAX;
+    for _ in 0..iters {
+        // fresh engines per run: they are single-pass state machines
+        let mut engines: Vec<Synthesis> = specs
+            .iter()
+            .map(|s| match kind {
+                0 => warp_w9x7(s),
+                1 => warp_w5x3_prec(s, SamplePrec::I16),
+                _ => warp_w5x3_prec(s, SamplePrec::I32),
+            })
+            .collect();
+        let row_bytes: Vec<usize> = engines.iter().map(|e| e.hem_row_bytes()).collect();
+        let mut sources: Vec<BenchSource> = (0..levels as usize)
+            .map(|l| BenchSource {
+                leaf: leaf_row.as_ptr(),
+                fibre,
+                ll: VecDeque::new(),
+                free: Vec::new(),
+                is_level0: l == 0,
+            })
+            .collect();
+        let top = levels as usize - 1;
+        let mut out = AlignedVec::bare(row_bytes[top]);
+        let mut rows_out = 0i32;
+        let start = std::time::Instant::now();
+        while rows_out < specs[top].node.h {
+            let mut l = top;
+            loop {
+                let status = if l == top {
+                    unsafe { engines[l].try_draw(out.as_mut_ptr(), &mut sources[l]) }
+                } else {
+                    let mut row = sources[l + 1]
+                        .free
+                        .pop()
+                        .unwrap_or_else(|| AlignedVec::bare(row_bytes[l]));
+                    let status = unsafe { engines[l].try_draw(row.as_mut_ptr(), &mut sources[l]) };
+                    if status == PullStatus::Row {
+                        sources[l + 1].ll.push_back(row);
+                    } else {
+                        sources[l + 1].free.push(row);
+                    }
+                    status
+                };
+                match status {
+                    PullStatus::Row => {
+                        if l == top {
+                            rows_out += 1;
+                            break;
+                        }
+                        l += 1;
+                    }
+                    PullStatus::Stalled => {
+                        debug_assert!(l > 0, "level 0 must never stall");
+                        l -= 1;
+                    }
+                }
+            }
+        }
+        best = best.min(start.elapsed().as_secs_f64());
+    }
+    best
+}
+
 /// Convert one component's row to absolute i32 samples (see module doc).
 /// Ports mercury_decompress's cvt spec, minus the width narrowing.
 fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [i32]) {

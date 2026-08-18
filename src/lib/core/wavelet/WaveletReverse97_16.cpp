@@ -302,7 +302,9 @@
  ******************************************************************************/
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
+#include <limits>
 #include <memory>
 
 #include "hwy_arm_disable_targets.h"
@@ -1382,6 +1384,67 @@ void WaveletReverse::v_16_97(uint8_t res, TileComponentWindow<int16_t>* buf, uin
     winH.incX_IN_PLACE(widthIncr);
     winDest.incX_IN_PLACE(widthIncr);
   }
+}
+
+// bench hook: single-threaded multi-level int16 fixed-point inverse, same
+// kernels and in-place quadrant layout as tile_16_97 minus the task graph.
+// Widths must divide evenly into PLL column blocks at every level.
+extern "C" double grk_bench_dwt_16_97(uint32_t width, uint32_t height, uint8_t numres,
+                                      uint32_t iters)
+{
+  if(numres < 2 || !width || !height || !iters)
+    return -1.0;
+  auto dim = [](uint32_t full, uint32_t shift) { return (full + (1u << shift) - 1) >> shift; };
+  const uint32_t pllCols = get_PLL_COLS_16_97();
+  auto window = (int16_t*)grk_aligned_malloc((uint64_t)width * height * sizeof(int16_t));
+  if(!window)
+    return -1.0;
+  size_t dataLength = std::max(width, height);
+  dwt_scratch<int16_t> horiz, vert;
+  if(!horiz.alloc(dataLength * pllCols) || !vert.alloc(dataLength * pllCols))
+  {
+    grk_aligned_free(window);
+    return -1.0;
+  }
+  const int16_t qShift = 4;
+  double best = std::numeric_limits<double>::max();
+  for(uint32_t it = 0; it < iters; ++it)
+  {
+    for(size_t i = 0; i < (size_t)width * height; ++i)
+      window[i] = (int16_t)(((i * 2654435761u) & 1023u) - 512);
+    auto start = std::chrono::steady_clock::now();
+    for(uint8_t res = 1; res < numres; ++res)
+    {
+      uint32_t pw = dim(width, (uint32_t)(numres - res));
+      uint32_t ph = dim(height, (uint32_t)(numres - res));
+      uint32_t rw = dim(width, (uint32_t)(numres - 1 - res));
+      uint32_t rh = dim(height, (uint32_t)(numres - 1 - res));
+      uint32_t sn = pw, dn = rw - pw;
+      auto splitH = window + (size_t)ph * width;
+      auto hRow = [&](int16_t* rowL, int16_t* rowH, int16_t* rowDest, uint32_t rows) {
+        for(uint32_t j = 0; j < rows; ++j)
+        {
+          HWY_DYNAMIC_DISPATCH(hwy_h_synth_16_97)
+          (horiz.mem, sn + dn, rowL, rowH, rowDest, 0, sn, dn);
+          rowL += width;
+          rowH += width;
+          rowDest += width;
+        }
+      };
+      hRow(window, window + pw, window, ph);
+      hRow(splitH, splitH + pw, splitH, rh - ph);
+      for(uint32_t c = 0; c + pllCols <= rw; c += pllCols)
+      {
+        HWY_DYNAMIC_DISPATCH(hwy_v_synth_16_97)
+        (vert.mem, rh, window + c, width, splitH + c, width, window + c, width, 0, ph, rh - ph, 0,
+         0, 0, qShift);
+      }
+    }
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+    best = std::min(best, elapsed.count());
+  }
+  grk_aligned_free(window);
+  return best;
 }
 
 } // namespace grk
