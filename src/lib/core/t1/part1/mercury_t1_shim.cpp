@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
+#include <memory>
 
 #include "simd.h"
 #include "t1_common.h"
@@ -30,9 +31,10 @@ extern "C" int32_t mercury_grok_t1_decode(
   using namespace grk::t1;
 
   // Per-thread coder reuse = CoderPool::getCoder(worker) semantics.
-  thread_local BlockCoder* coder = nullptr;
+  // owning pointer so the coder and its buffers go away when the worker thread does
+  thread_local std::unique_ptr<BlockCoder> coder;
   if(!coder)
-    coder = new BlockCoder(false /*isCompressor*/, 64, 64, 0 /*cacheStrategy*/);
+    coder = std::make_unique<BlockCoder>(false /*isCompressor*/, 64, 64, 0 /*cacheStrategy*/);
 
   int32_t numbps = k_max_prime - missing_msbs;
   if(numbps <= 0 || num_cols <= 0 || num_rows <= 0)
