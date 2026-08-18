@@ -20,11 +20,29 @@ classic two-phase kernels on every filter, precision, and size
         decodes them correctly, sweep counts these as classic-rejects
   - [x] ESP truncated + issue432 were sweep-harness ENOSPC on tmpfs, not
         codec bugs: run the sweep with a disk-backed work dir
-  - [ ] 3 remaining irreversible peak-tolerance fails: issue142.j2k,
-        issue363-4740.jp2, issue391.jp2
+  - [x] remaining irreversible fails were not divergences: outputs are
+        byte-identical, compare_images cannot load some classic tifs, sweep
+        now byte-compares first and reports unloadable outputs separately.
+        sweep is green: 0 FAIL over both corpora
 - [ ] CI lane running the sweep
-- [ ] fuzz coverage: mercury variant of grk_decompress_fuzzer (file-backed
-      input), oss-fuzz needs a rust toolchain before it covers mercury
+- [x] fuzz coverage: mercury variant of grk_decompress_fuzzer (file-backed
+      input), oss-fuzz needs a rust toolchain before it covers mercury.
+      first pass found and fixed a per-thread block coder leak in the t1 shim
+  - [ ] fuzz finding: rust panic in mercury/src/dwt/level_builder.rs on
+        v4dwt_interleave_h.gsr105.j2k (zero-height LH subband), unwinds
+        into the c++ thread pool. needs an error return or catch at the
+        ffi boundary
+  - [ ] fuzz finding: malformed SIZ drives multi-TB aligned_alloc attempts,
+        needs a sanity cap on computed allocation sizes
+  - [ ] fuzz finding (classic): createMappedFileReadStream leaks 48 bytes
+        per input when read_header fails after grk_decompress_init
+
+## classic output bugs found by the sweep (not migration blockers)
+
+- incremental band writers emit a header-only tif when a tile row never
+  completes (issue363-4740, issue391), and exit 0 with most tiles missing
+- subsampled ycbcr tif output cannot be read back by grok's own tif reader
+  or compare_images (issue142, issue432)
 - [ ] TSAN soak of weft. Mixing instrumented C++ with uninstrumented rust
       floods false positives, so this likely needs rust built with
       -Zsanitizer=thread on nightly
