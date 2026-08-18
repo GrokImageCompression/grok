@@ -58,20 +58,6 @@ struct FuzzStream
     v |= (uint16_t)u8() << 8;
     return v;
   }
-  uint32_t u32()
-  {
-    uint32_t v = u16();
-    v |= (uint32_t)u16() << 16;
-    return v;
-  }
-  const uint8_t* bytes(size_t n)
-  {
-    if(pos + n > size)
-      return nullptr;
-    const uint8_t* p = data + pos;
-    pos += n;
-    return p;
-  }
   size_t remaining() const
   {
     return size - pos;

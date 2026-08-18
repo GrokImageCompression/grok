@@ -877,33 +877,6 @@ bool Mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint
   return true;
 }
 
-bool Mct::schedule_decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData,
-                                     uint16_t num_comps, [[maybe_unused]] uint32_t is_signed)
-{
-  auto data = (float**)pData;
-  auto pixel = new float[2 * num_comps];
-  auto current_pixel = pixel + num_comps;
-
-  for(uint64_t i = 0; i < n; ++i)
-  {
-    auto Mct = (float*)mct_matrix;
-    for(uint32_t j = 0; j < num_comps; ++j)
-    {
-      pixel[j] = (float)(*(data[j]));
-    }
-    for(uint32_t j = 0; j < num_comps; ++j)
-    {
-      current_pixel[j] = 0;
-      for(uint32_t k = 0; k < num_comps; ++k)
-        current_pixel[j] += *(Mct++) * pixel[k];
-      *(data[j]++) = (float)(current_pixel[j]);
-    }
-  }
-  delete[] pixel;
-  delete[] pData;
-  return true;
-}
-
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */

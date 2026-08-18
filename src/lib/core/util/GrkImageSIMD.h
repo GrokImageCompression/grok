@@ -92,11 +92,6 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
  * Equivalent to the N=8 unsigned path of convertToOutput. */
 GRK_SIMD_API void hwy_unpack_8u_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 
-/* Unpack packed uint8 bytes → int32 array with sign extension from 8 bits,
- * plus optional bitwise invert.
- * Equivalent to the N=8 signed path of convertToOutput. */
-GRK_SIMD_API void hwy_unpack_8s_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);
-
 /* Unpack big-endian uint16 pairs → int32 array, with optional 16-bit XOR invert.
  * Used by PNG decode (N=16 path). */
 GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);

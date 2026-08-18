@@ -106,17 +106,6 @@ public:
   static bool compress_custom(uint8_t* p_coding_data, uint64_t n, uint8_t** p_data,
                               uint16_t numComps, uint32_t is_signed);
   /**
-   Custom MCT decode
-   @param pDecodingData    MCT data
-   @param n                size of components
-   @param pData            components
-   @param pNbComp          nb of components (i.e. size of p_data)
-   @param isSigned         tells if the data is signed
-   @return false if function encounter a problem, true otherwise
-   */
-  static bool schedule_decompress_custom(uint8_t* pDecodingData, uint64_t n, uint8_t** pData,
-                                         uint16_t pNbComp, uint32_t isSigned);
-  /**
    Calculate norm of MCT transform
    @param pNorms         MCT data
    @param nb_comps       number of components

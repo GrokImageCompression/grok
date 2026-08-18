@@ -315,55 +315,6 @@ TilePartLength<uint32_t>* TLMMarker::next(bool peek)
 }
 
 /**
- * Seek to next slated tile part.
- *
- */
-void TLMMarker::seekNextSlated(TileWindow* tilesToDecompress, TileCache* tileCache, IStream* stream)
-{
-  assert(stream);
-
-  auto currentPosition = stream->tell();
-
-  // Lambda to restore position if an error occurs
-  auto restore = [stream, currentPosition]() { stream->seek(currentPosition); };
-
-  try
-  {
-    uint64_t skip = 0;
-    while(auto tilePart = next(true))
-    {
-      if(tilePart->length_ == 0)
-      {
-        restore();
-        grklog.error("corrupt TLM marker");
-        throw CorruptTLMException();
-      }
-
-      // with TLM marker enabled, a tile will be in one of two states:
-      // 1. no tile parts for this tile have been parsed
-      // or
-      // 2. all tile parts in the stream for this tile have been parsed
-      if(tilesToDecompress->isSlated(tilePart->tileIndex_))
-      {
-        auto cacheEntry = tileCache->get(tilePart->tileIndex_);
-        if(!cacheEntry || !cacheEntry->processor()->allSOTMarkersParsed())
-          break;
-      }
-
-      skip += tilePart->length_;
-      next(false);
-    }
-
-    if(skip && !stream->seek(currentPosition + skip))
-      throw CorruptTLMException();
-  }
-  catch(...)
-  {
-    restore();
-    throw;
-  }
-}
-/**
  * @brief Prepares to write TLM marker to code stream
  * @param numTilePartsTotal total number of tile parts in image
  * @return true if successful

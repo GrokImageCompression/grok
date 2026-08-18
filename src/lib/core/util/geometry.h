@@ -286,11 +286,6 @@ struct Rect
     return Rect<T>(ceildiv(origin_x0, den), ceildiv(origin_y0, den), ceildiv(x0, den),
                    ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
   }
-  Rect<T> scale(uint32_t scalex, uint32_t scaley) const
-  {
-    return Rect<T>(origin_x0 * scalex, origin_y0 * scaley, x0 * scalex, y0 * scaley, x1 * scalex,
-                   y1 * scaley);
-  }
   Rect<T> scaleDown(uint64_t denx, uint64_t deny) const
   {
     return Rect((T)(origin_x0 / denx), (T)(origin_y0 / deny), (T)(x0 / denx), (T)(y0 / deny),

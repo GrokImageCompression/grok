@@ -188,11 +188,6 @@ protected:
 
   curl_slist* configureHeaders(const std::string& range);
 
-  time_t getLastModifiedTime() const
-  {
-    return last_modified_time_;
-  }
-
   void fetch_total_size();
 
   /**

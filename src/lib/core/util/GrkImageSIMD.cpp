@@ -517,33 +517,6 @@ namespace HWY_NAMESPACE
       dest[i] = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
   }
 
-  /* ─── Unpack uint8 → int32 (signed with sign extension, optional invert) ─── */
-  static void Hwy_unpack_8s_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
-                                   size_t w, bool invert)
-  {
-    const HWY_FULL(int32_t) di;
-    const hn::Rebind<uint8_t, decltype(di)> du8_part;
-    const uint32_t L = (uint32_t)Lanes(di);
-    const auto vXor = Set(di, invert ? 0xFF : 0);
-
-    size_t i = 0;
-    for(; i + L <= w; i += L)
-    {
-      auto v8 = LoadU(du8_part, src + i);
-      auto vi = Xor(PromoteTo(di, v8), vXor);
-      /* sign extend from 8 bits: shift left 24, then arithmetic shift right 24 */
-      vi = ShiftRight<24>(ShiftLeft<24>(vi));
-      StoreU(vi, di, dest + i);
-    }
-    for(; i < w; ++i)
-    {
-      int32_t v = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
-      v <<= 24;
-      v >>= 24;
-      dest[i] = v;
-    }
-  }
-
   /* ─── Unpack big-endian uint16 pairs → int32 (PNG decode path) ─── */
   static void Hwy_unpack_16be_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
                                      size_t w, bool invert)
@@ -911,7 +884,6 @@ HWY_EXPORT(Hwy_copy_i32_to_i16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u32_row);
 HWY_EXPORT(Hwy_unpack_8u_to_i32);
-HWY_EXPORT(Hwy_unpack_8s_to_i32);
 HWY_EXPORT(Hwy_unpack_16be_to_i32);
 HWY_EXPORT(Hwy_unpack_16le_to_i32);
 HWY_EXPORT(Hwy_deinterleave_i32);
@@ -980,11 +952,6 @@ void hwy_packed_to_planar_16(const uint16_t* in, int32_t* r, int32_t* g, int32_t
 GRK_SIMD_API void hwy_unpack_8u_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_unpack_8u_to_i32)(src, dest, w, invert);
-}
-
-GRK_SIMD_API void hwy_unpack_8s_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
-{
-  HWY_DYNAMIC_DISPATCH(Hwy_unpack_8s_to_i32)(src, dest, w, invert);
 }
 
 GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)

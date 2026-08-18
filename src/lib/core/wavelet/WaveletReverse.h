@@ -24,7 +24,6 @@
 namespace grk
 {
 
-
 template<typename ST>
 struct dwt_scratch
 {
@@ -121,12 +120,6 @@ public:
 
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
 
-  /**
-   * @brief Allocate DWT scratch buffer with platform-appropriate size for 9/7.
-   * Uses Highway SIMD width to determine the correct PLL_ROWS scaling.
-   */
-  static bool allocCascadeScratch97(dwt_scratch<vec4f>& scratch, size_t dataLength);
-
 private:
   WaveletPoolData* poolData_ = nullptr;
   CodecScheduler* scheduler_ = nullptr;
@@ -182,11 +175,6 @@ private:
   void v_cascade_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
                     Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
                     DcShiftParam dcShift, uint32_t outputStart, uint32_t outputCount);
-
-  void v_cascade_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin, uint32_t wMax,
-                          Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
-                          Buffer2dSimple<int32_t> winDest, DcShiftParam dcShift,
-                          uint32_t outputStart, uint32_t outputCount);
 
   void v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth);
 
@@ -244,17 +232,6 @@ private:
                        Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest,
                        uint32_t nb_cols, DcShiftParam dcShift, uint32_t outputStart,
                        uint32_t outputCount);
-
-  void v_cascade_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
-                             Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
-                             Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
-                             uint32_t outputStart, uint32_t outputCount);
-
-  // 16-bit cascade strip 9/7 (full lift into temp, partial copy to dest) /////////////////////
-  void v_cascade_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
-                             Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
-                             Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
-                             uint32_t outputStart, uint32_t outputCount);
 
   // 16-bit fixed-point 9/7 //////////////////////////////////////////////////////////////////
   void h_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t hMin, uint32_t hMax,

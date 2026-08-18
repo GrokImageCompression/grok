@@ -227,13 +227,6 @@ struct TLMMarker
   [[nodiscard]] bool valid() const noexcept;
 
   /**
-   * @brief Seeks to next scheduled tile part
-   * @param tilesToDecompress tile window
-   * @param stream @ref IStream
-   */
-  void seekNextSlated(TileWindow* tilesToDecompress, TileCache* tileCache, IStream* stream);
-
-  /**
    * @brief Prepares to write TLM marker to code stream
    * @param numTilePartsTotal total number of tile parts in image
    * @return true if successful

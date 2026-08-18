@@ -1239,26 +1239,6 @@ void WaveletReverse::v_cascade_53(const dwt_scratch<int32_t>* scratch, Buffer2dS
   }
 }
 
-/* Column-group iteration for cascade V-DWT 5/3 */
-void WaveletReverse::v_cascade_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin,
-                                        uint32_t wMax, Buffer2dSimple<int32_t> winL,
-                                        Buffer2dSimple<int32_t> winH,
-                                        Buffer2dSimple<int32_t> winDest, DcShiftParam dcShift,
-                                        uint32_t outputStart, uint32_t outputCount)
-{
-  uint32_t j;
-  for(j = wMin; j + get_PLL_COLS_53() <= wMax; j += get_PLL_COLS_53())
-  {
-    v_cascade_53(scratch, winL, winH, winDest, get_PLL_COLS_53(), dcShift, outputStart,
-                 outputCount);
-    winL.incX_IN_PLACE(get_PLL_COLS_53());
-    winH.incX_IN_PLACE(get_PLL_COLS_53());
-    winDest.incX_IN_PLACE(get_PLL_COLS_53());
-  }
-  if(j < wMax)
-    v_cascade_53(scratch, winL, winH, winDest, wMax - j, dcShift, outputStart, outputCount);
-}
-
 void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
 {
   if(resWidth == 0)
@@ -1936,67 +1916,6 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
             d[r * winDest.stride_] =
                 (int16_t)std::clamp<int>(d[r * winDest.stride_] + dc, dcMin, dcMax);
       }
-    }
-  }
-}
-
-/* Column-group iteration for cascade V-DWT 16-bit 5/3 */
-void WaveletReverse::v_cascade_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t wMin,
-                                           uint32_t wMax, Buffer2dSimple<int16_t> winL,
-                                           Buffer2dSimple<int16_t> winH,
-                                           Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
-                                           uint32_t outputStart, uint32_t outputCount)
-{
-  uint32_t j;
-  for(j = wMin; j + get_PLL_COLS_16_53() <= wMax; j += get_PLL_COLS_16_53())
-  {
-    v_cascade_16_53(scratch, winL, winH, winDest, get_PLL_COLS_16_53(), dcShift, outputStart,
-                    outputCount);
-    winL.incX_IN_PLACE(get_PLL_COLS_16_53());
-    winH.incX_IN_PLACE(get_PLL_COLS_16_53());
-    winDest.incX_IN_PLACE(get_PLL_COLS_16_53());
-  }
-  if(j < wMax)
-    v_cascade_16_53(scratch, winL, winH, winDest, wMax - j, dcShift, outputStart, outputCount);
-}
-
-/* Column-group cascade V-DWT 16-bit 9/7: full V-DWT into temp, then copy partial output. */
-void WaveletReverse::v_cascade_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin,
-                                           uint32_t wMax, Buffer2dSimple<int16_t> winL,
-                                           Buffer2dSimple<int16_t> winH,
-                                           Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
-                                           uint32_t outputStart, uint32_t outputCount)
-{
-  const uint32_t height = scratch->sn + scratch->dn;
-  if(height == 0)
-    return;
-  uint32_t width = wMax - wMin;
-  uint32_t stride = (width + 15U) & ~15U;
-
-  // Allocate temp buffer for full V-DWT output
-  auto temp = std::make_unique<int16_t[]>((size_t)stride * height);
-  Buffer2dSimple<int16_t> tempDest(temp.get(), stride, height);
-
-  // Perform full V-DWT into temp (no DC shift - apply during copy)
-  DcShiftParam noDcShift{};
-  v_strip_16_97(scratch, wMin, wMax, winL, winH, tempDest, noDcShift);
-
-  // Copy only [outputStart, outputStart+outputCount) rows to dest
-  int16_t dc = dcShift.enabled ? (int16_t)dcShift.shift : 0;
-  int16_t dcMin = (int16_t)dcShift.min;
-  int16_t dcMax = (int16_t)dcShift.max;
-  for(uint32_t r = 0; r < outputCount; ++r)
-  {
-    auto src = temp.get() + (outputStart + r) * stride;
-    auto dst = winDest.buf_ + r * winDest.stride_;
-    if(dcShift.enabled)
-    {
-      for(uint32_t c = 0; c < width; ++c)
-        dst[c] = (int16_t)std::clamp<int>(src[c] + dc, dcMin, dcMax);
-    }
-    else
-    {
-      memcpy(dst, src, width * sizeof(int16_t));
     }
   }
 }
