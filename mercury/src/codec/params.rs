@@ -171,7 +171,6 @@ impl CodParams {
     }
 }
 
-
 // ─── QCD parameters ─────────────────────────────────────────────────────────
 
 /// Quantization style.
@@ -197,4 +196,3 @@ pub struct QcdParams {
     /// For irreversible: step sizes, per band.
     pub steps: Vec<f32>,
 }
-

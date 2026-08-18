@@ -121,8 +121,16 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
                 let sb_y1 = res_y1;
                 // Code-block grid anchored at canvas origin: first block
                 // is partial when x0 isn't block-aligned.
-                let bw = if sb_x1 > sb_x0 { sb_x1.div_ceil(block_w) - sb_x0 / block_w } else { 0 };
-                let bh = if sb_y1 > sb_y0 { sb_y1.div_ceil(block_h) - sb_y0 / block_h } else { 0 };
+                let bw = if sb_x1 > sb_x0 {
+                    sb_x1.div_ceil(block_w) - sb_x0 / block_w
+                } else {
+                    0
+                };
+                let bh = if sb_y1 > sb_y0 {
+                    sb_y1.div_ceil(block_h) - sb_y0 / block_h
+                } else {
+                    0
+                };
                 vec![SubbandGeom {
                     band_type: 0,
                     dims: Dims {
@@ -148,8 +156,16 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
                     let sb_y0 = (cy0.saturating_sub(yb * step)).div_ceil(denom) as u32;
                     let sb_x1 = (cx1.saturating_sub(xb * step)).div_ceil(denom) as u32;
                     let sb_y1 = (cy1.saturating_sub(yb * step)).div_ceil(denom) as u32;
-                    let bw = if sb_x1 > sb_x0 { sb_x1.div_ceil(block_w) - sb_x0 / block_w } else { 0 };
-                    let bh = if sb_y1 > sb_y0 { sb_y1.div_ceil(block_h) - sb_y0 / block_h } else { 0 };
+                    let bw = if sb_x1 > sb_x0 {
+                        sb_x1.div_ceil(block_w) - sb_x0 / block_w
+                    } else {
+                        0
+                    };
+                    let bh = if sb_y1 > sb_y0 {
+                        sb_y1.div_ceil(block_h) - sb_y0 / block_h
+                    } else {
+                        0
+                    };
                     SubbandGeom {
                         band_type,
                         dims: Dims {

@@ -38,8 +38,7 @@ use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 /// Positioned read: fill `buf[0..len]` from absolute offset `off`.
 /// Return nonzero on success, 0 on failure. Must be callable from many
 /// threads concurrently.
-pub type MercuryReadAtFn =
-    extern "C" fn(ctx: *mut c_void, buf: *mut u8, off: u64, len: u64) -> i32;
+pub type MercuryReadAtFn = extern "C" fn(ctx: *mut c_void, buf: *mut u8, off: u64, len: u64) -> i32;
 
 /// Substitute tier-1 block decoder; see the `BlockCoder` contract in
 /// `stripe_decoder.rs`. `out` has room for `num_cols * 4*ceil(num_rows/4)`
@@ -61,13 +60,8 @@ pub type MercuryT1Fn = extern "C" fn(
 
 /// Row delivery: `comps` points at `num_comps` row pointers, each `width`
 /// i32 samples. Pointers are valid only for the duration of the call.
-pub type MercuryRowFn = extern "C" fn(
-    ctx: *mut c_void,
-    row: u32,
-    comps: *const *const i32,
-    num_comps: u32,
-    width: u64,
-);
+pub type MercuryRowFn =
+    extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const i32, num_comps: u32, width: u64);
 
 pub const MERCURY_OK: i32 = 0;
 pub const MERCURY_EBADARG: i32 = -1;
@@ -289,7 +283,10 @@ impl ReadAt for CallbackReader {
         if (self.read_at)(self.ctx, buf.as_mut_ptr(), off, buf.len() as u64) != 0 {
             Ok(())
         } else {
-            Err(io::Error::new(io::ErrorKind::Other, "read_at callback failed"))
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "read_at callback failed",
+            ))
         }
     }
 
@@ -353,7 +350,12 @@ pub extern "C" fn mercury_warp_loom(
         stamp_err(err_buf, err_cap, "null read_at");
         return std::ptr::null_mut();
     };
-    assemble_plan(hdr, Arc::new(CallbackReader { read_at, ctx, len }), err_buf, err_cap)
+    assemble_plan(
+        hdr,
+        Arc::new(CallbackReader { read_at, ctx, len }),
+        err_buf,
+        err_cap,
+    )
 }
 
 /// [`mercury_warp_loom`] over a POSIX file descriptor (duplicated internally;
@@ -637,7 +639,9 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
             } else {
                 let sc = (1i64 << prec) as f32;
                 for (o, &s) in out.iter_mut().zip(r[ci]) {
-                    *o = ((s * sc).round_ties_even() as i32).saturating_add(dc).clamp(0, mx);
+                    *o = ((s * sc).round_ties_even() as i32)
+                        .saturating_add(dc)
+                        .clamp(0, mx);
                 }
             }
         }
@@ -703,7 +707,13 @@ pub extern "C" fn mercury_weave(
             dye_comp_row(&rows, ci, prec, signed, &mut scratch[ci]);
             ptrs[ci] = scratch[ci].as_ptr() as usize;
         }
-        row_fn(ctx.0, row_no, ptrs.as_ptr().cast::<*const i32>(), nc, width as u64);
+        row_fn(
+            ctx.0,
+            row_no,
+            ptrs.as_ptr().cast::<*const i32>(),
+            nc,
+            width as u64,
+        );
         row_no += 1;
     });
 

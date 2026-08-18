@@ -30,7 +30,6 @@ impl NodeId {
     pub fn heddle(i: u32) -> Self {
         NodeId(i)
     }
-
 }
 
 /// How deep tail-chaining may recurse before falling back to the queue.
@@ -162,10 +161,8 @@ impl Inner {
             };
             // A panicking node would leave `outstanding` forever nonzero and
             // hang await_stillness(); fail loudly instead.
-            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                self.ply_node(id, 0)
-            }))
-            .is_err()
+            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.ply_node(id, 0)))
+                .is_err()
             {
                 eprintln!("weft: node {} panicked; aborting", id.0);
                 std::process::abort();

@@ -21,7 +21,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::collapsible_if)]
 
-
 use crate::ffi_dwt::MercuryLiftingStep;
 
 use std::alloc::{self, Layout};
@@ -98,7 +97,10 @@ impl AlignedBuf {
 
     /// Pointer to sample index 0, any sample width.
     fn yarn_raw(&self) -> *mut u8 {
-        unsafe { self.ptr.add(self.neg_offset as usize * self.fibre_bytes as usize) }
+        unsafe {
+            self.ptr
+                .add(self.neg_offset as usize * self.fibre_bytes as usize)
+        }
     }
 }
 
@@ -553,8 +555,7 @@ impl Synthesis {
                 // Horizontal steps need boundary-extension room derived from
                 // the step's support and the row's parity at each edge.
                 let mut extend_left = -(info.support_min as i32);
-                let mut extend_right =
-                    info.support_min as i32 - 1 + info.support_length as i32;
+                let mut extend_right = info.support_min as i32 - 1 + info.support_length as i32;
                 if params.x_min_in & 1 != 0 {
                     extend_left += if s & 1 != 0 { -1 } else { 1 };
                 }
@@ -749,8 +750,7 @@ impl Synthesis {
     /// requests: `2 * parity + c` for each phase with a nonzero request.
     fn fresh_pick_ready(&self, parity: i32, src: &dyn RowSource) -> bool {
         for c in 0..2i32 {
-            if self.params.request_width[c as usize] > 0 && !src.subband_ready(2 * parity + c)
-            {
+            if self.params.request_width[c as usize] > 0 && !src.subband_ready(2 * parity + c) {
                 return false;
             }
         }
@@ -997,12 +997,7 @@ impl Synthesis {
                                 vline_out_idx = Some(tmp);
                             }
                         }
-                        self.hweave(
-                            vline_out_idx.unwrap(),
-                            self.y_next_out & 1,
-                            src,
-                            true,
-                        );
+                        self.hweave(vline_out_idx.unwrap(), self.y_next_out & 1, src, true);
                     }
                 }
             }
@@ -1274,4 +1269,3 @@ impl Synthesis {
         }
     }
 }
-

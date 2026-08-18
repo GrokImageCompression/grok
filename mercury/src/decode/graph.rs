@@ -32,19 +32,24 @@ use std::sync::{Arc, Mutex};
 
 use crate::decode::DecodeError;
 use crate::decode::plan::{BandPlan, DecodePlan, TilePlan};
-use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo, mercury_weave_stripe16, mercury_weave_stripe32, mercury_weave_stripe_f32};
+use crate::decode::stripe_decoder::{
+    BlockCoder, MercuryStripeBlockInfo, mercury_weave_stripe_f32, mercury_weave_stripe16,
+    mercury_weave_stripe32,
+};
 use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7};
 use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
+use crate::weft::Node;
 use crate::weft::ring::{Consumer, Producer, spin};
 use crate::weft::rt::{Builder, Ctx, NodeId, Runtime};
-use crate::weft::Node;
 
 /// Ring capacity in rows per subband: two block-row stripes so T1 always has
 /// a full stripe of working room ahead of the tree (1.5 stripes saves ~6 MB
 /// on ESP but costs ~1 s wall from producer stalls).
 fn band_ring_picks(block_h: u32, band_h: u32) -> usize {
-    (2 * block_h).min(band_h.next_multiple_of(block_h)).max(block_h) as usize
+    (2 * block_h)
+        .min(band_h.next_multiple_of(block_h))
+        .max(block_h) as usize
 }
 
 /// Rows buffered between each tree and the merge sink: one full T1 block-row
@@ -143,8 +148,7 @@ impl SubbandDecodeNode {
     ) -> Result<(), DecodeError> {
         let bw = band.blocks_wide;
         let stripe_rows = dst_lines.len() as i32;
-        let recs =
-            &band.blocks[(row * bw + bx0) as usize..(row * bw + bx0 + nbw) as usize];
+        let recs = &band.blocks[(row * bw + bx0) as usize..(row * bw + bx0 + nbw) as usize];
 
         // Gather coded bytes for the whole block row. Multi-layer blocks
         // concatenate their per-layer chunks into one stream.
@@ -184,7 +188,10 @@ impl SubbandDecodeNode {
             let (c0, c1) = block_warp_span(band, block_w, bx, 1);
             let num_cols = (c1 - c0) as i32;
             let seg_ptr = if rec.num_segments > 1 {
-                let lens = rec.seg_lens.as_deref().expect("multi-segment without table");
+                let lens = rec
+                    .seg_lens
+                    .as_deref()
+                    .expect("multi-segment without table");
                 seg_storage.push(lens.iter().map(|&l| l as i32).collect());
                 seg_storage.last().unwrap().as_ptr()
             } else {
@@ -258,9 +265,8 @@ impl Node for SubbandDecodeNode {
             if self.out.slack() < rows {
                 break;
             }
-            let dst_lines: Vec<*mut u8> = (0..rows)
-                .map(|i| self.out.pick(i).as_mut_ptr())
-                .collect();
+            let dst_lines: Vec<*mut u8> =
+                (0..rows).map(|i| self.out.pick(i).as_mut_ptr()).collect();
             unsafe {
                 Self::weave_block_row(
                     &*self.file,
@@ -361,9 +367,7 @@ impl RowSource for LevelInputs {
         for s in slices.iter_mut() {
             let row = s.cons.peek(0);
             debug_assert!(s.byte_len <= row.len());
-            unsafe {
-                std::ptr::copy_nonoverlapping(row.as_ptr(), buf.add(s.byte_off), s.byte_len)
-            };
+            unsafe { std::ptr::copy_nonoverlapping(row.as_ptr(), buf.add(s.byte_off), s.byte_len) };
             s.cons.unwind(1);
             if !self.dirty.contains(&s.producer) {
                 self.dirty.push(s.producer);
@@ -488,7 +492,9 @@ trait Sample: Copy + Send + Default + 'static {
 macro_rules! impl_rct_sample {
     ($t:ty, $wide:ty, $wrap:path) => {
         impl Sample for $t {
-            fn skein<'a>(refs: &'a [&'a [$t]]) -> Rows<'a> { $wrap(refs) }
+            fn skein<'a>(refs: &'a [&'a [$t]]) -> Rows<'a> {
+                $wrap(refs)
+            }
             fn untangle_color(y: &mut [$t], u: &mut [$t], v: &mut [$t]) {
                 for x in 0..y.len() {
                     let g = y[x] as $wide - ((u[x] as $wide + v[x] as $wide) >> 2);
@@ -506,7 +512,9 @@ impl_rct_sample!(i16, i32, Rows::I16);
 impl_rct_sample!(i32, i64, Rows::I32);
 
 impl Sample for f32 {
-    fn skein<'a>(refs: &'a [&'a [f32]]) -> Rows<'a> { Rows::F32(refs) }
+    fn skein<'a>(refs: &'a [&'a [f32]]) -> Rows<'a> {
+        Rows::F32(refs)
+    }
     /// Inverse ICT (irreversible YCbCr→RGB): f32 FMA, G from Cr then Cb.
     fn untangle_color(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
         const CR_FACT_R: f32 = (2.0 * (1.0 - 0.299)) as f32;
@@ -546,9 +554,7 @@ impl<T: Sample> Node for MergeSinkNode<T> {
                 refs.clear();
                 refs.extend(col.inputs.iter().map(|c| {
                     let row = c.peek(i);
-                    unsafe {
-                        std::slice::from_raw_parts(row.as_ptr() as *const T, col.width)
-                    }
+                    unsafe { std::slice::from_raw_parts(row.as_ptr() as *const T, col.width) }
                 }));
                 (cb)(self.row_base + self.rows_seen + i as u32, T::skein(&refs));
             }
@@ -570,9 +576,8 @@ impl<T: Sample> Node for MergeSinkNode<T> {
             for (ci, dst) in self.assembled.iter_mut().enumerate() {
                 for col in &self.cols {
                     let row = col.inputs[ci].peek(i);
-                    let src = unsafe {
-                        std::slice::from_raw_parts(row.as_ptr() as *const T, col.width)
-                    };
+                    let src =
+                        unsafe { std::slice::from_raw_parts(row.as_ptr() as *const T, col.width) };
                     dst[col.x0..col.x0 + col.width].copy_from_slice(src);
                 }
             }
@@ -720,7 +725,11 @@ fn dress_tile_loom(
     let image_y0 = plan.siz.y_o_siz;
     let width = plan.width as usize;
     let sb: usize = path.fibre_bytes();
-    let prec = if path == Path::I16 { SamplePrec::I16 } else { SamplePrec::I32 };
+    let prec = if path == Path::I16 {
+        SamplePrec::I16
+    } else {
+        SamplePrec::I32
+    };
 
     let bd = |d: &crate::codec::tile_geom::Dims| BandDims {
         x0: d.x0 as i32,
@@ -788,8 +797,9 @@ fn dress_tile_loom(
                 level_rows.push(spec.node.h.max(0) as u32);
             }
 
-            let mut slices_wiring: Vec<Vec<Vec<LeafSlice>>> =
-                (0..levels).map(|_| (0..4).map(|_| Vec::new()).collect()).collect();
+            let mut slices_wiring: Vec<Vec<Vec<LeafSlice>>> = (0..levels)
+                .map(|_| (0..4).map(|_| Vec::new()).collect())
+                .collect();
             let mut band_node_levels: Vec<(usize, usize)> = Vec::new();
 
             let res_plans = std::mem::take(&mut plan_comps[c]);
@@ -851,7 +861,11 @@ fn dress_tile_loom(
                 band_node_levels,
             });
         }
-        col_specs.push(ColSpec { chains, x0: tile_x0, width: tile_w });
+        col_specs.push(ColSpec {
+            chains,
+            x0: tile_x0,
+            width: tile_w,
+        });
     }
 
     // Assign node ids: band nodes, then level nodes (col-major, chain-major,
@@ -859,7 +873,12 @@ fn dress_tile_loom(
     let num_band_nodes = band_nodes.len() as u32;
     let num_level_nodes: u32 = col_specs
         .iter()
-        .map(|cs| cs.chains.iter().map(|ch| ch.engines.len() as u32).sum::<u32>())
+        .map(|cs| {
+            cs.chains
+                .iter()
+                .map(|ch| ch.engines.len() as u32)
+                .sum::<u32>()
+        })
         .sum();
     let sink_id = NodeId::heddle(num_band_nodes + num_level_nodes);
     let mut next_level = num_band_nodes;
@@ -878,8 +897,11 @@ fn dress_tile_loom(
             let top = n_lv as usize - 1;
             // LL consumer handed down the chain as levels are built.
             let mut ll_from_child: Option<Consumer<AlignedVec>> = None;
-            for (l, (engine, slices)) in
-                ch.engines.into_iter().zip(ch.slices.into_iter()).enumerate()
+            for (l, (engine, slices)) in ch
+                .engines
+                .into_iter()
+                .zip(ch.slices.into_iter())
+                .enumerate()
             {
                 let is_top = l == top;
                 let (out_prod, out_con) = if is_top {
@@ -922,7 +944,12 @@ fn dress_tile_loom(
                 }
             }
         }
-        cols.push(ColInput { inputs, producers, x0: cs.x0, width: cs.width });
+        cols.push(ColInput {
+            inputs,
+            producers,
+            x0: cs.x0,
+            width: cs.width,
+        });
     }
 
     let ycc = plan.cod.use_ycc && num_comps >= 3;

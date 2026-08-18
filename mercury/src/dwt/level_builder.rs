@@ -125,7 +125,10 @@ pub fn draft_params(
         (phase_off_in[1] + phase_width_in[1]) - (request_offset[1] + request_width[1]),
     ];
     assert!(
-        left_fill.iter().chain(right_fill.iter()).all(|&f| (0..256).contains(&f)),
+        left_fill
+            .iter()
+            .chain(right_fill.iter())
+            .all(|&f| (0..256).contains(&f)),
         "fill out of range: {left_fill:?} {right_fill:?}"
     );
 
@@ -320,7 +323,13 @@ pub fn w9x7_gains() -> (f32, f32) {
             }
         }
         let ana: Vec<f32> = (-2 * L..=2 * L)
-            .map(|n| if n & 1 != 0 { -syn[sidx(n)] } else { syn[sidx(n)] })
+            .map(|n| {
+                if n & 1 != 0 {
+                    -syn[sidx(n)]
+                } else {
+                    syn[sidx(n)]
+                }
+            })
             .collect();
         if which == 0 {
             high_analysis = ana;
@@ -340,4 +349,3 @@ pub fn w9x7_gains() -> (f32, f32) {
     }
     (1.0 / low_gain, 1.0 / high_gain)
 }
-

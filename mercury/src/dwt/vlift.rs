@@ -114,10 +114,18 @@ pub unsafe fn mercury_ply_vlift_32(
         KERNEL_W5X3 => {
             match st.step_idx {
                 0 => ffi_dwt::mercury_hwy_vply_32_5x3_weave_s0(
-                    src_bufs, din, dout, total_width, step,
+                    src_bufs,
+                    din,
+                    dout,
+                    total_width,
+                    step,
                 ),
                 _ => ffi_dwt::mercury_hwy_vply_32_5x3_weave_s1(
-                    src_bufs, din, dout, total_width, step,
+                    src_bufs,
+                    din,
+                    dout,
+                    total_width,
+                    step,
                 ),
             }
             return;

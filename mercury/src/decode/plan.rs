@@ -147,7 +147,8 @@ impl<'f> StreamWin<'f> {
     /// `limit`, refilling the window if needed.
     fn strand_at(&mut self, off: u64, limit: usize) -> std::io::Result<&[u8]> {
         let want = limit.min(MAX_HDR).min((self.file_len - off) as usize);
-        let in_window = off >= self.buf_off && off + want as u64 <= self.buf_off + self.valid as u64;
+        let in_window =
+            off >= self.buf_off && off + want as u64 <= self.buf_off + self.valid as u64;
         if !in_window {
             let n = WIN_SIZE.min((self.file_len - off) as usize);
             self.file.draw_at(&mut self.buf[..n], off)?;
@@ -235,10 +236,8 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, Decode
     // not just misdecode, so reject at plan time and let the host fall back.
     {
         use crate::codec::params::CodingModes;
-        let supported = CodingModes::RESET
-            | CodingModes::CAUSAL
-            | CodingModes::ERTERM
-            | CodingModes::SEGMARK;
+        let supported =
+            CodingModes::RESET | CodingModes::CAUSAL | CodingModes::ERTERM | CodingModes::SEGMARK;
         let m = hdr.cod.modes.0;
         if m & !supported != 0 {
             return Err(DecodeError::Logic(format!(
@@ -275,7 +274,9 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, Decode
         let isot = u16::from_be_bytes([sot[4], sot[5]]) as usize;
         let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
         if isot >= num_tiles {
-            return Err(DecodeError::Logic(format!("plan: SOT tile index {isot} out of range")));
+            return Err(DecodeError::Logic(format!(
+                "plan: SOT tile index {isot} out of range"
+            )));
         }
         if psot == 0 {
             return Err(DecodeError::Logic("plan: Psot=0 not supported".into()));
@@ -427,9 +428,10 @@ fn comb_tile(
             let tc = &geom.components[c];
             let steps = &quant[c].steps;
             let step = |i: usize| -> Result<f32, DecodeError> {
-                steps.get(i).copied().ok_or_else(|| {
-                    DecodeError::Logic("QCD: missing irreversible step".into())
-                })
+                steps
+                    .get(i)
+                    .copied()
+                    .ok_or_else(|| DecodeError::Logic("QCD: missing irreversible step".into()))
             };
             let mut norm = 1.0f32;
             for l in (0..n_res - 1).rev() {
@@ -517,12 +519,15 @@ fn comb_tile(
                             ProgressionOrder::Pcrl => [ypos, xpos, cu, ru, lu],
                             ProgressionOrder::Cprl => [cu, ypos, xpos, ru, lu],
                         };
-                        pkts.push((key, Pkt {
-                            comp: c as u16,
-                            res: r as u8,
-                            layer: l,
-                            prec,
-                        }));
+                        pkts.push((
+                            key,
+                            Pkt {
+                                comp: c as u16,
+                                res: r as u8,
+                                layer: l,
+                                prec,
+                            },
+                        ));
                     }
                 }
             }
@@ -569,7 +574,12 @@ fn comb_tile(
                 let rx1 = ((px + 1) * bpw).min(sb.dims.x1);
                 let ry1 = ((py + 1) * bph).min(sb.dims.y1);
                 if rx0 >= rx1 || ry0 >= ry1 {
-                    return PrecBand { bx0: 0, by0: 0, nbw: 0, nbh: 0 };
+                    return PrecBand {
+                        bx0: 0,
+                        by0: 0,
+                        nbw: 0,
+                        nbh: 0,
+                    };
                 }
                 let first_bx = sb.dims.x0 / block_w;
                 let first_by = sb.dims.y0 / block_h;
@@ -577,7 +587,12 @@ fn comb_tile(
                 let by0 = ry0 / block_h - first_by;
                 let bx1 = (rx1 - 1) / block_w - first_bx;
                 let by1 = (ry1 - 1) / block_h - first_by;
-                PrecBand { bx0, by0, nbw: bx1 - bx0 + 1, nbh: by1 - by0 + 1 }
+                PrecBand {
+                    bx0,
+                    by0,
+                    nbw: bx1 - bx0 + 1,
+                    nbh: by1 - by0 + 1,
+                }
             })
             .collect();
         let state_slot = &mut prec_states[c][r][pkt.prec as usize];
@@ -605,13 +620,18 @@ fn comb_tile(
         }
 
         let (real_pos, seg_avail) = stream.unspool(vpos)?;
-        let slice = win.strand_at(real_pos, seg_avail as usize).map_err(io_snag)?;
+        let slice = win
+            .strand_at(real_pos, seg_avail as usize)
+            .map_err(io_snag)?;
         let mut reader = PacketBitReader::warp(slice);
-        let parsed =
-            comb_packet_header(&mut reader, &mut state.trees, &mut state.states, pkt.layer, 0)
-                .map_err(|e| {
-                    DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}"))
-                })?;
+        let parsed = comb_packet_header(
+            &mut reader,
+            &mut state.trees,
+            &mut state.states,
+            pkt.layer,
+            0,
+        )
+        .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
         let mut hdr_len = parsed.header_bytes as u64;
         if pkt_debug {
             eprintln!(
@@ -663,9 +683,8 @@ fn comb_tile(
                     rec.missing_msbs = contrib.missing_msbs;
                     rec.num_segments = contrib.num_segments;
                     if contrib.num_segments > 1 {
-                        rec.seg_lens = Some(
-                            contrib.segment_lengths[..contrib.num_segments as usize].into(),
-                        );
+                        rec.seg_lens =
+                            Some(contrib.segment_lengths[..contrib.num_segments as usize].into());
                     }
                 } else {
                     // Later layer: append bytes, accumulate passes.
@@ -675,9 +694,10 @@ fn comb_tile(
                         ));
                     }
                     rec.num_passes = rec.num_passes.saturating_add(contrib.new_passes);
-                    rec.extra
-                        .get_or_insert_with(Default::default)
-                        .push(Chunk { file_off: body, len: total });
+                    rec.extra.get_or_insert_with(Default::default).push(Chunk {
+                        file_off: body,
+                        len: total,
+                    });
                 }
                 body += total as u64;
             }
@@ -707,9 +727,9 @@ fn band_ranging(q: &QcdParams, qcd_idx: usize) -> Result<i32, DecodeError> {
             .get(qcd_idx)
             .map(|&s| step_ranging(s))
             .ok_or_else(|| DecodeError::Logic("QCC: missing step entry".into())),
-        QuantStyle::Derived => {
-            Err(DecodeError::Logic("plan: derived quantization not wired yet".into()))
-        }
+        QuantStyle::Derived => Err(DecodeError::Logic(
+            "plan: derived quantization not wired yet".into(),
+        )),
     }
 }
 
