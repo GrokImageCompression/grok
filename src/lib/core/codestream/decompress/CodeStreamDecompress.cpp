@@ -2462,8 +2462,9 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   {
     uint8_t reduce = cp_.codingParams_.dec_.reduce_;
     auto slatedRect = tilesToDecompress_.getSlatedTileRect();
-    uint32_t unreducedTileY0 = cp_.ty0_ + (uint32_t)slatedRect.y0 * cp_.t_height_;
-    uint32_t unreducedTileY1 = std::min(unreducedTileY0 + cp_.t_height_, (uint32_t)scratch->y1);
+    uint32_t unreducedRowY0 = cp_.ty0_ + (uint32_t)slatedRect.y0 * cp_.t_height_;
+    uint32_t unreducedTileY1 = std::min(unreducedRowY0 + cp_.t_height_, (uint32_t)scratch->y1);
+    uint32_t unreducedTileY0 = std::max(unreducedRowY0, (uint32_t)scratch->y0);
     for(uint16_t i = 0; i < scratch->numcomps; i++)
     {
       auto comp = scratch->comps + i;
