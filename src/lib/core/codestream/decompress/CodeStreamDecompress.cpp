@@ -162,6 +162,12 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
     std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
                   []() { return std::make_unique<MarkerParser>(); });
   }
+  else if(localExecutor_ && parameters->num_threads && parameters->num_threads != localNumThreads_)
+  {
+    grklog.warn("num_threads changed from %zu to %u after codec creation: ignored, "
+                "the codec keeps its original thread pool",
+                localNumThreads_, parameters->num_threads);
+  }
 
   // Initialize compressed chunk cache for LRU + network fetches
   if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())

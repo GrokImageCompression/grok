@@ -728,10 +728,13 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   // (0-worker) executor so concurrent compresses run on their own thread
   // instead of contending on (or resizing) the global singleton.  Also used
   // when the global pool itself is single-threaded, mirroring decompress.
-  if(parameters->num_threads)
-    localNumThreads_ = parameters->num_threads;
-  if(parameters->num_threads || TFSingleton::isSingleThreaded())
+  // guard on null: never replace an executor a compress may already be running on
+  if(!localExecutor_ && (parameters->num_threads || TFSingleton::isSingleThreaded()))
+  {
+    if(parameters->num_threads)
+      localNumThreads_ = parameters->num_threads;
     localExecutor_ = TFSingleton::makeLocalExecutor(localNumThreads_);
+  }
 
   return true;
 }
