@@ -1237,6 +1237,13 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       {
         auto t2 = std::make_unique<T2Decompress>(this);
         truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+        if(truncated_ && numProcessedPackets_ == 0)
+        {
+          grklog.error("Tile %u is corrupt: no packets could be parsed", tileIndex_);
+          success_ = false;
+          post();
+          return;
+        }
         decompress_synch_plugin_with_host();
         // parse packet data
         for(uint16_t compno = 0; compno < headerImage_->numcomps; ++compno)
@@ -1314,6 +1321,12 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
     auto t2 = std::make_unique<T2Decompress>(this);
     truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+    if(truncated_ && numProcessedPackets_ == 0)
+    {
+      grklog.error("Tile %u is corrupt: no packets could be parsed", tileIndex_);
+      success_ = false;
+      return;
+    }
 
     // synch plugin with T2 data (must be AFTER T2 parsing)
     decompress_synch_plugin_with_host();

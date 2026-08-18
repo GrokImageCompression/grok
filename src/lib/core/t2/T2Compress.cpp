@@ -280,14 +280,14 @@ bool T2Compress::compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t lay
       {
         auto cblk = prc->getCompressBlock(cblkno);
         cblk->setNumPassesInLayer(0, 0);
-        assert(band->maxBitPlanes_ >= cblk->numbps());
         if(cblk->numbps() > band->maxBitPlanes_)
         {
-          grklog.warn("Code block %u bps %u greater than band bps %u. Skipping.", cblkno,
-                      cblk->numbps(), band->maxBitPlanes_);
+          grklog.error("Code block %u has %u bit planes, exceeding band maximum %u: "
+                       "image samples exceed declared precision.",
+                       cblkno, cblk->numbps(), band->maxBitPlanes_);
+          return false;
         }
-        else
-          prc->getImsbTree()->set(cblkno, band->maxBitPlanes_ - cblk->numbps());
+        prc->getImsbTree()->set(cblkno, band->maxBitPlanes_ - cblk->numbps());
       }
     }
   }

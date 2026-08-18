@@ -78,7 +78,7 @@ private:
   template<typename WT>
   bool encodeRows(uint32_t rows);
   template<typename WT>
-  bool readBytes(FILE* fp, grk_image* image, size_t area);
+  bool readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval);
   bool closeStream(void);
 
   grk_image* readImage(const grk_cparameters* parameters);
@@ -941,7 +941,7 @@ static inline uint32_t uint_floorlog2(uint32_t a)
 
 template<typename T>
 template<typename WT>
-bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
+bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval)
 {
   if(!fp || !image)
     return false;
@@ -966,8 +966,13 @@ bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
     WT* chunkPtr = chunk;
     for(size_t ct = 0; ct < bytesRead; ++ct)
     {
-      ((T*)image->comps[compno++].data)[index] =
-          sizeof(WT) > 1 ? grk::endian<WT>(*chunkPtr++, true) : *chunkPtr++;
+      WT val = sizeof(WT) > 1 ? grk::endian<WT>(*chunkPtr++, true) : *chunkPtr++;
+      if(val > maxval)
+      {
+        spdlog::error("PNM sample value {} exceeds maxval {}", val, maxval);
+        return false;
+      }
+      ((T*)image->comps[compno++].data)[index] = (T)val;
       if(compno == image->decompress_num_comps)
       {
         compno = 0;
@@ -1138,6 +1143,11 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
           spdlog::error("error reading ASCII PPM pixel data");
           goto cleanup;
         }
+        if(val > header_info.maxval)
+        {
+          spdlog::error("PNM sample value {} exceeds maxval {}", val, header_info.maxval);
+          goto cleanup;
+        }
         dest[i] = (T)val;
       }
       counter++;
@@ -1155,9 +1165,9 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
   {
     bool rc = false;
     if(prec <= 8)
-      rc = readBytes<uint8_t>(fileIO_->getFileHandle(), image, area);
+      rc = readBytes<uint8_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
     else
-      rc = readBytes<uint16_t>(fileIO_->getFileHandle(), image, area);
+      rc = readBytes<uint16_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
     if(!rc)
       goto cleanup;
   }

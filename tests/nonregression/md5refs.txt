@@ -336,7 +336,6 @@ fc57ca26d22d7e909a6760c038b82eda  ybr-cat_2.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_1.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_2.pgx
 5df4122edbaec97a5f4e58d4047de289  1615b673ff67eddf0a79b3fce6950a9ece638d65_0.pgx
-ac8d6dd8f21fc54f977e4c69510ff215  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912_0.pgx
 54ad80205edb6332c87efb56a966e6fa  foo.j2k_0.pgx
 3db312dd7f0883b085b2e5857302899a  foo.j2k_1.pgx
 5259082e6ca17d21a628e7ee5125115e  foo.j2k_2.pgx
@@ -404,6 +403,3 @@ d1b47347aaac6019935aa14c56851a05  clusterfuzz-testcase-minimized-grk_decompress_
 dfa9a6be7b3bdeb12dcebfde9b173d7d  p_bit16_layer5.pgm
 89d9510776888aff1245e4f81b54f47a  mono_plt_tlm_tile5.pgm
 0540bf20562dc37deb0fd2f6a021bc20  mono_plt_tlm_tile.pgm
-871e964cd6f1879c7eb603a69c857337  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_0.pgx
-871e964cd6f1879c7eb603a69c857337  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_1.pgx
-a746bc84f7e40fea2b6dc2e9abdf786a  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_2.pgx
