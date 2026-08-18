@@ -800,7 +800,9 @@ typedef struct _grk_decompress_params
   uint32_t compression_level; /* compression "quality" - meaning depends on output file format */
   uint32_t duration; /* duration of decompression in seconds */
   uint32_t repeats; /* number of repetitions */
-  uint32_t num_threads; /* number of CPU threads */
+  uint32_t num_threads; /* number of threads. 1 => the codec decompresses on its own
+                           inline executor instead of the global thread pool, so
+                           concurrent single-threaded decompresses are independent */
 
   uint32_t kernel_build_options; /* plugin OpenCL kernel build options */
   int32_t device_id; /* plugin device ID */

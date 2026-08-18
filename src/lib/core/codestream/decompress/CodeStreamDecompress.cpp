@@ -153,6 +153,10 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   ioBandCallback_ = core->io_band_callback;
   ioBandUserData_ = core->io_band_user_data;
 
+  // guard on null: never replace an executor a decode may already be running on
+  if(parameters->num_threads == 1 && !localExecutor_)
+    localExecutor_ = std::make_unique<tf::Executor>(0);
+
   // Initialize compressed chunk cache for LRU + network fetches
   if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())
   {
