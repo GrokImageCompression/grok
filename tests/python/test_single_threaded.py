@@ -48,10 +48,12 @@ def _compress(
     irreversible=False,
     tile=0,
     numres=6,
+    num_threads=0,
 ):
     """Compress a synthetic gradient image. Returns True on success."""
     params = grok_core.grk_cparameters()
     grok_core.grk_compress_set_default_params(params)
+    params.num_threads = num_threads
     params.cod_format = (
         grok_core.GRK_FMT_JP2 if path.endswith(".jp2") else grok_core.GRK_FMT_J2K
     )
