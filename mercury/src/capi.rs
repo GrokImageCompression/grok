@@ -488,16 +488,16 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
         }
         Rows::F32(r) => {
             // normalized floats: sample / 2^prec, signed around 0.
+            // round_ties_even matches the classic pipeline's NearestInt.
             if signed {
                 let sc = (1i64 << (prec - 1)) as f32;
                 for (o, &s) in out.iter_mut().zip(r[ci]) {
-                    *o = ((s * sc) as i32).clamp(-dc, mx - dc);
+                    *o = ((s * sc).round_ties_even() as i32).clamp(-dc, mx - dc);
                 }
             } else {
                 let sc = (1i64 << prec) as f32;
-                let hf = sc * 0.5;
                 for (o, &s) in out.iter_mut().zip(r[ci]) {
-                    *o = ((s * sc + hf) as i32).clamp(0, mx);
+                    *o = ((s * sc).round_ties_even() as i32).saturating_add(dc).clamp(0, mx);
                 }
             }
         }
