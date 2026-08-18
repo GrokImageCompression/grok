@@ -790,9 +790,9 @@ fn dress_tile_loom(
                     lh: bd(&node_res.subbands[1].dims),
                 };
                 engines.push(if path == Path::F32 {
-                    warp_w9x7(&spec)
+                    warp_w9x7(&spec)?
                 } else {
-                    warp_w5x3_prec(&spec, prec)
+                    warp_w5x3_prec(&spec, prec)?
                 });
                 level_rows.push(spec.node.h.max(0) as u32);
             }

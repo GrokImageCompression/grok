@@ -542,7 +542,7 @@ pub extern "C" fn mercury_bench_dwt(
     let mut best = f64::MAX;
     for _ in 0..iters {
         // fresh engines per run: they are single-pass state machines
-        let mut engines: Vec<Synthesis> = specs
+        let engines: Result<Vec<Synthesis>, _> = specs
             .iter()
             .map(|s| match kind {
                 0 => warp_w9x7(s),
@@ -550,6 +550,9 @@ pub extern "C" fn mercury_bench_dwt(
                 _ => warp_w5x3_prec(s, SamplePrec::I32),
             })
             .collect();
+        let Ok(mut engines) = engines else {
+            return -1.0;
+        };
         let row_bytes: Vec<usize> = engines.iter().map(|e| e.hem_row_bytes()).collect();
         let mut sources: Vec<BenchSource> = (0..levels as usize)
             .map(|l| BenchSource {

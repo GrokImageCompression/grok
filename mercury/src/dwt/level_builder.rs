@@ -5,6 +5,7 @@
 
 use super::synthesis::{SamplePrec, StepSpec, Synthesis, SynthesisParams};
 use super::{ALIGN_SAMPLES16, ALIGN_SAMPLES32, KERNEL_W5X3, KERNEL_W9X7};
+use crate::decode::DecodeError;
 
 /// A band's position and size (JPEG 2000 canvas coordinates, `pos + size`).
 #[derive(Clone, Copy, Debug)]
@@ -27,13 +28,17 @@ pub struct LevelSpec {
 
 /// Compute `SynthesisParams` for a level with both transforms present
 /// (`vert_xform_exists && hor_xform_exists`).
+///
+/// Band geometry comes from the codestream, so a corrupt one can break the
+/// band-splitting relations this relies on. Those are rejected as errors
+/// rather than asserted, so the host gets a decode failure and falls back.
 pub fn draft_params(
     spec: &LevelSpec,
     sample_prec: SamplePrec,
     reversible: bool,
     num_steps: i32,
     symmetric_extension: bool,
-) -> SynthesisParams {
+) -> Result<SynthesisParams, DecodeError> {
     let node = &spec.node;
     let y_min_out = node.y0;
     let y_max_out = node.y0 + node.h - 1;
@@ -49,7 +54,7 @@ pub fn draft_params(
         p.empty = true;
         p.unit_height = y_min_out == y_max_out;
         p.unit_width = x_min_out == x_max_out;
-        return p;
+        return Ok(p);
     }
 
     // --- vertical geometry ---
@@ -62,13 +67,13 @@ pub fn draft_params(
     y_max_in[1] = ((spec.lh.y0 + spec.lh.h - 1) << 1) + 1;
     if spec.lh.h <= 0 {
         unit_height = true;
-        assert_eq!(y_min_in[0], y_max_in[0]);
+        require_single_line(y_min_in[0], y_max_in[0], "lh", "height", "ll")?;
         y_min_in[1] = y_min_in[0] + 1;
         y_max_in[1] = y_min_in[1] - 2;
     }
     if spec.ll.h <= 0 {
         unit_height = true;
-        assert_eq!(y_min_in[1], y_max_in[1]);
+        require_single_line(y_min_in[1], y_max_in[1], "ll", "height", "lh")?;
         y_min_in[0] = y_min_in[1] + 1;
         y_max_in[0] = y_min_in[0] - 2;
     }
@@ -82,13 +87,13 @@ pub fn draft_params(
     ];
     if spec.hl.w <= 0 {
         unit_width = true;
-        assert_eq!(min_in[0], max_in[0]);
+        require_single_line(min_in[0], max_in[0], "hl", "width", "ll")?;
         min_in[1] = min_in[0] + 1;
         max_in[1] = min_in[1] - 2;
     }
     if spec.ll.w <= 0 {
         unit_width = true;
-        assert_eq!(min_in[1], max_in[1]);
+        require_single_line(min_in[1], max_in[1], "ll", "width", "hl")?;
         min_in[0] = min_in[1] + 1;
         max_in[0] = min_in[0] - 2;
     }
@@ -124,13 +129,15 @@ pub fn draft_params(
         (phase_off_in[0] + phase_width_in[0]) - (request_offset[0] + request_width[0]),
         (phase_off_in[1] + phase_width_in[1]) - (request_offset[1] + request_width[1]),
     ];
-    assert!(
-        left_fill
-            .iter()
-            .chain(right_fill.iter())
-            .all(|&f| (0..256).contains(&f)),
-        "fill out of range: {left_fill:?} {right_fill:?}"
-    );
+    if !left_fill
+        .iter()
+        .chain(right_fill.iter())
+        .all(|&f| (0..256).contains(&f))
+    {
+        return Err(DecodeError::Logic(format!(
+            "level fill out of range: left {left_fill:?} right {right_fill:?}"
+        )));
+    }
 
     let phase_off_out = [
         ((x_min_out + 1) >> 1) - ((x_min_buf + 1) >> 1),
@@ -141,7 +148,7 @@ pub fn draft_params(
         1 + ((x_max_out - 1) >> 1) - (x_min_out >> 1),
     ];
 
-    SynthesisParams {
+    Ok(SynthesisParams {
         y_min_out,
         y_max_out,
         x_min_out,
@@ -170,7 +177,25 @@ pub fn draft_params(
         unit_width,
         empty: false,
         sample_prec,
+    })
+}
+
+/// A subband with no extent along one axis means the level is one sample across
+/// it, so the opposite subband has to be a single line. `empty` and `other` name
+/// the two subbands for the error message.
+fn require_single_line(
+    min: i32,
+    max: i32,
+    empty: &str,
+    axis: &str,
+    other: &str,
+) -> Result<(), DecodeError> {
+    if min == max {
+        return Ok(());
     }
+    Err(DecodeError::Logic(format!(
+        "{empty} subband has no {axis} but {other} spans {min}..{max}"
+    )))
 }
 
 fn bare_params(sample_prec: SamplePrec, reversible: bool) -> SynthesisParams {
@@ -237,10 +262,10 @@ pub fn w5x3_draft() -> Vec<StepSpec> {
 
 /// Build one W5X3 reversible engine at the given sample precision (I16 when
 /// every band's coefficients fit 15 bits + sign; I32 for higher precision).
-pub fn warp_w5x3_prec(spec: &LevelSpec, prec: SamplePrec) -> Synthesis {
-    let params = draft_params(spec, prec, true, 2, true);
+pub fn warp_w5x3_prec(spec: &LevelSpec, prec: SamplePrec) -> Result<Synthesis, DecodeError> {
+    let params = draft_params(spec, prec, true, 2, true)?;
     let steps = w5x3_draft();
-    Synthesis::warp(params, &steps, &steps)
+    Ok(Synthesis::warp(params, &steps, &steps))
 }
 
 /// W9X7 irreversible lifting-step table: four float steps, no downshift;
@@ -259,10 +284,10 @@ pub fn w9x7_draft() -> Vec<StepSpec> {
 }
 
 /// Build one W9X7 irreversible engine (f32 samples in i32 lines).
-pub fn warp_w9x7(spec: &LevelSpec) -> Synthesis {
-    let params = draft_params(spec, SamplePrec::I32, false, 4, true);
+pub fn warp_w9x7(spec: &LevelSpec) -> Result<Synthesis, DecodeError> {
+    let params = draft_params(spec, SamplePrec::I32, false, 4, true)?;
     let steps = w9x7_draft();
-    Synthesis::warp(params, &steps, &steps)
+    Ok(Synthesis::warp(params, &steps, &steps))
 }
 
 /// W9X7 `low_scale`/`high_scale` (1/DC gain of the derived low analysis
@@ -348,4 +373,67 @@ pub fn w9x7_gains() -> (f32, f32) {
         high_gain += if signed_n & 1 != 0 { -t } else { t };
     }
     (1.0 / low_gain, 1.0 / high_gain)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bd(w: i32, h: i32) -> BandDims {
+        BandDims { x0: 0, y0: 0, w, h }
+    }
+
+    fn spec(node_h: i32, ll_h: i32, lh_h: i32) -> LevelSpec {
+        LevelSpec {
+            node: bd(4, node_h),
+            ll: bd(2, ll_h),
+            hl: bd(2, ll_h),
+            lh: bd(2, lh_h),
+        }
+    }
+
+    fn draft(spec: &LevelSpec) -> Result<SynthesisParams, DecodeError> {
+        draft_params(spec, SamplePrec::I32, true, 2, true)
+    }
+
+    /// `Result::expect_err` needs `Debug` on the success type, which
+    /// `SynthesisParams` does not derive.
+    fn reject_reason(spec: &LevelSpec) -> String {
+        match draft(spec) {
+            Ok(_) => panic!("inconsistent geometry must be rejected"),
+            Err(DecodeError::Logic(msg)) => msg,
+        }
+    }
+
+    #[test]
+    fn accepts_a_normal_level() {
+        assert!(draft(&spec(4, 2, 2)).is_ok());
+    }
+
+    #[test]
+    fn accepts_a_single_row_level() {
+        // node one row tall: lh is legitimately empty and ll is a single line
+        let params = draft(&spec(1, 1, 0)).expect("single-row level must be accepted");
+        assert!(params.unit_height);
+    }
+
+    #[test]
+    fn rejects_an_empty_subband_beside_a_tall_one() {
+        // the v4dwt_interleave_h.gsr105.j2k geometry: lh has no height while ll
+        // spans 100 rows, which used to trip an assert and panic
+        let msg = reject_reason(&spec(100, 100, 0));
+        assert!(msg.contains("lh subband has no height"), "{msg}");
+    }
+
+    #[test]
+    fn rejects_an_empty_subband_beside_a_wide_one() {
+        let wide = LevelSpec {
+            node: bd(100, 4),
+            ll: bd(100, 2),
+            hl: bd(0, 2),
+            lh: bd(100, 2),
+        };
+        let msg = reject_reason(&wide);
+        assert!(msg.contains("hl subband has no width"), "{msg}");
+    }
 }
