@@ -210,6 +210,10 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
   if(headerError_)
     return false;
 
+  // the coder pool is sized from TFSingleton::num_threads() below, so it has to see
+  // this codec's own thread count and not the global pool's
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+
   if(!headerRead_)
   {
     headerRead_ = true;

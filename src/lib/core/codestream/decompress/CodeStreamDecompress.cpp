@@ -154,8 +154,14 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   ioBandUserData_ = core->io_band_user_data;
 
   // guard on null: never replace an executor a decode may already be running on
-  if(parameters->num_threads == 1 && !localExecutor_)
-    localExecutor_ = std::make_unique<tf::Executor>(0);
+  if(parameters->num_threads && !localExecutor_)
+  {
+    localNumThreads_ = parameters->num_threads;
+    localExecutor_ = TFSingleton::makeLocalExecutor(localNumThreads_);
+    tileMarkerParsers_.resize(localNumThreads_);
+    std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
+                  []() { return std::make_unique<MarkerParser>(); });
+  }
 
   // Initialize compressed chunk cache for LRU + network fetches
   if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())
@@ -182,9 +188,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   auto pinnedExec = TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
-  std::optional<TFSingleton::ScopedExecutor> scopedExec;
-  if(localExecutor_)
-    scopedExec.emplace(localExecutor_.get(), 1);
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
 
   current_plugin_tile = tile;
 
@@ -554,7 +558,10 @@ bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
   }
 
   // start decompress worker
-  decompressWorker_ = std::thread([this, pendingTiles]() { decompressTLM(pendingTiles); });
+  decompressWorker_ = std::thread([this, pendingTiles]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+    decompressTLM(pendingTiles);
+  });
   return true;
 }
 
@@ -591,7 +598,10 @@ bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pending
   }
 
   // start decompress worker
-  decompressWorker_ = std::thread([this, pendingTiles]() { decompressSequential(pendingTiles); });
+  decompressWorker_ = std::thread([this, pendingTiles]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+    decompressSequential(pendingTiles);
+  });
   return true;
 }
 
@@ -943,9 +953,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
   auto pinnedExec = TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
-  std::optional<TFSingleton::ScopedExecutor> scopedExec;
-  if(localExecutor_)
-    scopedExec.emplace(localExecutor_.get(), 1);
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
 
   multiTileComposite_->postReadHeader(&cp_);
 
@@ -1724,6 +1732,7 @@ void CodeStreamDecompress::startDecompressConsumer(uint16_t maxInFlight)
   maxDecompressInFlight_ = maxInFlight;
   decompressQueue_ = std::make_unique<ConcurrentQueue<std::function<void()>>>();
   decompressConsumer_ = std::thread([this]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
     std::function<void()> task;
     while(decompressQueue_->pop(task))
     {

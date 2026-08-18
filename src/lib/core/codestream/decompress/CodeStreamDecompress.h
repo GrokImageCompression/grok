@@ -609,6 +609,11 @@ private:
   std::unique_ptr<tf::Executor> localExecutor_;
 
   /**
+   * @brief Worker count of localExecutor_, reported to TFSingleton while it is active.
+   */
+  size_t localNumThreads_ = 1;
+
+  /**
    * @brief global HT flag
    *
    */

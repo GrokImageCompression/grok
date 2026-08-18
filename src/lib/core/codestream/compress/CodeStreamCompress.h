@@ -317,6 +317,11 @@ private:
    * are independent and lock-free.  Null in multi-threaded mode.
    */
   std::unique_ptr<tf::Executor> localExecutor_;
+
+  /**
+   * @brief Worker count of localExecutor_, reported to TFSingleton while it is active.
+   */
+  size_t localNumThreads_ = 1;
 };
 
 } // namespace grk
