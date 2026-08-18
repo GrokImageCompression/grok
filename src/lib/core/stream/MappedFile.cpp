@@ -240,42 +240,44 @@ IStream* createMappedFileReadStream(grk_stream_params* stream_param)
     grklog.error("Unable to open memory mapped file %s", fname);
     return nullptr;
   }
+  MemStream* memStream = nullptr;
+  void* mapped_view = nullptr;
+  BufferedStream* stream = nullptr;
+  GRK_CODEC_FORMAT fmt = GRK_CODEC_UNK;
   size_t len = (size_t)size_proc(fd);
+
   if(len < GRK_JPEG_2000_NUM_IDENTIFIER_BYTES)
   {
     grklog.error("File length %lu too short.", len);
-    return nullptr;
+    goto cleanup;
   }
   if(stream_param->initial_offset > len)
   {
     grklog.error("File offset %lu must be less than file length %lu.", stream_param->initial_offset,
                  len);
-    return nullptr;
+    goto cleanup;
   }
 
-  auto memStream = new MemStream();
+  memStream = new MemStream();
   memStream->fd_ = fd;
-  auto mapped_view = grk_map(fd, len, true);
+  mapped_view = grk_map(fd, len, true);
   if(!mapped_view)
   {
     grklog.error("Unable to map memory mapped file %s", fname);
-    mem_map_free(memStream);
-    return nullptr;
+    goto cleanup;
   }
   memStream->buf_ = (uint8_t*)mapped_view + stream_param->initial_offset;
   memStream->initialOffset_ = stream_param->initial_offset;
   memStream->len_ = len - stream_param->initial_offset;
 
-  GRK_CODEC_FORMAT fmt;
   if(!detectFormat(memStream->buf_, &fmt))
   {
     grklog.error("Unable to detect codec format.");
-    mem_map_free(memStream);
-    return nullptr;
+    goto cleanup;
   }
 
   // now treat mapped file like any other memory stream
-  auto stream = new BufferedStream(memStream->buf_, 0, memStream->len_, true);
+  stream = new BufferedStream(memStream->buf_, 0, memStream->len_, true);
   stream->setFormat(fmt);
   stream->setUserData(memStream, (grk_stream_free_user_data_fn)mem_map_free, memStream->len_);
 #ifndef _WIN32
@@ -284,6 +286,14 @@ IStream* createMappedFileReadStream(grk_stream_params* stream_param)
   memStreamSetup(stream, true);
 
   return stream;
+
+cleanup:
+  // the MemStream owns fd once it exists, otherwise fd is still ours to close
+  if(memStream)
+    mem_map_free(memStream);
+  else
+    close_fd(fd);
+  return nullptr;
 }
 
 } // namespace grk
