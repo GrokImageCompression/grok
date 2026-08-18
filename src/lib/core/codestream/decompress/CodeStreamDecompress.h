@@ -328,6 +328,13 @@ private:
   bool activateScratch(bool singleTile, GrkImage* scratch);
 
   /**
+   * @brief Allocates the scratch composite/strip buffer on first use
+   *
+   * @return true on success, or when this configuration needs no buffer
+   */
+  bool ensureScratchData(void);
+
+  /**
    * @brief Creates a Post Task object
    *
    * @param tileProcessor
@@ -434,6 +441,17 @@ private:
    */
   grk_io_band_callback ioBandCallback_ = nullptr;
   void* ioBandUserData_ = nullptr;
+
+  // deferred allocation of the scratch composite/strip buffer, set up by
+  // activateScratch and carried out by ensureScratchData
+  std::mutex scratchDataMutex_;
+  bool scratchDataPending_ = false;
+  // read outside scratchDataMutex_ by the band writer, which needs to know
+  // whether the strip buffer exists yet
+  std::atomic<bool> scratchDataAllocated_{false};
+  // per-component height of the first tile row, applied once the strip buffer
+  // exists, since the buffer itself is sized for the tallest row
+  std::vector<uint32_t> scratchBandRowHeights_;
 
   // band ordering for incremental writes
   std::mutex bandOrderMutex_;

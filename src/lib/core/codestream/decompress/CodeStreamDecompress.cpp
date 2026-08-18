@@ -260,8 +260,16 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   if(mercuryFastPath(*this))
     return success_;
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
+  // band writing is one shot: tile delivery is latched and the caller's sink has
+  // already consumed those rows, so reusing a tracker would deliver no bands
+  if(ioBandCallback_ && tileCompletion_)
+  {
+    grklog.error("A band callback only works on the first full decompress of a codec, "
+                 "and not alongside an asynchronous region decode");
+    return false;
+  }
   // create TileCompletion for band callback if set after header read
-  if(ioBandCallback_ && !tileCompletion_)
+  if(ioBandCallback_)
   {
     // Use unreduced image bounds so that TileCompletion computes the same tile grid
     // (t_grid_width_ x t_grid_height_) as the codec.  Tile indices from
@@ -321,24 +329,35 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
             // after resolution reduction).
             if(band.yEnd > band.yBegin)
             {
-              // Composite all tiles in this row into the strip buffer
-              for(uint16_t col = 0; col < band.numCols; col++)
+              // no strip buffer means no tile decompressed, and quietly skipping a
+              // band would shift every later band in the output
+              if(!scratchDataAllocated_)
               {
-                uint16_t tileIndex =
-                    static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
-                auto cacheEntry = tileCache_->get(tileIndex);
-                if(!cacheEntry || !cacheEntry->processor())
-                  continue;
-                auto tileImage = cacheEntry->processor()->getImage();
-                if(tileImage)
-                {
-                  if(!scratchImage_->composite(tileImage))
-                    success_ = false;
-                }
-              }
-
-              if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+                if(success_)
+                  grklog.error("No tile data was decompressed for image row %u", nextBandTileY_);
                 success_ = false;
+              }
+              else
+              {
+                // Composite all tiles in this row into the strip buffer
+                for(uint16_t col = 0; col < band.numCols; col++)
+                {
+                  uint16_t tileIndex =
+                      static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                  auto cacheEntry = tileCache_->get(tileIndex);
+                  if(!cacheEntry || !cacheEntry->processor())
+                    continue;
+                  auto tileImage = cacheEntry->processor()->getImage();
+                  if(tileImage)
+                  {
+                    if(!scratchImage_->composite(tileImage))
+                      success_ = false;
+                  }
+                }
+
+                if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+                  success_ = false;
+              }
 
               // Release tile processors for this completed row
               for(uint16_t col = 0; col < band.numCols; col++)
@@ -1239,8 +1258,9 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
         fetcher->notifyThrottleRelease();
     };
 
-    if(!success_)
+    if(!success_ || !ensureScratchData())
     {
+      success_ = false;
       releaseThrottle();
       // Always mark tile as complete so row callbacks can fire and
       // backpressure unblocks, even when the decompress failed.
@@ -2414,6 +2434,9 @@ void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
 bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
+  scratchDataPending_ = false;
+  scratchDataAllocated_ = false;
+  scratchBandRowHeights_.clear();
 
   // Set int16 data_type on scratch components when all components are eligible
   // for 16-bit DWT. This ensures the composite buffer is allocated as int16,
@@ -2486,20 +2509,39 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
       }
       comp->h = maxH;
     }
-    if(!scratch->allocCompositeData())
-      return false;
-    // report the first tile-row height for the initial decode; the buffer stays
-    // sized for maxH so later (taller) rows still fit.
+    // comp->h stays at maxH so the deferred allocation sizes the buffer for the
+    // tallest row, and the first row height is applied once that buffer exists
+    scratchBandRowHeights_.resize(scratch->numcomps);
     for(uint16_t i = 0; i < scratch->numcomps; i++)
     {
       auto comp = scratch->comps + i;
       uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
-      comp->h = compY1 - comp->y0;
+      scratchBandRowHeights_[i] = compY1 - comp->y0;
     }
+    scratchDataPending_ = true;
     return true;
   }
 
-  return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
+  scratchDataPending_ = !cp_.codingParams_.dec_.skipAllocateComposite_;
+  return true;
+}
+
+// the canvas geometry comes straight from the SIZ header, so allocating up front
+// lets a tiny header claim gigabytes before any tile data is read
+bool CodeStreamDecompress::ensureScratchData(void)
+{
+  std::lock_guard<std::mutex> lock(scratchDataMutex_);
+  if(scratchDataAllocated_ || !scratchDataPending_)
+    return true;
+  if(!scratchImage_->allocCompositeData())
+    return false;
+  if(!scratchBandRowHeights_.empty())
+  {
+    for(uint16_t i = 0; i < scratchImage_->numcomps; i++)
+      scratchImage_->comps[i].h = scratchBandRowHeights_[i];
+  }
+  scratchDataAllocated_ = true;
+  return true;
 }
 
 ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
