@@ -687,6 +687,12 @@ private:
   template<typename RT>
   bool readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                             uint16_t tiPC);
+  /***
+   * bands arrive on tile-row boundaries, so a partial strip carries over
+   * to the next band and only the final strip may be short
+   */
+  template<typename P>
+  bool writeBandStrips(grk::PlanarToInterleaved<P>* interleaver, P** planes, uint32_t rows);
   TIFF* tif_;
   uint32_t chroma_subsample_x;
   uint32_t chroma_subsample_y;
@@ -695,6 +701,9 @@ private:
   void* grkReclaimUserData_;
   grk::PlanarToInterleaved<T>* interleaver_;
   grk::PlanarToInterleaved<int16_t>* interleaver16_;
+  GrkIOBuf stripCarryBuf_;
+  uint32_t stripCarryRows_ = 0;
+  uint32_t stripRowsWritten_ = 0;
 };
 
 #ifdef GRK_CUSTOM_TIFF_IO
@@ -1111,6 +1120,39 @@ bool TIFFFormat<T>::writeImage()
 }
 
 template<typename T>
+template<typename P>
+bool TIFFFormat<T>::writeBandStrips(grk::PlanarToInterleaved<P>* interleaver, P** planes,
+                                    uint32_t rows)
+{
+  uint32_t rowsPerStrip = image_->rows_per_strip;
+  uint64_t rowBytes = image_->packed_row_bytes;
+  while(rows)
+  {
+    if(!stripCarryRows_)
+      stripCarryBuf_ = pool.get(rowBytes * rowsPerStrip);
+    uint32_t rowsTaken = (std::min)(rowsPerStrip - stripCarryRows_, rows);
+    interleaver->interleave(
+        planes, image_->decompress_num_comps, stripCarryBuf_.data + rowBytes * stripCarryRows_,
+        image_->decompress_width, image_->comps[0].stride, rowBytes, rowsTaken, 0);
+    stripCarryRows_ += rowsTaken;
+    stripRowsWritten_ += rowsTaken;
+    rows -= rowsTaken;
+    if(stripCarryRows_ < rowsPerStrip && stripRowsWritten_ != image_->decompress_height)
+      continue;
+    auto strip = stripCarryBuf_;
+    strip.pooled = true;
+    strip.offset = orchestrator.getOffset();
+    strip.len = rowBytes * stripCarryRows_;
+    strip.index = orchestrator.getNumPooledRequests();
+    stripCarryBuf_ = GrkIOBuf();
+    stripCarryRows_ = 0;
+    if(!writeStripCore(0, strip))
+      return false;
+  }
+  return true;
+}
+
+template<typename T>
 bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
@@ -1278,21 +1320,8 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
       if(!interleaver16_)
         goto cleanup;
     }
-    uint32_t h = yBegin;
-    while(h < yEnd)
-    {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
-      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      interleaver16_->interleave(planes16, numcomps, packedBuf.data, image_->decompress_width,
-                                 image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
-      packedBuf.pooled = true;
-      packedBuf.offset = orchestrator.getOffset();
-      packedBuf.len = image_->packed_row_bytes * stripRows;
-      packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!writeStripCore(0, packedBuf))
-        goto cleanup;
-      h += stripRows;
-    }
+    if(!writeBandStrips(interleaver16_, planes16, yEnd - yBegin))
+      goto cleanup;
   }
   else
   {
@@ -1306,21 +1335,8 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
       if(!interleaver_)
         goto cleanup;
     }
-    uint32_t h = yBegin;
-    while(h < yEnd)
-    {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
-      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      interleaver_->interleave(planes, numcomps, packedBuf.data, image_->decompress_width,
-                               image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
-      packedBuf.pooled = true;
-      packedBuf.offset = orchestrator.getOffset();
-      packedBuf.len = image_->packed_row_bytes * stripRows;
-      packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!writeStripCore(0, packedBuf))
-        goto cleanup;
-      h += stripRows;
-    }
+    if(!writeBandStrips(interleaver_, planes, yEnd - yBegin))
+      goto cleanup;
   }
   success = true;
 cleanup:
@@ -1345,6 +1361,13 @@ bool TIFFFormat<T>::writeFinish(void)
   {
     assert(!tif_);
     return true;
+  }
+  // an aborted decode can leave a partial strip unwritten
+  if(stripCarryRows_)
+  {
+    pool.put(stripCarryBuf_);
+    stripCarryBuf_ = GrkIOBuf();
+    stripCarryRows_ = 0;
   }
   // save EXIF data before closing the primary TIFF handle
   const uint8_t* exifBuf = nullptr;
