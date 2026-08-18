@@ -1,0 +1,55 @@
+name: Mercury Sweep
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+  DATA_ROOT: ${{ github.workspace }}/data
+  DATA_BRANCH: master
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y libpsl-dev
+        rustup toolchain install stable --profile minimal || curl https://sh.rustup.rs -sSf | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        cmake -E make_directory ${{ github.workspace }}/build
+        git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
+
+    - name: configure cmake
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        cmake $GITHUB_WORKSPACE \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -DBUILD_SHARED_LIBS=ON \
+          -DBUILD_TESTING:BOOL=ON \
+          -DGRK_DATA_ROOT=$DATA_ROOT \
+          -DGRK_ENABLE_LIBCURL=OFF
+
+    - name: build
+      working-directory: ${{ github.workspace }}/build
+      run: cmake --build . --config $BUILD_TYPE -j$(nproc)
+
+    - name: assert mercury is in the build
+      # without rust the library builds without mercury and GRK_MERCURY=1
+      # silently decodes with classic, turning the sweep into classic vs classic
+      run: nm -D ${{ github.workspace }}/build/bin/libgrokj2k.so | grep -q mercury_warp_loom
+
+    - name: mercury a/b sweep
+      run: |
+        mkdir -p ${{ github.workspace }}/build/sweepwork
+        python3 tests/mercury_ab_sweep.py \
+          ${{ github.workspace }}/build/bin \
+          ${{ github.workspace }}/build/sweepwork \
+          ${{ env.DATA_ROOT }}/input/nonregression \
+          ${{ env.DATA_ROOT }}/input/conformance
