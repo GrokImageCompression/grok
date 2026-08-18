@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include "grk_exceptions.h"
+#include "Logger.h"
+
 namespace grk
 {
 
@@ -26,6 +29,18 @@ struct TilePartInfo
   uint8_t tilePart_ = 0;
   uint64_t remainingTilePartBytes_ = 0;
 };
+
+// parallel tile-part parsing relies on TNsot being right, so every path that reads
+// an SOT has to reject TPsot >= TNsot, even one that only skips the tile part
+inline void validateTilePartIndex(uint16_t tileIndex, uint8_t tilePart, uint8_t numTileParts)
+{
+  if(numTileParts && tilePart >= numTileParts)
+  {
+    grklog.error("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
+                 tileIndex, tilePart, numTileParts);
+    throw CorruptSOTMarkerException();
+  }
+}
 
 class Mct;
 class CodecScheduler;

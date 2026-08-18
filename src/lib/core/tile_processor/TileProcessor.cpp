@@ -590,12 +590,7 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
   uint8_t numTileParts;
   grk_read(&headerData, &numTileParts);
 
-  if(numTileParts && (tilePartInfo.tilePart_ >= numTileParts))
-  {
-    grklog.error("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
-                 tileIndex_, tilePartInfo.tilePart_, numTileParts);
-    throw CorruptSOTMarkerException();
-  }
+  validateTilePartIndex(tileIndex_, tilePartInfo.tilePart_, numTileParts);
 
   startPos_ = stream->tell() - sotMarkerSegmentLen;
   auto tcp = getTCP();
