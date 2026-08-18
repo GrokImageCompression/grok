@@ -589,7 +589,6 @@ namespace HWY_NAMESPACE
     {
       uint32_t remaining = resWidth - j;
       const auto m = hn::FirstN(df, remaining);
-      const auto mi = hn::FirstN(di, remaining);
 
       {
         auto bi = scratchMem + parity * L;
@@ -617,7 +616,7 @@ namespace HWY_NAMESPACE
         for(uint32_t k = 0; k < resHeight; ++k)
         {
           auto v0 = NearestInt(Load(df, scratchMem + k * L));
-          hn::BlendedStore(Clamp(v0 + vShift, vmin, vmax), mi, di, destI);
+          hn::StoreN(Clamp(v0 + vShift, vmin, vmax), di, destI, remaining);
           destI += strideDest;
         }
       }
@@ -626,7 +625,7 @@ namespace HWY_NAMESPACE
         auto destPtr = dest;
         for(uint32_t k = 0; k < resHeight; ++k)
         {
-          hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destPtr);
+          hn::StoreN(Load(df, scratchMem + k * L), df, destPtr, remaining);
           destPtr += strideDest;
         }
       }
@@ -781,7 +780,6 @@ namespace HWY_NAMESPACE
     {
       uint32_t remaining = resWidth - j;
       const auto m = hn::FirstN(df, remaining);
-      const auto mi = hn::FirstN(di, remaining);
 
       {
         auto bi = scratchMem + parity * L;
@@ -810,7 +808,7 @@ namespace HWY_NAMESPACE
         {
           auto v0 = NearestInt(Load(df, scratchMem + k * L));
           auto destRow = destI + (k - outputStart) * strideDest;
-          hn::BlendedStore(Clamp(v0 + vShift, vmin, vmax), mi, di, destRow);
+          hn::StoreN(Clamp(v0 + vShift, vmin, vmax), di, destRow, remaining);
         }
       }
       else
@@ -819,7 +817,7 @@ namespace HWY_NAMESPACE
         for(uint32_t k = outputStart; k < outputStart + outputCount; ++k)
         {
           auto destRow = destPtr + (k - outputStart) * strideDest;
-          hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destRow);
+          hn::StoreN(Load(df, scratchMem + k * L), df, destRow, remaining);
         }
       }
     }
