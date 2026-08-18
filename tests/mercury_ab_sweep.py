@@ -64,7 +64,7 @@ def run_decode(bin_dir, in_file, out_file, mercury):
 
 
 def sweep_one(bin_dir, work_dir, in_file):
-    """Returns (status, detail). status: ok/bail/skip/classic-rejects/FAIL."""
+    """Returns (status, detail). status: ok/bail/skip/classic-rejects/unloadable/FAIL."""
     parsed = parse_codestream(in_file)
     if not parsed:
         return "skip", "unparseable header"
@@ -94,17 +94,28 @@ def sweep_one(bin_dir, work_dir, in_file):
                 return "FAIL", "reversible outputs are not bit-exact"
             return ("bail", "") if note == "bail" else ("ok", "")
 
+        if filecmp.cmp(classic_out, mercury_out, shallow=False):
+            return ("bail", "") if note == "bail" else ("ok", "")
+
         # conformance mode (no -d): peak/MSE tolerances gate the comparison
         peaks = ":".join([str(IRREVERSIBLE_PEAK_TOLERANCE)] * numcomps)
         mses = ":".join([str(IRREVERSIBLE_PEAK_TOLERANCE)] * numcomps)
-        r = subprocess.run(
-            [os.path.join(bin_dir, "compare_images"), "-b", classic_out, "-t", mercury_out,
-             "-n", str(numcomps), "-p", peaks, "-m", mses],
-            capture_output=True,
-            text=True,
-            timeout=DECODE_TIMEOUT,
-        )
-        if r.returncode != 0:
+
+        def compare(base_file, test_file):
+            r = subprocess.run(
+                [os.path.join(bin_dir, "compare_images"), "-b", base_file, "-t", test_file,
+                 "-n", str(numcomps), "-p", peaks, "-m", mses],
+                capture_output=True,
+                text=True,
+                timeout=DECODE_TIMEOUT,
+            )
+            return r.returncode
+
+        if compare(classic_out, mercury_out) != 0:
+            # some classic outputs are tifs compare_images cannot read at all,
+            # so blame the harness only when the file fails against itself
+            if compare(classic_out, classic_out) != 0:
+                return "unloadable", "compare_images cannot load classic output"
             return "FAIL", f"differs beyond peak tolerance {IRREVERSIBLE_PEAK_TOLERANCE}"
         return ("bail", "") if note == "bail" else ("ok", "")
     finally:
@@ -128,7 +139,7 @@ def main():
         print("no corpus files found")
         return 2
 
-    counts = {"ok": 0, "bail": 0, "skip": 0, "classic-rejects": 0, "FAIL": 0}
+    counts = {"ok": 0, "bail": 0, "skip": 0, "classic-rejects": 0, "unloadable": 0, "FAIL": 0}
     failures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
         futures = {pool.submit(sweep_one, bin_dir, work_dir, f): f for f in files}
@@ -140,7 +151,7 @@ def main():
 
     print(f"mercury A/B sweep: {counts['ok']} compared ok, {counts['bail']} bailed to classic, "
           f"{counts['skip']} skipped, {counts['classic-rejects']} rejected by classic, "
-          f"{counts['FAIL']} failed, of {len(files)} files")
+          f"{counts['unloadable']} unloadable outputs, {counts['FAIL']} failed, of {len(files)} files")
     for f in sorted(failures):
         print("  FAIL", f)
     return 1 if counts["FAIL"] else 0
