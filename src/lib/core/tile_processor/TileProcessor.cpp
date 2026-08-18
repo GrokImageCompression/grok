@@ -806,8 +806,7 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 
       // sanitize tilePartInfo.remainingTilePartBytes_
       tpi.remainingTilePartBytes_ = bytesLeftInStream <= UINT_MAX ? (uint32_t)bytesLeftInStream : 0;
-      std::atomic_ref<bool> ref(truncated_);
-      ref = true;
+      truncated_ = true;
     }
     // now cache the packets
     uint8_t* buff = nullptr;

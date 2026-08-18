@@ -48,6 +48,13 @@ target_include_directories(grk_lru_cache_test PRIVATE
 target_link_libraries(grk_lru_cache_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_lru_cache_test COMMAND grk_lru_cache_test)
 
+add_executable(grk_concurrency_test grk_concurrency_test.cpp GrkConcurrencyTest.cpp)
+target_include_directories(grk_concurrency_test PRIVATE
+  ${CMAKE_BINARY_DIR}/src/lib/core
+)
+target_link_libraries(grk_concurrency_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_concurrency_test COMMAND grk_concurrency_test)
+
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 

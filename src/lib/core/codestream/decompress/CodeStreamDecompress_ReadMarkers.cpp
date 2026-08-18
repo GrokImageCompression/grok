@@ -385,9 +385,9 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
 
   auto cached = tileCache_->get(tileIndex);
   // Skip tiles that are already decompressed (best-effort or normal)
-  if(cached && cached->processor &&
-     (cached->processor->isBestEffortDecompressed() ||
-      (cached->processor->getImage() && !cached->dirty_)))
+  if(cached && cached->processor() &&
+     (cached->processor()->isBestEffortDecompressed() ||
+      (cached->processor()->getImage() && !cached->dirty())))
   {
     currTileIndex_ = -1;
     return currTilePartInfo_.tilePartLength_

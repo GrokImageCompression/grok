@@ -347,7 +347,7 @@ void TLMMarker::seekNextSlated(TileWindow* tilesToDecompress, TileCache* tileCac
       if(tilesToDecompress->isSlated(tilePart->tileIndex_))
       {
         auto cacheEntry = tileCache->get(tilePart->tileIndex_);
-        if(!cacheEntry || !cacheEntry->processor->allSOTMarkersParsed())
+        if(!cacheEntry || !cacheEntry->processor()->allSOTMarkersParsed())
           break;
       }
 

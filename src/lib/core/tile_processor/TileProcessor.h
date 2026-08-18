@@ -19,6 +19,7 @@
 
 #include <mutex>
 #include <memory>
+#include <atomic>
 
 #include "PacketTracker.h"
 #include "ITileProcessor.h"
@@ -475,14 +476,14 @@ private:
   TilePartInfo tilePartInfo_;
   uint64_t startPos_ = 0;
 
-  /** number of SOT markers parsed */
-  uint8_t numSOTsParsed_ = 0;
+  /** number of SOT markers parsed. atomic: other threads read it mid-parse */
+  std::atomic<uint8_t> numSOTsParsed_ = 0;
 
   /**
    * @brief true if one of this tile's tile parts is truncated
-   *
+   * atomic: written by T2 parse tasks while other threads read it
    */
-  bool truncated_ = false;
+  std::atomic<bool> truncated_ = false;
 
   /**
    * @brief true if selective fetch mode is active (partial tile-part data)
@@ -493,7 +494,7 @@ private:
    * @brief true if tile was decompressed on a best-effort basis
    * (may have been truncated or errored). Not re-decompressed on codec reuse.
    */
-  bool bestEffortDecompressed_ = false;
+  std::atomic<bool> bestEffortDecompressed_ = false;
   bool scheduledForDecompression_ = false;
 
   /**

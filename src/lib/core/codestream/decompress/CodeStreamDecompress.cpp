@@ -328,9 +328,9 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
                 uint16_t tileIndex =
                     static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
                 auto cacheEntry = tileCache_->get(tileIndex);
-                if(!cacheEntry || !cacheEntry->processor)
+                if(!cacheEntry || !cacheEntry->processor())
                   continue;
-                auto tileImage = cacheEntry->processor->getImage();
+                auto tileImage = cacheEntry->processor()->getImage();
                 if(tileImage)
                 {
                   if(!scratchImage_->composite(tileImage))
@@ -393,9 +393,9 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
       auto cacheEntry = tileCache_->get(tileIndex);
       if(!cacheEntry)
         continue;
-      auto proc = cacheEntry->processor;
+      auto proc = cacheEntry->processor();
       if(proc->isBestEffortDecompressed() ||
-         (proc->getImage() && (!cacheEntry->dirty_ || proc->allSOTMarkersParsed())))
+         (proc->getImage() && (!cacheEntry->dirty() || proc->allSOTMarkersParsed())))
         tileCompletion_->complete(tileIndex);
     }
   }
@@ -417,8 +417,8 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     auto cacheEntry = tileCache_->get(index);
     if(!cacheEntry)
       return false;
-    auto proc = cacheEntry->processor;
-    return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty_);
+    auto proc = cacheEntry->processor();
+    return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty());
   });
   if(pendingTiles.empty())
     return true;
@@ -429,15 +429,15 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
   {
     auto cacheEntry = tileCache_->get(*it);
-    if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
-       cacheEntry->dirty_)
+    if(cacheEntry && cacheEntry->processor()->getImage() && !cacheEntry->processor()->getTile() &&
+       cacheEntry->dirty())
     {
       if(compressedChunkCache_ && compressedChunkCache_->contains(*it))
       {
         reDecompressTLM.insert(*it);
         it = pendingTiles.erase(it);
       }
-      else if(cacheEntry->processor->allSOTMarkersParsed())
+      else if(cacheEntry->processor()->allSOTMarkersParsed())
       {
         reDecompressSeek.insert(*it);
         it = pendingTiles.erase(it);
@@ -459,7 +459,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   for(auto& tileIndex : pendingTiles)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    if(!cacheEntry || !cacheEntry->processor->getImage() || !cacheEntry->processor->getTile())
+    if(!cacheEntry || !cacheEntry->processor()->getImage() || !cacheEntry->processor()->getTile())
     {
       doDifferential = false;
       break;
@@ -477,7 +477,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   for(auto tileIndex : reDecompressTLM)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    auto proc = cacheEntry->processor;
+    auto proc = cacheEntry->processor();
     auto cachedSeq = compressedChunkCache_->get(tileIndex);
     if(!cachedSeq || !proc->reinitForReDecompress())
       continue;
@@ -485,21 +485,21 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     auto decompressTask =
         genDecompressTileTLMTask(proc, cachedSeq, scratchImage_->getBounds(), generator);
     decompressTask();
-    cacheEntry->dirty_ = false;
+    cacheEntry->setDirty(false);
   }
 
   // Re-decompress LRU-evicted tiles by seeking to cached SOT offsets
   for(auto tileIndex : reDecompressSeek)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    auto proc = cacheEntry->processor;
+    auto proc = cacheEntry->processor();
     if(!proc->reinitForReDecompress())
       continue;
     if(!proc->decompressFromCachedTileParts())
       continue;
     if(!schedule(proc, true))
       break;
-    cacheEntry->dirty_ = false;
+    cacheEntry->setDirty(false);
   }
 
   if(pendingTiles.empty())
@@ -512,7 +512,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     for(auto& tileIndex : pendingTiles)
     {
       auto cacheEntry = tileCache_->get(tileIndex);
-      auto tileProcessor = cacheEntry->processor;
+      auto tileProcessor = cacheEntry->processor();
       if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
         return false;
       if(!schedule(tileProcessor, true))
@@ -665,8 +665,12 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
   }
 
   // 2. push all pending tiles into the queue
-  for(const auto& value : pendingTiles)
-    batchTileQueueTLM_.push(value);
+  // row-completion callbacks can drain this queue before all tiles are pushed
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    for(const auto& value : pendingTiles)
+      batchTileQueueTLM_.push(value);
+  }
 
   // 3. schedule first  N rows
   uint16_t initialBatchCount =
@@ -792,13 +796,13 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
   for(auto tileIndex : pendingTiles)
   {
     auto cached = tileCache_->get(tileIndex);
-    if(cached && cached->processor && !cached->processor->scheduledForDecompression() &&
-       cached->processor->hasUnparsedTileParts())
+    if(cached && cached->processor() && !cached->processor()->scheduledForDecompression() &&
+       cached->processor()->hasUnparsedTileParts())
     {
-      cached->processor->setTruncated();
-      cached->processor->prepareForDecompression();
-      if(!cached->processor->hasError())
-        schedule(cached->processor, true);
+      cached->processor()->setTruncated();
+      cached->processor()->prepareForDecompression();
+      if(!cached->processor()->hasError())
+        schedule(cached->processor(), true);
     }
   }
 
@@ -810,7 +814,7 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
     for(auto tileIndex : pendingTiles)
     {
       auto cached = tileCache_->get(tileIndex);
-      if(!cached || !cached->processor || cached->processor->hasUnparsedTileParts())
+      if(!cached || !cached->processor() || cached->processor()->hasUnparsedTileParts())
         tileCompletion_->complete(tileIndex);
     }
   }
@@ -976,8 +980,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
   // 2. simply return tile image if it already exists and is not dirty
   // i.e. no differential decompression
   auto cacheEntry = tileCache_->get(tileIndex);
-  if(cacheEntry && cacheEntry->processor && cacheEntry->processor->getImage() &&
-     !cacheEntry->dirty_)
+  if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage() &&
+     !cacheEntry->dirty())
     return true;
 
   // 3. schedule / execute tile decompression
@@ -997,9 +1001,9 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       new GrkImage(), RefCountedDeleter<GrkImage>());
 
   auto cacheEntry = tileCache_->get(tileIndex);
-  if(cacheEntry && cacheEntry->processor && cacheEntry->processor->getImage())
+  if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage())
   {
-    auto proc = cacheEntry->processor;
+    auto proc = cacheEntry->processor();
     if(proc->getNumProcessedPackets())
     {
       differentialUpdate(scratchImage_.get());
@@ -1051,7 +1055,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(!cp_.hasTLM())
   {
     bool invalidMarker = false;
-    auto tileProcessor = cacheEntry ? cacheEntry->processor : nullptr;
+    auto tileProcessor = cacheEntry ? cacheEntry->processor() : nullptr;
 
     if(tileProcessor && tileProcessor->allSOTMarkersParsed() &&
        tileProcessor->getNumProcessedPackets() > 0)
@@ -1114,7 +1118,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(fetchByTile(slated, headerImage_->getBounds(), generator))
     return true;
 
-  const auto tileProcessor = cacheEntry ? cacheEntry->processor : getTileProcessor(tileIndex);
+  const auto tileProcessor = cacheEntry ? cacheEntry->processor() : getTileProcessor(tileIndex);
   auto post = postSingleTile(tileProcessor);
   tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
   tilePartFetchFlat_->push_back(tileIndex, cp_.tlmMarkers_->getTileParts()[tileIndex]);
@@ -1488,7 +1492,7 @@ void CodeStreamDecompress::wait(uint16_t tile_index)
  *
  * **Swath-based (swath != nullptr, tileCompletion_ active):**
  * Returns as soon as the requested swath tiles are decompressed.
- * Tile data is available via entry->processor->getImage() for multi-tile
+ * Tile data is available via entry->processor()->getImage() for multi-tile
  * images (has_multiple_tiles=true), or in scratchImage_ for single-tile
  * images.  NOTE: postMulti_() does NOT run in this path, so
  * scratchImage_ data is raw (no postProcess).  Callers needing
@@ -1627,7 +1631,7 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       auto* entry = tileCache_->get(tidx);
       if(entry)
       {
-        tileImg = entry->processor->getImage();
+        tileImg = entry->processor()->getImage();
         // Single-tile path: image_ is not set; data is in scratchImage_
         // after the swath-based wait (tileCompletion early return).
         // If wait(nullptr) has run instead, scratchImage_ will be empty
@@ -2501,7 +2505,7 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 {
   auto cached = tileCache_->get(tileIndex);
-  auto tileProcessor = cached ? cached->processor : nullptr;
+  auto tileProcessor = cached ? cached->processor() : nullptr;
   if(!tileProcessor)
   {
     auto tcp = new TileCodingParams(*defaultTcp_);
@@ -2532,7 +2536,7 @@ GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
     wait(tile_index);
 
   auto entry = tileCache_->get(tile_index);
-  return entry ? entry->processor->getImage() : nullptr;
+  return entry ? entry->processor()->getImage() : nullptr;
 }
 GrkImage* CodeStreamDecompress::getImage()
 {

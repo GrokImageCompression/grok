@@ -130,8 +130,8 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* out)
       for(uint16_t i = 0; i < cp_.t_grid_height_ * cp_.t_grid_width_; ++i)
       {
         auto tp = this->tileCache_->get(i);
-        if(tp && tp->processor)
-          dumpTileHeader(tp->processor->getTCP(), getHeaderImage()->numcomps, out);
+        if(tp && tp->processor())
+          dumpTileHeader(tp->processor()->getTCP(), getHeaderImage()->numcomps, out);
       }
     }
   }

@@ -20,6 +20,8 @@
 #include <vector>
 #include <list>
 #include <algorithm>
+#include <mutex>
+#include <atomic>
 
 namespace grk
 {
@@ -46,16 +48,35 @@ namespace grk
  */
 struct TileCacheEntry
 {
-  explicit TileCacheEntry(ITileProcessor* p) : processor(p), dirty_(true) {}
+  explicit TileCacheEntry(ITileProcessor* p) : processor_(p), dirty_(true) {}
   TileCacheEntry() : TileCacheEntry(nullptr) {}
   ~TileCacheEntry()
   {
-    delete processor;
+    delete processor_.load();
   }
 
-  ITileProcessor* processor;
+  ITileProcessor* processor() const
+  {
+    return processor_.load(std::memory_order_acquire);
+  }
+  void setProcessor(ITileProcessor* processor)
+  {
+    processor_.store(processor, std::memory_order_release);
+  }
+  bool dirty() const
+  {
+    return dirty_.load(std::memory_order_acquire);
+  }
+  void setDirty(bool dirty)
+  {
+    dirty_.store(dirty, std::memory_order_release);
+  }
+
+private:
+  // atomic: entries are used outside the cache mutex by multiple threads
+  std::atomic<ITileProcessor*> processor_;
   /** True when the entry's decompressed image is stale or absent. */
-  bool dirty_;
+  std::atomic<bool> dirty_;
 };
 
 /**
@@ -160,43 +181,48 @@ public:
 
   void setTruncated(void)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     for(auto* entry : cache_)
     {
-      if(!entry || !entry->processor)
+      if(!entry || !entry->processor())
         continue;
-      entry->processor->setTruncated();
+      entry->processor()->setTruncated();
     }
   }
 
   void setDirty(bool dirty)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     for(auto* entry : cache_)
     {
       if(!entry)
         continue;
-      entry->dirty_ = dirty;
+      entry->setDirty(dirty);
     }
   }
 
   void setDirty(uint16_t tileIndex, bool dirty)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if(tileIndex >= cache_.size())
       return;
     if(cache_[tileIndex])
     {
-      cache_[tileIndex]->dirty_ = dirty;
+      cache_[tileIndex]->setDirty(dirty);
     }
   }
 
   bool isDirty(uint16_t tileIndex)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if(tileIndex >= cache_.size())
       return false;
-    return cache_[tileIndex] ? cache_[tileIndex]->dirty_ : false;
+    return cache_[tileIndex] ? cache_[tileIndex]->dirty() : false;
   }
 
   TileCacheEntry* put(uint16_t tile_index, ITileProcessor* processor)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if(tile_index >= cache_.size())
     {
       delete processor;
@@ -210,9 +236,9 @@ public:
     }
     else
     {
-      if(cache_[tile_index]->processor)
-        delete cache_[tile_index]->processor;
-      cache_[tile_index]->processor = processor;
+      if(cache_[tile_index]->processor())
+        delete cache_[tile_index]->processor();
+      cache_[tile_index]->setProcessor(processor);
     }
 
     // LRU: promote this tile and evict if over limit
@@ -224,20 +250,20 @@ public:
 
   TileCacheEntry* get(uint16_t tile_index)
   {
-    if(tile_index >= cache_.size())
-      return nullptr;
+    std::lock_guard<std::mutex> lock(mutex_);
 
     // LRU: promote on access
-    if(cache_[tile_index] && cache_[tile_index]->processor)
+    if(tile_index < cache_.size() && cache_[tile_index] && cache_[tile_index]->processor())
       promoteLRU(tile_index);
 
-    return cache_[tile_index];
+    return getEntry(tile_index);
   }
 
   void release(uint16_t tileIndex)
   {
-    if(cache_[tileIndex] && cache_[tileIndex]->processor)
-      cache_[tileIndex]->processor->release(strategy_);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(cache_[tileIndex] && cache_[tileIndex]->processor())
+      cache_[tileIndex]->processor()->release(strategy_);
   }
 
   /**
@@ -249,34 +275,37 @@ public:
    */
   void releaseForSwath(uint16_t tileIndex)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if(tileIndex >= cache_.size())
       return;
-    if(cache_[tileIndex] && cache_[tileIndex]->processor)
-      cache_[tileIndex]->processor->releaseForSwath();
+    if(cache_[tileIndex] && cache_[tileIndex]->processor())
+      cache_[tileIndex]->processor()->releaseForSwath();
   }
 
   void resetSOTParsing()
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     for(auto* entry : cache_)
     {
-      if(!entry || !entry->processor)
+      if(!entry || !entry->processor())
         continue;
       // Skip tiles that are already decompressed or have cached SOT info
-      if(entry->processor->isBestEffortDecompressed() || entry->processor->getImage())
+      if(entry->processor()->isBestEffortDecompressed() || entry->processor()->getImage())
         continue;
-      entry->processor->resetSOTParsing();
+      entry->processor()->resetSOTParsing();
     }
   }
 
   bool allSlatedSOTMarkersParsed(const std::set<uint16_t>& tilesSlatedForDecompression)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     return std::all_of(tilesSlatedForDecompression.begin(), tilesSlatedForDecompression.end(),
                        [this](uint16_t tileId) {
                          if(tileId >= cache_.size())
                            return false;
                          auto* entry = cache_[tileId];
-                         return entry && entry->processor &&
-                                entry->processor->allSOTMarkersParsed();
+                         return entry && entry->processor() &&
+                                entry->processor()->allSOTMarkersParsed();
                        });
   }
 
@@ -285,8 +314,9 @@ public:
     if(!state.single_tile)
       return false;
 
-    auto cached = get(state.tile_index);
-    if(!cached || !cached->processor)
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto cached = getEntry(state.tile_index);
+    if(!cached || !cached->processor())
       return false;
 
     uint16_t maxlayer = 0;
@@ -294,10 +324,10 @@ public:
     {
       maxlayer = std::max(maxlayer, state.layers_per_resolution[r]);
     }
-    if(maxlayer != cached->processor->getTCP()->layersToDecompress_)
+    if(maxlayer != cached->processor()->getTCP()->layersToDecompress_)
     {
-      cached->dirty_ = true;
-      cached->processor->getTCP()->layersToDecompress_ = maxlayer;
+      cached->setDirty(true);
+      cached->processor()->getTCP()->layersToDecompress_ = maxlayer;
     }
 
     return true;
@@ -305,14 +335,20 @@ public:
 
   grk_progression_state getProgressionState(uint16_t tileIndex)
   {
-    auto cached = get(tileIndex);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto cached = getEntry(tileIndex);
     if(!cached)
       return {};
 
-    return cached->processor->getProgressionState();
+    return cached->processor()->getProgressionState();
   }
 
 private:
+  TileCacheEntry* getEntry(uint16_t tile_index)
+  {
+    return tile_index < cache_.size() ? cache_[tile_index] : nullptr;
+  }
+
   /**
    * @brief Move a tile to the front of the LRU list (most recently used).
    */
@@ -342,13 +378,16 @@ private:
       uint16_t victim = lruList_.back();
       lruList_.pop_back();
 
-      if(victim < cache_.size() && cache_[victim] && cache_[victim]->processor)
+      if(victim < cache_.size() && cache_[victim] && cache_[victim]->processor())
       {
-        cache_[victim]->processor->release(GRK_TILE_CACHE_LRU);
+        cache_[victim]->processor()->release(GRK_TILE_CACHE_LRU);
       }
     }
   }
 
+  // guards cache_ and lruList_ against concurrent access from parser,
+  // decompress workers, and the caller thread
+  mutable std::mutex mutex_;
   std::vector<TileCacheEntry*> cache_; // Array of cache entries
   std::list<uint16_t> lruList_; // Front = MRU, back = LRU (tile indices with active data)
   uint32_t strategy_; // Cache strategy

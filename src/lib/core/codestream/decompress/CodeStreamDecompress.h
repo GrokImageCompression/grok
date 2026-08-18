@@ -22,6 +22,7 @@
 #include "CompressedChunkCache.h"
 #include "SelectiveFetchRanges.h"
 #include <map>
+#include <atomic>
 
 namespace grk
 {
@@ -658,7 +659,8 @@ private:
   std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
-  int32_t batchTileScheduledRows_ = 0; // Highest row index we've scheduled up to
+  // highest row index we've scheduled up to. atomic: several threads read and write it
+  std::atomic<int32_t> batchTileScheduledRows_ = 0;
 };
 
 } // namespace grk
