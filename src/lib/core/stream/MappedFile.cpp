@@ -270,6 +270,7 @@ IStream* createMappedFileReadStream(grk_stream_params* stream_param)
   if(!detectFormat(memStream->buf_, &fmt))
   {
     grklog.error("Unable to detect codec format.");
+    mem_map_free(memStream);
     return nullptr;
   }
 
