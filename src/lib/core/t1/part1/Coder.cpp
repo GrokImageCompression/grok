@@ -19,7 +19,6 @@
 #include "Coder.h"
 #include "t1_common.h"
 #include "BlockCoder.h"
-#include "SchedulerFactory.h"
 
 namespace grk::t1::part1
 {

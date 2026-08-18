@@ -28,6 +28,7 @@ struct TilePartInfo
 };
 
 class Mct;
+class CodecScheduler;
 
 /**
  * @struct ITileProcessor

@@ -67,11 +67,9 @@ struct ITileProcessorCompress;
 #include "mct.h"
 
 #include "TileProcessor.h"
-#include "SchedulerFactory.h"
 #include "T2Decompress.h"
 #include "plugin_bridge.h"
 #include "DecompressScheduler.h"
-#include "DecompressSchedulerExcalibur.h"
 
 namespace grk
 {
@@ -1270,12 +1268,8 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   if(!scheduler_)
   {
-    if(Scheduling::isExcalibur())
-      scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
-                                                    headerImage_->comps->prec, coderPool);
-    else
-      scheduler_ =
-          new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
+    scheduler_ =
+        new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
   }
   else
   {
@@ -1379,34 +1373,28 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
       auto tilec = tile_->comps_ + compno;
 
-      if(Scheduling::isExcalibur())
+      if(!tcp_->wholeTileDecompress_)
       {
-      }
-      else
-      {
-        if(!tcp_->wholeTileDecompress_)
+        try
         {
-          try
-          {
-            tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
-                                     truncated_);
-          }
-          catch([[maybe_unused]] const std::runtime_error& ex)
-          {
-            continue;
-          }
-          catch([[maybe_unused]] const std::bad_alloc& baex)
-          {
-            success_ = false;
-            return;
-          }
+          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
+                                   truncated_);
         }
-        if(!tilec->allocWindow())
+        catch([[maybe_unused]] const std::runtime_error& ex)
         {
-          grklog.error("Not enough memory for tile data");
+          continue;
+        }
+        catch([[maybe_unused]] const std::bad_alloc& baex)
+        {
           success_ = false;
           return;
         }
+      }
+      if(!tilec->allocWindow())
+      {
+        grklog.error("Not enough memory for tile data");
+        success_ = false;
+        return;
       }
     }
     if(!scheduler_->scheduleT1(this))

@@ -23,17 +23,14 @@
 #include "CodeblockCompress.h"
 #include "CodeblockDecompress.h"
 #include "ICoder.h"
-#include "IOpenable.h"
 
 namespace grk::t1
 {
 
-struct BlockExec : public exc::IOpenable
+struct BlockExec
 {
-  using IOpenable::open;
-
   BlockExec() = default;
-  virtual ~BlockExec() override = default;
+  virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
   uint8_t bandIndex = 0;
   uint8_t bandNumbps = 0;
@@ -71,22 +68,6 @@ struct DecompressBlockExec : public BlockExec
   {
     delete cachedCoder_;
   }
-  void setOpen(std::function<void()>& open)
-  {
-    open_ = open;
-  }
-  void open(void) override
-  {
-    if(open_)
-      open_();
-  }
-  void close(void) override
-  {
-    delete cachedCoder_;
-    cachedCoder_ = nullptr;
-    if(cblk)
-      cblk->release();
-  }
   bool open(ICoder* coder) override
   {
     auto activeCoder = cachedCoder_ ? cachedCoder_ : coder;
@@ -123,8 +104,6 @@ struct DecompressBlockExec : public BlockExec
   bool finalLayer_ = false;
 
 private:
-  std::function<void()> open_;
-
   // Delete copy constructor and assignment operator
   DecompressBlockExec(const DecompressBlockExec&) = delete;
   DecompressBlockExec& operator=(const DecompressBlockExec&) = delete;
@@ -133,9 +112,6 @@ struct CompressBlockExec : public BlockExec
 {
   CompressBlockExec() = default;
   ~CompressBlockExec() override = default;
-
-  void open(void) override {}
-  void close(void) override {}
 
   bool open(ICoder* coder) override
   {

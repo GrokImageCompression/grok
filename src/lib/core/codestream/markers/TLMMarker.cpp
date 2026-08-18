@@ -46,7 +46,6 @@ struct ITileProcessor;
 
 #include "ICoder.h"
 #include "CoderPool.h"
-#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TLMFile.h"

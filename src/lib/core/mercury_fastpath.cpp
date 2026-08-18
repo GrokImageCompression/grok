@@ -63,7 +63,6 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "BitIO.h"
-#include "SchedulerExcalibur.h"
 #include "TileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"

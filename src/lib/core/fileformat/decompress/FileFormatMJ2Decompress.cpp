@@ -51,7 +51,6 @@ struct ITileProcessor;
 #include "FileFormatJP2Family.h"
 #include "FileFormatMJ2.h"
 #include "FileFormatMJ2Decompress.h"
-#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
