@@ -5,7 +5,7 @@ Measured basis: mercury's streaming DWT is ~8x faster per core than the
 classic two-phase kernels on every filter, precision, and size
 (tests/grk_dwt_bench.cpp).
 
-## phase 0: make mercury trustworthy (done except oss-fuzz rust toolchain)
+## phase 0: make mercury trustworthy (done)
 
 - [x] A/B sweep test: decode the corpus classic vs GRK_MERCURY=1, bit-exact
       for reversible, small peak tolerance for irreversible
@@ -29,9 +29,9 @@ classic two-phase kernels on every filter, precision, and size
       geometry (now a decode error), mapped-stream and fd leaks on early
       init failures, and classic's eager canvas allocation (a 111-byte SIZ
       could commit 26 GB, allocation now waits for decoded tile data)
-  - [ ] oss-fuzz proper still fuzzes classic only: grok's oss-fuzz Dockerfile
-        (google/oss-fuzz repo) needs rust, and build_google_oss_fuzzers.sh
-        needs the mercury archive on the link line
+  - [x] oss-fuzz proper: rust added to grok's oss-fuzz Dockerfile (google/oss-fuzz
+        PR merged 2026-08-19), build_google_oss_fuzzers.sh links the mercury
+        archive when present
 - [x] TSAN soak of weft. premise confirmed: uninstrumented rust floods false
       positives (std's futex mutex/condvar edges are invisible to tsan), so
       rust needs nightly -Zsanitizer=thread with -Zbuild-std. recipe in the
@@ -54,7 +54,10 @@ classic two-phase kernels on every filter, precision, and size
 
 Each is a MFP_BAIL in mercury_fastpath.cpp. Rough order:
 
-1. buffer/callback stream input (add a memory-backed ReadAt)
+1. [x] buffer/callback stream input: memory-backed read_at, zero-copy for
+       buffer streams, one-time slurp for callback streams. non-zero
+       initial_offset stays on the stream branch (file offsets would not
+       match marker offsets). tested by grk_mercury_stream_input_test
 2. resolution reduction (stop the level chain early)
 3. layer limits (plan-stage packet filtering)
 4. palette / ICC / channel definition (apply grok's existing post-processing

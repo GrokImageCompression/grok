@@ -643,8 +643,10 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
 
     return nullptr;
   }
-  // buffer/callback streams leave the path unset and the mercury fast path bails
-  codecImpl->decompressor_->setInputFilePath(streamParams->file);
+  // a non-zero initial_offset shifts stream offsets away from file offsets,
+  // so leave the path unset and mercury reads via the stream instead
+  if(streamParams->initial_offset == 0)
+    codecImpl->decompressor_->setInputFilePath(streamParams->file);
   codecImpl->decompressor_->init(decompressParams);
 
   return codec;

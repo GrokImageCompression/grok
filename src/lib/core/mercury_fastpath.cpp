@@ -164,6 +164,22 @@ namespace
       ctx->filled = 0;
     }
   }
+
+  // read_at source over one contiguous span. read-only, so concurrent
+  // read_at calls need no lock.
+  struct MemReader
+  {
+    const uint8_t* base = nullptr;
+    uint64_t size = 0;
+  };
+  int32_t memReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
+  {
+    auto* self = static_cast<MemReader*>(ctx);
+    if(off > self->size || len > self->size - off)
+      return 0;
+    memcpy(buf, self->base + off, (size_t)len);
+    return 1;
+  }
 } // namespace
 
 #if defined(_WIN32)
@@ -306,8 +322,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     return false;
 
   const std::string& path = cs.inputFilePath_;
-  if(path.empty())
-    MFP_BAIL("no input file recorded");
 
   // Eligibility: full-resolution, full-image, all-layers, all-components
   // decode of a stream with no palette/ICC/channel-definition
@@ -473,21 +487,81 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mhdr.first_sot_off = cs.markerCache_->getTileStreamStart();
 
   uint8_t err[256] = {0};
+  MercuryPlan* plan = nullptr;
+  // these back the read_at source and must outlive the decode below, so they
+  // live at function scope. only one is used per call.
+  MemReader memReader;
+  std::vector<uint8_t> slurped;
 #if defined(_WIN32)
-  // POSIX fds don't reach mercury's fd entry; drive it through the read_at
-  // callback. The reader must outlive the decode below, so it lives here.
-  Win32PositionedReader reader;
-  if(!reader.open(path))
-    MFP_BAIL("open failed");
-  MercuryPlan* plan =
-      mercury_warp_loom(&mhdr, win32ReadAt, &reader, reader.size(), err, sizeof err);
-#else
-  int fd = open(path.c_str(), O_RDONLY);
-  if(fd < 0)
-    MFP_BAIL("open failed");
-  MercuryPlan* plan = mercury_warp_loom_fd(&mhdr, fd, err, sizeof err);
-  close(fd);
+  Win32PositionedReader win32reader;
 #endif
+  if(!path.empty())
+  {
+#if defined(_WIN32)
+    // POSIX fds don't reach mercury's fd entry, drive it through the read_at
+    // callback
+    if(!win32reader.open(path))
+      MFP_BAIL("open failed");
+    plan = mercury_warp_loom(&mhdr, win32ReadAt, &win32reader, win32reader.size(), err, sizeof err);
+#else
+    int fd = open(path.c_str(), O_RDONLY);
+    if(fd < 0)
+      MFP_BAIL("open failed");
+    plan = mercury_warp_loom_fd(&mhdr, fd, err, sizeof err);
+    close(fd);
+#endif
+  }
+  else
+  {
+    // no file path: mercury needs random access, so serve buffer or callback
+    // input from one contiguous span, and restore the stream cursor before
+    // returning so a classic fallback resumes where header parsing left it
+    IStream* stream = cs.getStream();
+    if(!stream)
+      MFP_BAIL("no input stream");
+    // a failed media seek marks the stream at end, which would break the
+    // classic fallback, so refuse unseekable streams before touching it
+    if(!stream->hasSeek())
+      MFP_BAIL("input stream not seekable");
+    uint64_t savedPos = stream->tell();
+    if(!stream->seek(0))
+      MFP_BAIL("input stream seek to start failed");
+    uint64_t len = stream->numBytesLeft();
+    bool ok = len > 0;
+    const char* streamFail = "input stream unreadable";
+    if(ok && stream->supportsZeroCopy())
+    {
+      // read_at aliases the app's buffer at offset 0, no extra memory.
+      memReader.base = stream->currPtr();
+      ok = memReader.base != nullptr;
+    }
+    else if(ok)
+    {
+      // slurp once so read_at has lock-free random access. len is
+      // app-declared and untrusted, so an oversized value falls back
+      try
+      {
+        slurped.resize(len);
+      }
+      catch(const std::exception&)
+      {
+        ok = false;
+        streamFail = "declared stream length too large";
+      }
+      if(ok)
+      {
+        ok = stream->read(slurped.data(), nullptr, len) == len;
+        memReader.base = slurped.data();
+      }
+    }
+    if(!stream->seek(savedPos))
+      grklog.warn("mercury fast path: failed to restore stream position %llu",
+                  (unsigned long long)savedPos);
+    if(!ok)
+      MFP_BAIL(streamFail);
+    memReader.size = len;
+    plan = mercury_warp_loom(&mhdr, memReadAt, &memReader, len, err, sizeof err);
+  }
   if(!plan)
   {
     grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
