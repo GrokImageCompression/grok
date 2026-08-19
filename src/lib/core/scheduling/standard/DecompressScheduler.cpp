@@ -322,13 +322,20 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       if(waveletReverse_[compno])
         delete waveletReverse_[compno];
 
-      // scratch is sized off the actual tile bounds (clamped to the image),
-      // not the nominal tile grid: a codestream can declare a tile far larger
-      // than the image (XTsiz/YTsiz), which would otherwise drive a huge
-      // scratch allocation for a tiny image. the pool is shared across the
-      // tile's components, so this must cover the whole tile, not one comp.
-      auto tile = tileProcessor->getTile();
-      auto maxDim = std::max(tile->width(), tile->height());
+      // scratch is sized off the decoded region (the tile-component window,
+      // i.e. the tile intersected with any decode window), not the nominal
+      // tile grid: a codestream can declare a tile far larger than the image
+      // (XTsiz/YTsiz), and a decode window can ask for a small region of a
+      // huge image, either of which would otherwise drive a giant scratch.
+      // the pool is shared across the tile's components and grows in place,
+      // so every component must pass the SAME maxDim or a reallocation would
+      // race a concurrent component's decode: take the max over all of them.
+      uint32_t maxDim = 0;
+      for(uint16_t c = 0; c < numcomps_; ++c)
+      {
+        auto win = (tileProcessor->getTile()->comps_ + c)->windowUnreducedBounds();
+        maxDim = std::max({maxDim, win.width(), win.height()});
+      }
 
       // compute DC shift for fusion into wavelet last level
       // DC shift fusion only works for whole tile decompress (decompressPartial doesn't support it)
