@@ -294,10 +294,16 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PRO
   INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
 
 if(GRK_ENABLE_MERCURY)
+  # an explicit cargo target (CARGO_BUILD_TARGET) keeps RUSTFLAGS off build
+  # scripts and proc macros, and moves the artifact under a triple subdir
+  set(MERCURY_TARGET_ROOT ${MERCURY_DIR}/target-grok)
+  if(DEFINED ENV{CARGO_BUILD_TARGET})
+    set(MERCURY_TARGET_ROOT ${MERCURY_TARGET_ROOT}/$ENV{CARGO_BUILD_TARGET})
+  endif()
   if(MSVC)
-    set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/mercury.lib)
+    set(MERCURY_LIB ${MERCURY_TARGET_ROOT}/release/mercury.lib)
   else()
-    set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/libmercury.a)
+    set(MERCURY_LIB ${MERCURY_TARGET_ROOT}/release/libmercury.a)
   endif()
   file(GLOB_RECURSE MERCURY_RUST_SRCS CONFIGURE_DEPENDS ${MERCURY_DIR}/src/*.rs)
   add_custom_command(
