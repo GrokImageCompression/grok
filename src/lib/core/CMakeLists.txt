@@ -231,6 +231,18 @@ set_source_files_properties(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
   PROPERTIES COMPILE_OPTIONS "-w")
 
+# the reversible 5/3 inverse wavelet lifting is exact modular arithmetic:
+# valid coefficients never overflow, but a malformed codestream can push an
+# intermediate past int range. define that as 2's-complement wraparound (what
+# the hardware already does) so it is defined behavior, not a ubsan trap.
+if(NOT MSVC)
+  set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97_16.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp
+    PROPERTIES COMPILE_OPTIONS "-fwrapv")
+endif()
+
 if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()
