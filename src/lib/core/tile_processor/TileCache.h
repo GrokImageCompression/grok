@@ -262,6 +262,8 @@ public:
   void release(uint16_t tileIndex)
   {
     std::lock_guard<std::mutex> lock(mutex_);
+    if(tileIndex >= cache_.size())
+      return;
     if(cache_[tileIndex] && cache_[tileIndex]->processor())
       cache_[tileIndex]->processor()->release(strategy_);
   }

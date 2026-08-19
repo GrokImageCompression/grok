@@ -1043,9 +1043,13 @@ bool GrkImage::composite(const GrkImage* srcImg)
 bool GrkImage::generateCompositeBounds(const Rect32& src, uint16_t destCompno, Rect32* destWin)
 {
   auto destComp = comps + destCompno;
-  *destWin = src.intersection(Rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
-                                     destComp->y0 + destComp->h))
-                 .pan(-(int64_t)destComp->x0, -(int64_t)destComp->y0);
+  Rect32 destBounds(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
+                    destComp->y0 + destComp->h);
+  // intersection doesn't clamp, so a source lying outside the destination yields
+  // x1 < x0 and width()/height() wrap to ~4e9, which the copy loops would run on
+  if(!src.nonEmptyIntersection(&destBounds))
+    return false;
+  *destWin = src.intersection(destBounds).pan(-(int64_t)destComp->x0, -(int64_t)destComp->y0);
   return true;
 }
 /***
