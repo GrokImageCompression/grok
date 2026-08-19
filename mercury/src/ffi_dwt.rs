@@ -23,6 +23,9 @@ pub struct MercuryLiftingStep {
 }
 
 unsafe extern "C" {
+    // i32 lane count of the dispatched kernels' vectors
+    pub fn mercury_hwy_lanes_32() -> i32;
+
     // Phase interleave (synthesis output assembly)
     pub fn mercury_hwy_splice_16(src1: *mut i16, src2: *mut i16, dst: *mut i16, pairs: i32);
     pub fn mercury_hwy_splice_32(src1: *mut i32, src2: *mut i32, dst: *mut i32, pairs: i32);

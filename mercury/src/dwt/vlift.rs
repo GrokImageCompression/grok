@@ -7,7 +7,7 @@
 
 use crate::ffi_dwt::{self, MercuryLiftingStep};
 
-use super::{ALIGN_SAMPLES16, ALIGN_SAMPLES32, KERNEL_W5X3, KERNEL_W9X7};
+use super::{align_samples16, align_samples32, KERNEL_W5X3, KERNEL_W9X7};
 
 /// Vertical synthesis lifting step on 16-bit samples.
 ///
@@ -29,7 +29,7 @@ pub unsafe fn mercury_ply_vlift_16(
     }
 
     let st = &*step;
-    let alignment = ALIGN_SAMPLES16;
+    let alignment = align_samples16();
 
     // Adjust pointers for alignment.
     let mut actual_start = start_loc;
@@ -97,7 +97,7 @@ pub unsafe fn mercury_ply_vlift_32(
     }
 
     let st = &*step;
-    let alignment = ALIGN_SAMPLES32;
+    let alignment = align_samples32();
 
     let mut actual_start = start_loc;
     let mut din = dst_in;

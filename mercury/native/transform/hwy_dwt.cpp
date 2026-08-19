@@ -14,6 +14,13 @@ namespace HWY_NAMESPACE
 {
   namespace hn = hwy::HWY_NAMESPACE;
 
+  static int Impl_lanes_32()
+  {
+    return (int)hn::Lanes(hn::ScalableTag<int32_t>());
+  }
+
+  // InterleaveWholeLower/Upper, not the per-128-bit-block InterleaveLower/Upper,
+  // which only yield sample order up to 256-bit vectors and scramble on 512-bit.
   static void Impl_interleave_16(int16_t* src1, int16_t* src2, int16_t* dst, int pairs)
   {
     const hn::ScalableTag<int16_t> d;
@@ -22,10 +29,8 @@ namespace HWY_NAMESPACE
     {
       auto a = hn::Load(d, src1 + i);
       auto b = hn::Load(d, src2 + i);
-      auto lo = hn::InterleaveLower(d, a, b);
-      auto hi = hn::InterleaveUpper(d, a, b);
-      hn::Store(hn::ConcatLowerLower(d, hi, lo), d, dst + 2 * i);
-      hn::Store(hn::ConcatUpperUpper(d, hi, lo), d, dst + 2 * i + (int)N);
+      hn::Store(hn::InterleaveWholeLower(d, a, b), d, dst + 2 * i);
+      hn::Store(hn::InterleaveWholeUpper(d, a, b), d, dst + 2 * i + (int)N);
     }
   }
 
@@ -37,10 +42,8 @@ namespace HWY_NAMESPACE
     {
       auto a = hn::Load(d, src1 + i);
       auto b = hn::Load(d, src2 + i);
-      auto lo = hn::InterleaveLower(d, a, b);
-      auto hi = hn::InterleaveUpper(d, a, b);
-      hn::Store(hn::ConcatLowerLower(d, hi, lo), d, dst + 2 * i);
-      hn::Store(hn::ConcatUpperUpper(d, hi, lo), d, dst + 2 * i + (int)N);
+      hn::Store(hn::InterleaveWholeLower(d, a, b), d, dst + 2 * i);
+      hn::Store(hn::InterleaveWholeUpper(d, a, b), d, dst + 2 * i + (int)N);
     }
   }
 
@@ -240,6 +243,7 @@ HWY_AFTER_NAMESPACE();
 namespace mercury_native
 {
 
+HWY_EXPORT(Impl_lanes_32);
 HWY_EXPORT(Impl_interleave_16);
 HWY_EXPORT(Impl_interleave_32);
 HWY_EXPORT(Impl_vlift_16_5x3_synth_s0);
@@ -253,6 +257,10 @@ HWY_EXPORT(Impl_hlift_32_2tap_irrev);
 HWY_EXPORT(Impl_hlift_32_5x3_synth_s0);
 HWY_EXPORT(Impl_hlift_32_5x3_synth_s1);
 
+int hwy_lanes_32()
+{
+  return HWY_DYNAMIC_DISPATCH(Impl_lanes_32)();
+}
 void hwy_interleave_16(int16_t* s1, int16_t* s2, int16_t* d, int p)
 {
   HWY_DYNAMIC_DISPATCH(Impl_interleave_16)(s1, s2, d, p);

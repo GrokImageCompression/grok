@@ -4,7 +4,7 @@
 //! Used by the decode pipeline ([`crate::decode::graph`]) and golden tests.
 
 use super::synthesis::{SamplePrec, StepSpec, Synthesis, SynthesisParams};
-use super::{ALIGN_SAMPLES16, ALIGN_SAMPLES32, KERNEL_W5X3, KERNEL_W9X7};
+use super::{align_samples16, align_samples32, KERNEL_W5X3, KERNEL_W9X7};
 use crate::decode::DecodeError;
 
 /// A band's position and size (JPEG 2000 canvas coordinates, `pos + size`).
@@ -101,8 +101,8 @@ pub fn draft_params(
     let x_max_in = max_in[0].max(max_in[1]);
 
     let alignment = match sample_prec {
-        SamplePrec::I16 => ALIGN_SAMPLES16,
-        _ => ALIGN_SAMPLES32,
+        SamplePrec::I16 => align_samples16(),
+        _ => align_samples32(),
     };
     while x_min_in < x_min_buf {
         x_min_buf -= alignment;

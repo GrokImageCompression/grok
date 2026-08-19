@@ -56,7 +56,11 @@ struct AlignedBuf {
     fibre_bytes: i32,
 }
 
-const SIMD_ALIGN: usize = 64; // AVX-512 alignment
+fn simd_align() -> usize {
+    // alignment and whole-vector slack for the widest dispatched vectors,
+    // never below 64 bytes so allocations stay cache-line aligned
+    (crate::dwt::align_samples32() as usize * 4).max(64)
+}
 
 impl AlignedBuf {
     fn warp(width: i32, fibre_bytes: i32, neg_extent: i32, pos_extent: i32) -> Self {
@@ -66,12 +70,12 @@ impl AlignedBuf {
         // likewise rounded up, plus one extra vector: kernels process whole
         // vectors and read `src + c + 1`, over-running `width` by up to a full
         // vector, so the buffer carries an extra vector of over-read slack.
-        let align_samples = (SIMD_ALIGN as i32) / fibre_bytes;
+        let align_samples = (simd_align() as i32) / fibre_bytes;
         let round_up = |v: i32| (v + align_samples - 1) / align_samples * align_samples;
         let neg = round_up(neg_extent);
         let pos = round_up(pos_extent) + align_samples;
         let byte_count = ((neg + pos) as usize) * (fibre_bytes as usize);
-        let layout = Layout::from_size_align(byte_count.max(1), SIMD_ALIGN).unwrap();
+        let layout = Layout::from_size_align(byte_count.max(1), simd_align()).unwrap();
         let ptr = unsafe { alloc::alloc_zeroed(layout) };
         assert!(!ptr.is_null(), "allocation failed");
         Self {
@@ -124,7 +128,7 @@ pub struct AlignedVec {
 
 impl AlignedVec {
     pub fn bare(len: usize) -> Self {
-        let layout = Layout::from_size_align(len.max(1), SIMD_ALIGN).unwrap();
+        let layout = Layout::from_size_align(len.max(1), simd_align()).unwrap();
         let ptr = unsafe { alloc::alloc_zeroed(layout) };
         assert!(!ptr.is_null(), "allocation failed");
         Self { ptr, layout, len }
@@ -737,12 +741,12 @@ impl Synthesis {
     }
 
     /// Upper bound on bytes written to `output` by one pull. The interleave
-    /// kernel stores whole SIMD vectors, so this rounds the nominal row up
-    /// to a vector multiple plus one extra vector of tail slack.
+    /// kernel stores two whole SIMD vectors per iteration, so this rounds the
+    /// nominal row up to a vector multiple plus two vectors of tail slack.
     pub fn hem_row_bytes(&self) -> usize {
         let samples = (self.params.x_max_out + 2 - self.params.x_min_pull).max(2) as usize;
         let bytes = samples * self.fibre_bytes();
-        (bytes + SIMD_ALIGN - 1) / SIMD_ALIGN * SIMD_ALIGN + SIMD_ALIGN
+        (bytes + simd_align() - 1) / simd_align() * simd_align() + 2 * simd_align()
     }
 
     /// True when the next fresh input row of `parity` can be filled from

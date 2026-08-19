@@ -29,6 +29,7 @@ struct merc_lifting_step
 // forwards the mercury_* FFI surface to these. Only the kernels the decoder
 // dispatches to are declared.
 
+extern int hwy_lanes_32();
 extern void hwy_interleave_16(int16_t*, int16_t*, int16_t*, int);
 extern void hwy_interleave_32(int32_t*, int32_t*, int32_t*, int);
 extern void hwy_vlift_16_5x3_synth_s0(int16_t**, int16_t*, int16_t*, int);

@@ -905,9 +905,10 @@ fn dress_tile_loom(
             {
                 let is_top = l == top;
                 let (out_prod, out_con) = if is_top {
-                    // Top level: full-width tile rows to the merge sink.
+                    // Top level: full-width tile rows to the merge sink. Sized
+                    // by the engine so the interleave's tail stores fit.
                     let slots: Vec<AlignedVec> = (0..OUT_RING_ROWS)
-                        .map(|_| AlignedVec::bare(cs.width * sb + 64))
+                        .map(|_| AlignedVec::bare(engine.hem_row_bytes()))
                         .collect();
                     spin(slots)
                 } else {

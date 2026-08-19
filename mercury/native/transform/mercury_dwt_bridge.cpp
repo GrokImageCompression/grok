@@ -21,6 +21,11 @@ static inline merc_lifting_step* cast_step(MercuryLiftingStep* s)
 
 extern "C" {
 
+int mercury_hwy_lanes_32(void)
+{
+  return hwy_lanes_32();
+}
+
 void mercury_hwy_splice_16(int16_t* src1, int16_t* src2, int16_t* dst, int pairs)
 {
   hwy_interleave_16(src1, src2, dst, pairs);

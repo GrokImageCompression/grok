@@ -30,6 +30,10 @@ typedef struct
   uint8_t kernelId;
 } MercuryLiftingStep;
 
+/* i32 lane count of the dispatched kernels' vectors. Layout granularity must
+ * come from this so it matches the kernels on every target. */
+int mercury_hwy_lanes_32(void);
+
 void mercury_hwy_splice_16(int16_t* src1, int16_t* src2, int16_t* dst, int pairs);
 
 void mercury_hwy_splice_32(int32_t* src1, int32_t* src2, int32_t* dst, int pairs);
