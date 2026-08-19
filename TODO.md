@@ -16,9 +16,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   or compare_images (issue142, issue432)
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
   only. other stream creators may have the same unowned-handle pattern
-- multi_tile_truncated_rgb.jp2 with -r 2 or higher crashes intermittently
-  (segfault or heap corruption), classic pipeline, present on master with
-  mercury disabled
 
 ## phase 1: close the eligibility gaps
 

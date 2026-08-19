@@ -832,8 +832,19 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
     for(auto tileIndex : pendingTiles)
     {
       auto cached = tileCache_->get(tileIndex);
-      if(!cached || !cached->processor() || cached->processor()->hasUnparsedTileParts())
+      auto proc = cached ? cached->processor() : nullptr;
+      if(!proc)
+      {
         tileCompletion_->complete(tileIndex);
+        continue;
+      }
+      if(!proc->hasUnparsedTileParts())
+        continue;
+      // failed stages skip their post callback, so best-effort tiles complete
+      // here. wait first: an early complete frees a tile its tasks still use
+      if(proc->scheduledForDecompression())
+        decompressTileFutureManager_.wait(tileIndex);
+      tileCompletion_->complete(tileIndex);
     }
   }
 }
