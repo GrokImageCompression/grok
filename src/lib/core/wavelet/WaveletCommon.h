@@ -17,6 +17,17 @@
 
 #pragma once
 
+// the reversible 5/3 inverse lifting accumulates sums of two samples: valid
+// jpeg 2000 coefficients stay in range, but fuzzer-crafted ones overflow the
+// int32 accumulator. the intended result is 2's-complement wraparound (the
+// -fwrapv build option defines it as such), so mark these functions to keep
+// oss-fuzz's explicit signed-integer-overflow check from flagging it.
+#if defined(__clang__) || defined(__GNUC__)
+#define GRK_NO_SANITIZE_OVERFLOW __attribute__((no_sanitize("signed-integer-overflow")))
+#else
+#define GRK_NO_SANITIZE_OVERFLOW
+#endif
+
 namespace grk
 {
 

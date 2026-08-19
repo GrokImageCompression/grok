@@ -161,7 +161,7 @@ template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class Partial53 : public PartialInterleaver<ST, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
 public:
-  void h(dwt_scratch<ST>* dwt)
+  GRK_NO_SANITIZE_OVERFLOW void h(dwt_scratch<ST>* dwt)
   {
 #ifndef GRK_DEBUG_SPARSE
 #define get_S(buf, i) buf[(i) << 1]
@@ -263,7 +263,7 @@ public:
       }
     }
   }
-  void v(dwt_scratch<ST>* dwt)
+  GRK_NO_SANITIZE_OVERFLOW void v(dwt_scratch<ST>* dwt)
   {
 #ifndef GRK_DEBUG_SPARSE
 #define get_S_off(buf, i, off) buf[((i) << 1) * VERT_PASS_WIDTH + off]
