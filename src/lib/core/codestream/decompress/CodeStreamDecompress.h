@@ -66,6 +66,10 @@ public:
   }
 
   void init(grk_decompress_parameters* param) override;
+  void setInputFilePath(const char* path) override
+  {
+    inputFilePath_ = path ? path : "";
+  }
 
   void setBandCallback(grk_io_band_callback callback, void* user_data) override;
   grk_io_band_callback getBandCallback() const override
@@ -373,6 +377,12 @@ private:
    * @brief @ref MarkerCache
    */
   std::unique_ptr<MarkerCache> markerCache_;
+
+  /**
+   * @brief Input file path when the stream is file-backed, read by the
+   * mercury fast path. Per codec so concurrent decodes cannot cross files.
+   */
+  std::string inputFilePath_;
 
   /**
    * @brief Tile processor currently being parsed

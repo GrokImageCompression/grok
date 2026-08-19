@@ -16,10 +16,6 @@ namespace grk
 {
 class CodeStreamDecompress;
 
-/* Record the input file path of the codec being initialized (v0: one
- * process-global slot — fine for CLI use; not for concurrent codecs). */
-void mercurySetInputFile(const char* path);
-
 /* Try the mercury fast path. Returns true if the composite image was
  * fully decoded and filled; false = caller proceeds with the classic
  * pipeline (never partially modifies the image on failure). */

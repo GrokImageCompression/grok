@@ -81,179 +81,173 @@ extern "C" int32_t mercury_grok_t1_decode(const uint8_t*, int32_t, int32_t, int3
 namespace grk
 {
 
-static std::mutex g_mercuryFileMutex;
-static std::string g_mercuryFile;
-
-void mercurySetInputFile(const char* path)
-{
-  std::lock_guard<std::mutex> lock(g_mercuryFileMutex);
-  g_mercuryFile = path ? path : "";
-}
-
 namespace
 {
-// Mercury always emits full-width absolute samples as int32. When the output
-// image type is INT_16 (grk_get_data_type says the component is int16-eligible
-// and every component agrees — see mercuryOutType) the sink narrows each sample
-// to int16 on the way into the plane; the values are known to fit (mercury's
-// f32 9/7 and exact 5/3 emit the same absolute samples grok's int16 path does).
-static inline void writeRow(void* plane, bool is16, size_t off, const int32_t* src, uint64_t width)
-{
-  if(is16)
+  // Mercury always emits full-width absolute samples as int32. When the output
+  // image type is INT_16 (grk_get_data_type says the component is int16-eligible
+  // and every component agrees — see mercuryOutType) the sink narrows each sample
+  // to int16 on the way into the plane; the values are known to fit (mercury's
+  // f32 9/7 and exact 5/3 emit the same absolute samples grok's int16 path does).
+  static inline void writeRow(void* plane, bool is16, size_t off, const int32_t* src,
+                              uint64_t width)
   {
-    auto dst = (int16_t*)plane + off;
-    for(uint64_t x = 0; x < width; x++)
-      dst[x] = (int16_t)src[x];
-  }
-  else
-  {
-    memcpy((int32_t*)plane + off, src, width * sizeof(int32_t));
-  }
-}
-
-struct RowCtx
-{
-  void** planes;
-  uint32_t* strides;
-  bool is16;
-};
-
-void rowSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps, uint64_t width)
-{
-  auto ctx = (RowCtx*)c;
-  for(uint32_t i = 0; i < numComps; i++)
-    writeRow(ctx->planes[i], ctx->is16, (size_t)row * ctx->strides[i], comps[i], width);
-}
-
-// Streaming band mode: rows accumulate in a rows_per_strip-high scratch
-// window that is flushed through ioBandCallback_ (yBegin/yEnd are
-// band-relative, matching the classic drain loop's contract), then the
-// window slides down the image. Peak memory is O(strip), not O(image).
-struct BandCtx
-{
-  grk_io_band_callback cb;
-  void* cbUserData;
-  GrkImage* scratch;
-  std::vector<void*> planes;
-  std::vector<uint32_t> strides;
-  bool is16;
-  uint32_t bandRows; // scratch window height
-  uint32_t height; // full image height
-  uint32_t filled = 0;
-  uint32_t bandsFlushed = 0;
-  bool cbFailed = false;
-};
-
-void bandSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps, uint64_t width)
-{
-  auto ctx = (BandCtx*)c;
-  if(ctx->cbFailed)
-    return;
-  for(uint32_t i = 0; i < numComps; i++)
-    writeRow(ctx->planes[i], ctx->is16, (size_t)ctx->filled * ctx->strides[i], comps[i], width);
-  ctx->filled++;
-  if(ctx->filled == ctx->bandRows || row + 1 == ctx->height)
-  {
-    if(!ctx->cb(0, ctx->filled, ctx->scratch, ctx->cbUserData))
+    if(is16)
     {
-      ctx->cbFailed = true;
+      auto dst = (int16_t*)plane + off;
+      for(uint64_t x = 0; x < width; x++)
+        dst[x] = (int16_t)src[x];
+    }
+    else
+    {
+      memcpy((int32_t*)plane + off, src, width * sizeof(int32_t));
+    }
+  }
+
+  struct RowCtx
+  {
+    void** planes;
+    uint32_t* strides;
+    bool is16;
+  };
+
+  void rowSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps,
+               uint64_t width)
+  {
+    auto ctx = (RowCtx*)c;
+    for(uint32_t i = 0; i < numComps; i++)
+      writeRow(ctx->planes[i], ctx->is16, (size_t)row * ctx->strides[i], comps[i], width);
+  }
+
+  // Streaming band mode: rows accumulate in a rows_per_strip-high scratch
+  // window that is flushed through ioBandCallback_ (yBegin/yEnd are
+  // band-relative, matching the classic drain loop's contract), then the
+  // window slides down the image. Peak memory is O(strip), not O(image).
+  struct BandCtx
+  {
+    grk_io_band_callback cb;
+    void* cbUserData;
+    GrkImage* scratch;
+    std::vector<void*> planes;
+    std::vector<uint32_t> strides;
+    bool is16;
+    uint32_t bandRows; // scratch window height
+    uint32_t height; // full image height
+    uint32_t filled = 0;
+    uint32_t bandsFlushed = 0;
+    bool cbFailed = false;
+  };
+
+  void bandSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps,
+                uint64_t width)
+  {
+    auto ctx = (BandCtx*)c;
+    if(ctx->cbFailed)
       return;
-    }
-    ctx->bandsFlushed++;
-    uint32_t remaining = ctx->height - (row + 1);
-    for(uint16_t i = 0; i < ctx->scratch->numcomps; i++)
+    for(uint32_t i = 0; i < numComps; i++)
+      writeRow(ctx->planes[i], ctx->is16, (size_t)ctx->filled * ctx->strides[i], comps[i], width);
+    ctx->filled++;
+    if(ctx->filled == ctx->bandRows || row + 1 == ctx->height)
     {
-      auto comp = ctx->scratch->comps + i;
-      comp->y0 += ctx->filled;
-      comp->h = std::min(ctx->bandRows, remaining);
+      if(!ctx->cb(0, ctx->filled, ctx->scratch, ctx->cbUserData))
+      {
+        ctx->cbFailed = true;
+        return;
+      }
+      ctx->bandsFlushed++;
+      uint32_t remaining = ctx->height - (row + 1);
+      for(uint16_t i = 0; i < ctx->scratch->numcomps; i++)
+      {
+        auto comp = ctx->scratch->comps + i;
+        comp->y0 += ctx->filled;
+        comp->h = std::min(ctx->bandRows, remaining);
+      }
+      ctx->filled = 0;
     }
-    ctx->filled = 0;
   }
-}
 } // namespace
 
 #if defined(_WIN32)
 namespace
 {
-// Positioned reader over a Win32 handle for mercury's read_at callback. The
-// callback runs concurrently on many decode threads; the handle is opened with
-// FILE_FLAG_OVERLAPPED so each ReadFile carries its own offset and event and
-// runs independently, with no shared file cursor and no serialization.
-struct Win32PositionedReader
-{
-  HANDLE handle = INVALID_HANDLE_VALUE;
-
-  ~Win32PositionedReader()
+  // Positioned reader over a Win32 handle for mercury's read_at callback. The
+  // callback runs concurrently on many decode threads; the handle is opened with
+  // FILE_FLAG_OVERLAPPED so each ReadFile carries its own offset and event and
+  // runs independently, with no shared file cursor and no serialization.
+  struct Win32PositionedReader
   {
-    if(handle != INVALID_HANDLE_VALUE)
-      CloseHandle(handle);
-  }
+    HANDLE handle = INVALID_HANDLE_VALUE;
 
-  bool open(const std::string& path)
-  {
-    handle = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
-                         FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, nullptr);
-    return handle != INVALID_HANDLE_VALUE;
-  }
-
-  uint64_t size() const
-  {
-    LARGE_INTEGER s{};
-    return GetFileSizeEx(handle, &s) ? (uint64_t)s.QuadPart : 0;
-  }
-};
-
-// One reusable completion event per decode thread: overlapped waits must not
-// share an event, and a thread only ever has one read in flight at a time.
-struct OverlappedEvent
-{
-  HANDLE handle = CreateEventW(nullptr, TRUE /* manual reset */, FALSE, nullptr);
-  ~OverlappedEvent()
-  {
-    if(handle)
-      CloseHandle(handle);
-  }
-};
-
-// mercury read_at contract: nonzero on success, 0 on failure (see capi.rs).
-int32_t win32ReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
-{
-  auto* self = static_cast<Win32PositionedReader*>(ctx);
-  thread_local OverlappedEvent event;
-  if(!event.handle)
-    return 0;
-  uint64_t done = 0;
-  while(done < len)
-  {
-    uint64_t pos = off + done;
-    OVERLAPPED ov{};
-    ov.Offset = (DWORD)(pos & 0xFFFFFFFFu);
-    ov.OffsetHigh = (DWORD)(pos >> 32);
-    ov.hEvent = event.handle;
-    ResetEvent(event.handle);
-    DWORD chunk = (DWORD)std::min<uint64_t>(len - done, 0x40000000u);
-    DWORD got = 0;
-    if(!ReadFile(self->handle, buf + done, chunk, &got, &ov))
+    ~Win32PositionedReader()
     {
-      if(GetLastError() != ERROR_IO_PENDING ||
-         !GetOverlappedResult(self->handle, &ov, &got, TRUE))
-        return 0; // error or EOF before the buffer was filled
+      if(handle != INVALID_HANDLE_VALUE)
+        CloseHandle(handle);
     }
-    if(got == 0)
+
+    bool open(const std::string& path)
+    {
+      handle = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, nullptr);
+      return handle != INVALID_HANDLE_VALUE;
+    }
+
+    uint64_t size() const
+    {
+      LARGE_INTEGER s{};
+      return GetFileSizeEx(handle, &s) ? (uint64_t)s.QuadPart : 0;
+    }
+  };
+
+  // One reusable completion event per decode thread: overlapped waits must not
+  // share an event, and a thread only ever has one read in flight at a time.
+  struct OverlappedEvent
+  {
+    HANDLE handle = CreateEventW(nullptr, TRUE /* manual reset */, FALSE, nullptr);
+    ~OverlappedEvent()
+    {
+      if(handle)
+        CloseHandle(handle);
+    }
+  };
+
+  // mercury read_at contract: nonzero on success, 0 on failure (see capi.rs).
+  int32_t win32ReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
+  {
+    auto* self = static_cast<Win32PositionedReader*>(ctx);
+    thread_local OverlappedEvent event;
+    if(!event.handle)
       return 0;
-    done += (uint64_t)got;
+    uint64_t done = 0;
+    while(done < len)
+    {
+      uint64_t pos = off + done;
+      OVERLAPPED ov{};
+      ov.Offset = (DWORD)(pos & 0xFFFFFFFFu);
+      ov.OffsetHigh = (DWORD)(pos >> 32);
+      ov.hEvent = event.handle;
+      ResetEvent(event.handle);
+      DWORD chunk = (DWORD)std::min<uint64_t>(len - done, 0x40000000u);
+      DWORD got = 0;
+      if(!ReadFile(self->handle, buf + done, chunk, &got, &ov))
+      {
+        if(GetLastError() != ERROR_IO_PENDING ||
+           !GetOverlappedResult(self->handle, &ov, &got, TRUE))
+          return 0; // error or EOF before the buffer was filled
+      }
+      if(got == 0)
+        return 0;
+      done += (uint64_t)got;
+    }
+    return 1;
   }
-  return 1;
-}
 } // namespace
 #endif
 
-#define MFP_BAIL(msg)                                                    \
-  do                                                                     \
-  {                                                                      \
-    if(std::getenv("GRK_MERCURY_DEBUG"))                                 \
-      fprintf(stderr, "mercury fastpath bail: %s\n", msg);              \
-    return false;                                                        \
+#define MFP_BAIL(msg)                                      \
+  do                                                       \
+  {                                                        \
+    if(std::getenv("GRK_MERCURY_DEBUG"))                   \
+      fprintf(stderr, "mercury fastpath bail: %s\n", msg); \
+    return false;                                          \
   } while(0)
 
 // Whole-image output sample type, replicating grok's classic decision so the
@@ -311,11 +305,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   if(!std::getenv("GRK_MERCURY"))
     return false;
 
-  std::string path;
-  {
-    std::lock_guard<std::mutex> lock(g_mercuryFileMutex);
-    path = g_mercuryFile;
-  }
+  const std::string& path = cs.inputFilePath_;
   if(path.empty())
     MFP_BAIL("no input file recorded");
 
@@ -342,9 +332,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   auto img = cs.multiTileComposite_.get();
   if(!img || !img->comps || img->numcomps == 0)
     MFP_BAIL("no composite image");
-  if(img->meta &&
-     (img->meta->color.palette || img->meta->color.icc_profile_buf ||
-      img->meta->color.channel_definition))
+  if(img->meta && (img->meta->color.palette || img->meta->color.icc_profile_buf ||
+                   img->meta->color.channel_definition))
     MFP_BAIL("palette/ICC/cdef present");
   for(uint16_t c = 0; c < img->numcomps; c++)
   {
@@ -406,8 +395,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // numStepSizes_, which grok's readQcd leaves at 0 for the components it
   // propagates the QCD to (it copies the stepsizes_ array but not the count).
   const uint32_t nbands = (uint32_t)(3 * (numres - 1) + 1);
-  auto fillQuant = [nbands](const auto& t, std::vector<uint8_t>& ranges,
-                            std::vector<float>& steps, MercuryQuant& q) {
+  auto fillQuant = [nbands](const auto& t, std::vector<uint8_t>& ranges, std::vector<float>& steps,
+                            MercuryQuant& q) {
     q.guard_bits = t.numgbits_;
     q.style = t.qntsty_; // 0 = reversible, 1 = derived, 2 = expounded
     ranges.clear();
@@ -422,8 +411,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     {
       steps.resize(nbands);
       for(uint32_t b = 0; b < nbands; b++)
-        steps[b] = (1.0f + (float)t.stepsizes_[b].mant / 2048.0f) /
-                   (float)(1u << t.stepsizes_[b].expn);
+        steps[b] =
+            (1.0f + (float)t.stepsizes_[b].mant / 2048.0f) / (float)(1u << t.stepsizes_[b].expn);
     }
     q.ranges = ranges.empty() ? nullptr : ranges.data();
     q.num_ranges = (uint32_t)ranges.size();
@@ -507,9 +496,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   {
     uint32_t prec = 0;
     int32_t sgnd = 0;
-    if(mercury_loom_comp_info(plan, c, &prec, &sgnd) != MERCURY_OK ||
-       prec != img->comps[c].prec || (sgnd != 0) != img->comps[c].sgnd ||
-       img->comps[c].w != info.width || img->comps[c].h != info.height)
+    if(mercury_loom_comp_info(plan, c, &prec, &sgnd) != MERCURY_OK || prec != img->comps[c].prec ||
+       (sgnd != 0) != img->comps[c].sgnd || img->comps[c].w != info.width ||
+       img->comps[c].h != info.height)
     {
       mercury_unwarp_loom(plan);
       return false;
@@ -534,8 +523,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     auto scratch = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
         new GrkImage(), RefCountedDeleter<GrkImage>());
     img->copyHeaderTo(scratch.get());
-    uint32_t bandRows = scratch->rows_per_strip ? std::min(scratch->rows_per_strip, info.height)
-                                                : info.height;
+    uint32_t bandRows =
+        scratch->rows_per_strip ? std::min(scratch->rows_per_strip, info.height) : info.height;
     for(uint16_t c = 0; c < scratch->numcomps; c++)
     {
       auto comp = scratch->comps + c;
@@ -566,8 +555,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     {
       if(ctx.bandsFlushed == 0 && !ctx.cbFailed)
         MFP_BAIL("decode failed before first band; falling back");
-      grklog.error("mercury fast path: streaming decode failed (rc=%d) after %u bands written",
-                   rc, ctx.bandsFlushed);
+      grklog.error("mercury fast path: streaming decode failed (rc=%d) after %u bands written", rc,
+                   ctx.bandsFlushed);
       cs.success_ = false;
       return true;
     }
@@ -630,7 +619,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
 namespace grk
 {
-void mercurySetInputFile(const char*) {}
 bool mercuryFastPath(CodeStreamDecompress&)
 {
   return false;

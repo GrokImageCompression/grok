@@ -64,6 +64,11 @@ public:
   virtual void init(grk_decompress_parameters* param) = 0;
 
   /**
+   * @brief Records the input file path when the stream is file-backed
+   */
+  virtual void setInputFilePath([[maybe_unused]] const char* path) {}
+
+  /**
    * @brief Sets a band-completion callback for incremental writing.
    *
    * Must be called after readHeader() but before decompress().

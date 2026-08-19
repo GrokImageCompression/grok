@@ -613,9 +613,6 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
   }
 
   streamParams->is_read_stream = true;
-  // LOCAL-ONLY: record the input file for the mercury fast path
-  // (mercury_fastpath.cpp); buffer/callback streams leave it unset.
-  mercurySetInputFile(streamParams->file);
   StreamGenerator sg(streamParams);
   grk::IStream* stream = nullptr;
   try
@@ -646,6 +643,8 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
 
     return nullptr;
   }
+  // buffer/callback streams leave the path unset and the mercury fast path bails
+  codecImpl->decompressor_->setInputFilePath(streamParams->file);
   codecImpl->decompressor_->init(decompressParams);
 
   return codec;

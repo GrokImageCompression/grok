@@ -53,6 +53,7 @@ public:
   GrkImage* getImage(uint16_t tile_index, bool wait) override;
   GrkImage* getImage(void) override;
   void init(grk_decompress_parameters* param) override;
+  void setInputFilePath(const char* path) override;
   grk_progression_state getProgressionState(uint16_t tile_index) override;
   bool setProgressionState(grk_progression_state state) override;
   bool decompress(grk_plugin_tile* tile) override;

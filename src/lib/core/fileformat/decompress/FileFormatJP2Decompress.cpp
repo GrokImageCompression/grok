@@ -222,6 +222,11 @@ void FileFormatJP2Decompress::init(grk_decompress_parameters* parameters)
   /* set up the J2K codec */
   codeStream->init(parameters);
 }
+
+void FileFormatJP2Decompress::setInputFilePath(const char* path)
+{
+  codeStream->setInputFilePath(path);
+}
 bool FileFormatJP2Decompress::decompress(grk_plugin_tile* tile)
 {
   if(!codeStream->decompress(tile))
