@@ -74,8 +74,9 @@ def sweep_one(bin_dir, work_dir, in_file):
     mercury_out = base + ".mercury.tif"
 
     classic_rc, _, classic_err = run_decode(bin_dir, in_file, classic_out, mercury=False)
-    mercury_rc, note, _ = run_decode(bin_dir, in_file, mercury_out, mercury=True)
-    try:
+    mercury_rc, note, mercury_log = run_decode(bin_dir, in_file, mercury_out, mercury=True)
+
+    def judge():
         if classic_rc != 0 or not os.path.exists(classic_out):
             # classic can't decode it (corrupt stream or unsupported output);
             # mercury silently succeeding where classic errors would be a bug
@@ -118,10 +119,17 @@ def sweep_one(bin_dir, work_dir, in_file):
                 return "unloadable", "compare_images cannot load classic output"
             return "FAIL", f"differs beyond peak tolerance {IRREVERSIBLE_PEAK_TOLERANCE}"
         return ("bail", "") if note == "bail" else ("ok", "")
-    finally:
+
+    status, detail = judge()
+    if status == "FAIL":
+        with open(base + ".fail.txt", "w") as f:
+            f.write(f"{detail}\n\nclassic (exit {classic_rc}):\n{classic_err}\n"
+                    f"\nmercury (exit {mercury_rc}):\n{mercury_log}\n")
+    else:
         for f in (classic_out, mercury_out):
             if os.path.exists(f):
                 os.remove(f)
+    return status, detail
 
 
 def main():

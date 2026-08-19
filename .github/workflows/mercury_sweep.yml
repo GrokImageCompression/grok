@@ -45,6 +45,10 @@ jobs:
       # silently decodes with classic, turning the sweep into classic vs classic
       run: nm -D ${{ github.workspace }}/build/bin/libgrokj2k.so | grep -q mercury_warp_loom
 
+    - name: runner cpu
+      # hosted runners mix intel and amd, and mercury's kernels dispatch on cpu features
+      run: lscpu
+
     - name: mercury a/b sweep
       run: |
         mkdir -p ${{ github.workspace }}/build/sweepwork
@@ -53,3 +57,11 @@ jobs:
           ${{ github.workspace }}/build/sweepwork \
           ${{ env.DATA_ROOT }}/input/nonregression \
           ${{ env.DATA_ROOT }}/input/conformance
+
+    - name: upload failing outputs
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sweep-failures
+        path: ${{ github.workspace }}/build/sweepwork
+        if-no-files-found: ignore
