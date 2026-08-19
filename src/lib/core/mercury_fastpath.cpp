@@ -325,13 +325,22 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // arms that machinery, so a subsequent swath wait would block forever.
   if(cs.cp_.asynchronous_)
     MFP_BAIL("asynchronous decode requested");
-  if(cs.cp_.dw_x1 > cs.cp_.dw_x0 || cs.cp_.dw_y1 > cs.cp_.dw_y0)
-    MFP_BAIL("decode window set");
   if(!cs.cp_.compsToDecompress_.empty())
     MFP_BAIL("component filter set");
   auto img = cs.multiTileComposite_.get();
   if(!img || !img->comps || img->numcomps == 0)
     MFP_BAIL("no composite image");
+  // A decode window that fully covers the image canvas is a no-op: mercury
+  // decodes the whole image either way. Only a true sub-region needs the
+  // classic region path, which mercury does not implement yet. reduce is 0
+  // here (bailed above), so the window coordinates are the reference grid.
+  if(cs.cp_.dw_x1 > cs.cp_.dw_x0 || cs.cp_.dw_y1 > cs.cp_.dw_y0)
+  {
+    bool coversImage = cs.cp_.dw_x0 <= img->x0 && cs.cp_.dw_y0 <= img->y0 &&
+                       cs.cp_.dw_x1 >= img->x1 && cs.cp_.dw_y1 >= img->y1;
+    if(!coversImage)
+      MFP_BAIL("decode sub-window set");
+  }
   if(img->meta && (img->meta->color.palette || img->meta->color.icc_profile_buf ||
                    img->meta->color.channel_definition))
     MFP_BAIL("palette/ICC/cdef present");

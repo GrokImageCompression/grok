@@ -48,6 +48,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
 {
   grk_header_info headerInfo = {};
   grk_decompress_parameters parameters = {};
+  // bound the decoded area so a huge declared canvas cannot OOM the fuzzer.
+  // mercury still runs when this window covers the whole image (<=1024);
+  // larger images fall back to the classic windowed decode.
+  parameters.dw_x1 = 1024;
+  parameters.dw_y1 = 1024;
   grk_object* codec = nullptr;
   grk_stream_params stream_params = {};
 
