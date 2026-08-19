@@ -83,6 +83,18 @@ if(GRK_ENABLE_MERCURY)
     add_test(NAME grk_mercury_stream_input_jp2_test
       COMMAND grk_mercury_stream_input_test ${GRK_DATA_ROOT}/input/nonregression/cinema129x129.jp2)
   endif()
+
+  add_executable(grk_mercury_reduce_test GrkMercuryReduceTest.cpp)
+  target_link_libraries(grk_mercury_reduce_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    add_test(NAME grk_mercury_reduce_test
+      COMMAND grk_mercury_reduce_test ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
+    # 9/7: stopping the synthesis chain early changes the per-level gain
+    # normalization, so compare within the A/B sweep's peak tolerance
+    add_test(NAME grk_mercury_reduce_irreversible_test
+      COMMAND grk_mercury_reduce_test ${GRK_DATA_ROOT}/input/nonregression/foo_irrev.j2k
+              --irreversible)
+  endif()
 endif()
 
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)

@@ -58,7 +58,11 @@ Each is a MFP_BAIL in mercury_fastpath.cpp. Rough order:
        buffer streams, one-time slurp for callback streams. non-zero
        initial_offset stays on the stream branch (file offsets would not
        match marker offsets). tested by grk_mercury_stream_input_test
-2. resolution reduction (stop the level chain early)
+2. [x] resolution reduction: level chain stops at the target resolution,
+       9/7 gain normalization restarts there. packet headers above the
+       target are still parsed (lengths only come from headers) but never
+       decoded. reduce to resolution 0 stays on classic (zero-level chain).
+       tested by grk_mercury_reduce_test, sweep stays green
 3. layer limits (plan-stage packet filtering)
 4. palette / ICC / channel definition (apply grok's existing post-processing
    to mercury's output rows on the host side, do not port into mercury)

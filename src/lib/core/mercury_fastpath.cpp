@@ -327,8 +327,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // decode of a stream with no palette/ICC/channel-definition
   // post-processing. Everything else stays on the classic pipeline.
   auto& dec = cs.cp_.codingParams_.dec_;
-  if(dec.reduce_ != 0 || dec.layersToDecompress_ != 0 || dec.skipAllocateComposite_)
-    MFP_BAIL("reduce/layers/skipAllocate set");
+  if(dec.layersToDecompress_ != 0 || dec.skipAllocateComposite_)
+    MFP_BAIL("layers/skipAllocate set");
   // The transcoder drives a T2-only decode to record packet lengths for
   // marker injection — it needs the classic parse, not pixels.
   if(cs.cp_.recordPacketLengths_)
@@ -346,8 +346,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     MFP_BAIL("no composite image");
   // A decode window that fully covers the image canvas is a no-op: mercury
   // decodes the whole image either way. Only a true sub-region needs the
-  // classic region path, which mercury does not implement yet. reduce is 0
-  // here (bailed above), so the window coordinates are the reference grid.
+  // classic region path, which mercury does not implement yet. A window
+  // covering the unreduced canvas covers every reduced one too, and a window
+  // given in reduced coordinates only ever fails this test, so reduce needs no
+  // separate handling here.
   if(cs.cp_.dw_x1 > cs.cp_.dw_x0 || cs.cp_.dw_y1 > cs.cp_.dw_y0)
   {
     bool coversImage = cs.cp_.dw_x0 <= img->x0 && cs.cp_.dw_y0 <= img->y0 &&
@@ -376,6 +378,11 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     MFP_BAIL("no default tile coding params");
   const uint16_t nc = img->numcomps;
   const auto& t0 = tcp->tccps_[0];
+
+  // mercury's synthesis chain needs at least one decomposition level, so it
+  // cannot produce resolution 0. classic already checked reduce < numresolutions.
+  if(t0.numresolutions_ < 2 || dec.reduce_ > t0.numresolutions_ - 2)
+    MFP_BAIL("reduce leaves no decomposition level");
 
   // COC (per-component coding style) and POC are not streamable by mercury —
   // it derives a single packet schedule from one progression and one coding
@@ -486,6 +493,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mhdr.codestream_off = 0; // informational; mercury drives off first_sot_off
   mhdr.first_sot_off = cs.markerCache_->getTileStreamStart();
 
+  MercuryDecodeParams mparams;
+  memset(&mparams, 0, sizeof mparams);
+  mparams.reduce = dec.reduce_;
+
   uint8_t err[256] = {0};
   MercuryPlan* plan = nullptr;
   // these back the read_at source and must outlive the decode below, so they
@@ -502,12 +513,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     // callback
     if(!win32reader.open(path))
       MFP_BAIL("open failed");
-    plan = mercury_warp_loom(&mhdr, win32ReadAt, &win32reader, win32reader.size(), err, sizeof err);
+    plan = mercury_warp_loom(&mhdr, &mparams, win32ReadAt, &win32reader, win32reader.size(), err,
+                             sizeof err);
 #else
     int fd = open(path.c_str(), O_RDONLY);
     if(fd < 0)
       MFP_BAIL("open failed");
-    plan = mercury_warp_loom_fd(&mhdr, fd, err, sizeof err);
+    plan = mercury_warp_loom_fd(&mhdr, &mparams, fd, err, sizeof err);
     close(fd);
 #endif
   }
@@ -560,7 +572,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     if(!ok)
       MFP_BAIL(streamFail);
     memReader.size = len;
-    plan = mercury_warp_loom(&mhdr, memReadAt, &memReader, len, err, sizeof err);
+    plan = mercury_warp_loom(&mhdr, &mparams, memReadAt, &memReader, len, err, sizeof err);
   }
   if(!plan)
   {
@@ -568,12 +580,15 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     return false;
   }
 
-  // The plan must describe the same image grok's headers do.
+  // The plan must describe the same image grok's headers do. The composite's
+  // components already carry the reduced dimensions (SIZMarker reduces
+  // headerImage_, which the composite is copied from), so this also confirms
+  // mercury reduced the canvas the same way grok did.
   MercuryImageInfo info;
   if(mercury_loom_info(plan, &info) != MERCURY_OK || info.num_comps != img->numcomps)
   {
     mercury_unwarp_loom(plan);
-    return false;
+    MFP_BAIL("plan image info disagrees with the headers");
   }
   for(uint16_t c = 0; c < img->numcomps; c++)
   {
@@ -584,7 +599,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
        img->comps[c].h != info.height)
     {
       mercury_unwarp_loom(plan);
-      return false;
+      MFP_BAIL("plan component info disagrees with the headers");
     }
   }
 

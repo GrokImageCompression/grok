@@ -31,7 +31,7 @@ use crate::decode::ReadAt;
 use std::sync::{Arc, Mutex};
 
 use crate::decode::DecodeError;
-use crate::decode::plan::{BandPlan, DecodePlan, TilePlan};
+use crate::decode::plan::{BandPlan, DecodePlan, TilePlan, ceildivpow2};
 use crate::decode::stripe_decoder::{
     BlockCoder, MercuryStripeBlockInfo, mercury_weave_stripe_f32, mercury_weave_stripe16,
     mercury_weave_stripe32,
@@ -712,7 +712,9 @@ fn dress_tile_loom(
     cb: Arc<Mutex<RowSink>>,
 ) -> Result<WeftDecoder, DecodeError> {
     let n_res = (plan.cod.num_levels + 1) as usize;
-    let levels = n_res - 1;
+    let target_res = n_res - 1 - plan.reduce as usize;
+    // one synthesis level per resolution step from 0 up to the target
+    let levels = target_res;
     let num_comps = plan.siz.comp_count();
     let block_w = plan.cod.block_width;
     let block_h = plan.cod.block_height;
@@ -725,8 +727,10 @@ fn dress_tile_loom(
             ));
         }
     }
-    let image_x0 = plan.siz.x_o_siz as usize;
-    let image_y0 = plan.siz.y_o_siz;
+    // tile resolution dims at target_res are the canvas reduced by `reduce`, so
+    // the image origin has to be reduced the same way to stay relative to them
+    let image_x0 = ceildivpow2(plan.siz.x_o_siz, plan.reduce) as usize;
+    let image_y0 = ceildivpow2(plan.siz.y_o_siz, plan.reduce);
     let width = plan.width as usize;
     let sb: usize = path.fibre_bytes();
     let prec = if path == Path::I16 {
@@ -768,7 +772,7 @@ fn dress_tile_loom(
     let mut rows_total: u32 = 0;
 
     for (ti, tile) in row_tiles.into_iter().enumerate() {
-        let full = &tile.geom.components[0].resolutions[n_res - 1].dims;
+        let full = &tile.geom.components[0].resolutions[target_res].dims;
         if full.is_empty() {
             continue;
         }
@@ -808,6 +812,9 @@ fn dress_tile_loom(
 
             let res_plans = std::mem::take(&mut plan_comps[c]);
             for (r, res_plan) in res_plans.into_iter().enumerate() {
+                if r > target_res {
+                    break;
+                }
                 for band in res_plan.bands {
                     if band.width == 0 || band.height == 0 {
                         continue;

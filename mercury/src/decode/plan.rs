@@ -107,12 +107,20 @@ pub struct TilePlan {
 }
 
 pub struct DecodePlan {
+    /// Output dims, already reduced.
     pub width: u32,
     pub height: u32,
     /// Tiles in raster order (index = ty * tiles_across + tx).
     pub tiles: Vec<TilePlan>,
     pub cod: CodParams,
     pub siz: SizParams,
+    /// Resolutions skipped from the top (0 = full resolution).
+    pub reduce: u8,
+}
+
+/// `ceil(a / 2^b)`, the canvas reduction of T.800 Annex B.
+pub fn ceildivpow2(a: u32, b: u8) -> u32 {
+    ((a as u64 + (1u64 << b) - 1) >> b) as u32
 }
 
 /// Sliding window over the file for header parsing. Bodies are skipped by
@@ -224,7 +232,7 @@ struct PrecBand {
     nbh: u32,
 }
 
-pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, DecodeError> {
+pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn, reduce: u8) -> Result<DecodePlan, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
     let file_len = file.extent().map_err(io_snag)?;
@@ -251,11 +259,20 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, Decode
     if hdr.cod.num_levels == 0 {
         return Err(DecodeError::Logic("plan: no decomposition levels".into()));
     }
+    // A reduced decode runs a truncated chain, which still needs one level, so
+    // the target resolution can never be 0 either.
+    if reduce >= hdr.cod.num_levels {
+        return Err(DecodeError::Logic(format!(
+            "plan: reduce {reduce} leaves no decomposition level ({} available)",
+            hdr.cod.num_levels
+        )));
+    }
 
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
     let n_res = (hdr.cod.num_levels + 1) as usize;
     let d = hdr.cod.num_levels as u32;
+    let target_res = n_res - 1 - reduce as usize;
 
     // Per-component quantization: QCD unless a QCC override exists.
     let quant: Vec<QcdParams> = (0..num_comps)
@@ -340,16 +357,20 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, Decode
             TileStream::warp(std::mem::take(&mut tile_segs[t])),
             n_res,
             d,
+            target_res,
         )?;
         tiles.push(TilePlan { comps, geom });
     }
 
+    // Bound then subtract, matching grok's GrkImage::subsampleAndReduce:
+    // reducing the difference instead would be off by one on odd origins.
     Ok(DecodePlan {
-        width: hdr.siz.width(),
-        height: hdr.siz.height(),
+        width: ceildivpow2(hdr.siz.x_siz, reduce) - ceildivpow2(hdr.siz.x_o_siz, reduce),
+        height: ceildivpow2(hdr.siz.y_siz, reduce) - ceildivpow2(hdr.siz.y_o_siz, reduce),
         tiles,
         cod: hdr.cod.clone(),
         siz: hdr.siz.clone(),
+        reduce,
     })
 }
 
@@ -365,6 +386,7 @@ fn comb_tile(
     stream: TileStream,
     n_res: usize,
     d: u32,
+    target_res: usize,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
     let pkt_debug = std::env::var_os("MERCURY_PKT_DEBUG").is_some();
     let num_comps = geom.components.len();
@@ -411,10 +433,13 @@ fn comb_tile(
                         blocks_high: sb.blocks_high,
                         k_max_prime: q.guard_bits as i32 + epsilon_b - 1,
                         delta: 0.0,
-                        blocks: vec![
-                            BlockRec::default();
-                            (sb.blocks_wide * sb.blocks_high) as usize
-                        ],
+                        // reduced-away resolutions are still parsed (packet
+                        // lengths only come from the headers) but never decoded
+                        blocks: if r > target_res {
+                            Vec::new()
+                        } else {
+                            vec![BlockRec::default(); (sb.blocks_wide * sb.blocks_high) as usize]
+                        },
                     })
                 })
                 .collect::<Result<Vec<_>, DecodeError>>()?;
@@ -439,8 +464,10 @@ fn comb_tile(
                     .copied()
                     .ok_or_else(|| DecodeError::Logic("QCD: missing irreversible step".into()))
             };
+            // Normalization accumulates from the top of the chain that will
+            // actually run, so under reduce it restarts at the target.
             let mut norm = 1.0f32;
-            for l in (0..n_res - 1).rev() {
+            for l in (0..target_res).rev() {
                 let res = &tc.resolutions[l + 1];
                 let ll = &tc.resolutions[l].dims;
                 let hl = &res.subbands[0].dims;
@@ -665,7 +692,9 @@ fn comb_tile(
         // in the real file (a packet never spans tile-parts).
         let (body_real, _) = stream.unspool(vpos + hdr_len).unwrap_or((0, 0));
         let mut body = body_real;
-        for (band_idx, pb) in prec_bands.iter().enumerate() {
+        // reduced-away resolutions have no block records to fill
+        let bands_to_fill: &[PrecBand] = if r > target_res { &[] } else { &prec_bands };
+        for (band_idx, pb) in bands_to_fill.iter().enumerate() {
             let contribs = &parsed.contributions[band_idx];
             let band = &mut comps[c][r].bands[band_idx];
             for (li, contrib) in contribs.iter().enumerate() {
@@ -748,4 +777,126 @@ fn step_ranging(step: f32) -> i32 {
 
 fn io_snag(e: std::io::Error) -> DecodeError {
     DecodeError::Logic(format!("io: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::codec::params::{
+        CodingModes, ProgressionOrder, QuantStyle, SizComponent, SizParams,
+    };
+
+    const NUM_LEVELS: u8 = 5;
+
+    fn siz() -> SizParams {
+        SizParams {
+            x_siz: 4001,
+            y_siz: 3003,
+            x_o_siz: 7,
+            y_o_siz: 13,
+            xt_siz: 1024,
+            yt_siz: 1024,
+            xt_o_siz: 0,
+            yt_o_siz: 0,
+            components: vec![SizComponent {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 1,
+                yr_siz: 1,
+            }],
+        }
+    }
+
+    fn cod() -> CodParams {
+        CodParams {
+            order: ProgressionOrder::Lrcp,
+            num_layers: 1,
+            use_ycc: false,
+            num_levels: NUM_LEVELS,
+            block_width: 64,
+            block_height: 64,
+            modes: CodingModes(0),
+            reversible: true,
+            use_sop: false,
+            use_eph: false,
+            precincts: vec![],
+        }
+    }
+
+    fn header() -> MainHeaderIn {
+        MainHeaderIn {
+            siz: siz(),
+            cod: cod(),
+            qcd: QcdParams {
+                guard_bits: 2,
+                style: QuantStyle::Reversible,
+                ranges: vec![8; 3 * NUM_LEVELS as usize + 1],
+                steps: vec![],
+            },
+            qcc: vec![],
+            first_sot_off: 0,
+        }
+    }
+
+    #[test]
+    fn reduce_past_the_last_level_is_rejected() {
+        let empty: Vec<u8> = Vec::new();
+        for reduce in [NUM_LEVELS, NUM_LEVELS + 1, 200] {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce) else {
+                panic!("reduce {reduce} must be rejected");
+            };
+            assert!(msg.contains("no decomposition level"), "got {msg}");
+        }
+    }
+
+    #[test]
+    fn reduce_within_range_passes_validation() {
+        // there is no codestream behind the empty source, so the SOT walk fails;
+        // what matters is that the failure is not the reduce rejection
+        let empty: Vec<u8> = Vec::new();
+        for reduce in 0..NUM_LEVELS {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce) else {
+                panic!("there is no SOT to walk");
+            };
+            assert!(!msg.contains("no decomposition level"), "got {msg}");
+        }
+    }
+
+    /// The reported output dims must equal the extent of the tile geometry the
+    /// graph actually synthesizes at the target resolution.
+    #[test]
+    fn reduced_dims_span_the_target_resolution() {
+        let (siz, cod) = (siz(), cod());
+        let n_res = cod.num_levels as usize + 1;
+        for reduce in 0..NUM_LEVELS {
+            let target = n_res - 1 - reduce as usize;
+            let mut x0 = u32::MAX;
+            let mut x1 = 0u32;
+            let mut y0 = u32::MAX;
+            let mut y1 = 0u32;
+            let num_tiles = siz.tiles_across() * siz.tiles_down();
+            for t in 0..num_tiles {
+                let dims = crate::codec::tile_geom::chart_tile_geom(&siz, &cod, t as u16)
+                    .components[0]
+                    .resolutions[target]
+                    .dims;
+                x0 = x0.min(dims.x0);
+                x1 = x1.max(dims.x1);
+                y0 = y0.min(dims.y0);
+                y1 = y1.max(dims.y1);
+            }
+            assert_eq!(
+                ceildivpow2(siz.x_siz, reduce) - ceildivpow2(siz.x_o_siz, reduce),
+                x1 - x0,
+                "width at reduce {reduce}"
+            );
+            assert_eq!(
+                ceildivpow2(siz.y_siz, reduce) - ceildivpow2(siz.y_o_siz, reduce),
+                y1 - y0,
+                "height at reduce {reduce}"
+            );
+            assert_eq!(ceildivpow2(siz.x_o_siz, reduce), x0);
+            assert_eq!(ceildivpow2(siz.y_o_siz, reduce), y0);
+        }
+    }
 }

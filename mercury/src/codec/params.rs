@@ -100,16 +100,6 @@ impl SizParams {
         }
         (self.y_siz - self.yt_o_siz).div_ceil(self.yt_siz)
     }
-
-    /// Image width (accounting for origin).
-    pub fn width(&self) -> u32 {
-        self.x_siz - self.x_o_siz
-    }
-
-    /// Image height (accounting for origin).
-    pub fn height(&self) -> u32 {
-        self.y_siz - self.y_o_siz
-    }
 }
 
 // ─── COD parameters ─────────────────────────────────────────────────────────

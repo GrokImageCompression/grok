@@ -308,6 +308,7 @@ fn stamp_err(err_buf: *mut u8, err_cap: usize, msg: &str) {
 
 fn assemble_plan(
     hdr: *const MercuryMainHeader,
+    params: *const MercuryDecodeParams,
     src: Arc<dyn ReadAt>,
     err_buf: *mut u8,
     err_cap: usize,
@@ -319,7 +320,14 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| draft(&*src, &header)));
+    let reduce = if params.is_null() {
+        0
+    } else {
+        unsafe { (*params).reduce }
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        draft(&*src, &header, reduce)
+    }));
     match r {
         Ok(Ok(plan)) => Box::into_raw(Box::new(MercuryPlan { plan, src })),
         Ok(Err(e)) => {
@@ -333,6 +341,14 @@ fn assemble_plan(
     }
 }
 
+/// Per-decode options; a null pointer selects the defaults.
+#[repr(C)]
+pub struct MercuryDecodeParams {
+    /// Resolutions to skip from the top; 0 decodes full resolution. At least
+    /// one decomposition level must remain, so `reduce <= num_levels - 1`.
+    pub reduce: u8,
+}
+
 /// Build a decode plan for the main header `hdr` (parsed by the host),
 /// reading packet data through `read_at` (`len` = total stream bytes).
 /// Returns null if the stream is rejected (reason in `err_buf`,
@@ -340,6 +356,7 @@ fn assemble_plan(
 #[unsafe(no_mangle)]
 pub extern "C" fn mercury_warp_loom(
     hdr: *const MercuryMainHeader,
+    params: *const MercuryDecodeParams,
     read_at: Option<MercuryReadAtFn>,
     ctx: *mut c_void,
     len: u64,
@@ -352,6 +369,7 @@ pub extern "C" fn mercury_warp_loom(
     };
     assemble_plan(
         hdr,
+        params,
         Arc::new(CallbackReader { read_at, ctx, len }),
         err_buf,
         err_cap,
@@ -365,13 +383,20 @@ pub extern "C" fn mercury_warp_loom(
 #[unsafe(no_mangle)]
 pub extern "C" fn mercury_warp_loom_fd(
     hdr: *const MercuryMainHeader,
+    params: *const MercuryDecodeParams,
     fd: i32,
     err_buf: *mut u8,
     err_cap: usize,
 ) -> *mut MercuryPlan {
     let owned = unsafe { std::os::fd::BorrowedFd::borrow_raw(fd) }.try_clone_to_owned();
     match owned {
-        Ok(o) => assemble_plan(hdr, Arc::new(std::fs::File::from(o)), err_buf, err_cap),
+        Ok(o) => assemble_plan(
+            hdr,
+            params,
+            Arc::new(std::fs::File::from(o)),
+            err_buf,
+            err_cap,
+        ),
         Err(e) => {
             stamp_err(err_buf, err_cap, &format!("dup fd: {e}"));
             std::ptr::null_mut()

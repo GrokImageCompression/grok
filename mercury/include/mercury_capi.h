@@ -107,18 +107,29 @@ typedef struct MercuryMainHeader
   uint64_t first_sot_off; /* absolute file offset of the first SOT marker */
 } MercuryMainHeader;
 
+/* Per-decode options. NULL selects the defaults (every field zero). */
+typedef struct MercuryDecodeParams
+{
+  /* Resolutions to skip from the top; 0 decodes full resolution. At least one
+   * decomposition level must remain, so reduce <= num_levels - 1. */
+  uint8_t reduce;
+} MercuryDecodeParams;
+
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
+ * params (optional) selects reduced-resolution decoding.
  * err_buf (optional): NUL-terminated rejection reason on nullptr return. */
-MercuryPlan* mercury_warp_loom(const MercuryMainHeader* hdr, mercury_read_at_fn read_at, void* ctx,
-                               uint64_t len, uint8_t* err_buf, size_t err_cap);
+MercuryPlan* mercury_warp_loom(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
+                               mercury_read_at_fn read_at, void* ctx, uint64_t len,
+                               uint8_t* err_buf, size_t err_cap);
 
 /* fd is duplicated internally (caller keeps ownership); reads use pread.
  * Unix only (POSIX fd); on Windows use mercury_warp_loom with a callback. */
 #if !defined(_WIN32)
-MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, int32_t fd, uint8_t* err_buf,
-                                  size_t err_cap);
+MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
+                                  int32_t fd, uint8_t* err_buf, size_t err_cap);
 #endif
 
+/* width/height are the decoded output dims, i.e. already reduced. */
 typedef struct MercuryImageInfo
 {
   uint32_t width;
