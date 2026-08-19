@@ -76,6 +76,8 @@ impl Builder {
             done_cv: Condvar::new(),
             outstanding: AtomicUsize::new(0),
             shutdown: AtomicBool::new(false),
+            failed: AtomicBool::new(false),
+            failure: Mutex::new(None),
         });
         let threads = (0..workers)
             .map(|i| {
@@ -109,6 +111,10 @@ struct Inner {
     /// the graph is quiescent.
     outstanding: AtomicUsize,
     shutdown: AtomicBool,
+    /// Set once a node reported a failure or panicked. Stops the graph and
+    /// releases await_stillness, which can no longer trust `outstanding`.
+    failed: AtomicBool,
+    failure: Mutex<Option<String>>,
 }
 
 /// Slice context: how a node notifies its ring peers.
@@ -135,9 +141,29 @@ impl Ctx<'_> {
             }
         }
     }
+
+    /// Report a failed pass: the graph stops and `await_stillness` returns
+    /// this message (the first one wins).
+    pub fn fail(&mut self, msg: String) {
+        self.rt.fail(msg);
+    }
 }
 
 impl Inner {
+    fn fail(&self, msg: String) {
+        {
+            let mut slot = self.failure.lock().unwrap();
+            if slot.is_none() {
+                *slot = Some(msg);
+            }
+        }
+        self.failed.store(true, Ordering::Release);
+        self.shutdown.store(true, Ordering::Relaxed);
+        let _guard = self.queue.lock().unwrap();
+        self.work_cv.notify_all();
+        self.done_cv.notify_all();
+    }
+
     fn spool(&self, id: NodeId) {
         let mut q = self.queue.lock().unwrap();
         q.push_back(id);
@@ -159,13 +185,12 @@ impl Inner {
                     q = self.work_cv.wait(q).unwrap();
                 }
             };
-            // A panicking node would leave `outstanding` forever nonzero and
-            // hang await_stillness(); fail loudly instead.
-            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.ply_node(id, 0)))
-                .is_err()
+            // a panicking node never decrements `outstanding`, so the counter
+            // is dead after this. fail() is what releases await_stillness.
+            if let Err(payload) =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.ply_node(id, 0)))
             {
-                eprintln!("weft: node {} panicked; aborting", id.0);
-                std::process::abort();
+                self.fail(format!("node {} panicked: {}", id.0, panic_text(&*payload)));
             }
         }
     }
@@ -199,6 +224,16 @@ impl Inner {
     }
 }
 
+fn panic_text(payload: &(dyn std::any::Any + Send)) -> &str {
+    if let Some(s) = payload.downcast_ref::<&'static str>() {
+        s
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s
+    } else {
+        "unknown panic"
+    }
+}
+
 pub struct Runtime {
     inner: Arc<Inner>,
     threads: Vec<JoinHandle<()>>,
@@ -217,11 +252,20 @@ impl Runtime {
     /// Block the calling (non-worker) thread until the graph is quiescent:
     /// no node scheduled, queued, or running. With correctly sized rings,
     /// the work kicked off so far is then complete.
-    pub fn await_stillness(&self) {
+    /// A node failure ends the wait early, with its message.
+    pub fn await_stillness(&self) -> Result<(), String> {
         let mut q = self.inner.queue.lock().unwrap();
-        while self.inner.outstanding.load(Ordering::Acquire) != 0 {
+        while self.inner.outstanding.load(Ordering::Acquire) != 0
+            && !self.inner.failed.load(Ordering::Acquire)
+        {
             q = self.inner.done_cv.wait(q).unwrap();
         }
+        drop(q);
+        if self.inner.failed.load(Ordering::Acquire) {
+            let msg = self.inner.failure.lock().unwrap().clone();
+            return Err(msg.unwrap_or_else(|| "weft node failed".to_string()));
+        }
+        Ok(())
     }
 }
 

@@ -267,7 +267,7 @@ impl Node for SubbandDecodeNode {
             }
             let dst_lines: Vec<*mut u8> =
                 (0..rows).map(|i| self.out.pick(i).as_mut_ptr()).collect();
-            unsafe {
+            let decoded = unsafe {
                 Self::weave_block_row(
                     &*self.file,
                     &self.band,
@@ -282,8 +282,12 @@ impl Node for SubbandDecodeNode {
                     &dst_lines,
                     &mut self.scratch,
                 )
+            };
+            if let Err(e) = decoded {
+                // rows in this pass are unusable, so don't hand them on
+                ctx.fail(format!("subband decode failed: {e:?}"));
+                return;
             }
-            .expect("subband decode failed");
             self.out.beat(rows);
             self.next_block_row += 1;
             produced = true;
@@ -617,11 +621,11 @@ pub struct WeftDecoder {
 
 impl WeftDecoder {
     /// Run the decode to completion (blocks the calling thread).
-    pub fn weave(&self) {
+    pub fn weave(&self) -> Result<(), DecodeError> {
         for &id in &self.kick {
             self.rt.tug(id);
         }
-        self.rt.await_stillness();
+        self.rt.await_stillness().map_err(DecodeError::Logic)
     }
 }
 
@@ -690,7 +694,7 @@ pub fn weave_with_coder(
                 dec.rows_total
             );
         }
-        dec.weave();
+        dec.weave()?;
         emitted += dec.rows_total as u64;
     }
     Ok(emitted)
