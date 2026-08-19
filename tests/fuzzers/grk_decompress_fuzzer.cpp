@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstring>
 #include "grok.h"
+#include "decode_sample_cap.h"
 
 extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv);
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len);
@@ -49,6 +50,8 @@ int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
   if(!codec)
     goto cleanup;
   if(!grk_decompress_read_header(codec, &headerInfo))
+    goto cleanup;
+  if(fuzz_image_too_large(&headerInfo.header_image))
     goto cleanup;
   if(!grk_decompress(codec, nullptr))
     goto cleanup;
