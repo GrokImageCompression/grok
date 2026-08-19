@@ -58,10 +58,33 @@ jobs:
           ${{ env.DATA_ROOT }}/input/nonregression \
           ${{ env.DATA_ROOT }}/input/conformance
 
+    - name: mercury a/b sweep under emulated avx512
+      # hosted runners mix amd and intel cpus, so the avx512 kernels only run
+      # on a lucky runner draw. sde forces them on every run. subset only,
+      # emulation is slow. sde comes from a mirror, intel's page blocks curl.
+      run: |
+        curl -sSfL -o sde.tar.xz https://github.com/xtensor-stack/xsimd-testing-resources/releases/download/2.0.0/sde-external-9.48.0-2024-11-25-lin.tar.xz
+        tar xf sde.tar.xz
+        mkdir -p sde-bin sde-corpus build/sweepwork-avx512
+        for f in nonregression/4bpp.j2k conformance/a3_mono.j2c \
+                 conformance/b1_mono.j2c nonregression/b1_mono_4k.j2k \
+                 nonregression/bit16_layer5.jp2 nonregression/boats_cprl.j2k \
+                 nonregression/cinema129x129.jp2 conformance/file1.jp2 \
+                 nonregression/foo_irrev.j2k nonregression/issue411-ycc444.jp2 \
+                 conformance/p0_01.j2k nonregression/pacs.ge.j2k; do
+          ln -s $DATA_ROOT/input/$f sde-corpus/
+        done
+        printf '#!/bin/bash\nexec %s/sde-external-9.48.0-2024-11-25-lin/sde64 -skx -- %s/build/bin/grk_decompress "$@"\n' "$PWD" "$PWD" > sde-bin/grk_decompress
+        chmod +x sde-bin/grk_decompress
+        ln -s ${{ github.workspace }}/build/bin/compare_images sde-bin/compare_images
+        python3 tests/mercury_ab_sweep.py sde-bin build/sweepwork-avx512 sde-corpus
+
     - name: upload failing outputs
       if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: sweep-failures
-        path: ${{ github.workspace }}/build/sweepwork
+        path: |
+          ${{ github.workspace }}/build/sweepwork
+          ${{ github.workspace }}/build/sweepwork-avx512
         if-no-files-found: ignore
