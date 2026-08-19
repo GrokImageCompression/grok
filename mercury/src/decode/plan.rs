@@ -246,6 +246,12 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<DecodePlan, Decode
         }
     }
 
+    // A zero-level image is just its LL band; the graph builder wires leaf
+    // slices per decomposition level, so it cannot represent levels == 0.
+    if hdr.cod.num_levels == 0 {
+        return Err(DecodeError::Logic("plan: no decomposition levels".into()));
+    }
+
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
     let n_res = (hdr.cod.num_levels + 1) as usize;
