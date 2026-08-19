@@ -73,14 +73,16 @@ target_include_directories(grk_rescale_test PRIVATE
 target_link_libraries(grk_rescale_test ${GROK_CORE_NAME})
 add_test(NAME grk_rescale_test COMMAND grk_rescale_test)
 
-add_executable(grk_mercury_stream_input_test GrkMercuryStreamInputTest.cpp)
-target_link_libraries(grk_mercury_stream_input_test ${GROK_CORE_NAME} spdlog::spdlog)
-if(GRK_DATA_ROOT)
-  add_test(NAME grk_mercury_stream_input_test
-    COMMAND grk_mercury_stream_input_test ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
-  # jp2 puts the codestream at a non-zero offset, so first_sot_off is non-zero
-  add_test(NAME grk_mercury_stream_input_jp2_test
-    COMMAND grk_mercury_stream_input_test ${GRK_DATA_ROOT}/input/nonregression/cinema129x129.jp2)
+if(GRK_ENABLE_MERCURY)
+  add_executable(grk_mercury_stream_input_test GrkMercuryStreamInputTest.cpp)
+  target_link_libraries(grk_mercury_stream_input_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    add_test(NAME grk_mercury_stream_input_test
+      COMMAND grk_mercury_stream_input_test ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
+    # jp2 puts the codestream at a non-zero offset, so first_sot_off is non-zero
+    add_test(NAME grk_mercury_stream_input_jp2_test
+      COMMAND grk_mercury_stream_input_test ${GRK_DATA_ROOT}/input/nonregression/cinema129x129.jp2)
+  endif()
 endif()
 
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)

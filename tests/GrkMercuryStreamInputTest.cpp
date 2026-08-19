@@ -289,9 +289,15 @@ int main(int argc, char** argv)
   }
   std::string path = argv[1];
 
+  // GRK_MERCURY_DEBUG prints the bail reason to stderr when the fast path
+  // falls back
+#if defined(_WIN32)
+  _putenv_s("GRK_MERCURY", "1");
+  _putenv_s("GRK_MERCURY_DEBUG", "1");
+#else
   setenv("GRK_MERCURY", "1", 1);
-  // print the bail reason to stderr when the fast path falls back
   setenv("GRK_MERCURY_DEBUG", "1", 1);
+#endif
 
   grk_msg_handlers handlers;
   memset(&handlers, 0, sizeof(handlers));

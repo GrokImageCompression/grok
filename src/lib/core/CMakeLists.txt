@@ -300,6 +300,7 @@ if(CARGO_EXECUTABLE AND EXISTS ${MERCURY_DIR}/Cargo.toml)
     set(GRK_ENABLE_MERCURY ON)
   endif()
 endif()
+set(GRK_ENABLE_MERCURY ${GRK_ENABLE_MERCURY} PARENT_SCOPE)
 
 target_sources(${GROK_CORE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp)
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
