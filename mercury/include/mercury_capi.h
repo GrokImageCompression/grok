@@ -113,10 +113,13 @@ typedef struct MercuryDecodeParams
   /* Resolutions to skip from the top; 0 decodes full resolution. At least one
    * decomposition level must remain, so reduce <= num_levels - 1. */
   uint8_t reduce;
+  /* Decode only the first max_layers quality layers; 0 decodes all of them.
+   * A value at or above num_layers is also a full decode. */
+  uint16_t max_layers;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
- * params (optional) selects reduced-resolution decoding.
+ * params (optional) selects reduced-resolution and layer-limited decoding.
  * err_buf (optional): NUL-terminated rejection reason on nullptr return. */
 MercuryPlan* mercury_warp_loom(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
                                mercury_read_at_fn read_at, void* ctx, uint64_t len,

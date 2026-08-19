@@ -95,6 +95,14 @@ if(GRK_ENABLE_MERCURY)
       COMMAND grk_mercury_reduce_test ${GRK_DATA_ROOT}/input/nonregression/foo_irrev.j2k
               --irreversible)
   endif()
+
+  add_executable(grk_mercury_layers_test GrkMercuryLayersTest.cpp)
+  target_link_libraries(grk_mercury_layers_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    # 16 reversible quality layers, so every truncation point is exercised
+    add_test(NAME grk_mercury_layers_test
+      COMMAND grk_mercury_layers_test ${GRK_DATA_ROOT}/input/nonregression/pacs.ge.j2k)
+  endif()
 endif()
 
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)

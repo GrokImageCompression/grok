@@ -16,6 +16,8 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   or compare_images (issue142, issue432)
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
   only. other stream creators may have the same unowned-handle pattern
+- a second grk_decompress call on the same codec returns true but hands back
+  an image whose comps[0].data is null
 
 ## phase 1: close the eligibility gaps
 
@@ -28,6 +30,9 @@ stream input and resolution reduction, are done):
 5. region decode (hardest; first cut: crop rows in the stripe flow, decode
    full width, crop columns at output. Alternatively classic keeps regions
    permanently)
+6. all progressions: the planner overruns the packet stream on multi-tile
+   PCRL and CPRL. also adopt classic's packet-length shortcuts (PLT/TLM,
+   PacketLengthCache) so huge-image progression parsing stays cheap
 
 ## phase 2: performance completion
 

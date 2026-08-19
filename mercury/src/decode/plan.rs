@@ -232,7 +232,14 @@ struct PrecBand {
     nbh: u32,
 }
 
-pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn, reduce: u8) -> Result<DecodePlan, DecodeError> {
+/// `max_layers` keeps only the first that many quality layers (0 = all),
+/// truncating the coding passes the dropped layers carry.
+pub fn draft(
+    file: &dyn ReadAt,
+    hdr: &MainHeaderIn,
+    reduce: u8,
+    max_layers: u16,
+) -> Result<DecodePlan, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
     let file_len = file.extent().map_err(io_snag)?;
@@ -358,6 +365,7 @@ pub fn draft(file: &dyn ReadAt, hdr: &MainHeaderIn, reduce: u8) -> Result<Decode
             n_res,
             d,
             target_res,
+            max_layers,
         )?;
         tiles.push(TilePlan { comps, geom });
     }
@@ -387,6 +395,7 @@ fn comb_tile(
     n_res: usize,
     d: u32,
     target_res: usize,
+    max_layers: u16,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
     let pkt_debug = std::env::var_os("MERCURY_PKT_DEBUG").is_some();
     let num_comps = geom.components.len();
@@ -692,8 +701,14 @@ fn comb_tile(
         // in the real file (a packet never spans tile-parts).
         let (body_real, _) = stream.unspool(vpos + hdr_len).unwrap_or((0, 0));
         let mut body = body_real;
-        // reduced-away resolutions have no block records to fill
-        let bands_to_fill: &[PrecBand] = if r > target_res { &[] } else { &prec_bands };
+        // reduced-away resolutions and layers past the limit have no block
+        // records to fill; their headers are still parsed above
+        let dropped_layer = max_layers != 0 && pkt.layer >= max_layers;
+        let bands_to_fill: &[PrecBand] = if r > target_res || dropped_layer {
+            &[]
+        } else {
+            &prec_bands
+        };
         for (band_idx, pb) in bands_to_fill.iter().enumerate() {
             let contribs = &parsed.contributions[band_idx];
             let band = &mut comps[c][r].bands[band_idx];
@@ -842,7 +857,7 @@ mod tests {
     fn reduce_past_the_last_level_is_rejected() {
         let empty: Vec<u8> = Vec::new();
         for reduce in [NUM_LEVELS, NUM_LEVELS + 1, 200] {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce) else {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0) else {
                 panic!("reduce {reduce} must be rejected");
             };
             assert!(msg.contains("no decomposition level"), "got {msg}");
@@ -855,7 +870,7 @@ mod tests {
         // what matters is that the failure is not the reduce rejection
         let empty: Vec<u8> = Vec::new();
         for reduce in 0..NUM_LEVELS {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce) else {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0) else {
                 panic!("there is no SOT to walk");
             };
             assert!(!msg.contains("no decomposition level"), "got {msg}");
@@ -897,6 +912,169 @@ mod tests {
             );
             assert_eq!(ceildivpow2(siz.x_o_siz, reduce), x0);
             assert_eq!(ceildivpow2(siz.y_o_siz, reduce), y0);
+        }
+    }
+
+    /// A synthetic one-tile stream: 8x8, one component, one decomposition
+    /// level, one precinct and one code-block per band, LRCP. Every packet
+    /// contributes one coding pass of `BODY_LEN` bytes to each of its blocks.
+    const LAYERS: u16 = 3;
+    const BLOCKS_PER_LAYER: u32 = 4;
+    const BODY_LEN: u32 = 5;
+
+    /// MSB-first packet-header bit writer. The test data is chosen to avoid
+    /// 0xFF header bytes, so no bit stuffing is written.
+    struct BitWriter {
+        bytes: Vec<u8>,
+        cur: u8,
+        used: u8,
+    }
+
+    impl BitWriter {
+        fn new() -> Self {
+            BitWriter {
+                bytes: Vec::new(),
+                cur: 0,
+                used: 0,
+            }
+        }
+
+        fn put(&mut self, bit: u32) {
+            self.cur = (self.cur << 1) | (bit as u8 & 1);
+            self.used += 1;
+            if self.used == 8 {
+                assert_ne!(self.cur, 0xFF, "synthetic header must not need stuffing");
+                self.bytes.push(self.cur);
+                self.cur = 0;
+                self.used = 0;
+            }
+        }
+
+        fn put_bits(&mut self, value: u32, count: u32) {
+            for i in (0..count).rev() {
+                self.put((value >> i) & 1);
+            }
+        }
+
+        fn finish(mut self) -> Vec<u8> {
+            while self.used != 0 {
+                self.put(0);
+            }
+            self.bytes
+        }
+    }
+
+    /// One packet: `bands` blocks, one new coding pass each.
+    fn synth_packet(first_layer: bool, bands: usize) -> Vec<u8> {
+        let mut w = BitWriter::new();
+        w.put(1); // non-empty
+        for _ in 0..bands {
+            if first_layer {
+                w.put(1); // inclusion tag tree: included in this layer
+                w.put(1); // missing-MSBs tag tree: zero planes
+            } else {
+                w.put(1); // already included: plain inclusion bit
+            }
+            w.put(0); // one new pass
+            w.put(0); // beta unchanged (3)
+            w.put_bits(BODY_LEN, 3); // beta 3 + ceil_log2(1 pass) length bits
+        }
+        let mut out = w.finish();
+        out.resize(out.len() + bands * BODY_LEN as usize, 0xA5);
+        out
+    }
+
+    fn synth_stream() -> Vec<u8> {
+        let mut packets = Vec::new();
+        for layer in 0..LAYERS {
+            packets.extend(synth_packet(layer == 0, 1)); // res 0: LL
+            packets.extend(synth_packet(layer == 0, 3)); // res 1: HL, LH, HH
+        }
+        const TILE_PART_HEADER: usize = 14; // SOT (12) + SOD (2)
+        let psot = (TILE_PART_HEADER + packets.len()) as u32;
+        let mut out = vec![0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00];
+        out.extend(psot.to_be_bytes());
+        out.extend([0x00, 0x01]); // TPsot, TNsot
+        out.extend([0xFF, 0x93]); // SOD
+        out.extend(packets);
+        out.extend([0xFF, 0xD9]); // EOC
+        out
+    }
+
+    fn synth_header() -> MainHeaderIn {
+        let mut siz = siz();
+        siz.x_siz = 8;
+        siz.y_siz = 8;
+        siz.x_o_siz = 0;
+        siz.y_o_siz = 0;
+        siz.xt_siz = 8;
+        siz.yt_siz = 8;
+        let mut cod = cod();
+        cod.num_levels = 1;
+        cod.num_layers = LAYERS;
+        MainHeaderIn {
+            siz,
+            cod,
+            qcd: QcdParams {
+                guard_bits: 2,
+                style: QuantStyle::Reversible,
+                ranges: vec![8; 4],
+                steps: vec![],
+            },
+            qcc: vec![],
+            first_sot_off: 0,
+        }
+    }
+
+    fn coded_bytes(plan: &DecodePlan) -> usize {
+        plan.tiles
+            .iter()
+            .flat_map(|t| t.comps.iter().flatten())
+            .flat_map(|r| r.bands.iter())
+            .flat_map(|b| b.blocks.iter())
+            .map(|blk| blk.bolt_len())
+            .sum()
+    }
+
+    fn passes(plan: &DecodePlan) -> Vec<u8> {
+        plan.tiles
+            .iter()
+            .flat_map(|t| t.comps.iter().flatten())
+            .flat_map(|r| r.bands.iter())
+            .flat_map(|b| b.blocks.iter())
+            .map(|blk| blk.num_passes)
+            .collect()
+    }
+
+    #[test]
+    fn layer_limit_drops_later_contributions() {
+        let stream = synth_stream();
+        let hdr = synth_header();
+        let per_layer = (BLOCKS_PER_LAYER * BODY_LEN) as usize;
+
+        for keep in 1..=LAYERS {
+            let plan = draft(&stream, &hdr, 0, keep).expect("plan must build");
+            assert_eq!(
+                coded_bytes(&plan),
+                per_layer * keep as usize,
+                "max_layers {keep}"
+            );
+            assert_eq!(
+                passes(&plan),
+                vec![keep as u8; BLOCKS_PER_LAYER as usize],
+                "max_layers {keep}"
+            );
+        }
+    }
+
+    #[test]
+    fn zero_and_oversized_layer_limits_decode_everything() {
+        let stream = synth_stream();
+        let hdr = synth_header();
+        let full = coded_bytes(&draft(&stream, &hdr, 0, LAYERS).expect("plan must build"));
+        for max_layers in [0, LAYERS + 1, u16::MAX] {
+            let plan = draft(&stream, &hdr, 0, max_layers).expect("plan must build");
+            assert_eq!(coded_bytes(&plan), full, "max_layers {max_layers}");
         }
     }
 }

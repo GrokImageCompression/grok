@@ -320,13 +320,13 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let reduce = if params.is_null() {
-        0
+    let (reduce, max_layers) = if params.is_null() {
+        (0, 0)
     } else {
-        unsafe { (*params).reduce }
+        unsafe { ((*params).reduce, (*params).max_layers) }
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        draft(&*src, &header, reduce)
+        draft(&*src, &header, reduce, max_layers)
     }));
     match r {
         Ok(Ok(plan)) => Box::into_raw(Box::new(MercuryPlan { plan, src })),
@@ -347,6 +347,9 @@ pub struct MercuryDecodeParams {
     /// Resolutions to skip from the top; 0 decodes full resolution. At least
     /// one decomposition level must remain, so `reduce <= num_levels - 1`.
     pub reduce: u8,
+    /// Decode only the first `max_layers` quality layers; 0 decodes all of
+    /// them, as does any value at or above `num_layers`.
+    pub max_layers: u16,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),

@@ -323,12 +323,12 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
   const std::string& path = cs.inputFilePath_;
 
-  // Eligibility: full-resolution, full-image, all-layers, all-components
-  // decode of a stream with no palette/ICC/channel-definition
-  // post-processing. Everything else stays on the classic pipeline.
+  // Eligibility: full-image, all-components decode of a stream with no
+  // palette/ICC/channel-definition post-processing. Reduce and a quality
+  // layer limit are handled; everything else stays on the classic pipeline.
   auto& dec = cs.cp_.codingParams_.dec_;
-  if(dec.layersToDecompress_ != 0 || dec.skipAllocateComposite_)
-    MFP_BAIL("layers/skipAllocate set");
+  if(dec.skipAllocateComposite_)
+    MFP_BAIL("skipAllocate set");
   // The transcoder drives a T2-only decode to record packet lengths for
   // marker injection — it needs the classic parse, not pixels.
   if(cs.cp_.recordPacketLengths_)
@@ -496,6 +496,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   MercuryDecodeParams mparams;
   memset(&mparams, 0, sizeof mparams);
   mparams.reduce = dec.reduce_;
+  // same contract as classic's T2 packet skip: 0 decodes every layer, and a
+  // limit at or above the stream's layer count is a full decode
+  mparams.max_layers = dec.layersToDecompress_;
 
   uint8_t err[256] = {0};
   MercuryPlan* plan = nullptr;
