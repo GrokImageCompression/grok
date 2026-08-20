@@ -53,8 +53,10 @@ void SparseBuffer::tryIncrement()
     return;
   }
   const auto* const currentChunk = chunks[currentChunkId];
-  if(currentChunk->offset() == currentChunk->num_elts() &&
-     currentChunkId < (size_t)(chunks.size() - 1))
+  if(currentChunk->offset() != currentChunk->num_elts())
+    return;
+  // a tile part can carry no packet data at all, so step over the empty chunks it leaves
+  do
   {
     currentChunkId++;
     if(chunks[currentChunkId] == nullptr)
@@ -62,7 +64,9 @@ void SparseBuffer::tryIncrement()
       reachedEnd_ = true;
       return;
     }
-  }
+  } while(chunks[currentChunkId]->num_elts() == 0 && currentChunkId < chunks.size() - 1);
+  if(chunks[currentChunkId]->num_elts() == 0)
+    reachedEnd_ = true;
 }
 size_t SparseBuffer::length(void) const
 {
@@ -89,6 +93,14 @@ size_t SparseBuffer::read(void* buffer, size_t numBytes)
     if(currentChunk == nullptr)
       throw SparseBufferIncompleteException();
     size_t bytesInCurrentChunk = (currentChunk->num_elts() - (size_t)currentChunk->offset());
+    if(bytesInCurrentChunk == 0)
+    {
+      auto previousChunkId = currentChunkId;
+      tryIncrement();
+      if(currentChunkId == previousChunkId)
+        break;
+      continue;
+    }
     size_t bytes_to_read =
         (bytesLeftToRead < bytesInCurrentChunk) ? bytesLeftToRead : bytesInCurrentChunk;
     memcpy((uint8_t*)buffer + totalBytesRead, currentChunk->buf() + currentChunk->offset(),
@@ -117,6 +129,14 @@ size_t SparseBuffer::skip(size_t numBytes)
     if(currentChunk == nullptr)
       throw SparseBufferIncompleteException();
     size_t bytesInCurrentChunk = (size_t)(currentChunk->num_elts() - currentChunk->offset());
+    if(bytesInCurrentChunk == 0)
+    {
+      auto previousChunkId = currentChunkId;
+      tryIncrement();
+      if(currentChunkId == previousChunkId)
+        break;
+      continue;
+    }
     if(skipBytes > bytesInCurrentChunk)
     {
       // hoover up all the bytes in this chunk, and move to the next one
@@ -150,8 +170,7 @@ Buffer8* SparseBuffer::push(size_t index, uint8_t* buf, size_t len, bool ownsDat
   if(mode_ == Mode::Sequential)
     throw std::runtime_error("Cannot use indexed push in sequential mode");
   mode_ = Mode::Indexed;
-  if(len == 0)
-    return nullptr;
+  // a zero length chunk still claims its index, so that a null keeps meaning "not fetched"
   auto new_chunk = new Buffer8(buf, len, ownsData);
   if(index >= chunks.size())
     chunks.resize(index + 1, nullptr);

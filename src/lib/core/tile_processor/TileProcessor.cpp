@@ -776,6 +776,9 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 
     if(!tpi.remainingTilePartBytes_)
     {
+      // a tile part with no packet data still has to claim its slot, or every tile part
+      // after it reads as absent
+      tcp_->packets_->push(tpi.tilePart_, nullptr, 0, false);
       return;
     }
 
