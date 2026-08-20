@@ -115,6 +115,19 @@ if(GRK_ENABLE_MERCURY)
   add_test(NAME grk_mercury_tile_row_race_test COMMAND grk_mercury_tile_row_race_test)
 endif()
 
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
+target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_short_tile_round_trip_test COMMAND grk_short_tile_round_trip_test)
+
+add_executable(grk_truncated_stream_test GrkTruncatedStreamTest.cpp)
+target_link_libraries(grk_truncated_stream_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_truncated_stream_test
+    COMMAND grk_truncated_stream_test
+            ${GRK_DATA_ROOT}/input/nonregression/multi_tile_truncated_rgb.jp2)
+endif()
+
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)
 target_link_libraries(grk_jp2_metadata_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_jp2_metadata_test COMMAND grk_jp2_metadata_test)

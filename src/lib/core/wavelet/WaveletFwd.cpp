@@ -143,12 +143,14 @@ namespace HWY_NAMESPACE
     const HWY_FULL(int32_t) d;
     if(height <= 1)
     {
-      if(parity == 1 && height == 1)
+      // a lone row still carries the dc shift, and doubles only when it sits
+      // on an odd row and so is a high-pass coefficient
+      if(height == 1 && (parity == 1 || dcShift != 0))
       {
         auto v = Load(d, resolution);
         if(dcShift != 0)
           v = v - Set(d, dcShift);
-        auto res = ShiftLeft<1>(v);
+        auto res = parity == 1 ? ShiftLeft<1>(v) : v;
         StoreN(res, d, resolution, numcols);
       }
       return;
@@ -871,14 +873,16 @@ namespace HWY_NAMESPACE
 
     if(height <= 1)
     {
-      if(parity == 1 && height == 1)
+      // a lone row still carries the dc shift, and doubles only when it sits
+      // on an odd row and so is a high-pass coefficient
+      if(height == 1 && (parity == 1 || dcShift != 0))
       {
         for(uint32_t j = 0; j < numcols; ++j)
         {
           int16_t v = (int16_t)resolution[j];
           if(dcShift != 0)
             v = (int16_t)(v - (int16_t)dcShift);
-          resolution[j] = (int32_t)(int16_t)(v << 1);
+          resolution[j] = (int32_t)(int16_t)(parity == 1 ? (int16_t)(v << 1) : v);
         }
       }
       return;

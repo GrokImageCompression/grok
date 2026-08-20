@@ -18,17 +18,24 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   only. other stream creators may have the same unowned-handle pattern
 - a second grk_decompress call on the same codec returns true but hands back
   an image whose comps[0].data is null
-- mercury fast path decodes nondeterministically on many-tile streams
-  (640x512 with 14x15 tiles, mismatch in 24 of 30 in-process decodes,
-  always at x=0 on rows that are multiples of the tile height, the first
-  column of each tile row). classic is stable on the same file
-- encoder drops the DC level shift for a one-row finest-level tile
-  (encode_53_v returns early on height <= 1 with even y0), so lossless
-  encodes of those geometries write codestreams off by +128. encode_97_v
-  has the same early return and also skips int-to-float, untested
-- region decode returns wrong pixels for a short window ending on a tile
-  boundary when the tile y0 is odd (WaveletReversePartial path), e.g.
-  -d 0,43,61,45 on a 61x67 image with 14x15 tiles
+- region decode returns wrong pixels for tiled images on a fixed set of
+  source rows regardless of window position (61x67 with 14x15 tiles: rows
+  28, 39, 40, 43, 44, 55, 56, 58, 59). single-tile windows and whole-tile
+  windows are exact, so suspect the band-window derivation for tiles with
+  non-zero origin: getPaddedBandWindow (ResWindow.h, has a standing todo on
+  its padding factor) feeding WaveletReversePartial. repro:
+  grk_compress -t 14,15 then grk_decompress -d 0,43,61,45
+- encode_97_v returns early on height <= 1, skipping DC shift AND the
+  int-to-float conversion, so 9/7 encodes of one-row finest-level tiles are
+  badly wrong (worst error ~14768 at height 1) and heights 2-4 are also
+  broken (~7300) by something beyond that function. a one-row-only fix
+  mirroring WaveletReverse97's trivial case only halves the height-1 error.
+  needs the forward single-sample rule derived for grok's 9/7 normalization
+  at every degenerate level, plus a lossy-output review
+- weft's wakeup protocol has no loom model (node.rs claimed one existed in
+  tests/weft_loom.rs, it does not). the tug() lost-wakeup was exactly the
+  class a model catches. write the model, mirror node.rs atomics, wire it
+  into cargo test
 
 ## phase 1: close the eligibility gaps
 
