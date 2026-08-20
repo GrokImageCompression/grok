@@ -261,3 +261,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(grk_mapped_offset_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_mapped_offset_test COMMAND grk_mapped_offset_test)
 endif()
+
+# serves range requests from the loopback address, so it needs no object store
+if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(grk_fetch_header_leak_test GrkFetchHeaderLeakTest.cpp)
+  target_link_libraries(grk_fetch_header_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_fetch_header_leak_test COMMAND grk_fetch_header_leak_test)
+endif()

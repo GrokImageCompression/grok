@@ -27,6 +27,8 @@
 
 #include "ChunkBuffer.h"
 
+struct curl_slist;
+
 namespace grk
 {
 
@@ -106,6 +108,9 @@ struct FetchResult
   long responseCode_ = 0;
   bool success_ = false;
   uint32_t retryCount_ = 0;
+  // curl only borrows the request headers, so they belong to the result the
+  // handle points at and are freed when that handle is cleaned up
+  curl_slist* headers_ = nullptr;
 };
 
 // Job struct for tile fetch queue

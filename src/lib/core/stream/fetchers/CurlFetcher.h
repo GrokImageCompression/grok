@@ -189,6 +189,14 @@ protected:
                         CURL_FETCHER_WRITE_CALLBACK callback);
 
   /**
+   * @brief Cleans up a handle from @ref configureHandle, along with the
+   * request headers held by the fetch result it points at
+   *
+   * @param curl handle to clean up
+   */
+  static void cleanupHandle(CURL* curl);
+
+  /**
    * @brief Schedules a tile fetch by creating TileFetchContext, generating
    * tile part collections, and scheduling the first batch of CURL requests
    *

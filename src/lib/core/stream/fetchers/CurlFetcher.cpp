@@ -141,7 +141,7 @@ size_t CurlFetcher::read(uint8_t* buffer, size_t numBytes)
   if(res != CURLE_OK)
   {
     grklog.error("curl_easy_perform failed: %s", curl_easy_strerror(res));
-    curl_easy_cleanup(curl);
+    cleanupHandle(curl);
     return 0;
   }
 
@@ -149,7 +149,7 @@ size_t CurlFetcher::read(uint8_t* buffer, size_t numBytes)
   if(result.responseCode_ != 206)
   {
     grklog.error("Read failed with HTTP code: %ld", result.responseCode_);
-    curl_easy_cleanup(curl);
+    cleanupHandle(curl);
     return 0;
   }
 
@@ -165,7 +165,7 @@ size_t CurlFetcher::read(uint8_t* buffer, size_t numBytes)
                current_offset_ + bytes_read);
   current_offset_ += bytes_read;
 
-  curl_easy_cleanup(curl);
+  cleanupHandle(curl);
   return bytes_read;
 }
 
@@ -414,10 +414,24 @@ CURL* CurlFetcher::configureHandle(uint64_t offset, uint64_t end, FetchResult& r
   auth(curl);
 
   std::string range = "Range: bytes=" + std::to_string(offset) + "-" + std::to_string(end);
-  auto headers = configureHeaders(range);
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  result.headers_ = configureHeaders(range);
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, result.headers_);
 
   return curl;
+}
+
+void CurlFetcher::cleanupHandle(CURL* curl)
+{
+  void* userp = nullptr;
+  curl_easy_getinfo(curl, CURLINFO_PRIVATE, &userp);
+  curl_easy_cleanup(curl);
+
+  auto result = static_cast<FetchResult*>(userp);
+  if(result)
+  {
+    curl_slist_free_all(result->headers_);
+    result->headers_ = nullptr;
+  }
 }
 
 std::shared_ptr<TileFetchContext> CurlFetcher::scheduleTileFetch(const std::set<uint16_t>& slated)
@@ -487,7 +501,7 @@ bool CurlFetcher::scheduleNextBatch(CURL_FETCHER_WRITE_CALLBACK callback)
     if(ret != CURLM_OK)
     {
       grklog.error("curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
-      curl_easy_cleanup(handle);
+      cleanupHandle(handle);
       return false;
     }
     {
@@ -532,7 +546,7 @@ void CurlFetcher::retryRequest(FetchResult* result, uint64_t offset, uint64_t en
   if(ret != CURLM_OK)
   {
     grklog.error("Retry curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
-    curl_easy_cleanup(handle);
+    cleanupHandle(handle);
     onFatalError();
   }
   else
@@ -669,7 +683,7 @@ void CurlFetcher::fetchWorker()
         for(auto& [handle, idx] : active_handles_)
         {
           curl_multi_remove_handle(multi_handle_, handle);
-          curl_easy_cleanup(handle);
+          cleanupHandle(handle);
         }
         active_handles_.clear();
       }
@@ -702,7 +716,7 @@ void CurlFetcher::fetchWorker()
         }
 
         curl_multi_remove_handle(multi_handle_, curl);
-        curl_easy_cleanup(curl);
+        cleanupHandle(curl);
 
         if(!result->success_)
         {
@@ -812,7 +826,7 @@ void CurlFetcher::fetchWorker()
       if(idx < currentFetch_.promises_->size())
         (*currentFetch_.promises_)[idx].set_value(resp);
       curl_multi_remove_handle(multi_handle_, handle);
-      curl_easy_cleanup(handle);
+      cleanupHandle(handle);
     }
   }
   active_handles_.clear();
