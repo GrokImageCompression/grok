@@ -100,7 +100,8 @@ namespace HWY_NAMESPACE
                                    int32_t dcMax)
   {
     const HWY_FULL(int32_t) di;
-    if(dcShift != 0)
+    // a zero shift on a signed component still clamps at the final level
+    if(dcShift != 0 || dcMin != dcMax)
     {
       const auto vshift = Set(di, dcShift);
       const auto vmin = Set(di, dcMin);
@@ -406,7 +407,8 @@ namespace HWY_NAMESPACE
                                       int16_t dcMax)
   {
     const HWY_FULL(int16_t) di;
-    if(dcShift != 0)
+    // a zero shift on a signed component still clamps at the final level
+    if(dcShift != 0 || dcMin != dcMax)
     {
       const auto vshift = Set(di, dcShift);
       const auto vmin = Set(di, dcMin);

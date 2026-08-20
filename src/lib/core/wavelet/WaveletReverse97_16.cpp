@@ -1114,14 +1114,14 @@ namespace HWY_NAMESPACE
     /* ------------------------------------------------------------------ */
     /*  Phase 3: Scatter to strided destination                            */
     /*                                                                     */
-    /*  dc != 0 marks the final non-MCT level: this is the synthesis sink, */
-    /*  so round the Q-format fractional bits back out (round-shift by      */
-    /*  qShift), add the DC level shift and clamp.  dc == 0 is either an    */
-    /*  intermediate level or an MCT component, whose output stays in       */
-    /*  Q-format for the next level / the inverse MCT to consume; copy it   */
-    /*  through unchanged.                                                  */
+    /*  A clamp range marks the final non-MCT level: this is the synthesis  */
+    /*  sink, so round the Q-format fractional bits back out (round-shift   */
+    /*  by qShift), add the DC level shift and clamp. The shift alone is    */
+    /*  zero on signed components. Without a range this is an intermediate  */
+    /*  level or an MCT component, whose output stays in Q-format for the   */
+    /*  next level / the inverse MCT to consume; copy it through unchanged. */
     /* ------------------------------------------------------------------ */
-    if(dc != 0)
+    if(dc != 0 || dcMin != dcMax)
     {
       const auto vdc = Set(di, dc);
       const auto vmin = Set(di, dcMin);

@@ -228,9 +228,9 @@ target_link_libraries(grk_degenerate_97_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_degenerate_97_test COMMAND grk_degenerate_97_test)
 
 # synthesizes its own image, so it needs no GRK_DATA_ROOT
-add_executable(grk_reduced_clamp_test GrkReducedClampTest.cpp)
-target_link_libraries(grk_reduced_clamp_test ${GROK_CORE_NAME} spdlog::spdlog)
-add_test(NAME grk_reduced_clamp_test COMMAND grk_reduced_clamp_test)
+add_executable(grk_decode_range_test GrkDecodeRangeTest.cpp)
+target_link_libraries(grk_decode_range_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_decode_range_test COMMAND grk_decode_range_test)
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
