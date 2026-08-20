@@ -263,8 +263,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_test(NAME grk_mapped_offset_test COMMAND grk_mapped_offset_test)
 endif()
 
-# serves range requests from the loopback address, so it needs no object store
-if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+# serves range requests from the loopback address, so it needs no object store.
+# it redefines two curl symbols to count them, which collides with a libcurl
+# linked statically into the test, so it needs the shared grok library
+if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND BUILD_SHARED_LIBS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(grk_fetch_header_leak_test GrkFetchHeaderLeakTest.cpp)
   target_link_libraries(grk_fetch_header_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_fetch_header_leak_test COMMAND grk_fetch_header_leak_test)
