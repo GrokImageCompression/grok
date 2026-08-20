@@ -38,22 +38,21 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   the repeat call returns the old window's pixels (uncropped whole tiles in
   the multi-tile case). invalidation belongs in setDecompressRegion,
   dropping cached tile image and best-effort flag when the region changes
-- drift diagnosis in progress on branch drift-diagnosis-wip (3 commits off
-  8de68f96): drop k gain on one-sample 9/7 levels, read a lone poc as a poc
-  (numpocs_ stores count-1 so a single poc read as none), keep a slot for an
-  empty tile part. they clear p0_03/p0_10/p0_15 but regress grk_degenerate_97
-  (the reverse 9/7 one-sample change disagrees with the forward fix already
-  in b93079eb, reconcile the two) and rewrite p1_05/p1_06 md5 baselines
-  without matching their reference. do not land until reconciled, net was
-  34 failing vs 26. p0_08 was diagnosis-only
-- with compare_images fixed (it was blind in both modes), 26 compare tests
-  fail on real decode drift, in five groups. large errors: p0_03, p0_08,
-  p0_09, p0_10, p0_15 miss the reference badly (p0_08 comp 1 MSE 125, peak
-  390), and p1_05, p1_06 are wrong on nearly every sample (MSE ~1900, peak
-  ~230), which reads like a transform or component bug. small drift: p0_04,
-  p0_05, p0_06, p1_02, p1_03, p1_04 and the richter subsampled files are
-  within a few code values of the reference but not bit exact, and p0_05,
-  p1_03 marginally exceed the Table C.6/C.7 conformance limits
+- compare2base pgx baselines in grok-test-data are stale for p0_04, p0_05,
+  p0_06, p1_02, p1_03, p1_04, p1_05, p1_06, subsampling_1, subsampling_2,
+  zoo1, zoo2: the old ones came from an older float 9/7 path (p1_05, p1_06
+  from the wrong lone-sample decode). output now matches the conformance
+  references, regenerate the baselines from it
+- windows md5 overrides (tests/nonregression/md5refs-windows-*.txt) carry
+  entries for 9/7 files whose int16 output changed, refresh them from the
+  next green ubuntu run with tests/nonregression/collect_ci_md5refs.py
+- forcing the int32 whole-tile 5/3 path (can16Bit false in
+  createDecompressTileComponentWindows) segfaults on p0_03, p0_07, p0_10,
+  p0_15, the KDU files and Bretagne2, and diverges from int16 on many md5
+  files. production only takes it for 5/3 above 12 bits
+- 9-bit 9/7 gets qShift 4, the fractional budget that failed conformance at
+  8 bits before ties-to-even rounding. no 9-bit 9/7 file in the corpus to
+  measure, the lever is prec + 7 <= 16 in grk_get_data_type
 - eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
   coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
   colors, and grok reads its own eycc tif back as sycc. byte round trips
