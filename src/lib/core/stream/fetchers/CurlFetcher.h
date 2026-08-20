@@ -33,7 +33,6 @@
 #include "grk_config_private.h"
 #include "FetchCommon.h"
 #include "EnvVarManager.h"
-#include "SimpleXmlParser.h"
 
 #ifdef GRK_ENABLE_LIBCURL
 #include <curl/curl.h>
@@ -81,13 +80,6 @@ public:
 
   virtual void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
                            std::shared_ptr<std::vector<ChunkRequest>> requests) = 0;
-
-  // List directory contents
-  virtual std::vector<std::string> listDirectory(const std::string& path) = 0;
-
-  // Retrieve metadata
-  virtual bool getMetadata(const std::string& path,
-                           std::map<std::string, std::string>& metadata) = 0;
 
   // Fetch throttle: when set, the fetcher pauses scheduling new HTTP requests
   // until the callback returns true.  notifyThrottleRelease() wakes the
@@ -172,12 +164,6 @@ public:
   void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override;
   void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
                    std::shared_ptr<std::vector<ChunkRequest>> requests) override;
-
-  // Directory listing
-  std::vector<std::string> listDirectory(const std::string& path) override;
-
-  // Metadata retrieval (HEAD request)
-  bool getMetadata(const std::string& path, std::map<std::string, std::string>& metadata) override;
 
 protected:
   virtual curl_slist* prepareAuthHeaders(curl_slist* headers) = 0;
