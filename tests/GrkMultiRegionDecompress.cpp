@@ -45,6 +45,7 @@ struct CodecDeleter
 };
 using CodecPtr = std::unique_ptr<grk_object, CodecDeleter>;
 
+// window offsets relative to the image origin, which is what dw_x0 .. dw_y1 take
 struct Region
 {
   uint32_t x0, y0, x1, y1;
@@ -81,40 +82,44 @@ static bool decompressRegion(grk_object* codec, const Region& region, const grk_
     return false;
   }
 
-  spdlog::info("  starting row-by-row wait...");
+  // a swath is stated in canvas coordinates, so shift the window by the image origin
+  uint32_t canvasX0 = region.x0 + header.header_image.x0;
+  uint32_t canvasY0 = region.y0 + header.header_image.y0;
+  uint32_t canvasX1 = region.x1 + header.header_image.x0;
+  uint32_t canvasY1 = region.y1 + header.header_image.y0;
 
   // Wait row-by-row using tile height intervals
   uint32_t tileHeight = header.t_height;
   if(tileHeight == 0)
-    tileHeight = region.y1 - region.y0;
+    tileHeight = canvasY1 - canvasY0;
 
   spdlog::info("  starting row-by-row wait (tileHeight={})...", tileHeight);
-  for(uint32_t rowY = region.y0; rowY < region.y1; rowY += tileHeight)
+  for(uint32_t rowY = canvasY0; rowY < canvasY1; rowY += tileHeight)
   {
     grk_wait_swath swath{};
-    swath.x0 = region.x0;
+    swath.x0 = canvasX0;
     swath.y0 = rowY;
-    swath.x1 = region.x1;
-    swath.y1 = std::min(rowY + tileHeight, region.y1);
+    swath.x1 = canvasX1;
+    swath.y1 = std::min(rowY + tileHeight, canvasY1);
     spdlog::info("  waiting for swath row y={}...", rowY);
     grk_decompress_wait(codec, &swath);
   }
 
   spdlog::info("  calling final grk_decompress_wait(nullptr)...");
-  // Final wait with null swath to join async workers and clean up
-  // decompress state, so the codec is ready for a new decompress cycle.
+  // null swath joins the async workers and runs the post-decompress transfer
   grk_decompress_wait(codec, nullptr);
   spdlog::info("  final wait complete.");
 
   auto end = std::chrono::high_resolution_clock::now();
   double ms = std::chrono::duration<double, std::milli>(end - start).count();
 
-  // Verify we can retrieve tile images for tiles in this region
+  // Verify we can retrieve tile images for tiles in this region.
+  // The tile grid is anchored at tx0/ty0, which can sit left of and above the image origin.
   uint32_t tileWidth = header.t_width;
-  uint32_t tx0 = region.x0 / tileWidth;
-  uint32_t ty0 = region.y0 / tileHeight;
-  uint32_t tx1 = (region.x1 + tileWidth - 1) / tileWidth;
-  uint32_t ty1 = (region.y1 + tileHeight - 1) / tileHeight;
+  uint32_t tx0 = (canvasX0 - header.tx0) / tileWidth;
+  uint32_t ty0 = (canvasY0 - header.ty0) / tileHeight;
+  uint32_t tx1 = (canvasX1 - header.tx0 + tileWidth - 1) / tileWidth;
+  uint32_t ty1 = (canvasY1 - header.ty0 + tileHeight - 1) / tileHeight;
   uint32_t numTileCols = header.t_grid_width;
   uint32_t tilesChecked = 0;
 
@@ -201,18 +206,28 @@ int GrkMultiRegionDecompress::main(int argc, char** argv)
   uint32_t quarterH = imgH / 4;
 
   std::vector<Region> regions;
-  regions.push_back({image->x0, image->y0, image->x0 + halfW, image->y0 + halfH, "top-left"});
-  regions.push_back({image->x0 + halfW, image->y0, image->x1, image->y0 + halfH, "top-right"});
-  regions.push_back({image->x0, image->y0 + halfH, image->x0 + halfW, image->y1, "bottom-left"});
-  regions.push_back({image->x0 + halfW, image->y0 + halfH, image->x1, image->y1, "bottom-right"});
-  regions.push_back({image->x0 + quarterW, image->y0 + quarterH, image->x1 - quarterW,
-                     image->y1 - quarterH, "center"});
+  regions.push_back({0, 0, halfW, halfH, "top-left"});
+  regions.push_back({halfW, 0, imgW, halfH, "top-right"});
+  regions.push_back({0, halfH, halfW, imgH, "bottom-left"});
+  regions.push_back({halfW, halfH, imgW, imgH, "bottom-right"});
+  regions.push_back({quarterW, quarterH, imgW - quarterW, imgH - quarterH, "center"});
 
-  // Decompress each region using the SAME codec (no close/reopen)
+  // a codec decompresses its stream once, so each region gets its own codec
   int failures = 0;
   for(const auto& region : regions)
   {
-    if(!decompressRegion(codec.get(), region, headerInfo))
+    grk_decompress_parameters regionParams{};
+    grk_stream_params regionStream{};
+    safe_strcpy(regionStream.file, inputFile.data());
+    CodecPtr regionCodec(grk_decompress_init(&regionStream, &regionParams));
+    grk_header_info regionHeader{};
+    if(!regionCodec || !grk_decompress_read_header(regionCodec.get(), &regionHeader))
+    {
+      spdlog::error("Failed to open a codec for region '{}'", region.label);
+      failures++;
+      continue;
+    }
+    if(!decompressRegion(regionCodec.get(), region, regionHeader))
     {
       spdlog::error("FAILED: region '{}'", region.label);
       failures++;
@@ -225,7 +240,7 @@ int GrkMultiRegionDecompress::main(int argc, char** argv)
     return EXIT_FAILURE;
   }
 
-  spdlog::info("All {} regions decompressed successfully from the same codec", regions.size());
+  spdlog::info("All {} regions decompressed successfully", regions.size());
   return EXIT_SUCCESS;
 }
 

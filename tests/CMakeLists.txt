@@ -268,4 +268,26 @@ if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux
   add_executable(grk_fetch_header_leak_test GrkFetchHeaderLeakTest.cpp)
   target_link_libraries(grk_fetch_header_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_fetch_header_leak_test COMMAND grk_fetch_header_leak_test)
+
+# five windows per file, each decoded asynchronously and waited on swath by swath
+if(GRK_DATA_ROOT)
+  # single tile, tile grid on the image origin
+  add_test(NAME j2k_multi_region_p0_01
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/p0_01.j2k)
+  # 2x2 tiles
+  add_test(NAME j2k_multi_region_p0_03
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/p0_03.j2k)
+  # 8x8 tiles, so a window covers several tile rows
+  add_test(NAME j2k_multi_region_p1_04
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/p1_04.j2k)
+  # single tile whose grid starts left of and above the image origin
+  add_test(NAME j2k_multi_region_p1_01
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/p1_01.j2k)
+  # 5x3 tiles, grid origin left of and above the image origin: the grid has more
+  # columns and rows than the image area alone accounts for
+  add_test(NAME j2k_multi_region_b1_mono
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/b1_mono.j2c)
+  # 5x5 tiles, image origin inside the first tile
+  add_test(NAME j2k_multi_region_b2_mono
+    COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/b2_mono.j2c)
 endif()
