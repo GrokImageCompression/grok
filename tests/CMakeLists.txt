@@ -386,3 +386,13 @@ if(GRK_DATA_ROOT)
             0,0,2048,2048)
   set_tests_properties(grk_incremental_band_write_p0_07_test PROPERTIES TIMEOUT 300)
 endif()
+
+add_executable(grk_async_swath_decompress_test GrkAsyncSwathDecompressTest.cpp)
+target_link_libraries(grk_async_swath_decompress_test ${GROK_CORE_NAME})
+if(GRK_DATA_ROOT)
+  # tile 0 carries a second tile part after every other tile, so its row finishes last
+  add_test(NAME grk_async_swath_decompress_p0_07_test
+    COMMAND grk_async_swath_decompress_test
+            ${GRK_DATA_ROOT}/input/conformance/p0_07.j2k)
+  set_tests_properties(grk_async_swath_decompress_p0_07_test PROPERTIES TIMEOUT 300)
+endif()

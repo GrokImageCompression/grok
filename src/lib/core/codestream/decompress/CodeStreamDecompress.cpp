@@ -611,6 +611,8 @@ bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pending
     batchTileScheduleHeadroomSequential_ =
         batchTileHeadroomIncrement(batchTileInitialRows_, batchTileUnscheduledSequential_);
     batchTileScheduledRows_ = batchTileInitialRows_;
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
   }
 
   // begin network fetch
@@ -653,7 +655,7 @@ bool CodeStreamDecompress::bandRowFullyScheduled(uint16_t tileY)
 
 bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
 {
-  if(ioBandCallback_ && tileCompletion_ && !bandRowScheduledTiles_.empty())
+  if(tileCompletion_ && !bandRowScheduledTiles_.empty())
   {
     uint16_t tileY = tileProcessor->getIndex() / tileCompletion_->getNumTileCols();
     std::lock_guard<std::mutex> lock(bandOrderMutex_);
@@ -712,6 +714,11 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
     return;
   }
 
+  {
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
+  }
+
   // 2. push all pending tiles into the queue
   // row-completion callbacks can drain this queue before all tiles are pushed
   {
@@ -726,7 +733,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
   batchTileScheduledRows_ = batchTileInitialRows_;
   {
     std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
-    for(size_t i = 0; i < initialBatchCount; ++i)
+    for(size_t i = 0; i < initialBatchCount && !batchTileQueueTLM_.empty(); ++i)
     {
       auto tileIndex = batchTileQueueTLM_.front();
       batchTileQueueTLM_.pop();
@@ -1756,6 +1763,21 @@ void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin)
   scheduleTileBatch();
 }
 
+bool CodeStreamDecompress::swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1)
+{
+  // rows above the slated region are never scheduled, so they must stay out of the range
+  int32_t firstRow =
+      std::max(lastClearedTileY + 1, (int32_t)tilesToDecompress_.getSlatedTileRect().y0);
+  std::lock_guard<std::mutex> lock(bandOrderMutex_);
+  for(int32_t tileY = firstRow; tileY < neededTileY1; ++tileY)
+  {
+    if(!bandRowFullyScheduled((uint16_t)tileY))
+      return false;
+  }
+
+  return true;
+}
+
 void CodeStreamDecompress::scheduleTileBatch()
 {
   // Compute how many rows we're allowed to schedule based on the consumer's position.
@@ -1772,11 +1794,20 @@ void CodeStreamDecompress::scheduleTileBatch()
     if(neededRow > maxAllowedRow)
       maxAllowedRow = neededRow;
     if(batchTileScheduledRows_ >= maxAllowedRow)
-      return;
-    // Only schedule enough rows to fill the window, not the full batchTileNextRows_
-    int32_t rowsBudget = maxAllowedRow - batchTileScheduledRows_;
-    if(rowsBudget < rowsToSchedule)
-      rowsToSchedule = static_cast<uint16_t>(rowsBudget);
+    {
+      if(swathRowsFullyScheduled(lastCleared, neededRow))
+        return;
+      // Tile parts can appear in any order, so the tile that finishes a waited row
+      // may sit past the window, and the window only opens by scheduling on.
+      rowsToSchedule = cp_.t_grid_height_;
+    }
+    else
+    {
+      // Only schedule enough rows to fill the window, not the full batchTileNextRows_
+      int32_t rowsBudget = maxAllowedRow - batchTileScheduledRows_;
+      if(rowsBudget < rowsToSchedule)
+        rowsToSchedule = static_cast<uint16_t>(rowsBudget);
+    }
   }
 
   uint16_t numTileCols = tilesToDecompress_.getSlatedTileRect().width();

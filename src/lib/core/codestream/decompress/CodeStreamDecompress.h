@@ -488,10 +488,11 @@ private:
     uint16_t tileX0, numCols;
   };
   std::map<uint16_t, PendingBand_> pendingBands_;
-  // tiles handed to the scheduler per tile row, so the parser can tell whether the
-  // row it would wait for is still missing tile parts that only it can read
+  // tiles handed to the scheduler per tile row, so the parser and the batch throttle can
+  // tell whether the row they would block on is still missing tile parts
   std::vector<uint16_t> bandRowScheduledTiles_;
   bool bandRowFullyScheduled(uint16_t tileY);
+  bool swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1);
 
   /**
    * @brief callback to reclaim io buffers

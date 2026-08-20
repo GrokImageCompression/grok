@@ -269,11 +269,11 @@ public:
 
     // Return freed pages to the OS so RSS drops after tile release
     if(shouldNotifyRelease)
-    {
       MemoryManager::releaseFreedPages();
-      if(rowsReleasedCallback_)
-        rowsReleasedCallback_();
-    }
+    // neededTileY1_ just moved, so the scheduler has to re-check its throttle even
+    // when no row was released, or a swath it stopped short of never gets scheduled
+    if(rowsReleasedCallback_)
+      rowsReleasedCallback_();
 
     // Compute all local indices in the swath
     std::vector<uint16_t> swathIndices;
