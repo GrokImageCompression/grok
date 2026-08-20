@@ -110,7 +110,9 @@ static void decompress_help_display(void)
   fputs(decompress_help_text, stdout);
 }
 GrkDecompress::GrkDecompress()
-    : storeToDisk(true), incrementalWriteActive_(false), imageFormat(nullptr), messenger_(nullptr)
+    : storeToDisk(true), incrementalWriteActive_(false), incrementalBandFormat_(nullptr),
+      incrementalBandRowsWritten_(0), incrementalBandRowsExpected_(0), imageFormat(nullptr),
+      messenger_(nullptr)
 {}
 GrkDecompress::~GrkDecompress(void)
 {
@@ -998,13 +1000,21 @@ static bool grkWriteStripCallback(uint32_t workerId, grk_io_buf buffer, void* us
   return imageFormat->writeStrip(workerId, buffer);
 }
 
-static bool grkWriteBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image, void* user_data)
+bool GrkDecompress::writeBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image,
+                                      void* userData)
 {
-  if(!user_data || !image)
+  if(!userData || !image)
     return false;
-  auto imageFormat = (IImageFormat*)user_data;
-  imageFormat->setImage(image);
-  return imageFormat->writeImageBand(yBegin, yEnd);
+  auto self = (GrkDecompress*)userData;
+  auto fmt = self->incrementalBandFormat_;
+  if(!fmt)
+    return false;
+  fmt->setImage(image);
+  if(!fmt->writeImageBand(yBegin, yEnd))
+    return false;
+  self->incrementalBandRowsWritten_ += yEnd - yBegin;
+
+  return true;
 }
 
 bool GrkDecompress::writeHeader(grk_plugin_decompress_callback_info* info)
@@ -1196,6 +1206,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   // io_buffer_callback (strip write) doesn't write raw/unprocessed strips
   // during decompress.
   incrementalWriteActive_ = false;
+  incrementalBandFormat_ = nullptr;
+  incrementalBandRowsWritten_ = 0;
+  incrementalBandRowsExpected_ = 0;
   if(storeToDisk && !parameters->single_tile_decompress && !info->init_decompressors_func &&
      grk_image_is_post_process_no_op(info->image) && parameters->dw_y1 == 0)
   {
@@ -1207,7 +1220,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
     if(fmt->supportsIncrementalBandWrite())
     {
-      grk_decompress_set_band_callback(info->codec, grkWriteBandCallback, fmt);
+      incrementalBandFormat_ = fmt;
+      // the header already committed this height, so anything short of it is a truncated file
+      incrementalBandRowsExpected_ = info->image->decompress_height;
+      grk_decompress_set_band_callback(info->codec, writeBandCallback, this);
       incrementalWriteActive_ = true;
     }
   }
@@ -1387,6 +1403,12 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
     if(incrementalWriteActive_)
     {
       // bands already written during decompress; just finalize
+      if(incrementalBandRowsWritten_ < incrementalBandRowsExpected_)
+      {
+        spdlog::error("Outfile {} not generated: only {} of {} image rows were decompressed",
+                      outfileStr, incrementalBandRowsWritten_, incrementalBandRowsExpected_);
+        goto cleanup;
+      }
     }
     else
     {

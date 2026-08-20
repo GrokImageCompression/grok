@@ -10,8 +10,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## classic output bugs found by the sweep (not migration blockers)
 
-- incremental band writers emit a header-only tif when a tile row never
-  completes (issue363-4740, issue391), and exit 0 with most tiles missing
 - subsampled ycbcr tif output cannot be read back by grok's own tif reader
   or compare_images (issue142, issue432)
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file

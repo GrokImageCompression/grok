@@ -188,3 +188,18 @@ endif()
 
 add_subdirectory(conformance)
 add_subdirectory(nonregression)
+
+# output-side regression tests
+add_executable(grk_incomplete_decode_test GrkIncompleteDecodeTest.cpp)
+target_link_libraries(grk_incomplete_decode_test ${GROK_CODEC_NAME})
+if(GRK_DATA_ROOT)
+  # both codestreams stop before any tile row completes, so the tif never gets pixels
+  add_test(NAME grk_incomplete_decode_issue363_test
+    COMMAND grk_incomplete_decode_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue363-4740.jp2
+            ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
+  add_test(NAME grk_incomplete_decode_issue391_test
+    COMMAND grk_incomplete_decode_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue391.jp2
+            ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
+endif()

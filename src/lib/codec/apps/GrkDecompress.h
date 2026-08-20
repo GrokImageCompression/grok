@@ -64,6 +64,7 @@ public:
 
 private:
   static void generateCompletion(const CLI::App& app);
+  static bool writeBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image, void* userData);
   bool writeHeader(grk_plugin_decompress_callback_info* info);
   bool writeInit(grk_plugin_decompress_callback_info* info);
   // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
@@ -82,6 +83,9 @@ private:
 
   bool storeToDisk;
   bool incrementalWriteActive_;
+  IImageFormat* incrementalBandFormat_;
+  uint32_t incrementalBandRowsWritten_;
+  uint32_t incrementalBandRowsExpected_;
   IImageFormat* imageFormat;
   grk_plugin::Messenger* messenger_;
 };
