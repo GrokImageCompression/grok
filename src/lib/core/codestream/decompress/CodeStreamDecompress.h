@@ -436,6 +436,12 @@ private:
    */
   Rect32 region_;
 
+  /**
+   * @brief True once a synchronous decompress has filled @ref multiTileComposite_,
+   * so a repeat call hands the same image back instead of decoding again
+   */
+  bool compositeDecompressed_ = false;
+
   std::function<void()> postMulti_;
 
   /**

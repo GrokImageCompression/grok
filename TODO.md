@@ -18,9 +18,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   and a raw composite with postProcess deferred to image handoff, so partial
   re-decode is expressible. per-tile re-decode through grk_decompress_tile
   works today
-- a repeat grk_decompress is a no-op for classic but a full-stream re-decode
-  for mercury (fastpath bails on pre-allocated component data and falls
-  through to classic). same observable result, very different cost
 - p0_07.j2k async simulate-synchronous decode still deadlocks: the sync
   incremental band path was fixed (a row is not waited on until all its
   tiles are scheduled), but scheduleTileBatch's throttle has the same

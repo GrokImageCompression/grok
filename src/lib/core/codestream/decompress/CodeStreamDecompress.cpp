@@ -255,6 +255,9 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     return success_;
   }
 
+  if(compositeDecompressed_)
+    return success_;
+
   multiTileComposite_->postReadHeader(&cp_);
   // LOCAL-ONLY: mercury streaming fast path — decodes eligible streams
   // through grok T1 via the mercury shim, either streaming rows_per_strip
@@ -263,7 +266,10 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // streams fall through unchanged; a true return means the fast path
   // owned the decode and success_ reflects its outcome.
   if(mercuryFastPath(*this))
+  {
+    compositeDecompressed_ = success_;
     return success_;
+  }
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
   // band writing is one shot: tile delivery is latched and the caller's sink has
   // already consumed those rows, so reusing a tracker would deliver no bands
@@ -430,6 +436,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     return true;
 
   wait(nullptr);
+  compositeDecompressed_ = success_;
 
   return success_;
 }
@@ -1453,7 +1460,10 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
     // a cached tile holds the pixels of the window it was decoded at, so a new
     // window has to decompress it again
     if(region_ != Rect32() && region_ != canvasRegion)
+    {
       tileCache_->discardTiles();
+      compositeDecompressed_ = false;
+    }
     region_ = canvasRegion;
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
