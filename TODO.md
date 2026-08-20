@@ -33,11 +33,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   tiles are scheduled), but scheduleTileBatch's throttle has the same
   exposure for a swath covering a row whose last tile part sits past the
   window. needs the same not-fully-scheduled predicate on the async wait
-- changing the decompress window between grk_decompress calls on one codec
-  is silently ignored: the tile cache filter has no window invalidation, so
-  the repeat call returns the old window's pixels (uncropped whole tiles in
-  the multi-tile case). invalidation belongs in setDecompressRegion,
-  dropping cached tile image and best-effort flag when the region changes
 - GrkImage::sycc444_to_rgb dispatches int32 to the SIMD hwy_sycc444_to_rgb_i32
   and everything else to the scalar sycc_to_rgb, and the two round
   differently (file2.jp2 decoded through int32 differs by 1 on 58 samples)

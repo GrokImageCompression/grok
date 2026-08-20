@@ -768,6 +768,9 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
   markerParser_.setSOT();
+  // the walk restarts at the first SOT, so the tile a previous walk stopped on
+  // must not decide whether this one has anything to parse
+  currTileIndex_ = -1;
   tileCache_->resetSOTParsing();
   if(cp_.plmMarkers_)
     cp_.plmMarkers_->rewind();
@@ -1447,6 +1450,10 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       multiTileComposite_->y1 = canvasRegion.y1;
     }
     tilesToDecompress_.slate(tilesToDecompress);
+    // a cached tile holds the pixels of the window it was decoded at, so a new
+    // window has to decompress it again
+    if(region_ != Rect32() && region_ != canvasRegion)
+      tileCache_->discardTiles();
     region_ = canvasRegion;
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)

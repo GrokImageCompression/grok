@@ -284,6 +284,21 @@ public:
       cache_[tileIndex]->processor()->releaseForSwath();
   }
 
+  /**
+   * @brief Discard every cached tile, decompressed image and best-effort mark
+   * included, so the next decompress starts each tile over.
+   */
+  void discardTiles()
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for(auto*& entry : cache_)
+    {
+      delete entry;
+      entry = nullptr;
+    }
+    lruList_.clear();
+  }
+
   void resetSOTParsing()
   {
     std::lock_guard<std::mutex> lock(mutex_);
