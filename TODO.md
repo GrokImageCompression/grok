@@ -8,7 +8,34 @@ classic two-phase kernels on every filter, precision, and size
 Phase 0 (make mercury trustworthy) is done: A/B sweep green over both
 corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
-## classic output bugs found by the sweep (not migration blockers)
+## open bugs (not migration blockers)
+
+- decode of conformance p0_07.j2k to tif deadlocks every run, all workers
+  parked on one futex. the same file decodes fine to pgx, so the hang is in
+  the tiff output path
+- zoo1.jp2 segfaults when decoded to tif
+- compare_images in non-regression mode never compares pixels: the MSE and
+  PEAK values are parsed, printed and ignored, so every NR-ENC compare test
+  is a geometry check only. two tifs differing in 5.1M of 5.2M bytes
+  compare as SUCCEEDED
+- j2k_multi_region_decompress is built but never registered as a ctest, and
+  fails on five of six conformance inputs with null tile data in its
+  asynchronous row-wait path
+- CurlFetcher::configureHandle leaks a curl_slist per range request, on
+  success and failure alike. track the list per handle (FetchResult,
+  CURLOPT_PRIVATE) and free it at the curl_easy_cleanup sites
+- memStreamCreate documents ownsBuffer=true as taking ownership but frees
+  nothing on its three early exits. all call sites pass false today, so
+  delete the two unused ownership parameters instead of fixing the paths
+- CurlFetcher::listDirectory and getMetadata leak an easy handle when parse
+  throws, and neither has a caller. delete them or move parse above
+  curl_easy_init
+- createMappedFileReadStream reads up to 22 bytes past the mapping when
+  initial_offset lands within 22 bytes of file length. the guard needs to be
+  initial_offset + GRK_JPEG_2000_NUM_IDENTIFIER_BYTES > len. the offset is
+  api-supplied, not file content, so low severity
+- non-subsampled ycbcr tif output (issue411-ycc444, issue236-ESYCC-CDEF)
+  does not round trip byte-identically
 
 
 ## phase 1: close the eligibility gaps
