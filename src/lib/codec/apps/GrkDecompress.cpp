@@ -1809,11 +1809,6 @@ int GrkDecompress::shmBatchDecompress(DecompressInitParams* initParams)
         flushCv.notify_all();
       }
     }
-    else if(msgTag == GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED)
-    {
-      auto uncompressedFrameId = msg.nextUint();
-      messenger_->reclaimUncompressed(uncompressedFrameId);
-    }
     else if(msgTag == GRK_MSGR_BATCH_FLUSH)
     {
       auto enqueuedCount = msg.nextUint();

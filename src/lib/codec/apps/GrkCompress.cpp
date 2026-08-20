@@ -596,7 +596,6 @@ int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
       if(!image)
       {
         spdlog::error("shmBatchCompress: failed to create image for frame {}", clientFrameId);
-        messenger_->reclaimUncompressed(uncompressedFrameId);
         messenger_->send(GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressedFrameId);
         return;
       }
@@ -666,11 +665,6 @@ int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
         std::lock_guard<std::mutex> lk(flushMutex);
         flushCv.notify_all();
       }
-    }
-    else if(msgTag == GRK_MSGR_BATCH_PROCESSSED_COMPRESSED)
-    {
-      auto compressedFrameId = msg.nextUint();
-      messenger_->reclaimCompressed(compressedFrameId);
     }
     else if(msgTag == GRK_MSGR_BATCH_FLUSH)
     {
