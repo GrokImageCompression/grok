@@ -301,3 +301,14 @@ if(GRK_DATA_ROOT)
     COMMAND grk_subsampled_strip_geometry_test
             ${GRK_DATA_ROOT}/input/conformance/zoo1.jp2)
 endif()
+
+add_executable(grk_incremental_band_write_test GrkIncrementalBandWriteTest.cpp)
+target_link_libraries(grk_incremental_band_write_test ${GROK_CODEC_NAME})
+if(GRK_DATA_ROOT)
+  # tile 0 carries a second tile part after every other tile, so its row finishes last
+  add_test(NAME grk_incremental_band_write_p0_07_test
+    COMMAND grk_incremental_band_write_test
+            ${GRK_DATA_ROOT}/input/conformance/p0_07.j2k
+            0,0,2048,2048)
+  set_tests_properties(grk_incremental_band_write_p0_07_test PROPERTIES TIMEOUT 300)
+endif()

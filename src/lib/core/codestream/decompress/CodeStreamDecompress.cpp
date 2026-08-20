@@ -284,6 +284,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     auto slatedRect = tilesToDecompress_.getSlatedTileRect();
     nextBandTileY_ = slatedRect.y0;
     pendingBands_.clear();
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
     uint8_t reduce = cp_.codingParams_.dec_.reduce_;
     // Compute reduced-resolution pixel extents for Y clamping.
     // multiTileComposite_ bounds are unreduced at this point; apply reduction.
@@ -629,8 +630,25 @@ bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pending
   return true;
 }
 
+// a row can only drain once every one of its tiles has been handed to the scheduler
+bool CodeStreamDecompress::bandRowFullyScheduled(uint16_t tileY)
+{
+  if(tileY >= bandRowScheduledTiles_.size())
+    return true;
+
+  return bandRowScheduledTiles_[tileY] >= tilesToDecompress_.getSlatedTileRect().width();
+}
+
 bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
 {
+  if(ioBandCallback_ && tileCompletion_ && !bandRowScheduledTiles_.empty())
+  {
+    uint16_t tileY = tileProcessor->getIndex() / tileCompletion_->getNumTileCols();
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    if(tileY < bandRowScheduledTiles_.size())
+      bandRowScheduledTiles_[tileY]++;
+    bandDrainCV_.notify_one();
+  }
   if(cp_.hasTLM())
   {
     auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
@@ -673,7 +691,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
         uint16_t numTileCols = tileCompletion_->getNumTileCols();
         uint16_t tileY = tileIndex / numTileCols;
         std::unique_lock<std::mutex> lock(bandOrderMutex_);
-        while(!(tileY < nextBandTileY_ + 2 || !success_))
+        while(!(tileY < nextBandTileY_ + 2 || !success_ || !bandRowFullyScheduled(nextBandTileY_)))
           bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
       }
       if(!schedule(getTileProcessor(tileIndex), true))
@@ -970,12 +988,14 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
   // Without this, all tiles decompress into memory before any row is written.
   // Use wait_for with a timeout so we periodically re-check success_ even if
   // the Taskflow task graph skips the post callback on error.
+  // Tile parts can appear in any order, so a row whose tiles are not all scheduled
+  // yet can only be finished by parsing on, and waiting for it would never end.
   if(ioBandCallback_ && tileCompletion_)
   {
     uint16_t numTileCols = tileCompletion_->getNumTileCols();
     uint16_t tileY = tileProcessor->getIndex() / numTileCols;
     std::unique_lock<std::mutex> lock(bandOrderMutex_);
-    while(!(tileY < nextBandTileY_ + 2 || !success_))
+    while(!(tileY < nextBandTileY_ + 2 || !success_ || !bandRowFullyScheduled(nextBandTileY_)))
       bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
   }
 
