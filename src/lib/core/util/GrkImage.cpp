@@ -594,6 +594,11 @@ void GrkImage::postReadHeader(CodingParams* cp)
         (uint64_t)((((uint64_t)decompress_width * chroma_subsample_y + units * 2U) * prec + 7U) /
                    8U);
     rows_per_strip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packed_row_bytes);
+    // a subsampled strip holds whole clump rows, so a strip height that is not a
+    // multiple of the vertical subsampling would size the strip buffer short
+    rows_per_strip = (rows_per_strip / chroma_subsample_y) * chroma_subsample_y;
+    if(rows_per_strip == 0)
+      rows_per_strip = chroma_subsample_y;
   }
   else
   {

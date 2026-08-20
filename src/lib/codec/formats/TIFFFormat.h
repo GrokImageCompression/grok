@@ -1220,7 +1220,7 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     packedBuf = pool.get(packedLengthEncoded);
     auto bufPtr = (uint8_t*)packedBuf.data;
     uint32_t bytesToWrite = 0;
-    uint32_t bandRowsWritten = 0;
+    uint32_t rowsInCurrentStrip = 0;
     // clump samples carry BitsPerSample bits each, and each clump row starts on a byte
     // boundary, so a reader that trusts the header finds the strip the header describes
     const uint8_t bitsPerSample = image_->decompress_prec;
@@ -1248,7 +1248,9 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     };
     for(uint32_t h = yBegin; h < yEnd; h += chroma_subsample_y)
     {
-      if(bytesToWrite > 0 && bandRowsWritten > 0 && (bandRowsWritten % image_->rows_per_strip == 0))
+      // the strip buffer only holds rows_per_strip rows, so flush on the first clump
+      // row that reaches it rather than on an exact multiple that may never land
+      if(bytesToWrite > 0 && rowsInCurrentStrip >= image_->rows_per_strip)
       {
         packedBuf.len = bytesToWrite;
         packedBuf.offset = orchestrator.getOffset();
@@ -1258,6 +1260,7 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
         packedBuf = pool.get(packedLengthEncoded);
         bufPtr = (uint8_t*)(packedBuf.data);
         bytesToWrite = 0;
+        rowsInCurrentStrip = 0;
       }
       size_t xposLuma = 0;
       size_t xposChroma = 0;
@@ -1312,7 +1315,7 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
         planesBegin[2] += stride_chroma2;
         planes[2] = planesBegin[2];
       }
-      bandRowsWritten += chroma_subsample_y;
+      rowsInCurrentStrip += chroma_subsample_y;
     }
     // flush remaining
     packedBuf.len = bytesToWrite;

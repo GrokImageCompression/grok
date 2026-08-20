@@ -292,3 +292,12 @@ if(GRK_DATA_ROOT)
   add_test(NAME j2k_multi_region_b2_mono
     COMMAND j2k_multi_region_decompress ${GRK_DATA_ROOT}/input/conformance/b2_mono.j2c)
 endif()
+
+add_executable(grk_subsampled_strip_geometry_test GrkSubsampledStripGeometryTest.cpp)
+target_link_libraries(grk_subsampled_strip_geometry_test ${GROK_CODEC_NAME})
+if(GRK_DATA_ROOT)
+  # 3906x2602 4:2:0, where the strip height lands on an odd number of rows
+  add_test(NAME grk_subsampled_strip_geometry_zoo1_test
+    COMMAND grk_subsampled_strip_geometry_test
+            ${GRK_DATA_ROOT}/input/conformance/zoo1.jp2)
+endif()
