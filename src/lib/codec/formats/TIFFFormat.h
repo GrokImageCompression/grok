@@ -1218,9 +1218,34 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 
     uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
     packedBuf = pool.get(packedLengthEncoded);
-    auto bufPtr = (int8_t*)packedBuf.data;
+    auto bufPtr = (uint8_t*)packedBuf.data;
     uint32_t bytesToWrite = 0;
     uint32_t bandRowsWritten = 0;
+    // clump samples carry BitsPerSample bits each, and each clump row starts on a byte
+    // boundary, so a reader that trusts the header finds the strip the header describes
+    const uint8_t bitsPerSample = image_->decompress_prec;
+    const uint32_t sampleMask = bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
+    uint32_t bitAccumulator = 0;
+    uint32_t bitsHeld = 0;
+    auto emitSample = [&](int32_t sample) {
+      bitAccumulator = (bitAccumulator << bitsPerSample) | ((uint32_t)sample & sampleMask);
+      bitsHeld += bitsPerSample;
+      while(bitsHeld >= 8)
+      {
+        bitsHeld -= 8;
+        *bufPtr++ = (uint8_t)(bitAccumulator >> bitsHeld);
+        bytesToWrite++;
+      }
+    };
+    auto flushClumpRow = [&]() {
+      if(bitsHeld)
+      {
+        *bufPtr++ = (uint8_t)(bitAccumulator << (8 - bitsHeld));
+        bytesToWrite++;
+        bitsHeld = 0;
+      }
+      bitAccumulator = 0;
+    };
     for(uint32_t h = yBegin; h < yEnd; h += chroma_subsample_y)
     {
       if(bytesToWrite > 0 && bandRowsWritten > 0 && (bandRowsWritten % image_->rows_per_strip == 0))
@@ -1231,7 +1256,7 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
         if(!writeStripCore(0, packedBuf))
           goto cleanup;
         packedBuf = pool.get(packedLengthEncoded);
-        bufPtr = (int8_t*)(packedBuf.data);
+        bufPtr = (uint8_t*)(packedBuf.data);
         bytesToWrite = 0;
       }
       size_t xposLuma = 0;
@@ -1245,10 +1270,9 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
           {
             bool accept = (h + sub_h) < yEnd && sub_x < image_->decompress_width;
             if(isInt16)
-              *bufPtr++ = accept ? (int8_t)p16[0][sub_x + sub_h * stride_luma] : 0;
+              emitSample(accept ? p16[0][sub_x + sub_h * stride_luma] : 0);
             else
-              *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * stride_luma] : 0;
-            bytesToWrite++;
+              emitSample(accept ? (int32_t)planes[0][sub_x + sub_h * stride_luma] : 0);
           }
         }
         if(xposChroma >= stride_chroma1 || xposChroma >= stride_chroma2)
@@ -1260,18 +1284,18 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
         // 2. chroma
         if(isInt16)
         {
-          *bufPtr++ = (int8_t)*p16[1]++;
-          *bufPtr++ = (int8_t)*p16[2]++;
+          emitSample(*p16[1]++);
+          emitSample(*p16[2]++);
         }
         else
         {
-          *bufPtr++ = (int8_t)*planes[1]++;
-          *bufPtr++ = (int8_t)*planes[2]++;
+          emitSample((int32_t)*planes[1]++);
+          emitSample((int32_t)*planes[2]++);
         }
-        bytesToWrite += 2;
         xposChroma++;
         xposLuma += chroma_subsample_x;
       }
+      flushClumpRow();
       if(isInt16)
       {
         p16[0] += stride_luma * chroma_subsample_y;
@@ -1607,7 +1631,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     // if width % chroma_subsample_x != 0...
     size_t planeUnits = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
     if(subsampled)
-      rowStride = (tsize_t)(planeUnits * unitSize);
+      rowStride = (tsize_t)((planeUnits * unitSize * comp->prec + 7U) / 8U);
     size_t xpos = 0;
     for(; (height < comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++)
     {
@@ -1730,7 +1754,25 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
         {
           uint32_t strideDiffCb = comps[1].stride - comps[1].w;
           uint32_t strideDiffCr = comps[2].stride - comps[2].w;
-          for(size_t i = 0; i < (size_t)rowStride; i += unitSize)
+          // clump samples carry BitsPerSample bits each, packed high bit first and
+          // restarting on a byte boundary at every clump row
+          const uint8_t bitsPerSample = comp->prec;
+          const uint32_t sampleMask =
+              bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
+          const uint8_t* clumpRow = datau8;
+          uint32_t bitAccumulator = 0;
+          uint32_t bitsHeld = 0;
+          auto nextSample = [&]() -> T {
+            while(bitsHeld < bitsPerSample)
+            {
+              bitAccumulator = (bitAccumulator << 8) | *clumpRow++;
+              bitsHeld += 8;
+            }
+            bitsHeld -= bitsPerSample;
+
+            return (T)((bitAccumulator >> bitsHeld) & sampleMask);
+          };
+          for(size_t unit = 0; unit < planeUnits; ++unit)
           {
             // process a unit
             // 1. luma
@@ -1738,15 +1780,15 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             {
               for(size_t j = 0; j < chroma_subsample_x; ++j)
               {
+                T luma = nextSample();
                 bool accept = height + k < comp->h && xpos + j < comp->w;
                 if(accept)
-                  planes[0][xpos + j + k * comp->stride] = datau8[j];
+                  planes[0][xpos + j + k * comp->stride] = luma;
               }
-              datau8 += chroma_subsample_x;
             }
             // 2. chroma
-            *planes[1]++ = *datau8++;
-            *planes[2]++ = *datau8++;
+            *planes[1]++ = nextSample();
+            *planes[2]++ = nextSample();
 
             // 3. increment raster x
             xpos += chroma_subsample_x;
@@ -1759,6 +1801,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
               height += chroma_subsample_y;
             }
           }
+          datau8 += rowStride;
           ssize -= rowStride;
         }
       }

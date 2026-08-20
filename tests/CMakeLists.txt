@@ -203,3 +203,16 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/issue391.jp2
             ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
 endif()
+
+add_executable(grk_subsampled_tiff_readback_test GrkSubsampledTiffReadbackTest.cpp)
+target_link_libraries(grk_subsampled_tiff_readback_test ${GROK_CODEC_NAME})
+if(GRK_DATA_ROOT)
+  # 10 bit 4:2:2, where a clump sample no longer fits in one byte
+  add_test(NAME grk_subsampled_tiff_readback_issue142_test
+    COMMAND grk_subsampled_tiff_readback_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue142.j2k)
+  # 8 bit 4:2:0, where clump samples stay byte aligned
+  add_test(NAME grk_subsampled_tiff_readback_ycc420_test
+    COMMAND grk_subsampled_tiff_readback_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue411-ycc420.jp2)
+endif()

@@ -10,8 +10,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## classic output bugs found by the sweep (not migration blockers)
 
-- subsampled ycbcr tif output cannot be read back by grok's own tif reader
-  or compare_images (issue142, issue432)
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
   only. other stream creators may have the same unowned-handle pattern
 - a second grk_decompress call on the same codec returns true but hands back
