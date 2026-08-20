@@ -38,14 +38,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   the repeat call returns the old window's pixels (uncropped whole tiles in
   the multi-tile case). invalidation belongs in setDecompressRegion,
   dropping cached tile image and best-effort flag when the region changes
-- compare2base pgx baselines in grok-test-data are stale for p0_04, p0_05,
-  p0_06, p1_02, p1_03, p1_04, p1_05, p1_06, subsampling_1, subsampling_2,
-  zoo1, zoo2: the old ones came from an older float 9/7 path (p1_05, p1_06
-  from the wrong lone-sample decode). output now matches the conformance
-  references, regenerate the baselines from it
-- windows md5 overrides (tests/nonregression/md5refs-windows-*.txt) carry
-  entries for 9/7 files whose int16 output changed, refresh them from the
-  next green ubuntu run with tests/nonregression/collect_ci_md5refs.py
 - GrkImage::sycc444_to_rgb dispatches int32 to the SIMD hwy_sycc444_to_rgb_i32
   and everything else to the scalar sycc_to_rgb, and the two round
   differently (file2.jp2 decoded through int32 differs by 1 on 58 samples)
