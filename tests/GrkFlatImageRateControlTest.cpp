@@ -62,10 +62,27 @@ namespace
       return nullptr;
     for(uint16_t c = 0; c < NUM_COMPONENTS; ++c)
     {
-      if(!image->comps[c].data)
+      auto& comp = image->comps[c];
+      if(!comp.data)
       {
         grk_object_unref(&image->obj);
         return nullptr;
+      }
+      // grk_image_new leaves the buffer uninitialized, so a flat image needs the
+      // samples written: otherwise the pixels are whatever the allocator returned
+      // and the image is not flat at all
+      size_t count = (size_t)comp.stride * comp.h;
+      if(comp.data_type == GRK_INT_16)
+      {
+        auto* data = static_cast<int16_t*>(comp.data);
+        for(size_t s = 0; s < count; ++s)
+          data[s] = 0;
+      }
+      else
+      {
+        auto* data = static_cast<int32_t*>(comp.data);
+        for(size_t s = 0; s < count; ++s)
+          data[s] = 0;
       }
     }
     return image;
