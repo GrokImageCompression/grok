@@ -10,6 +10,13 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## open bugs (not migration blockers)
 
+- CurlFetcher::fetchWorker only cleans up in-flight easy handles at worker
+  exit when currentFetch_.promises_ is set, so tile-path handles in
+  active_handles_ leak at shutdown along with their header lists. moving
+  the cleanup loop out of the if changes shutdown behavior, needs a test
+- SimpleXmlParser.h lost its only caller when the fetcher listing was
+  deleted, remove it
+
 - grk_decompress after grk_decompress_set_progression_state is safe but a
   no-op: decompressImpl filters dirty tiles out via isBestEffortDecompressed
   (set on every decoded tile, cleared only by the single-tile and lru
@@ -36,19 +43,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 - j2k_multi_region_decompress is built but never registered as a ctest, and
   fails on five of six conformance inputs with null tile data in its
   asynchronous row-wait path
-- CurlFetcher::configureHandle leaks a curl_slist per range request, on
-  success and failure alike. track the list per handle (FetchResult,
-  CURLOPT_PRIVATE) and free it at the curl_easy_cleanup sites
-- memStreamCreate documents ownsBuffer=true as taking ownership but frees
-  nothing on its three early exits. all call sites pass false today, so
-  delete the two unused ownership parameters instead of fixing the paths
-- CurlFetcher::listDirectory and getMetadata leak an easy handle when parse
-  throws, and neither has a caller. delete them or move parse above
-  curl_easy_init
-- createMappedFileReadStream reads up to 22 bytes past the mapping when
-  initial_offset lands within 22 bytes of file length. the guard needs to be
-  initial_offset + GRK_JPEG_2000_NUM_IDENTIFIER_BYTES > len. the offset is
-  api-supplied, not file content, so low severity
 - eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
   coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
   colors, and grok reads its own eycc tif back as sycc. byte round trips
