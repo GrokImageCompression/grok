@@ -361,7 +361,9 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             dcShift.min = 0;
             dcShift.max = (1 << img_comp->prec) - 1;
           }
-          dcShift.enabled = (dcShift.shift != 0) || (tccp->qmfbid_ == 0);
+          // a zero shift still needs the clamp, the standalone pass below is
+          // skipped whenever the wavelet is trusted with it
+          dcShift.enabled = true;
         }
       }
 
