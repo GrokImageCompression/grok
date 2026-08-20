@@ -244,3 +244,14 @@ if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux
   target_link_libraries(grk_fetch_stream_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_fetch_stream_leak_test COMMAND grk_fetch_stream_leak_test)
 endif()
+
+# ycbcr at 1,1 subsampling stores plain interleaved triples rather than clumps, and needs
+# a jp2 intermediate because a raw codestream cannot record the colour space
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_nonsubsampled_ycbcr_tiff_readback_ycc444_test
+    COMMAND grk_subsampled_tiff_readback_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue411-ycc444.jp2 jp2)
+  add_test(NAME grk_nonsubsampled_ycbcr_tiff_readback_esycc_test
+    COMMAND grk_subsampled_tiff_readback_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue236-ESYCC-CDEF.jp2 jp2)
+endif()

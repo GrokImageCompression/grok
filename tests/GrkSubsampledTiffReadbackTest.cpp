@@ -67,12 +67,16 @@ int main(int argc, char** argv)
 {
   if(argc < 2)
   {
-    fprintf(stderr, "Usage: %s <subsampled-ycbcr-codestream>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <ycbcr-codestream> [j2k|jp2]\n", argv[0]);
     return EXIT_FAILURE;
   }
   std::string input = argv[1];
+  // a raw j2k codestream has no colour space field, so a ycbcr image only keeps its
+  // photometric tag across the round trip when the intermediate is jp2 or when the
+  // chroma subsampling itself identifies the image as ycbcr
+  std::string intermediateExtension = argc > 2 ? argv[2] : "j2k";
   std::string firstTiff = outputNameFor(input, "_readback.tif");
-  std::string reCompressed = outputNameFor(input, "_readback.j2k");
+  std::string reCompressed = outputNameFor(input, "_readback." + intermediateExtension);
   std::string secondTiff = outputNameFor(input, "_readback2.tif");
 
   if(decompressToTiff(input, firstTiff) != EXIT_SUCCESS)
