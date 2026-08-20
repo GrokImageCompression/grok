@@ -254,4 +254,10 @@ if(GRK_DATA_ROOT)
   add_test(NAME grk_nonsubsampled_ycbcr_tiff_readback_esycc_test
     COMMAND grk_subsampled_tiff_readback_test
             ${GRK_DATA_ROOT}/input/nonregression/issue236-ESYCC-CDEF.jp2 jp2)
+
+# needs page sized files, so it only runs where the page size is known
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(grk_mapped_offset_test GrkMappedOffsetTest.cpp)
+  target_link_libraries(grk_mapped_offset_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mapped_offset_test COMMAND grk_mapped_offset_test)
 endif()

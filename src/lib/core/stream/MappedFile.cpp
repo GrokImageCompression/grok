@@ -251,10 +251,12 @@ IStream* createMappedFileReadStream(grk_stream_params* stream_param)
     grklog.error("File length %lu too short.", len);
     goto cleanup;
   }
-  if(stream_param->initial_offset > len)
+  // format detection reads the identifier bytes at the offset, so the mapping
+  // has to still hold that many bytes there
+  if(stream_param->initial_offset > len - GRK_JPEG_2000_NUM_IDENTIFIER_BYTES)
   {
-    grklog.error("File offset %lu must be less than file length %lu.", stream_param->initial_offset,
-                 len);
+    grklog.error("File offset %lu leaves fewer than %d bytes of file length %lu.",
+                 stream_param->initial_offset, GRK_JPEG_2000_NUM_IDENTIFIER_BYTES, len);
     goto cleanup;
   }
 
