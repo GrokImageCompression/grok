@@ -506,7 +506,7 @@ static void testClientInitBufferQueue()
   Messenger m(init);
 
   TEST_ASSERT(!m.initialized_, "client should not be initialized before initClient");
-  m.initClient(uncompressedSize, compressedSize, numFrames);
+  m.initClient(uncompressedSize, compressedSize, numFrames, false);
   TEST_ASSERT(m.initialized_, "client should be initialized after initClient");
 
   // client queue should have uncompressed buffers
