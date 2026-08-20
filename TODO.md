@@ -49,12 +49,13 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   initial_offset lands within 22 bytes of file length. the guard needs to be
   initial_offset + GRK_JPEG_2000_NUM_IDENTIFIER_BYTES > len. the offset is
   api-supplied, not file content, so low severity
-- eycc images are written to tif as PHOTOMETRIC_YCBCR with rec.601
+- eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
   coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
-  colors. tif has no eycc photometric: warn on write or reject. byte round
-  trips are unaffected. the ycc444 round-trip mismatch itself was not a
-  bug, a raw j2k intermediate cannot carry colorspace and jp2 round trips
-  byte-identically, coverage added in 7917296a
+  colors, and grok reads its own eycc tif back as sycc. byte round trips
+  are unaffected. preferred fix: check whether eycc's inverse fits tiff's
+  YCbCrCoefficients (529) plus ReferenceBlackWhite (532) model against
+  grok's eycc transform code, write correct coefficients if so and teach
+  the reader to distinguish them from 601, otherwise warn on write
 
 
 ## phase 1: close the eligibility gaps
