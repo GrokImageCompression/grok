@@ -817,17 +817,16 @@ void CurlFetcher::fetchWorker()
   active_jobs_.clear();
 
   std::lock_guard<std::mutex> lock2(active_handles_mutex_);
-  if(currentFetch_.promises_)
+  for(auto& [handle, idx] : active_handles_)
   {
-    for(auto& [handle, idx] : active_handles_)
+    if(currentFetch_.promises_ && idx < currentFetch_.promises_->size())
     {
       FetchResult resp(idx);
       resp.success_ = false;
-      if(idx < currentFetch_.promises_->size())
-        (*currentFetch_.promises_)[idx].set_value(resp);
-      curl_multi_remove_handle(multi_handle_, handle);
-      cleanupHandle(handle);
+      (*currentFetch_.promises_)[idx].set_value(resp);
     }
+    curl_multi_remove_handle(multi_handle_, handle);
+    cleanupHandle(handle);
   }
   active_handles_.clear();
   grklog.debug("Worker thread exiting");
