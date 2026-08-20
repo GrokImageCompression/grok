@@ -756,8 +756,9 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
       double thresh;
       for(auto i = 0U; i < 128; ++i)
       {
-        // thresh is half-way between lower and upper bound
-        thresh = (upperBound == -1) ? lowerBound : (lowerBound + upperBound) / 2;
+        // thresh is half-way between lower and upper bound. summing the bounds
+        // overflows to inf when no pass has a rate and both sit at DBL_MAX
+        thresh = (upperBound == -1) ? lowerBound : lowerBound + (upperBound - lowerBound) / 2;
         uint64_t bodyBytes = 0;
         runMakeLayerSimple(layno, thresh, false, &bodyBytes);
         if(prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
