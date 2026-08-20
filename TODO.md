@@ -14,9 +14,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   exit when currentFetch_.promises_ is set, so tile-path handles in
   active_handles_ leak at shutdown along with their header lists. moving
   the cleanup loop out of the if changes shutdown behavior, needs a test
-- SimpleXmlParser.h lost its only caller when the fetcher listing was
-  deleted, remove it
-
 - grk_decompress after grk_decompress_set_progression_state is safe but a
   no-op: decompressImpl filters dirty tiles out via isBestEffortDecompressed
   (set on every decoded tile, cleared only by the single-tile and lru
