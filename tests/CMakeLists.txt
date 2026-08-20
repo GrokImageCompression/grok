@@ -232,6 +232,12 @@ add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
 target_link_libraries(grk_double_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_double_decompress_test COMMAND grk_double_decompress_test)
 
+# synthesizes its own images, so it needs no GRK_DATA_ROOT
+add_executable(grk_compare_images_test GrkCompareImagesTest.cpp)
+target_link_libraries(grk_compare_images_test ${GROK_CODEC_NAME})
+add_test(NAME grk_compare_images_test
+  COMMAND grk_compare_images_test ${CMAKE_CURRENT_BINARY_DIR}/Temporary)
+
 # a network stream builds its fetcher before the path is known to be usable
 if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(grk_fetch_stream_leak_test GrkFetchStreamLeakTest.cpp)
