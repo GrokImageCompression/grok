@@ -41,7 +41,7 @@
 
 #include "ojph_defs.h"
 
-namespace  grk::t1::ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     //////////////////////////////////////////////////////////////////////////
@@ -74,6 +74,12 @@ namespace  grk::t1::ojph {
     // WASM SIMD-accelerated decoder
     bool
       ojph_decode_codeblock_wasm(ui8* coded_data, ui32* decoded_data,
+        ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
+        ui32 width, ui32 height, ui32 stride, bool stripe_causal);
+
+    // POWER VSX-accelerated decoder
+    bool
+      ojph_decode_codeblock_vsx(ui8* coded_data, ui32* decoded_data,
         ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
         ui32 width, ui32 height, ui32 stride, bool stripe_causal);
 

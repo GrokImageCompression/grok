@@ -50,7 +50,7 @@
 #include "ojph_arch.h"
 #include "ojph_message.h"
 
-namespace  grk::t1::ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     //************************************************************************/
