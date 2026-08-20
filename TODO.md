@@ -38,6 +38,14 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   the repeat call returns the old window's pixels (uncropped whole tiles in
   the multi-tile case). invalidation belongs in setDecompressRegion,
   dropping cached tile image and best-effort flag when the region changes
+- drift diagnosis in progress on branch drift-diagnosis-wip (3 commits off
+  8de68f96): drop k gain on one-sample 9/7 levels, read a lone poc as a poc
+  (numpocs_ stores count-1 so a single poc read as none), keep a slot for an
+  empty tile part. they clear p0_03/p0_10/p0_15 but regress grk_degenerate_97
+  (the reverse 9/7 one-sample change disagrees with the forward fix already
+  in b93079eb, reconcile the two) and rewrite p1_05/p1_06 md5 baselines
+  without matching their reference. do not land until reconciled, net was
+  34 failing vs 26. p0_08 was diagnosis-only
 - with compare_images fixed (it was blind in both modes), 26 compare tests
   fail on real decode drift, in five groups. large errors: p0_03, p0_08,
   p0_09, p0_10, p0_15 miss the reference badly (p0_08 comp 1 MSE 125, peak
