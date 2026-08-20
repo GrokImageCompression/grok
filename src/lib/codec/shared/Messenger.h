@@ -907,20 +907,21 @@ struct Messenger
 
     return success;
   }
-  bool initClient(size_t uncompressedFrameSize, size_t compressedFrameSize, size_t numFrames)
+  // the queue must hold the slots the client submits before the client is woken,
+  // or its first pops hand out the wrong slots
+  bool initClient(size_t uncompressedFrameSize, size_t compressedFrameSize, size_t numFrames,
+                  bool clientSubmitsCompressed)
   {
     getMessengerLogger()->info("Initializing shared memory client");
-    // client fills queue with pending uncompressed buffers
     init_.uncompressedFrameSize_ = uncompressedFrameSize;
     init_.compressedFrameSize_ = compressedFrameSize;
     init_.numFrames_ = numFrames;
     if(!initBuffers())
       return false;
-    auto ptr = uncompressed_buffer_;
     for(size_t i = 0; i < init_.numFrames_; ++i)
     {
-      availableBuffers_.push(BufferSrc(0, i, (uint8_t*)ptr));
-      ptr += init_.uncompressedFrameSize_;
+      auto slot = clientSubmitsCompressed ? getCompressedFrame(i) : getUncompressedFrame(i);
+      availableBuffers_.push(BufferSrc(0, i, slot));
     }
 
     std::unique_lock<std::mutex> lk(shutdownMutex_);
@@ -1124,7 +1125,7 @@ static void processorThread(Messenger* messenger, std::function<void(std::string
       auto compressedFrameSize = msg.nextUint();
       auto numFrames = msg.nextUint();
       if(!messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
-                                numFrames))
+                                numFrames, false))
         return;
     }
     else if(tag == GRK_MSGR_BATCH_DECOMPRESS_INIT)
@@ -1140,18 +1141,9 @@ static void processorThread(Messenger* messenger, std::function<void(std::string
           Messenger::uncompressedFrameSize(width, height, samplesPerPixel);
       auto compressedFrameSize = msg.nextUint();
       auto numFrames = msg.nextUint();
-      // for decompress: client manages compressed buffers (input)
       if(!messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
-                                numFrames))
+                                numFrames, true))
         return;
-      // drain uncompressed buffers and fill with compressed buffers
-      {
-        BufferSrc dummy;
-        while(messenger->availableBuffers_.pop(dummy))
-          ;
-        for(size_t i = 0; i < numFrames; ++i)
-          messenger->availableBuffers_.push(BufferSrc(0, i, messenger->getCompressedFrame(i)));
-      }
     }
     else if(tag == GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED)
     {
