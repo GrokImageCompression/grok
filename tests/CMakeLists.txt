@@ -96,6 +96,11 @@ if(GRK_ENABLE_MERCURY)
               --irreversible)
   endif()
 
+  # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_progressions_test GrkMercuryProgressionsTest.cpp)
+  target_link_libraries(grk_mercury_progressions_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_progressions_test COMMAND grk_mercury_progressions_test)
+
   add_executable(grk_mercury_layers_test GrkMercuryLayersTest.cpp)
   target_link_libraries(grk_mercury_layers_test ${GROK_CORE_NAME} spdlog::spdlog)
   if(GRK_DATA_ROOT)

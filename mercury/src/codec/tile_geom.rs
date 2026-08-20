@@ -57,6 +57,10 @@ pub struct TileCompGeom {
 /// Complete tile geometry.
 #[derive(Debug, Clone)]
 pub struct TileGeom {
+    /// Tile origin on the reference grid, clipped to the image origin.
+    /// Position-ordered progressions key their first precinct on it.
+    pub tile_x0: u32,
+    pub tile_y0: u32,
     /// Per-component geometry.
     pub components: Vec<TileCompGeom>,
 }
@@ -195,7 +199,11 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
         components.push(TileCompGeom { resolutions });
     }
 
-    TileGeom { components }
+    TileGeom {
+        tile_x0,
+        tile_y0,
+        components,
+    }
 }
 
 #[cfg(test)]

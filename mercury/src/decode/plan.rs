@@ -529,10 +529,8 @@ fn comb_tile(
     }
 
     // --- packet schedule in progression order ---
-    // Position (for RPCL/PCRL/CPRL) is the precinct's projection onto the
-    // reference grid: canvas coords at res r, scaled by 2^(D-r) and the
-    // component subsampling. The first precinct row/col clamps to the
-    // resolution origin (Annex B.12: "y = ty0" case).
+    // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
+    // projected onto the reference grid, see prec_position.
     let mut pkts: Vec<([u64; 5], Pkt)> = Vec::new();
     let order = cod.order;
     for c in 0..num_comps {
@@ -549,8 +547,10 @@ fn comb_tile(
             let scale = 1u64 << (d - r as u32);
             for py in py0..py0 + npy {
                 for px in px0..px0 + npx {
-                    let ypos = (py as u64 * ps.height as u64).max(res.dims.y0 as u64) * scale * dy;
-                    let xpos = (px as u64 * ps.width as u64).max(res.dims.x0 as u64) * scale * dx;
+                    let ypos =
+                        prec_position(py, py0, ps.height, res.dims.y0, geom.tile_y0, scale * dy);
+                    let xpos =
+                        prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
                     let prec = (py - py0) * npx + (px - px0);
                     for l in 0..cod.num_layers {
                         let (cu, ru, lu) = (c as u64, r as u64, l as u64);
@@ -763,6 +763,26 @@ fn comb_tile(
     Ok(comps)
 }
 
+/// Reference-grid position of one precinct along an axis, the sort key of the
+/// position-ordered progressions. A first row or column the tile edge clips
+/// keys on the tile origin (T.800 B.12, the "y = ty0" case), which is what puts
+/// every resolution's first precinct on one key; the resolution origin misses
+/// the precinct grid exactly when it is clipped.
+fn prec_position(
+    index: u32,
+    first_index: u32,
+    prec_span: u32,
+    res_origin: u32,
+    tile_origin: u32,
+    projection: u64,
+) -> u64 {
+    if index == first_index && res_origin % prec_span != 0 {
+        tile_origin as u64
+    } else {
+        index as u64 * prec_span as u64 * projection
+    }
+}
+
 /// Ranging exponent epsilon_b for band `qcd_idx`.
 fn band_ranging(q: &QcdParams, qcd_idx: usize) -> Result<i32, DecodeError> {
     use crate::codec::params::QuantStyle;
@@ -913,6 +933,86 @@ mod tests {
             assert_eq!(ceildivpow2(siz.x_o_siz, reduce), x0);
             assert_eq!(ceildivpow2(siz.y_o_siz, reduce), y0);
         }
+    }
+
+    /// First-precinct position of every non-empty resolution of one tile,
+    /// computed the way `comb_tile` does.
+    fn first_positions(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> Vec<(u64, u64)> {
+        let geom = crate::codec::tile_geom::chart_tile_geom(siz, cod, tile_idx);
+        let d = cod.num_levels as u32;
+        (0..=cod.num_levels as usize)
+            .filter_map(|r| {
+                let res = &geom.components[0].resolutions[r];
+                if res.dims.is_empty() {
+                    return None;
+                }
+                let ps = cod.precinct_span(r as u8);
+                let scale = 1u64 << (d - r as u32);
+                let (px0, py0) = (res.dims.x0 / ps.width, res.dims.y0 / ps.height);
+                Some((
+                    prec_position(px0, px0, ps.width, res.dims.x0, geom.tile_x0, scale),
+                    prec_position(py0, py0, ps.height, res.dims.y0, geom.tile_y0, scale),
+                ))
+            })
+            .collect()
+    }
+
+    /// A tile whose origin misses the precinct grid keeps every resolution's
+    /// first precinct on the tile origin, so the position-ordered progressions
+    /// cannot reorder those packets against the stream.
+    #[test]
+    fn first_precincts_of_an_unaligned_tile_share_the_tile_origin() {
+        let mut siz = siz();
+        siz.x_siz = 61;
+        siz.y_siz = 69;
+        siz.x_o_siz = 0;
+        siz.y_o_siz = 0;
+        siz.xt_siz = 14;
+        siz.yt_siz = 15;
+        let cod = cod();
+
+        // tile (1, 1): origin (14, 15), which no resolution's ceil-rounded
+        // origin projects back onto
+        let positions = first_positions(&siz, &cod, siz.tiles_across() as u16 + 1);
+        assert!(positions.len() > 1, "need several resolutions to compare");
+        assert!(
+            positions.iter().all(|&pos| pos == (14, 15)),
+            "got {positions:?}"
+        );
+    }
+
+    /// Later precinct rows and columns still key on their grid line, which the
+    /// tile origin must not swallow.
+    #[test]
+    fn interior_precincts_key_on_the_precinct_grid() {
+        let mut siz = siz();
+        siz.x_siz = 4000;
+        siz.y_siz = 4000;
+        siz.x_o_siz = 0;
+        siz.y_o_siz = 0;
+        siz.xt_siz = 1000;
+        siz.yt_siz = 1000;
+        let mut cod = cod();
+        cod.precincts = vec![
+            crate::codec::params::PrecinctSize {
+                width: 64,
+                height: 64,
+            };
+            NUM_LEVELS as usize + 1
+        ];
+
+        let tile_idx = siz.tiles_across() as u16 + 1;
+        let geom = crate::codec::tile_geom::chart_tile_geom(&siz, &cod, tile_idx);
+        let res = &geom.components[0].resolutions[NUM_LEVELS as usize];
+        let py0 = res.dims.y0 / 64;
+        assert_eq!(
+            prec_position(py0, py0, 64, res.dims.y0, geom.tile_y0, 1),
+            1000
+        );
+        assert_eq!(
+            prec_position(py0 + 1, py0, 64, res.dims.y0, geom.tile_y0, 1),
+            (py0 as u64 + 1) * 64
+        );
     }
 
     /// A synthetic one-tile stream: 8x8, one component, one decomposition

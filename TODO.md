@@ -18,6 +18,14 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   only. other stream creators may have the same unowned-handle pattern
 - a second grk_decompress call on the same codec returns true but hands back
   an image whose comps[0].data is null
+- lossless decode of a 61x67 image with 14x15 tiles is wrong and run-to-run
+  unstable across the bottom tile row (bottom tile heights 5 through 8
+  trigger it, 4 and 9 do not). mercury decodes it exactly, so likely another
+  scheduling race
+- decoding the same file several times in one process can disagree at
+  tile-row boundaries on many-tile streams (seen via the mercury stream
+  input test at 14x15 tiles over 640x512, one run in three). repeated CLI
+  decodes are stable. not yet clear whether classic or mercury side
 
 ## phase 1: close the eligibility gaps
 
@@ -30,9 +38,13 @@ stream input and resolution reduction, are done):
 5. region decode (hardest; first cut: crop rows in the stripe flow, decode
    full width, crop columns at output. Alternatively classic keeps regions
    permanently)
-6. all progressions: the planner overruns the packet stream on multi-tile
-   PCRL and CPRL. also adopt classic's packet-length shortcuts (PLT/TLM,
-   PacketLengthCache) so huge-image progression parsing stays cheap
+6. adopt classic's packet-length shortcuts (PLT/TLM, PacketLengthCache) in
+   the planner so huge-image progression parsing stays cheap. PLT pays off
+   for packets the plan drops (reduce, layers, later regions), TLM replaces
+   the sequential SOT scan. both are opt-in markers, test files need
+   write_plt/write_tlm
+7. precinct smaller than code-block is rejected at plan stage (effective
+   block size clamping not wired)
 
 ## phase 2: performance completion
 
