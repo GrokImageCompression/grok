@@ -302,6 +302,16 @@ if(GRK_DATA_ROOT)
   add_test(NAME grk_nonsubsampled_ycbcr_tiff_readback_esycc_test
     COMMAND grk_subsampled_tiff_readback_test
             ${GRK_DATA_ROOT}/input/nonregression/issue236-ESYCC-CDEF.jp2 jp2)
+
+  # tiff cannot record eYCC apart from rec.601 sYCC, so the writer has to say so.
+  # GRK_DEBUG=2 lifts the log level from errors to warnings
+  add_test(NAME grk_eycc_tiff_warning_test
+    COMMAND grk_decompress
+            -i ${GRK_DATA_ROOT}/input/nonregression/issue236-ESYCC-CDEF.jp2
+            -o ${CMAKE_CURRENT_BINARY_DIR}/eycc_tiff_warning.tif)
+  set_tests_properties(grk_eycc_tiff_warning_test PROPERTIES
+    ENVIRONMENT "GRK_DEBUG=2"
+    PASS_REGULAR_EXPRESSION "eYCC is recorded as rec.601 YCbCr")
 endif()
 
 # needs page sized files, so it only runs where the page size is known

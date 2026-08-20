@@ -915,6 +915,12 @@ bool TIFFFormat<T>::writeHeader(TIFF* tif)
     switch(colourSpace)
     {
       case GRK_CLRSPC_EYCC:
+        // tiff describes a ycbcr image with a luma matrix (tag 529) and a black/white range
+        // (tag 532), and grok's eYCC inverse is the rec.601 matrix over the same range as its
+        // sYCC inverse, so there are no tag values that would tell the two apart on read
+        spdlog::warn("TIFFFormat<T>::writeHeader: eYCC is recorded as rec.601 YCbCr, so the "
+                     "file reads back as sYCC. Sample values are unaffected.");
+        [[fallthrough]];
       case GRK_CLRSPC_SYCC:
         if(subsampled && numcomps != 3)
         {
