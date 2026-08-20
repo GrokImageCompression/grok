@@ -329,6 +329,14 @@ private:
       oneLessDecompTile = ResSimple::getBandWindow(numDecomps - 1, 0, unreducedTileComp);
     }
     paddedResWindow.grow_IN_PLACE(2 * padding).clip_IN_PLACE(oneLessDecompTile);
+    // the partial inverse wavelet indexes both sub-band windows off one interleaved
+    // position, which only lines up when the window and the resolution share a parity
+    if(paddedResWindow.x0 > oneLessDecompTile.x0 &&
+       ((paddedResWindow.x0 ^ oneLessDecompTile.x0) & 1))
+      paddedResWindow.x0--;
+    if(paddedResWindow.y0 > oneLessDecompTile.y0 &&
+       ((paddedResWindow.y0 ^ oneLessDecompTile.y0) & 1))
+      paddedResWindow.y0--;
     paddedResWindow.setOrigin(oneLessDecompTile);
 
     return ResSimple::getBandWindow(1, orientation, paddedResWindow);

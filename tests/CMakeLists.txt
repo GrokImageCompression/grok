@@ -186,6 +186,11 @@ if(NOT GROK_HAVE_LIBPNG)
   message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_LIBPNG enabled.")
 endif()
 
+# synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+add_executable(grk_region_decompress_test GrkRegionDecompressTest.cpp)
+target_link_libraries(grk_region_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_region_decompress_test COMMAND grk_region_decompress_test)
+
 add_subdirectory(conformance)
 add_subdirectory(nonregression)
 

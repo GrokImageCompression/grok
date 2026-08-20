@@ -12,13 +12,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
   only. other stream creators may have the same unowned-handle pattern
-- region decode returns wrong pixels for tiled images on a fixed set of
-  source rows regardless of window position (61x67 with 14x15 tiles: rows
-  28, 39, 40, 43, 44, 55, 56, 58, 59). single-tile windows and whole-tile
-  windows are exact, so suspect the band-window derivation for tiles with
-  non-zero origin: getPaddedBandWindow (ResWindow.h, has a standing todo on
-  its padding factor) feeding WaveletReversePartial. repro:
-  grk_compress -t 14,15 then grk_decompress -d 0,43,61,45
 
 ## phase 1: close the eligibility gaps
 
