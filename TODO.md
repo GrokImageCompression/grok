@@ -28,9 +28,16 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 - a repeat grk_decompress is a no-op for classic but a full-stream re-decode
   for mercury (fastpath bails on pre-allocated component data and falls
   through to classic). same observable result, very different cost
-- decode of conformance p0_07.j2k to tif deadlocks every run, all workers
-  parked on one futex. the same file decodes fine to pgx, so the hang is in
-  the tiff output path
+- decode of conformance p0_07.j2k to tif deadlocks every run. it also hangs
+  in async simulate-synchronous decode with no output writer at all, main
+  thread and a worker parked on condition variables, so the bug is in async
+  decode scheduling (swath wait or throttle), not the tiff writer. pgx
+  succeeds because it decodes synchronously
+- changing the decompress window between grk_decompress calls on one codec
+  is silently ignored: the tile cache filter has no window invalidation, so
+  the repeat call returns the old window's pixels (uncropped whole tiles in
+  the multi-tile case). invalidation belongs in setDecompressRegion,
+  dropping cached tile image and best-effort flag when the region changes
 - zoo1.jp2 segfaults when decoded to tif
 - with compare_images fixed (it was blind in both modes), 26 compare tests
   fail on real decode drift, in five groups. large errors: p0_03, p0_08,
@@ -40,9 +47,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   p0_05, p0_06, p1_02, p1_03, p1_04 and the richter subsampled files are
   within a few code values of the reference but not bit exact, and p0_05,
   p1_03 marginally exceed the Table C.6/C.7 conformance limits
-- j2k_multi_region_decompress is built but never registered as a ctest, and
-  fails on five of six conformance inputs with null tile data in its
-  asynchronous row-wait path
 - eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
   coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
   colors, and grok reads its own eycc tif back as sycc. byte round trips

@@ -268,6 +268,7 @@ if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux
   add_executable(grk_fetch_header_leak_test GrkFetchHeaderLeakTest.cpp)
   target_link_libraries(grk_fetch_header_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_fetch_header_leak_test COMMAND grk_fetch_header_leak_test)
+endif()
 
 # five windows per file, each decoded asynchronously and waited on swath by swath
 if(GRK_DATA_ROOT)
