@@ -46,13 +46,14 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 - windows md5 overrides (tests/nonregression/md5refs-windows-*.txt) carry
   entries for 9/7 files whose int16 output changed, refresh them from the
   next green ubuntu run with tests/nonregression/collect_ci_md5refs.py
-- forcing the int32 whole-tile 5/3 path (can16Bit false in
-  createDecompressTileComponentWindows) segfaults on p0_03, p0_07, p0_10,
-  p0_15, the KDU files and Bretagne2, and diverges from int16 on many md5
-  files. production only takes it for 5/3 above 12 bits
-- 9-bit 9/7 gets qShift 4, the fractional budget that failed conformance at
-  8 bits before ties-to-even rounding. no 9-bit 9/7 file in the corpus to
-  measure, the lever is prec + 7 <= 16 in grk_get_data_type
+- GrkImage::sycc444_to_rgb dispatches int32 to the SIMD hwy_sycc444_to_rgb_i32
+  and everything else to the scalar sycc_to_rgb, and the two round
+  differently (file2.jp2 decoded through int32 differs by 1 on 58 samples)
+- the int16 decode eligibility rule is evaluated twice, in
+  TileProcessor::createDecompressTileComponentWindows and again in
+  CodeStreamDecompress::activateScratch for the multi-tile composite, and
+  GrkImage::compositePlanar has no int32 to int16 branch, so a disagreement
+  between the two is a heap overrun. decide once and carry the result
 - eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
   coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
   colors, and grok reads its own eycc tif back as sycc. byte round trips
