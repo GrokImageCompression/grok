@@ -17,9 +17,9 @@ e273e2aaea4a4fc1b2cf7c09c53c3cc6  file409752.jp2_2.pgx
 adda4f5e46845b96dd3df14a76aa7229  issue188_beach_64bitsbox.jp2_0.pgx
 90a9709c166019d1e101e7b96d257ed9  issue188_beach_64bitsbox.jp2_1.pgx
 37e23d2df06ee60bf0f9f5e1c16054d8  issue188_beach_64bitsbox.jp2_2.pgx
-1c342ed94e014e92bda0c61d36670350  issue205.jp2_0.pgx
+4e07d9dc76c45edd868c002c7250a784  issue205.jp2_0.pgx
 a5aa1c0c74b87e61582e744f69020eee  issue205.jp2_1.pgx
-4e513f10ee67d04ab59c0e250c0c8b87  issue205.jp2_2.pgx
+03a6479b2145d55ee82bf22f1b9bd2a8  issue205.jp2_2.pgx
 e1807db57b5f5192c4b77b83e8b5c477  issue228.j2k_0.pgx
 aa7461b31e14641586803b23b7fb04f2  issue142.j2k_0.pgx
 c74edbb49e132b2cfc1eaf7908197b17  issue134.jp2_0.pgx
@@ -41,7 +41,7 @@ c87b8fc8ff7ff44197c6061ba9e461c1  issue414.jp2_4.pgx
 79b134b0d04afb2d1875b69a14fcdc0f  p1_04_10.j2k.png
 443eac91aa0df4df8f70efb0894a63a4  p1_04_17_t63.j2k.png
 99e88b4437038ef00d0256f8317f20af  p1_04_18.t12.j2k.png
-9a2365f1b02ef316418b25913c53b9bd  Bretagne2_ht_lossy.png
-2710ddfb9e5234ea328f9333f64c3f6f  issue205-tif.jp2.tif
-2710ddfb9e5234ea328f9333f64c3f6f  issue205.jp2_r0.tif
-2383a7ecccc8c137e908ed0334697627  issue205.jp2_r1.tif
+d9daf687a2f6bc0ee5273f55267937d5  Bretagne2_ht_lossy.png
+4001a9b4104fd7a5828115fb36f44e60  issue205-tif.jp2.tif
+4001a9b4104fd7a5828115fb36f44e60  issue205.jp2_r0.tif
+97a0fbf373a20bb4de0d1beb1a75f620  issue205.jp2_r1.tif
