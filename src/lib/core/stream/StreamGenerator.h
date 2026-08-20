@@ -138,7 +138,7 @@ private:
 
   IStream* createBufferStream(bool isReadStream)
   {
-    auto stream = memStreamCreate(streamParams_.buf, streamParams_.buf_len, false, nullptr,
+    auto stream = memStreamCreate(streamParams_.buf, streamParams_.buf_len,
                                   GRK_CODEC_FORMAT::GRK_CODEC_UNK, isReadStream);
     if(!stream)
     {

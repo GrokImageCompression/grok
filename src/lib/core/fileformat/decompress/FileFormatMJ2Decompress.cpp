@@ -840,7 +840,7 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   auto j2kLen = sample.samples_size_ - boxHeaderSize;
 
   // create a memory stream for this J2K codestream (non-owning)
-  auto subStream = memStreamCreate(j2kData, j2kLen, false, nullptr, GRK_CODEC_J2K, true);
+  auto subStream = memStreamCreate(j2kData, j2kLen, GRK_CODEC_J2K, true);
   if(!subStream)
   {
     grklog.error("MJ2: failed to create memory stream for sample %d", sampleIndex);

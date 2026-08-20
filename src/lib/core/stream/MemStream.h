@@ -30,32 +30,25 @@ typedef int32_t grk_handle;
 
 struct MemStream
 {
-  MemStream(uint8_t* buffer, size_t initialOffset, size_t length, bool owns,
-            grk_stream_free_user_data_fn freeCallback);
+  MemStream(uint8_t* buffer, size_t initialOffset, size_t length);
   MemStream();
-  ~MemStream();
   size_t len_;
   grk_handle fd_; // for file mapping
   size_t off_;
   uint8_t* buf_;
   size_t initialOffset_; // mapping: buf is shifted by initialOffset
                          // and will be shifted back when unmapping
-private:
-  grk_stream_free_user_data_fn freeCallback_;
 };
 
 void memStreamSetup(IStream* stream, bool isReadStream);
 
-/** Create stream from buffer
+/** Create stream from buffer the caller keeps ownership of
  *
  * @param buf           buffer
  * @param len    		length of buffer
- * @param ownsBuffer    if true, library will delete[] buffer. Otherwise, it is the caller's
- *                      responsibility to delete the buffer
+ * @param format        codec format, or GRK_CODEC_UNK to detect it from the buffer
  * @param readStream  whether the stream is a read stream (true) or not (false)
  */
-IStream* memStreamCreate(uint8_t* buf, size_t len, bool ownsBuffer,
-                         grk_stream_free_user_data_fn freeCallback, GRK_CODEC_FORMAT format,
-                         bool readStream);
+IStream* memStreamCreate(uint8_t* buf, size_t len, GRK_CODEC_FORMAT format, bool readStream);
 
 } // namespace grk

@@ -58,12 +58,6 @@ bool detectFormat(const uint8_t* buffer, GRK_CODEC_FORMAT* fmt)
   return true;
 }
 
-static void memStreamUserDataFree(void* user_data)
-{
-  uint8_t* buf = (uint8_t*)user_data;
-  delete[] buf;
-}
-
 static void memStreamFree(void* user_data)
 {
   auto data = (MemStream*)user_data;
@@ -150,9 +144,7 @@ void memStreamSetup(IStream* stream, bool isReadStream)
   stream->setCallbacks(callbacks);
 }
 
-IStream* memStreamCreate(uint8_t* buf, size_t len, bool ownsBuffer,
-                         grk_stream_free_user_data_fn freeCallback, GRK_CODEC_FORMAT format,
-                         bool isReadStream)
+IStream* memStreamCreate(uint8_t* buf, size_t len, GRK_CODEC_FORMAT format, bool isReadStream)
 {
   if(!buf || !len)
     return nullptr;
@@ -168,7 +160,7 @@ IStream* memStreamCreate(uint8_t* buf, size_t len, bool ownsBuffer,
       return nullptr;
   }
 
-  auto memStream = new MemStream(buf, 0, len, ownsBuffer, freeCallback);
+  auto memStream = new MemStream(buf, 0, len);
   auto stream = new BufferedStream(buf, 0, len, isReadStream);
   if(isReadStream)
     stream->setFormat(format);
@@ -178,16 +170,9 @@ IStream* memStreamCreate(uint8_t* buf, size_t len, bool ownsBuffer,
   return stream;
 }
 
-MemStream::MemStream(uint8_t* buffer, size_t initialOff, size_t length, bool ownsBuffer,
-                     grk_stream_free_user_data_fn freeCallback)
-    : len_(length), fd_(0), off_(0), buf_(buffer), initialOffset_(initialOff),
-      freeCallback_(freeCallback ? freeCallback : (ownsBuffer ? memStreamUserDataFree : nullptr))
+MemStream::MemStream(uint8_t* buffer, size_t initialOff, size_t length)
+    : len_(length), fd_(0), off_(0), buf_(buffer), initialOffset_(initialOff)
 {}
-MemStream::MemStream() : MemStream(nullptr, 0, 0, false, nullptr) {}
-MemStream::~MemStream()
-{
-  if(freeCallback_)
-    freeCallback_(buf_);
-}
+MemStream::MemStream() : MemStream(nullptr, 0, 0) {}
 
 } // namespace grk
