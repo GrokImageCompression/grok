@@ -84,7 +84,8 @@ typedef enum _GRK_PROG_ORDER
   GRK_RPCL = 2, /** resolution-precinct-component-layer order */
   GRK_PCRL = 3, /** precinct-component-resolution-layer order */
   GRK_CPRL = 4, /** component-precinct-resolution-layer order */
-  GRK_NUM_PROGRESSION_ORDERS = 5 /** number of possible progression orders */
+  GRK_PRCL = 5, /** precinct-resolution-component-layer order (Part 2) */
+  GRK_NUM_PROGRESSION_ORDERS = 6 /** number of possible progression orders */
 } GRK_PROG_ORDER;
 
 /**
@@ -1748,6 +1749,9 @@ typedef struct _grk_cparameters
   uint32_t cblockh_init; /* nominal code block height (default 64) */
   uint8_t cblk_sty; /* code block style */
   bool irreversible; /* true if irreversible compression enabled, default false */
+  /** JPEG style quality factor in [1..100] for irreversible compression, derives
+   *  visually weighted quantization step sizes. 0 disables it */
+  uint8_t qfactor;
   /** region of interest: affected component in [0..3];
    *  -1 indicates no ROI */
   int32_t roi_compno; /* ROI component number */

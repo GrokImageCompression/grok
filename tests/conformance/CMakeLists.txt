@@ -453,6 +453,128 @@ foreach(numFileC1P1 RANGE 1 7)
 endforeach()
 
 #--------------------------------------------------------------------------
+# Tests for HTJ2K (T.814) class 1
+# try to decode
+# compare to ref file
+
+# T.803 HT conformance streams. The bNN suffix is the MAGB precision class and
+# sets the tolerance. Records are input|reference|components|reduce|peak|mse
+set( HT_conformance_records
+  "ds0_ht_01_b11.j2k|c1p0_01|1|0|0|0"
+  "ds0_ht_02_b11.j2k|c1p0_02|1|0|1|0.001"
+  "ds0_ht_03_b11.j2k|c1p0_03|1|0|17|0.15"
+  "ds0_ht_03_b14.j2k|c1p0_03|1|0|0|0"
+  "ds0_ht_04_b11.j2k|c1p0_04|3|0|7:6:8|0.876:0.726:1.170"
+  "ds0_ht_04_b12.j2k|c1p0_04|3|0|5:4:6|0.776:0.626:1.070"
+  "ds0_ht_05_b11.j2k|c1p0_05|4|0|2:3:3:2|0.319:0.324:0.318:0.001"
+  "ds0_ht_05_b12.j2k|c1p0_05|4|0|2:2:2:0|0.319:0.323:0.317:0"
+  "ds0_ht_06_b11.j2k|c1p0_06|4|0|3135:403:378:200|86287:6124:3968:2000"
+  "ds0_ht_06_b15.j2k|c1p0_06|4|0|635:403:378:12|11287:6124:3968:10.0"
+  "ds0_ht_06_b18.j2k|c1p0_06|4|0|635:403:378:0|11287:6124:3968:0"
+  "ds0_hm_06_b11.j2k|c1p0_06|4|0|635:403:378:200|11287:6124:3968:2000"
+  "ds0_hm_06_b18.j2k|c1p0_06|4|0|635:403:378:0|11287:6124:3968:0"
+  "ds0_ht_07_b11.j2k|c1p0_07|3|0|40:40:50|25.0:25.0:25.0"
+  "ds0_ht_07_b15.j2k|c1p0_07|3|0|2:2:2|0.075:0.05:0.075"
+  "ds0_ht_07_b16.j2k|c1p0_07|3|0|0:0:0|0:0:0"
+  "ds0_ht_08_b11.j2k|c1p0_08|3|1|40:40:40|45.0:30.0:45.0"
+  "ds0_ht_08_b15.j2k|c1p0_08|3|1|0:1:0|0:0.001:0"
+  "ds0_ht_08_b16.j2k|c1p0_08|3|1|0:0:0|0:0:0"
+  "ds0_ht_09_b11.j2k|c1p0_09|1|0|0|0"
+  "ds0_ht_10_b11.j2k|c1p0_10|3|0|0:0:0|0:0:0"
+  "ds0_ht_11_b10.j2k|c1p0_11|1|0|0|0"
+  "ds0_ht_12_b11.j2k|c1p0_12|1|0|0|0"
+  "ds0_ht_13_b11.j2k|c1p0_13|4|0|0:0:0:0|0:0:0:0"
+  "ds0_ht_14_b11.j2k|c1p0_14|3|0|0:0:0|0:0:0"
+  "ds0_ht_15_b11.j2k|c1p0_15|1|0|17|0.15"
+  "ds0_ht_15_b14.j2k|c1p0_15|1|0|0|0"
+  "ds0_hm_15_b8.j2k|c1p0_15|1|0|0|0"
+  "ds0_ht_16_b11.j2k|c1p0_16|1|0|0|0"
+  "ds1_ht_01_b11.j2k|c1p1_01|1|0|1|0.001"
+  "ds1_ht_01_b12.j2k|c1p1_01|1|0|0|0"
+  "ds1_ht_02_b11.j2k|c1p1_02|3|0|7:6:8|0.865:0.716:1.151"
+  "ds1_ht_02_b12.j2k|c1p1_02|3|0|5:4:6|0.765:0.616:1.051"
+  "ds1_ht_03_b11.j2k|c1p1_03|4|0|2:3:3:2|0.311:0.310:0.317:0.001"
+  "ds1_ht_03_b12.j2k|c1p1_03|4|0|2:2:1:0|0.311:0.280:0.267:0"
+  "ds1_ht_04_b9.j2k|c1p1_04|1|0|624|3080"
+  "ds1_ht_05_b11.j2k|c1p1_05|3|0|40:40:40|8.458:9.716:10.154"
+  "ds1_ht_06_b11.j2k|c1p1_06|3|0|2:2:2|0.600:0.600:0.600"
+  "ds1_ht_07_b11.j2k|c1p1_07|2|0|0:0|0:0"
+  "hifi_ht1_02.j2k|hifi|3|0|47:36:42|82:65:86"
+  "sigprop_refinement_overlap.j2k|sigprop_refinement_overlap|3|0|2:2:2|0.25:0.25:0.25"
+)
+
+foreach(record ${HT_conformance_records})
+  string(REPLACE "|" ";" fields "${record}")
+  list(GET fields 0 filenameInput)
+  list(GET fields 1 filenameRef)
+  list(GET fields 2 nbComponents)
+  list(GET fields 3 ResFactor)
+  list(GET fields 4 PEAK_limit)
+  list(GET fields 5 MSE_limit)
+
+  add_test(NAME ETS-HT-${filenameInput}-decode
+      COMMAND grk_decompress
+      -i ${INPUT_CONF}/${filenameInput}
+      -o ${TEMP}/c1${filenameInput}.pgx
+      -r ${ResFactor}
+      )
+
+  add_test(NAME ETS-HT-${filenameInput}-compare2ref
+      COMMAND compare_images
+     -b ${BASELINE_CONF}/${filenameRef}.pgx
+     -t ${TEMP}/c1${filenameInput}.pgx
+     -n ${nbComponents}
+     -p ${PEAK_limit}
+     -m ${MSE_limit}
+     -s b_t_
+     )
+
+  set_tests_properties(ETS-HT-${filenameInput}-compare2ref
+                       PROPERTIES DEPENDS
+                       ETS-HT-${filenameInput}-decode)
+
+endforeach()
+
+#--------------------------------------------------------------------------
+# Part 2 conformance: DFS per-level split styles and ATK arbitrary kernels
+# record format: input|refbase|ncomps|PEAK|MSE
+
+set(P2_conformance_records
+  "ATK_DFS_IRV.j2c|p2_dfs_irv|3|2:2:2|70:70:70"
+  "ATK_DFS_REV.j2c|p2_dfs_atk|3|256:256:256|65:65:65"
+)
+
+foreach(record ${P2_conformance_records})
+  string(REPLACE "|" ";" fields "${record}")
+  list(GET fields 0 filenameInput)
+  list(GET fields 1 filenameRef)
+  list(GET fields 2 nbComponents)
+  list(GET fields 3 PEAK_limit)
+  list(GET fields 4 MSE_limit)
+
+  add_test(NAME ETS-P2-${filenameInput}-decode
+      COMMAND grk_decompress
+      -i ${INPUT_CONF}/${filenameInput}
+      -o ${TEMP}/${filenameInput}.pgx
+      )
+
+  add_test(NAME ETS-P2-${filenameInput}-compare2ref
+      COMMAND compare_images
+     -b ${BASELINE_CONF}/${filenameRef}.pgx
+     -t ${TEMP}/${filenameInput}.pgx
+     -n ${nbComponents}
+     -p ${PEAK_limit}
+     -m ${MSE_limit}
+     -s b_t_
+     )
+
+  set_tests_properties(ETS-P2-${filenameInput}-compare2ref
+                       PROPERTIES DEPENDS
+                       ETS-P2-${filenameInput}-decode)
+
+endforeach()
+
+#--------------------------------------------------------------------------
 # Tests for JP2 file
 # try to decode
 # compare to ref file

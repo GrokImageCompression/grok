@@ -146,6 +146,10 @@ Note: not supported for Part 15 (HTJ2K) compression
 
 Quality values (double precision, greater than or equal to zero). Each value is a PSNR measure, given in dB, representing a quality layer. The order used to define the different PSNR values is important and must be from left to right in ascending order. A value of 0 signifies a final lossless quality layer (including all remaining code passes) Default: 1 single lossless quality layer.
 
+`--qfactor [quality factor]`
+
+JPEG style quality factor, an integer between 1 and 100. Derives the quantization step size of every sub-band from the factor, the 9/7 synthesis gain and a visual weight per sub-band and component, the same model as Kakadu and OpenHTJ2K. Requires `-I` and a single component or a colour image. Step sizes only: use `-r` or `-q` as well to add rate constrained quality layers. Default: off.
+
 `-n, -numresolutions [number of resolutions]`
 
 Number of resolutions. It corresponds to the `number of DWT decompositions +1`. Default: 6.

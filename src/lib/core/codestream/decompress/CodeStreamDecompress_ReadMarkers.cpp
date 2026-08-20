@@ -253,6 +253,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
           t1::CoderFactory::makeCoder(isHT_, false, 32, 32, tileCache_->getStrategy()));
     });
     defaultTcp_->finalizePocs();
+    if(!defaultTcp_->resolvePart2())
+      return false;
     if(isHT_)
     {
       if(!defaultTcp_->isHT())
@@ -524,6 +526,8 @@ bool CodeStreamDecompress::readSOC()
   return true;
 }
 
+const uint32_t pcapHTFlag = 0x00020000;
+
 bool CodeStreamDecompress::readCAP(uint8_t* headerData, uint16_t headerSize)
 {
   if(headerSize < sizeof(cp_.pcap_))
@@ -534,18 +538,9 @@ bool CodeStreamDecompress::readCAP(uint8_t* headerData, uint16_t headerSize)
 
   uint32_t tmp;
   grk_read(&headerData, &tmp); /* Pcap */
-  if(tmp & 0xFFFDFFFF)
-  {
-    grklog.error("Pcap in CAP marker has unsupported options.");
-    return false;
-  }
-  if((tmp & 0x00020000) == 0)
-  {
-    grklog.error("Pcap in CAP marker should have its 15th MSB set. ");
-    return false;
-  }
   cp_.pcap_ = tmp;
-  if(cp_.pcap_)
+  // bit 15 of Pcap announces Ccap15, the HT capabilities, other bits announce other parts
+  if(cp_.pcap_ & pcapHTFlag)
     isHT_ = true;
   uint32_t count = grk_population_count(cp_.pcap_);
   uint32_t expectedSize = (uint32_t)sizeof(cp_.pcap_) + 2U * count;

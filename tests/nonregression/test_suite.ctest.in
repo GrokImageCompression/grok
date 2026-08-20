@@ -780,3 +780,11 @@ grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264.pgx -d 0,0,1024,1024
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/security_ht_segments_overflow.j2k -o @TEMP_PATH@/security_ht_segments_overflow.j2k.pgx
+grk_decompress -i @INPUT_NR_PATH@/security_line_decode_dfs_vert.j2k -o @TEMP_PATH@/security_line_decode_dfs_vert.j2k.pgx
+!grk_decompress -i @INPUT_NR_PATH@/security_marker_cod_levels.j2k -o @TEMP_PATH@/security_marker_cod_levels.j2k.pgx
+!grk_decompress -i @INPUT_NR_PATH@/security_marker_com_underflow.j2k -o @TEMP_PATH@/security_marker_com_underflow.j2k.pgx
+!grk_decompress -i @INPUT_NR_PATH@/security_multitilepart_cblk_length.j2k -o @TEMP_PATH@/security_multitilepart_cblk_length.j2k.pgx
+core_decompress -i @INPUT_NR_PATH@/security_threaded_decode_abort_color.j2k
+core_decompress -i @INPUT_NR_PATH@/security_threaded_decode_abort.j2k
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_qfactor.j2k -I --qfactor 90

@@ -969,34 +969,44 @@ bool WaveletReverse::tile_97(void)
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   for(uint8_t res = 1; res < numres_; ++res)
   {
-    horiz97.sn = resWidth;
-    vert97.sn = resHeight;
+    auto split = splitOf(res);
+    auto lowWidth = resWidth;
+    auto lowHeight = resHeight;
     ++tr;
     resWidth = tr->width();
     resHeight = tr->height();
     if(resWidth == 0 || resHeight == 0)
       continue;
+    // an axis the level does not split keeps every sample in the low half
+    horiz97.sn = splitsHorizontally(split) ? lowWidth : resWidth;
+    vert97.sn = splitsVertically(split) ? lowHeight : resHeight;
     horiz97.dn = resWidth - horiz97.sn;
     horiz97.parity = tr->x0 & 1;
     horiz97.win_l = Line32(0, horiz97.sn);
     horiz97.win_h = Line32(0, horiz97.dn);
     auto winSplitL = buf->getResWindowBufferSplitSimpleF(res, SPLIT_L);
     auto winSplitH = buf->getResWindowBufferSplitSimpleF(res, SPLIT_H);
-    if(!h_97(res, num_threads, dataLength, horiz97, vert97.sn,
-             buf->getResWindowBufferSimpleF((uint8_t)(res - 1U)),
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL), winSplitL))
-      return false;
-    if(!h_97(res, num_threads, dataLength, horiz97, resHeight - vert97.sn,
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH),
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH), winSplitH))
-      return false;
+    if(splitsHorizontally(split))
+    {
+      if(!h_97(res, num_threads, dataLength, horiz97, vert97.sn,
+               buf->getResWindowBufferSimpleF((uint8_t)(res - 1U)),
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL), winSplitL))
+        return false;
+      if(!h_97(res, num_threads, dataLength, horiz97, resHeight - vert97.sn,
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH),
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH), winSplitH))
+        return false;
+    }
     vert97.dn = resHeight - vert97.sn;
     vert97.parity = tr->y0 & 1;
     vert97.win_l = Line32(0, vert97.sn);
     vert97.win_h = Line32(0, vert97.dn);
-    if(!v_97(res, num_threads, dataLength, vert97, resWidth, resHeight, winSplitL, winSplitH,
-             buf->getResWindowBufferSimpleF(res)))
-      return false;
+    if(splitsVertically(split))
+    {
+      if(!v_97(res, num_threads, dataLength, vert97, resWidth, resHeight, winSplitL, winSplitH,
+               buf->getResWindowBufferSimpleF(res)))
+        return false;
+    }
   }
 
   return true;

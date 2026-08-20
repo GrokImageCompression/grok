@@ -80,8 +80,8 @@ struct ResPrecinctInfo
    * @param tileWindow      decode window in unreduced tile coordinates (used only if windowed)
    * @return true on success, false if resolution is degenerate or overflows
    */
-  bool init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds, uint32_t dx, uint32_t dy,
-            bool windowed, Rect32 tileWindow);
+  bool init(uint8_t resno, uint8_t decompLevelX, uint8_t decompLevelY, Rect32 tileBounds,
+            uint32_t dx, uint32_t dy, bool windowed, Rect32 tileWindow);
 
   /**
    * @brief Prints resolution precinct info for debugging.
@@ -198,6 +198,10 @@ struct PacketIterInfoComponent
   uint32_t dy;
   /** number of resolution levels for this component (1 to GRK_MAXRLVLS) */
   uint8_t numresolutions;
+  /** decompositions along each axis after the given number of levels (Part 2 DFS) */
+  uint8_t horizontalDepth[GRK_MAXRLVLS];
+  uint8_t verticalDepth[GRK_MAXRLVLS];
+  bool usesPart2Transform;
   /** array of resolution-level precinct grid info, length = numresolutions */
   PacketIterInfoResolution* resolutions;
 };
@@ -493,6 +497,8 @@ private:
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_pcrl();
+  /** next packet in precinct-resolution-component-layer order (Part 2) */
+  bool next_prcl();
   bool next_pcrlOPT();
 
   /**

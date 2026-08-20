@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "CodingParams.h"
+
 #include "CodecScheduler.h"
 #include "WaveletCommon.h"
 #include "WaveletPoolData.h"
@@ -129,7 +131,9 @@ class WaveletReverse
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
-                 WaveletPoolData* poolData, DcShiftParam dcShift = {});
+                 WaveletPoolData* poolData, DcShiftParam dcShift = {},
+                 const TileComponentCodingParams* tccp = nullptr,
+                 const TransformKernel* kernel = nullptr);
   ~WaveletReverse(void);
   bool decompress(void);
 
@@ -146,6 +150,20 @@ private:
   uint32_t maxDim_ = 0;
   bool wholeTileDecompress_ = true;
   DcShiftParam dcShift_;
+  // Part 2: per level splits and, for ATK streams, the lifting kernel
+  const TileComponentCodingParams* tccp_ = nullptr;
+  const TransformKernel* kernel_ = nullptr;
+  DecompositionSplit splitOf(uint8_t res) const;
+  // arbitrary kernel ////////////////////////////////////////////////////////////////////////
+  bool tile_kernel(void);
+  template<typename T>
+  void kernelLine(T* line, uint32_t length, uint32_t parity) const;
+  template<typename T>
+  void kernelRows(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH, Buffer2dSimple<T> winDest,
+                  uint32_t numLow, uint32_t width, uint32_t parity, uint32_t numRows);
+  template<typename T>
+  void kernelColumns(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH, Buffer2dSimple<T> winDest,
+                     uint32_t numLow, uint32_t height, uint32_t parity, uint32_t numColumns);
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
   void load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,

@@ -60,13 +60,13 @@ IPTC (JP2 Only)
 If an input \f[CR]TIF/TIFF\f[R] file contains \f[CR]IPTC\f[R] metadata,
 this metadata will be stored in the compressed file.
 .PP
-XMP (JP2Only)
+XMP (JP2 Only)
 .PP
 If an input \f[CR]TIF/TIFF\f[R] or \f[CR]PNG\f[R] file contains
 \f[CR]XMP\f[R] metadata, this metadata will be stored in the compressed
 file.
 .PP
-EXIF (JP2 only)
+EXIF (JP2only)
 .PP
 If an input \f[CR]JPEG\f[R] or \f[CR]PNG\f[R] file contains
 \f[CR]EXIF\f[R] metadata, this metadata will be automatically stored in
@@ -195,6 +195,10 @@ sub\-sampling
    \-F 512,512,3,8,u\[at]1x1:2x2:2x2
 .EE
 .PP
+\f[CR]\-f, \-\-apply\-icc\f[R]
+.PP
+Apply ICC profile before compression, if present.
+.PP
 \f[CR]\-A, \-\-rate\-\-control\-algorithm [0|1]\f[R]
 .PP
 Select algorithm used for rate control.
@@ -230,6 +234,17 @@ The order used to define the different PSNR values is important and must
 be from left to right in ascending order.
 A value of 0 signifies a final lossless quality layer (including all
 remaining code passes) Default: 1 single lossless quality layer.
+.PP
+\f[CR]\-\-qfactor [quality factor]\f[R]
+.PP
+JPEG style quality factor, an integer between 1 and 100.
+Derives the quantization step size of every sub\-band from the factor,
+the 9/7 synthesis gain and a visual weight per sub\-band and component,
+the same model as Kakadu and OpenHTJ2K.
+Requires \f[CR]\-I\f[R] and a single component or a colour image.
+Step sizes only: use \f[CR]\-r\f[R] or \f[CR]\-q\f[R] as well to add
+rate constrained quality layers.
+Default: off.
 .PP
 \f[CR]\-n, \-numresolutions [number of resolutions]\f[R]
 .PP

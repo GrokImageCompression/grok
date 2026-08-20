@@ -252,9 +252,11 @@ void GrkImage::all_components_data_free()
  */
 bool GrkImage::needsConversionToRGB(void) const
 {
+  // PGX carries no colour space, so converting would only destroy the decoded components
   return ((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
            color_space == GRK_CLRSPC_CMYK) &&
-          (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF)) ||
+          (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF &&
+           decompress_fmt != GRK_FMT_PGX)) ||
          force_rgb;
 }
 

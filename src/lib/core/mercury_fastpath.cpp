@@ -320,6 +320,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 {
   if(!std::getenv("GRK_MERCURY"))
     return false;
+  for(uint16_t c = 0; c < cs.cp_.tcps_.get(0)->numComps_; ++c)
+    if(cs.cp_.tcps_.get(0)->tccps_[c].usesPart2Transform())
+      return false;
 
   const std::string& path = cs.inputFilePath_;
 

@@ -178,8 +178,10 @@ void PacketManager::getParams(const GrkImage* image, CodingParams* p_cp, TileCod
       }
 
       // 2. precinct grid
+      uint8_t levelsDone = (uint8_t)(tccp->numresolutions_ - 1U - resno);
       auto resBounds =
-          tileCompBounds.scaleDownCeilPow2((uint8_t)(tccp->numresolutions_ - 1U - resno));
+          tileCompBounds.scaleDownCeil((uint64_t)1 << tccp->horizontalDepth_[levelsDone],
+                                       (uint64_t)1 << tccp->verticalDepth_[levelsDone]);
       auto resBoundsAdjusted =
           Rect32(floordivpow2(resBounds.x0, precWidthExp) << precWidthExp,
                  floordivpow2(resBounds.y0, precHeightExp) << precHeightExp,
@@ -203,9 +205,9 @@ void PacketManager::getParams(const GrkImage* image, CodingParams* p_cp, TileCod
 
       // 3. find minimal precinct subsampling factors over all components and resolutions
       uint64_t compResDx =
-          comp->dx * ((uint64_t)1u << (precWidthExp + tccp->numresolutions_ - 1U - resno));
+          comp->dx * ((uint64_t)1u << (precWidthExp + tccp->horizontalDepth_[levelsDone]));
       uint64_t compResDy =
-          comp->dy * ((uint64_t)1u << (precHeightExp + tccp->numresolutions_ - 1U - resno));
+          comp->dy * ((uint64_t)1u << (precHeightExp + tccp->verticalDepth_[levelsDone]));
       if(compResDx < UINT_MAX)
         *dx_min = std::min<uint32_t>(*dx_min, (uint32_t)compResDx);
       if(compResDy < UINT_MAX)

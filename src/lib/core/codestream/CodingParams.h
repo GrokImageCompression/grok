@@ -21,6 +21,8 @@
 #include <mutex>
 
 #include "PacketCache.h"
+#include "Part2.h"
+#include <map>
 
 namespace grk
 {
@@ -63,8 +65,46 @@ struct TileComponentCodingParams
   uint8_t cblkh_expn_;
   /** code-block mode */
   uint8_t cblkStyle_;
-  /** discrete wavelet transform identifier */
+  /** discrete wavelet transform identifier, 0 irreversible and 1 reversible */
   uint8_t qmfbid_;
+  /** Part 2 arbitrary transformation kernel index, 0 for the Part 1 kernels */
+  uint8_t atkIndex_;
+  /** Part 2 downsampling factor style index, 0 when every level splits both ways */
+  uint8_t dfsIndex_;
+  /** split of each decomposition level, level 1 is the finest */
+  DecompositionSplit splits_[GRK_MAXRLVLS];
+  /** horizontal and vertical decomposition counts after the given number of levels */
+  uint8_t horizontalDepth_[GRK_MAXRLVLS];
+  uint8_t verticalDepth_[GRK_MAXRLVLS];
+  /** index of the first step size of each resolution */
+  uint8_t bandOffset_[GRK_MAXRLVLS];
+  bool usesPart2Transform(void) const
+  {
+    return atkIndex_ != 0 || dfsIndex_ != 0;
+  }
+  DecompositionSplit splitOfResolution(uint8_t resno) const
+  {
+    // resolution 0 is the low band of the coarsest level, it has no level of its own
+    return splits_[resno == 0 ? numresolutions_ - 1U : numresolutions_ - resno];
+  }
+  uint8_t numBandsOfResolution(uint8_t resno) const
+  {
+    if(resno == 0)
+      return 1;
+    switch(splitOfResolution(resno))
+    {
+      case DecompositionSplit::both:
+        return 3;
+      case DecompositionSplit::none:
+        return 0;
+      default:
+        return 1;
+    }
+  }
+  uint8_t numStepSizesNeeded(void) const
+  {
+    return (uint8_t)(bandOffset_[numresolutions_ - 1] + numBandsOfResolution(numresolutions_ - 1));
+  }
   // true if quantization marker has been read for this component,
   // false otherwise
   bool quantizationMarkerSet_;
@@ -152,7 +192,7 @@ struct TileCodingParams
    * @param headerSize size of header data
    * @return true if successful
    */
-  bool readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize);
+  bool readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize, bool fromCoc);
 
   /**
    * @brief Reads a SQcd or SQcc element, i.e. the quantization values of a band
@@ -248,6 +288,9 @@ struct TileCodingParams
   void updateLayersToDecompress(void);
 
   bool validateQuantization(void);
+  /** derives per level splits, depths, step size offsets and kernel reversibility from the
+   * DFS and ATK tables, and checks the Part 2 combinations this decoder handles */
+  bool resolvePart2(void);
 
   void setIsHT(bool ht, bool reversible, uint8_t guardBits);
   bool isHT(void);
@@ -416,6 +459,8 @@ struct CodingParams
    * @return true if successful
    */
   bool readCom(uint8_t* headerData, uint16_t headerSize);
+  bool readDfs(uint8_t* headerData, uint16_t headerSize);
+  bool readAtk(uint8_t* headerData, uint16_t headerSize);
 
   /**
    * @brief Gets the number of tile parts for a given tile index from TLM marker
@@ -431,6 +476,8 @@ struct CodingParams
   uint16_t rsiz_; /** Rsiz*/
   uint32_t pcap_; /* Pcap */
   uint16_t ccap_[32]; /* Ccap */
+  std::map<uint8_t, DecompositionStyle> decompositionStyles_; /* DFS markers by index */
+  std::map<uint8_t, TransformKernel> transformKernels_; /* ATK markers by index */
   uint32_t tx0_; /** XTOsiz */
   uint32_t ty0_; /** YTOsiz */
   uint32_t t_width_; /** XTsiz */

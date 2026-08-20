@@ -79,6 +79,11 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
                 SIZ, [this](uint8_t* data, uint16_t len) { return readSIZ(data, len); })},
       {CAP, new MarkerProcessor(
                 CAP, [this](uint8_t* data, uint16_t len) { return readCAP(data, len); })},
+      {PRF, new MarkerProcessor(PRF, [](uint8_t*, uint16_t) { return true; })},
+      {DFS, new MarkerProcessor(
+                DFS, [this](uint8_t* data, uint16_t len) { return cp_.readDfs(data, len); })},
+      {ATK, new MarkerProcessor(
+                ATK, [this](uint8_t* data, uint16_t len) { return cp_.readAtk(data, len); })},
       {TLM, new MarkerProcessor(
                 TLM, [this](uint8_t* data, uint16_t len) { return readTLM(data, len); })},
       {PLM, new MarkerProcessor(
@@ -1837,8 +1842,8 @@ bool CodeStreamDecompress::fetchByTile(
       [this, numTileCols, unreducedImageBounds, postGenerator](size_t requestIndex,
                                                                TileFetchContext* context) {
         auto& tilePart = (*context->requests_)[requestIndex];
-        tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
-            tilePart->data_.get(), tilePart->length_, stream_->getFormat(), true));
+        tilePart->stream_ = std::unique_ptr<IStream>(
+            memStreamCreate(tilePart->data_.get(), tilePart->length_, stream_->getFormat(), true));
         auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
         if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
         {

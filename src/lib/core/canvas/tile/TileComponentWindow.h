@@ -97,19 +97,27 @@ struct TileComponentWindowBase : public ITileComponentWindow
   TileComponentWindowBase(bool isCompressor, bool lossless, bool wholeTileDecompress,
                           Rect32 unreducedTileComp, Rect32 reducedTileComp,
                           Rect32 unreducedImageCompWindow, uint8_t numresolutions,
-                          uint8_t reducedNumResolutions)
+                          uint8_t reducedNumResolutions, const DecompositionSplit* splits,
+                          const uint8_t* horizontalDepth, const uint8_t* verticalDepth)
       : unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
         wholeTileDecompress_(wholeTileDecompress)
   {
     assert(reducedNumResolutions > 0);
+    // the level whose split makes a resolution's bands, resolution 0 is the coarsest level's LL
+    auto levelOfResolution = [](uint8_t resolutionCount, uint8_t resno) -> uint8_t {
+      return resno == 0 ? (uint8_t)(resolutionCount - 1) : (uint8_t)(resolutionCount - resno);
+    };
     auto currentRes = unreducedTileComp;
     for(uint8_t i = 0; i < numresolutions; ++i)
     {
       bool finalResolution = i == numresolutions - 1;
-      ResSimple r(currentRes, finalResolution);
+      // resolution numresolutions - 1 - i is produced by level i + 1
+      auto split = finalResolution ? DecompositionSplit::both : splits[i + 1];
+      ResSimple r(currentRes, split, finalResolution);
       resolution_.push_back(r);
       if(!finalResolution)
-        currentRes = ResSimple::getBandWindow(1, 0, currentRes);
+        currentRes = ResSimple::getBandWindow(splitsHorizontally(split) ? 1 : 0,
+                                              splitsVertically(split) ? 1 : 0, 0, currentRes);
     }
     std::reverse(resolution_.begin(), resolution_.end());
 
@@ -126,10 +134,12 @@ struct TileComponentWindowBase : public ITileComponentWindow
     auto tileCompAtLowerRes =
         reducedNumResolutions > 1 ? resolution_[reducedNumResolutions - 2] : ResSimple();
     // create resolution buffers
+    uint8_t highestResno = (uint8_t)(reducedNumResolutions - 1U);
+    uint8_t highestLevel = levelOfResolution(numresolutions, highestResno);
     auto highestResWindow = new ResWindow<T>(
-        numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes,
-        tileCompAtLowerRes, bounds_, unreducedBounds_, unreducedTileComp,
-        wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
+        highestResno, nullptr, tileCompAtRes, tileCompAtLowerRes, bounds_, unreducedBounds_,
+        unreducedTileComp, wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless),
+        splits[highestLevel], horizontalDepth[highestLevel], verticalDepth[highestLevel]);
     // setting top level prevents allocation of tileCompBandWindows buffers
     if(!useBandWindows())
       highestResWindow->disableBandWindowAllocation();
@@ -138,14 +148,16 @@ struct TileComponentWindowBase : public ITileComponentWindow
     for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
     {
       // resolution window ==  LL band window of next highest resolution
-      auto resWindow =
-          ResSimple::getBandWindow((uint8_t)(numresolutions - 1 - resno), 0, unreducedBounds_);
-      resWindows.push_back(
-          new ResWindow<T>(numresolutions, resno,
-                           useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
-                           resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(),
-                           resWindow, unreducedBounds_, unreducedTileComp,
-                           wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
+      uint8_t levelsDone = (uint8_t)(numresolutions - 1 - resno);
+      uint8_t level = levelOfResolution(numresolutions, resno);
+      auto resWindow = ResSimple::getBandWindow(horizontalDepth[levelsDone],
+                                                verticalDepth[levelsDone], 0, unreducedBounds_);
+      resWindows.push_back(new ResWindow<T>(
+          resno, useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
+          resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
+          unreducedBounds_, unreducedTileComp,
+          wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless), splits[level],
+          horizontalDepth[level], verticalDepth[level]));
     }
     resWindows.push_back(highestResWindow);
   }
@@ -199,10 +211,11 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
   TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
                       Rect32 unreducedTileComp, Rect32 reducedTileComp,
                       Rect32 unreducedImageCompWindow, uint8_t numresolutions,
-                      uint8_t reducedNumResolutions)
+                      uint8_t reducedNumResolutions, const DecompositionSplit* splits,
+                      const uint8_t* horizontalDepth, const uint8_t* verticalDepth)
       : TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress, unreducedTileComp,
                                    reducedTileComp, unreducedImageCompWindow, numresolutions,
-                                   reducedNumResolutions)
+                                   reducedNumResolutions, splits, horizontalDepth, verticalDepth)
 
   {}
   ~TileComponentWindow() override = default;

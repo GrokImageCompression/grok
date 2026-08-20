@@ -893,6 +893,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 
   int32_t deviceId;
   uint8_t resolutions;
+  uint32_t qfactor = 0;
   uint32_t rateControlAlgorithm, repetitions, numThreads, kernelBuildOptions, duration, mode,
       guardBits, mct;
   std::string tileParts;
@@ -945,6 +946,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       app.add_option("-p,--progression_order", progressionOrder, "Progression order");
   auto pocOpt = app.add_option("-P,--poc", poc, "Progression order changes");
   auto qualityOpt = app.add_option("-q,--quality", quality, "Layer rates expressed as quality");
+  auto qfactorOpt = app.add_option("--qfactor", qfactor, "JPEG style quality factor");
   auto captureResOpt = app.add_option("-Q,--capture-res", captureRes, "Capture resolution");
   auto compressionRatiosOpt = app.add_option("-r,--compression-ratios", compressionRatios,
                                              "Layer rates expressed as compression ratios");
@@ -1360,6 +1362,15 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->csty |= 0x04;
   if(irreversibleOpt->count() > 0)
     parameters->irreversible = true;
+  if(qfactorOpt->count() > 0)
+  {
+    if(qfactor < 1 || qfactor > 100)
+    {
+      spdlog::error("Quality factor {} must be between 1 and 100", qfactor);
+      return GrkRCFail;
+    }
+    parameters->qfactor = (uint8_t)qfactor;
+  }
   if(guardBitsOpt->count() > 0)
   {
     if(guardBits > 7)

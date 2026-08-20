@@ -83,6 +83,18 @@ struct CodeblockDecompress : public Codeblock
   {
     return getImpl()->getNumDataParsedSegments();
   }
+  CodeblockDecompressImpl::HTSetLayout htSetLayout(void)
+  {
+    return getImpl()->htSetLayout();
+  }
+  uint8_t htPlaceholderBitPlanes(void)
+  {
+    return getImpl()->htPlaceholderBitPlanes();
+  }
+  bool isPart1Block(void)
+  {
+    return getImpl()->isPart1Block();
+  }
   bool dataChunksEmpty()
   {
     return getImpl()->dataChunksEmpty();

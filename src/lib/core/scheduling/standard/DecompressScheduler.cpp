@@ -191,17 +191,18 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
               auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
               block->x = cblk->x0();
               block->y = cblk->y0();
+              bool htBlock = tcp->isHT() && !cblk->isPart1Block();
               block->postProcessor_ =
-                  tcp->isHT() ? t1::DecompressBlockPostProcessor<int32_t>(
-                                    [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                            uint16_t stride) {
-                                      tilec->postProcessBlockHT(srcData, block, stride);
-                                    })
-                              : t1::DecompressBlockPostProcessor<int32_t>(
-                                    [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                            [[maybe_unused]] uint16_t stride) {
-                                      tilec->postProcessBlock(srcData, block);
-                                    });
+                  htBlock ? t1::DecompressBlockPostProcessor<int32_t>(
+                                [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                        uint16_t stride) {
+                                  tilec->postProcessBlockHT(srcData, block, stride);
+                                })
+                          : t1::DecompressBlockPostProcessor<int32_t>(
+                                [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                        [[maybe_unused]] uint16_t stride) {
+                                  tilec->postProcessBlock(srcData, block);
+                                });
               block->bandIndex = bandIndex;
               block->bandNumbps = band->maxBitPlanes_;
               block->bandOrientation = band->orientation_;
@@ -213,6 +214,8 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
               block->roishift = tccp->roishift_;
               block->stepsize = band->stepsize_;
               block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+              if(htBlock)
+                block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
               block->R_b = prec_ + gain_b[band->orientation_];
               resBlocks.blocks_.push_back(block);
             }
@@ -341,7 +344,9 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       // DC shift fusion only works for whole tile decompress (decompressPartial doesn't support it)
       bool wholeDecompress = tileProcessor->getTCP()->wholeTileDecompress_;
       DcShiftParam dcShift;
-      if(numRes > 1 && wholeDecompress)
+      // a Part 2 level may end without a vertical pass, so the shift stays standalone
+      bool fuseDcShift = numRes > 1 && wholeDecompress && !tccp->usesPart2Transform();
+      if(fuseDcShift)
       {
         bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
         // For MCT components: don't fuse DC shift into wavelet.
@@ -367,10 +372,13 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         }
       }
 
+      const TransformKernel* kernel = nullptr;
+      if(tccp->atkIndex_)
+        kernel = &tcp->cp_->transformKernels_.at(tccp->atkIndex_);
       waveletReverse_[compno] = new WaveletReverse(
           tileProcessor->getScheduler(), tilec, compno, tilec->windowUnreducedBounds(), numRes,
           (tcp->tccps_ + compno)->qmfbid_, maxDim, tileProcessor->getTCP()->wholeTileDecompress_,
-          &waveletPoolData_, dcShift);
+          &waveletPoolData_, dcShift, tccp, kernel);
 
       if(!waveletReverse_[compno]->decompress())
         return false;
@@ -391,7 +399,8 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         if(!tileProcessor->needsMctDecompress(compno) || tcp->mct_ == 2)
         {
           // standalone DC shift when wavelet didn't fuse it
-          bool waveletFusedDc = (numRes > 1 && tileProcessor->getTCP()->wholeTileDecompress_);
+          bool waveletFusedDc = numRes > 1 && tileProcessor->getTCP()->wholeTileDecompress_ &&
+                                !(tcp->tccps_ + compno)->usesPart2Transform();
           if(!waveletFusedDc)
           {
             auto dcPostProc = imageComponentFlow->getPrePostProc(*this);

@@ -256,7 +256,8 @@ struct TileComponent : public Rect32
           isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
           Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
           Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
-          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
+          tccp_->horizontalDepth_, tccp_->verticalDepth_);
     }
     else
     {
@@ -264,7 +265,8 @@ struct TileComponent : public Rect32
           isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
           Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
           Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
-          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
+          tccp_->horizontalDepth_, tccp_->verticalDepth_);
     }
   }
 

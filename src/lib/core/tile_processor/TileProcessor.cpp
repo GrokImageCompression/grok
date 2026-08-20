@@ -164,6 +164,11 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
     {
       auto tilec = &tile->comps_[compno];
       auto plugin_tilec = plugin_tile->tile_components[compno];
+      if(tcp_->tccps_[compno].usesPart2Transform())
+      {
+        grklog.info("Plugin does not handle Part 2 transforms. Image will be decompressed on CPU.");
+        throw PluginDecodeUnsupportedException();
+      }
       assert(tilec->num_resolutions_ == plugin_tilec->numresolutions);
       for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
       {
@@ -326,11 +331,20 @@ bool TileProcessor::init(void)
     // all in canvas coordinates (with subsampling)
     auto tccp = tcp_->tccps_ + compno;
     auto numres = tccp->numresolutions_;
+    if(!isCompressor() && tccp->usesPart2Transform() &&
+       (!tcp_->wholeTileDecompress_ || cp_->codingParams_.dec_.reduce_))
+    {
+      grklog.error("Part 2 transforms (DFS, ATK) only support whole tile decompression at full "
+                   "resolution");
+      return false;
+    }
     auto resolutions = new Resolution[numres];
     for(auto resno = 0U; resno < numres; ++resno)
     {
       auto res = resolutions + resno;
-      res->setRect(ResSimple::getBandWindow((uint8_t)(numres - (resno + 1)), t1::BAND_ORIENT_LL,
+      uint8_t levelsDone = (uint8_t)(numres - (resno + 1));
+      res->setRect(ResSimple::getBandWindow(tccp->horizontalDepth_[levelsDone],
+                                            tccp->verticalDepth_[levelsDone], t1::BAND_ORIENT_LL,
                                             unreducedTileComp));
 
       /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -339,7 +353,7 @@ bool TileProcessor::init(void)
       /* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
       res->precinctPartition_ = Resolution::genPrecinctPartition(*res, precWidthExp, precHeightExp);
       res->precinctGrid_ = res->precinctPartition_.scaleDownPow2(precWidthExp, precHeightExp);
-      res->numBands_ = (resno == 0) ? 1 : 3;
+      res->numBands_ = tccp->numBandsOfResolution((uint8_t)resno);
       if(DEBUG_TILE_COMPONENT)
       {
         std::cout << "res: " << resno << " ";
@@ -351,14 +365,26 @@ bool TileProcessor::init(void)
     for(uint8_t resno = 0U; resno < numres; ++resno)
     {
       auto res = resolutions + resno;
+      // level that produced this resolution, the lowest resolution is its level's low band
+      uint8_t level = (resno == 0) ? (uint8_t)(numres - 1U) : (uint8_t)(numres - resno);
+      auto split = tccp->splitOfResolution(resno);
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
-        t1::eBandOrientation orientation =
-            (resno == 0) ? t1::BAND_ORIENT_LL : (t1::eBandOrientation)(bandIndex + 1);
+        t1::eBandOrientation orientation = t1::BAND_ORIENT_LL;
+        if(resno != 0)
+        {
+          if(split == DecompositionSplit::horizontal)
+            orientation = t1::BAND_ORIENT_HL;
+          else if(split == DecompositionSplit::vertical)
+            orientation = t1::BAND_ORIENT_LH;
+          else
+            orientation = (t1::eBandOrientation)(bandIndex + 1);
+        }
         band->orientation_ = orientation;
-        uint8_t numDecomps = (resno == 0) ? (uint8_t)(numres - 1U) : (uint8_t)(numres - resno);
-        band->setRect(ResSimple::getBandWindow(numDecomps, band->orientation_, unreducedTileComp));
+        band->setRect(ResSimple::getBandWindow(tccp->horizontalDepth_[level],
+                                               tccp->verticalDepth_[level], band->orientation_,
+                                               unreducedTileComp));
 
         /* Table E-1 - Sub-band gains */
         /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
@@ -369,8 +395,15 @@ bool TileProcessor::init(void)
                                    : (band->orientation_ == 3)             ? 2
                                                                            : 1;
         uint32_t numbps = imageComp->prec + log2_gain;
-        auto offset = (resno == 0) ? 0 : 3 * resno - 2;
-        auto step_size = tccp->stepsizes_ + offset + bandIndex;
+        auto step_size = tccp->stepsizes_ + tccp->bandOffset_[resno] + bandIndex;
+        grk_stepsize derived;
+        if(tccp->qntsty_ == CCP_QNTSTY_SIQNT && tccp->dfsIndex_)
+        {
+          // scalar derived steps follow the band's own level, equation E-5
+          derived.expn = (uint8_t)(tccp->stepsizes_->expn - (numres - 1) + level);
+          derived.mant = tccp->stepsizes_->mant;
+          step_size = &derived;
+        }
         band->stepsize_ = (float)(((1.0 + step_size->mant / 2048.0) *
                                    pow(2.0, (int32_t)(numbps - step_size->expn))));
         // printf("res=%u, band=%u, mant=%u,expn=%u, numbps=%u, step size=
@@ -890,7 +923,7 @@ void TileProcessor::prepareForDecompression(void)
     if(hasError())
       return;
     // now we can get ready to decompress this tile
-    if(!tcp_->validateQuantization())
+    if(!tcp_->resolvePart2() || !tcp_->validateQuantization())
     {
       success_ = false;
       return;
@@ -1021,7 +1054,8 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     auto tccp = tcp_->tccps_ + compno;
     bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
     bool can16Bit =
-        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16;
+        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16 &&
+        !tccp->usesPart2Transform();
     // 16-bit DWT is currently only supported for whole-tile decode; the region/partial
     // decode path still requires int32_t because SparseCanvas and WaveletReversePartial
     // are not yet templated on sample type.

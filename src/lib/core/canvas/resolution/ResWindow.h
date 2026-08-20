@@ -73,9 +73,10 @@ struct ResWindow
   typedef Buffer2d<T, AllocatorAligned> Buf2dAligned;
 
 private:
-  ResWindow(uint8_t numresolutions, uint8_t resno, Buf2dAligned* resWindowHighestResREL,
-            ResSimple tileCompAtRes, ResSimple tileCompAtLowerRes, Rect32 resWindow,
-            Rect32 tileCompWindowUnreduced, Rect32 tileCompUnreduced, uint32_t FILTER_WIDTH)
+  ResWindow(uint8_t resno, Buf2dAligned* resWindowHighestResREL, ResSimple tileCompAtRes,
+            ResSimple tileCompAtLowerRes, Rect32 resWindow, Rect32 tileCompWindowUnreduced,
+            Rect32 tileCompUnreduced, uint32_t FILTER_WIDTH, DecompositionSplit split,
+            uint8_t numDecompsX, uint8_t numDecompsY)
       : allocated_(false), filterWidth_(FILTER_WIDTH), tileCompAtRes_(tileCompAtRes),
         tileCompAtLowerRes_(tileCompAtLowerRes), resWindowBuffer_(new Buf2dAligned(resWindow)),
         resWindowBufferSplit_{nullptr, nullptr},
@@ -84,14 +85,13 @@ private:
         resWindowBufferSplitREL_{nullptr, nullptr}
   {
     resWindowBuffer_->setOrigin(tileCompAtRes_);
-    uint8_t numDecomps =
-        (resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
     Rect32 resWindowPadded;
     for(uint8_t orient = 0; orient < ((resno) > 0 ? t1::BAND_NUM_ORIENTATIONS : 1); orient++)
     {
       // todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
-      auto bandWindow = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-                                            tileCompUnreduced, 2 * FILTER_WIDTH, resWindowPadded);
+      auto bandWindow =
+          getPaddedBandWindow(numDecompsX, numDecompsY, split, orient, tileCompWindowUnreduced,
+                              tileCompUnreduced, 2 * FILTER_WIDTH, resWindowPadded);
       Rect32 band = tileCompAtRes_.tileBand[t1::BAND_ORIENT_LL];
       if(resno > 0)
         band = orient == t1::BAND_ORIENT_LL ? Rect32(tileCompAtLowerRes_)
@@ -125,38 +125,49 @@ private:
     }
     else
     {
-      assert(tileCompAtRes_.numTileBandWindows == 3 || !tileCompAtLowerRes.numTileBandWindows);
-
-      // dummy LL band window
+      // slot 0 is a placeholder for LL, the rest stay empty when the level does not split that way
       if(tileCompAtLowerRes_.numTileBandWindows && tileCompAtLowerRes_.valid())
       {
         bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
         bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
-        for(uint32_t i = 0; i < tileCompAtRes_.numTileBandWindows; ++i)
+        for(uint8_t orientation = t1::BAND_ORIENT_HL; orientation < t1::BAND_NUM_ORIENTATIONS;
+            ++orientation)
         {
-          auto tileCompBand = tileCompAtRes_.tileBand + i;
-
-          auto band = Rect32(tileCompBand);
+          if(!ResSimple::hasBand(split, orientation))
+          {
+            bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
+            bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
+            continue;
+          }
+          auto band = Rect32(tileCompAtRes_.tileBand + orientation - 1);
           bandWindowsBuffersPadded_.push_back(new Buf2dAligned(band));
           bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(band.toRelative()));
         }
+        bool splitsY = splitsVertically(split);
         for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
         {
-          Rect32 split = Rect32(resWindowBuffer_);
-          split.y0 =
-              (resWindowBuffer_->y0 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y0 - i, 1));
-          split.y1 =
-              (resWindowBuffer_->y1 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y1 - i, 1));
-          // The vertical split halves y0/y1; the y-origin must be carried into the
-          // same halved coordinate space, otherwise split.toRelative() underflows
-          // (y0 < origin_y0) whenever the resolution window has a non-zero origin.
-          // For the common relative-coordinate case (origin_y0 == 0) this is a no-op.
-          split.origin_y0 =
-              (resWindowBuffer_->origin_y0 == 0
-                   ? 0
-                   : ceildivpow2<uint32_t>(resWindowBuffer_->origin_y0 - i, 1));
-          resWindowBufferSplit_[i] = new Buf2dAligned(split);
-          resWindowBufferSplitREL_[i] = new Buf2dAligned(split.toRelative());
+          Rect32 splitWindow = Rect32(resWindowBuffer_);
+          if(splitsY)
+          {
+            splitWindow.y0 =
+                (resWindowBuffer_->y0 == 0 ? 0
+                                           : ceildivpow2<uint32_t>(resWindowBuffer_->y0 - i, 1));
+            splitWindow.y1 =
+                (resWindowBuffer_->y1 == 0 ? 0
+                                           : ceildivpow2<uint32_t>(resWindowBuffer_->y1 - i, 1));
+            // the origin has to be halved along with y0 and y1, otherwise toRelative() underflows
+            splitWindow.origin_y0 =
+                (resWindowBuffer_->origin_y0 == 0
+                     ? 0
+                     : ceildivpow2<uint32_t>(resWindowBuffer_->origin_y0 - i, 1));
+          }
+          else if(i == SPLIT_H)
+          {
+            // a horizontal only level keeps every row in the low split
+            splitWindow.y0 = splitWindow.y1;
+          }
+          resWindowBufferSplit_[i] = new Buf2dAligned(splitWindow);
+          resWindowBufferSplitREL_[i] = new Buf2dAligned(splitWindow.toRelative());
         }
       }
     }
@@ -311,23 +322,22 @@ private:
    * Note: if numDecomps is zero, then the band window (and there is only one)
    * is equal to the unreduced tile component window (with padding)
    */
-  static Rect32 getPaddedBandWindow(uint8_t numDecomps, uint8_t orientation,
+  static Rect32 getPaddedBandWindow(uint8_t numDecompsX, uint8_t numDecompsY,
+                                    DecompositionSplit split, uint8_t orientation,
                                     Rect32 unreducedTileCompWindow, Rect32 unreducedTileComp,
                                     uint32_t padding, Rect32& paddedResWindow)
   {
     assert(orientation < t1::BAND_NUM_ORIENTATIONS);
-    if(numDecomps == 0)
+    if(numDecompsX == 0 && numDecompsY == 0)
     {
       assert(orientation == 0);
       return unreducedTileCompWindow.grow_IN_PLACE(padding).intersection(&unreducedTileComp);
     }
-    paddedResWindow = unreducedTileCompWindow;
-    auto oneLessDecompTile = unreducedTileComp;
-    if(numDecomps > 1)
-    {
-      paddedResWindow = ResSimple::getBandWindow(numDecomps - 1, 0, unreducedTileCompWindow);
-      oneLessDecompTile = ResSimple::getBandWindow(numDecomps - 1, 0, unreducedTileComp);
-    }
+    // decompositions left once this level is undone
+    uint8_t lowerX = (uint8_t)(numDecompsX - (splitsHorizontally(split) ? 1 : 0));
+    uint8_t lowerY = (uint8_t)(numDecompsY - (splitsVertically(split) ? 1 : 0));
+    paddedResWindow = ResSimple::getBandWindow(lowerX, lowerY, 0, unreducedTileCompWindow);
+    auto oneLessDecompTile = ResSimple::getBandWindow(lowerX, lowerY, 0, unreducedTileComp);
     paddedResWindow.grow_IN_PLACE(2 * padding).clip_IN_PLACE(oneLessDecompTile);
     // the partial inverse wavelet indexes both sub-band windows off one interleaved
     // position, which only lines up when the window and the resolution share a parity
@@ -339,7 +349,8 @@ private:
       paddedResWindow.y0--;
     paddedResWindow.setOrigin(oneLessDecompTile);
 
-    return ResSimple::getBandWindow(1, orientation, paddedResWindow);
+    return ResSimple::getBandWindow(splitsHorizontally(split) ? 1 : 0,
+                                    splitsVertically(split) ? 1 : 0, orientation, paddedResWindow);
   }
 
   Buffer2dSimple<T> getResWindowBufferSimple(void) const

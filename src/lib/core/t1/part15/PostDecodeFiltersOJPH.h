@@ -27,17 +27,17 @@ class RoiShiftOJPHFilter
 {
 public:
   explicit RoiShiftOJPHFilter(DecompressBlockExec* block)
-      : roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
+      : roiShift(block->roishift), roiThreshold(1u << (block->roishift + 31u - block->bandNumbps)),
+        shift(31U - block->bandNumbps)
   {}
   inline void copy(T* dest, const T* src, uint32_t len)
   {
-    T thresh = 1 << roiShift;
     for(uint32_t i = 0; i < len; ++i)
     {
       T val = src[i];
       T mag = (val & 0x7FFFFFFF);
-      if(mag >= thresh)
-        val = (T)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
+      if((uint32_t)mag >= roiThreshold)
+        val = (T)(((uint32_t)mag >> roiShift) | ((uint32_t)val & 0x80000000));
       int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
       dest[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
     }
@@ -45,13 +45,14 @@ public:
 
 private:
   uint32_t roiShift;
+  uint32_t roiThreshold;
   uint32_t shift;
 };
 template<typename T>
 class ShiftOJPHFilter
 {
 public:
-  explicit ShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+  explicit ShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
   inline void copy(T* dest, const T* src, uint32_t len)
   {
     for(uint32_t i = 0; i < len; ++i)
@@ -71,19 +72,19 @@ class RoiScaleOJPHFilter
 {
 public:
   explicit RoiScaleOJPHFilter(DecompressBlockExec* block)
-      : roiShift(block->roishift), scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+      : roiShift(block->roishift), roiThreshold(1u << (block->roishift + 31u - block->bandNumbps)),
+        scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
   {
     assert(block->bandNumbps <= maxBitPlanesHT);
   }
   inline void copy(T* dest, const T* src, uint32_t len)
   {
-    T thresh = 1 << roiShift;
     for(uint32_t i = 0; i < len; ++i)
     {
       T val = src[i];
       T mag = (T)(val & 0x7FFFFFFF);
-      if(mag >= thresh)
-        val = (T)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
+      if((uint32_t)mag >= roiThreshold)
+        val = (T)(((uint32_t)mag >> roiShift) | ((uint32_t)val & 0x80000000));
       float val_scaled = (float)(val & 0x7FFFFFFF) * scale;
       ((float*)dest)[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
     }
@@ -91,6 +92,7 @@ public:
 
 private:
   uint32_t roiShift;
+  uint32_t roiThreshold;
   float scale;
 };
 
@@ -121,7 +123,7 @@ private:
 class NarrowShiftOJPHFilter
 {
 public:
-  explicit NarrowShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+  explicit NarrowShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
     for(uint32_t i = 0; i < len; ++i)
@@ -140,17 +142,17 @@ class NarrowRoiShiftOJPHFilter
 {
 public:
   explicit NarrowRoiShiftOJPHFilter(DecompressBlockExec* block)
-      : roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
+      : roiShift(block->roishift), roiThreshold(1u << (block->roishift + 31u - block->bandNumbps)),
+        shift(31U - block->bandNumbps)
   {}
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
-    int32_t thresh = 1 << roiShift;
     for(uint32_t i = 0; i < len; ++i)
     {
       int32_t val = src[i];
       int32_t mag = (val & 0x7FFFFFFF);
-      if(mag >= thresh)
-        val = (int32_t)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
+      if((uint32_t)mag >= roiThreshold)
+        val = (int32_t)(((uint32_t)mag >> roiShift) | ((uint32_t)val & 0x80000000));
       int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
       dest[i] = (int16_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
     }
@@ -158,6 +160,7 @@ public:
 
 private:
   uint32_t roiShift;
+  uint32_t roiThreshold;
   uint32_t shift;
 };
 
@@ -198,7 +201,7 @@ class NarrowRoiScaleOJPHFilter16
 {
 public:
   explicit NarrowRoiScaleOJPHFilter16(DecompressBlockExec* block)
-      : roiShift_(block->roishift),
+      : roiShift_(block->roishift), roiThreshold(1u << (block->roishift + 31u - block->bandNumbps)),
         scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)) *
                (float)(1u << block->qShift))
   {
@@ -206,12 +209,11 @@ public:
   }
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
-    int32_t thresh = 1 << roiShift_;
     for(uint32_t i = 0; i < len; ++i)
     {
       int32_t val = src[i];
       int32_t mag = (val & 0x7FFFFFFF);
-      if(mag >= thresh)
+      if((uint32_t)mag >= roiThreshold)
       {
         mag >>= roiShift_;
         val = (int32_t)(((uint32_t)mag) | ((uint32_t)val & 0x80000000));
@@ -229,6 +231,7 @@ public:
 
 private:
   uint32_t roiShift_;
+  uint32_t roiThreshold;
   float scale_;
 };
 

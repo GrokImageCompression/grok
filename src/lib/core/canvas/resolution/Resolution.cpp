@@ -81,9 +81,13 @@ bool Resolution::init(grk_plugin_tile* currentPluginTile, bool isCompressor, uin
   bandPrecinctPartition_ = precinctPartition_;
   if(resno != 0)
   {
-    bandPrecinctPartition_ = bandPrecinctPartition_.scaleDownPow2(1, 1);
-    bandPrecinctExpn_.x--;
-    bandPrecinctExpn_.y--;
+    // a band is half the resolution along each axis its level splits
+    auto split = tccp->splitOfResolution(resno);
+    uint8_t shiftX = splitsHorizontally(split) ? 1 : 0;
+    uint8_t shiftY = splitsVertically(split) ? 1 : 0;
+    bandPrecinctPartition_ = bandPrecinctPartition_.scaleDownPow2(shiftX, shiftY);
+    bandPrecinctExpn_.x = (uint8_t)(bandPrecinctExpn_.x - shiftX);
+    bandPrecinctExpn_.y = (uint8_t)(bandPrecinctExpn_.y - shiftY);
   }
   cblkExpn_ = Point8(std::min(tccp->cblkw_expn_, bandPrecinctExpn_.x),
                      std::min(tccp->cblkh_expn_, bandPrecinctExpn_.y));

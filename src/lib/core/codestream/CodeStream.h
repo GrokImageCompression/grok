@@ -75,6 +75,9 @@ const uint16_t CBD = 0xff78; /** CBD marker */
 const uint16_t MCC = 0xff75; /** MCC marker */
 const uint16_t MCT = 0xff74; /** MCT marker */
 const uint16_t MCO = 0xff77; /** MCO marker */
+const uint16_t PRF = 0xff56; /** PRF marker (Part 2 profile) */
+const uint16_t DFS = 0xff72; /** DFS marker (Part 2 downsampling factor styles) */
+const uint16_t ATK = 0xff79; /** ATK marker (Part 2 arbitrary transformation kernels) */
 const uint16_t UNK = 0; /** UNKNOWN marker */
 
 // number of bytes needed to store marker

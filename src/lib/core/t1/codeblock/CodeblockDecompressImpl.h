@@ -28,6 +28,11 @@
 namespace grk::t1
 {
 
+// signalled segment lengths are stored per layer in 16 bits
+const uint8_t maxSegmentLengthBits = 16;
+// HT placeholder passes keep their segment open until the first cleanup pass closes it
+const uint8_t htOpenSegmentPasses = UINT8_MAX;
+
 /**
  * @struct Segment
  * @brief Stores information for a code block segment
@@ -246,6 +251,14 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     uint8_t increment = bio->getcommacode();
     setNumLenBits(numlenbits() + increment);
 
+    if(segs_.empty() && (cblk_sty & GRK_CBLKSTY_HT_ONLY))
+      htState_ = HTState::placeholders;
+    if(htState_ == HTState::placeholders || htState_ == HTState::coded)
+    {
+      readHTPacketHeader(bio, signalledLayerDataBytes, layno, remainingPassesInLayer, cblk_sty);
+      return;
+    }
+
     // 3. prepare to parse segments:
     // create new segment if there are currently none
     // or the current segment has maxed out its passes
@@ -289,13 +302,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
 
       // 2. read signalled number of bytes in this layer for current segment
       uint8_t bits_to_read = numlenbits() + floorlog2(seg->calculatedPassesInLayer_[layno]);
-      if(bits_to_read > 16)
-      {
-        grklog.warn("readPacketHeader: signalled bits (%d) for layer bytes must be <= 16",
-                    bits_to_read);
-        throw CorruptPacketHeaderException();
-      }
-      bio->read(seg->signalledBytesInLayer_ + layno, bits_to_read);
+      seg->signalledBytesInLayer_[layno] = (uint16_t)readLength(bio, bits_to_read);
       signalledLayerDataBytes += seg->signalledBytesInLayer_[layno];
       assert(remainingPassesInLayer >= seg->calculatedPassesInLayer_[layno]);
       remainingPassesInLayer -= seg->calculatedPassesInLayer_[layno];
@@ -314,6 +321,195 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     if(std::getenv("GRK_PKT_DEBUG"))
       fprintf(stderr, "  GBLK passes=%u numbps=%u len=%u\n", signalledPassesByLayer_[layno],
               numbps(), segs_.back()->signalledBytesInLayer_[layno]);
+  }
+
+  /**
+   * @brief Reads the HT code block part of a packet header (T.814 B.10.7)
+   *
+   * Placeholder passes and the first cleanup pass share one length field, refinement
+   * passes share another. In mixed mode a non-zero length where only placeholders
+   * could be reveals a Part 1 code block, which then follows the Part 1 rules.
+   */
+  void readHTPacketHeader(std::shared_ptr<t1_t2::BitIO> bio, uint32_t& signalledLayerDataBytes,
+                          uint16_t layno, uint8_t remainingPassesInLayer, uint8_t cblk_sty)
+  {
+    bool mixed = (cblk_sty & GRK_CBLKSTY_HT_MIXED) == GRK_CBLKSTY_HT_MIXED;
+    if(htState_ == HTState::placeholders)
+    {
+      if(segs_.empty())
+        newHTSegment(htOpenSegmentPasses);
+      auto seg = segs_.back();
+      // every pass so far sits in this one open segment
+      uint8_t passIndex = seg->headerTotalPasses_;
+      uint8_t refinementPasses = (uint8_t)((passIndex + remainingPassesInLayer - 1) % 3);
+      int segmentPassesToCleanup = (int)remainingPassesInLayer - refinementPasses;
+      uint8_t segmentPasses = (uint8_t)std::max(segmentPassesToCleanup, 0);
+      bool partOne = false;
+      uint32_t bytes = 0;
+      if(segmentPassesToCleanup < 1)
+      {
+        // no cleanup pass can end this contribution, so one length covers all of it
+        segmentPasses = remainingPassesInLayer;
+        bytes = readLength(bio, (uint8_t)(numlenbits() + floorlog2(segmentPasses)));
+        partOne = bytes != 0;
+      }
+      else
+      {
+        uint8_t lengthBits = (uint8_t)(numlenbits() + floorlog2(segmentPasses));
+        bytes = readLength(bio, lengthBits);
+        bool lengthMsbClear = (bytes >> (lengthBits - 1)) == 0;
+        bool cleanupFound =
+            bytes != 0 && (!mixed || (numlenbits() > 3 && bytes > 1 && lengthMsbClear));
+        if(cleanupFound)
+        {
+          if(bytes < 2)
+          {
+            grklog.warn("HT cleanup pass length %u is less than 2 bytes", bytes);
+            throw CorruptPacketHeaderException();
+          }
+          htState_ = HTState::coded;
+        }
+        else
+        {
+          // the field actually spans every pass in this layer, read the missing bits
+          uint8_t extraBits =
+              (uint8_t)(floorlog2(remainingPassesInLayer) - floorlog2(segmentPasses));
+          for(uint8_t i = 0; i < extraBits; ++i)
+            bytes = (bytes << 1) | bio->read();
+          segmentPasses = remainingPassesInLayer;
+          partOne = bytes != 0;
+        }
+      }
+      if(partOne)
+      {
+        if(!mixed)
+        {
+          grklog.warn("HT placeholder passes signal %u bytes", bytes);
+          throw CorruptPacketHeaderException();
+        }
+        htState_ = HTState::part1;
+        seg->maxPasses_ = partOneMaxPasses(cblk_sty, 0);
+      }
+      recordLayerContribution(seg, layno, segmentPasses, bytes, signalledLayerDataBytes);
+      remainingPassesInLayer = (uint8_t)(remainingPassesInLayer - segmentPasses);
+      if(htState_ != HTState::coded)
+        return;
+      // the cleanup pass closes the placeholder segment
+      seg->maxPasses_ = seg->headerTotalPasses_;
+    }
+
+    // cleanup passes form one segment, the refinement passes of the same set another
+    while(remainingPassesInLayer > 0)
+    {
+      uint8_t phase = (uint8_t)(totalHeaderPasses() % 3);
+      Segment* seg;
+      uint8_t segmentPasses;
+      if(phase == 0)
+      {
+        seg = newHTSegment(1);
+        segmentPasses = 1;
+      }
+      else
+      {
+        auto current = segs_.back();
+        bool refinementOpen = current->maxPasses_ == 2 && current->headerTotalPasses_ < 2;
+        seg = refinementOpen ? current : newHTSegment(2);
+        segmentPasses = std::min<uint8_t>((uint8_t)(3 - phase), remainingPassesInLayer);
+      }
+      uint32_t bytes = readLength(bio, (uint8_t)(numlenbits() + floorlog2(segmentPasses)));
+      if(phase == 0 && bytes == 1)
+      {
+        grklog.warn("HT cleanup pass length 1 is invalid");
+        throw CorruptPacketHeaderException();
+      }
+      recordLayerContribution(seg, layno, segmentPasses, bytes, signalledLayerDataBytes);
+      remainingPassesInLayer = (uint8_t)(remainingPassesInLayer - segmentPasses);
+    }
+  }
+
+  uint32_t readLength(std::shared_ptr<t1_t2::BitIO> bio, uint8_t bits)
+  {
+    if(bits > maxSegmentLengthBits)
+    {
+      grklog.warn("readPacketHeader: signalled bits (%d) for layer bytes must be <= %d", bits,
+                  maxSegmentLengthBits);
+      throw CorruptPacketHeaderException();
+    }
+    uint32_t bytes;
+    bio->read(&bytes, bits);
+    if(bytes > UINT16_MAX)
+    {
+      grklog.warn("readPacketHeader: segment length %u exceeds %u", bytes, UINT16_MAX);
+      throw CorruptPacketHeaderException();
+    }
+    return bytes;
+  }
+
+  void recordLayerContribution(Segment* seg, uint16_t layno, uint8_t passes, uint32_t bytes,
+                               uint32_t& signalledLayerDataBytes)
+  {
+    seg->calculatedPassesInLayer_[layno] = passes;
+    seg->signalledBytesInLayer_[layno] = (uint16_t)bytes;
+    seg->headerTotalPasses_ += passes;
+    signalledLayerDataBytes += bytes;
+  }
+
+  Segment* newHTSegment(uint8_t maxPasses)
+  {
+    segs_.push_back(new Segment(numLayers_));
+    segs_.back()->maxPasses_ = maxPasses;
+    return segs_.back();
+  }
+
+  uint8_t totalHeaderPasses() const
+  {
+    return std::accumulate(
+        segs_.begin(), segs_.end(), (uint8_t)0,
+        [](uint8_t s, const Segment* seg) { return (uint8_t)(s + seg->headerTotalPasses_); });
+  }
+
+  /**
+   * @brief Layout of the HT set that the block decoder consumes
+   */
+  struct HTSetLayout
+  {
+    // passes before the cleanup pass, always a multiple of three
+    uint8_t placeholderPasses = 0;
+    Segment* cleanup = nullptr;
+    Segment* refinement = nullptr;
+  };
+  HTSetLayout htSetLayout() const
+  {
+    HTSetLayout layout;
+    for(uint16_t i = 0; i < numDataParsedSegments_; ++i)
+    {
+      auto seg = segs_[i];
+      if(!layout.cleanup)
+      {
+        if(seg->getDataChunksLength() == 0)
+        {
+          layout.placeholderPasses = (uint8_t)(layout.placeholderPasses + seg->totalPasses_);
+          continue;
+        }
+        // the cleanup pass is the last pass of the segment that carries its bytes
+        layout.placeholderPasses = (uint8_t)(layout.placeholderPasses + seg->totalPasses_ - 1);
+        layout.cleanup = seg;
+      }
+      else
+      {
+        layout.refinement = seg;
+        break;
+      }
+    }
+    return layout;
+  }
+  uint8_t htPlaceholderBitPlanes() const
+  {
+    return (uint8_t)(htSetLayout().placeholderPasses / 3);
+  }
+  bool isPart1Block() const
+  {
+    return htState_ == HTState::part1;
   }
 
   /**
@@ -674,31 +870,35 @@ private:
    */
   void newSegment(uint8_t cblk_sty)
   {
+    uint8_t previousMaxPasses = segs_.empty() ? 0 : segs_.back()->maxPasses_;
     segs_.push_back(new Segment(numLayers_));
-    auto seg = segs_.back();
-    if(cblk_sty & GRK_CBLKSTY_TERMALL)
-    {
-      seg->maxPasses_ = 1;
-    }
-    else if(cblk_sty & GRK_CBLKSTY_LAZY)
-    {
-      // first segment
-      if(segs_.size() == 1)
-      {
-        seg->maxPasses_ = 10;
-      }
-      else
-      {
-        auto prev_segment = segs_.end() - 2;
-        seg->maxPasses_ =
-            (((*prev_segment)->maxPasses_ == 1) || ((*prev_segment)->maxPasses_ == 10)) ? 2 : 1;
-      }
-    }
-    else
-    {
-      seg->maxPasses_ = maxPassesPerSegmentJ2K;
-    }
+    segs_.back()->maxPasses_ = partOneMaxPasses(cblk_sty, previousMaxPasses);
   }
+
+  /**
+   * @brief Part 1 segment pass limit, previousMaxPasses is zero for the first segment
+   */
+  static uint8_t partOneMaxPasses(uint8_t cblk_sty, uint8_t previousMaxPasses)
+  {
+    if(cblk_sty & GRK_CBLKSTY_TERMALL)
+      return 1;
+    if(cblk_sty & GRK_CBLKSTY_LAZY)
+    {
+      if(previousMaxPasses == 0)
+        return 10;
+      return (previousMaxPasses == 1 || previousMaxPasses == 10) ? 2 : 1;
+    }
+    return maxPassesPerSegmentJ2K;
+  }
+
+  enum class HTState : uint8_t
+  {
+    none,
+    placeholders,
+    coded,
+    part1
+  };
+  HTState htState_ = HTState::none;
 
   /**
    * @brief Number of segments whose data has been

@@ -248,6 +248,10 @@ add_executable(grk_flat_image_rate_control_test GrkFlatImageRateControlTest.cpp)
 target_link_libraries(grk_flat_image_rate_control_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_flat_image_rate_control_test COMMAND grk_flat_image_rate_control_test)
 
+add_executable(grk_qfactor_test GrkQfactorTest.cpp)
+target_link_libraries(grk_qfactor_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_qfactor_test COMMAND grk_qfactor_test)
+
 # synthesizes its own image, so it needs no GRK_DATA_ROOT
 add_executable(grk_decode_range_test GrkDecodeRangeTest.cpp)
 target_link_libraries(grk_decode_range_test ${GROK_CORE_NAME} spdlog::spdlog)

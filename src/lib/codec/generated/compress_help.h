@@ -134,6 +134,10 @@ Note: not supported for Part 15 (HTJ2K) compression
 
 Quality values (double precision, greater than or equal to zero). Each value is a PSNR measure, given in dB, representing a quality layer. The order used to define the different PSNR values is important and must be from left to right in ascending order. A value of 0 signifies a final lossless quality layer (including all remaining code passes) Default: 1 single lossless quality layer.
 
+`--qfactor [quality factor]`
+
+JPEG style quality factor, an integer between 1 and 100. Derives the quantization step size of every sub-band from the factor, the 9/7 synthesis gain and a visual weight per sub-band and component, the same model as Kakadu and OpenHTJ2K. Requires `-I` and a single component or a colour image. Step sizes only: use `-r` or `-q` as well to add rate constrained quality layers. Default: off.
+
 `-n, -numresolutions [number of resolutions]`
 
 Number of resolutions. It corresponds to the `number of DWT decompositions +1`. Default: 6.
@@ -276,7 +280,8 @@ Offset of the image origin. The division in tile could be modified as the anchor
 
 `-T, --tile-offset [x offset,y offset]`
 
-Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
+)HELPTEXT"
+    R"HELPTEXT(Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
 
 `-Y, -MCT [0|1|2]`
 
@@ -290,8 +295,7 @@ For custom MCT, `-m` option has to be used (see below). By default, `RGB`->`YCC`
 
 `-m, --custom-mct [file]`
 
-)HELPTEXT"
-    R"HELPTEXT(Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
+Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
 
 `-Q, --capture-res [capture resolution X,capture resolution Y]`
 

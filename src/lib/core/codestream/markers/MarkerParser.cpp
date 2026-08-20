@@ -272,6 +272,12 @@ std::string MarkerParser::markerString(uint16_t marker)
       return "EOC";
     case CAP:
       return "CAP";
+    case PRF:
+      return "PRF";
+    case DFS:
+      return "DFS";
+    case ATK:
+      return "ATK";
     case SIZ:
       return "SIZ";
     case COD:

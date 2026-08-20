@@ -622,11 +622,228 @@ uint32_t get_PLL_COLS_16_53()
 WaveletReverse::WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno,
                                Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid,
                                uint32_t maxDim, bool wholeTileDecompress, WaveletPoolData* poolData,
-                               DcShiftParam dcShift)
+                               DcShiftParam dcShift, const TileComponentCodingParams* tccp,
+                               const TransformKernel* kernel)
     : poolData_(poolData), scheduler_(scheduler), tilec_(tilec), compno_(compno),
       unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim),
-      wholeTileDecompress_(wholeTileDecompress), dcShift_(dcShift)
+      wholeTileDecompress_(wholeTileDecompress), dcShift_(dcShift), tccp_(tccp), kernel_(kernel)
 {}
+DecompositionSplit WaveletReverse::splitOf(uint8_t res) const
+{
+  return tccp_ ? tccp_->splitOfResolution(res) : DecompositionSplit::both;
+}
+
+namespace
+{
+  // whole sample symmetric or constant extension of a line of the given length
+  uint32_t extendIndex(int64_t index, uint32_t length, bool symmetric)
+  {
+    if(length == 1)
+      return 0;
+    if(index >= 0 && index < (int64_t)length)
+      return (uint32_t)index;
+    if(!symmetric)
+      return index < 0 ? 0 : length - 1;
+    int64_t period = 2 * ((int64_t)length - 1);
+    int64_t folded = index < 0 ? -index : index;
+    folded %= period;
+    if(folded >= (int64_t)length)
+      folded = period - folded;
+    return (uint32_t)folded;
+  }
+
+  // the high band comes dequantized without its nominal gain of two, like the 9/7 path
+  const double highBandGain = 2.0;
+} // namespace
+
+template<typename T>
+void WaveletReverse::kernelLine(T* line, uint32_t length, uint32_t parity) const
+{
+  const auto& kernel = *kernel_;
+  if(length == 1)
+    return;
+  if(!kernel.reversible)
+  {
+    double lowScale = kernel.scale;
+    double highScale = highBandGain / kernel.scale;
+    for(uint32_t k = 0; k < length; ++k)
+      line[k] = (T)(line[k] * (((k + parity) & 1) ? highScale : lowScale));
+  }
+  for(size_t stepIndex = 0; stepIndex < kernel.steps.size(); ++stepIndex)
+  {
+    const auto& step = kernel.steps[stepIndex];
+    uint32_t stepParity = (kernel.lastStepParity + (uint32_t)stepIndex) & 1;
+    // an even step updates the odd samples from the even ones and vice versa
+    uint32_t targetOffset = stepParity == 0 ? 1 : 0;
+    int64_t sourceStart = (int64_t)(2 * stepParity) - 1 + 2 * (int64_t)step.offset;
+    for(uint32_t k = 0; k < length; ++k)
+    {
+      if(((k + parity) & 1) != targetOffset)
+        continue;
+      double sum = 0;
+      for(size_t i = 0; i < step.coefficients.size(); ++i)
+      {
+        auto source = extendIndex((int64_t)k + sourceStart + 2 * (int64_t)i, length,
+                                  kernel.symmetricExtension);
+        sum += step.coefficients[i] * (double)line[source];
+      }
+      if(kernel.reversible)
+      {
+        int64_t value = (int64_t)sum + step.rounding;
+        // arithmetic shift keeps the floor the standard asks for on negative sums
+        line[k] -= (T)(value >> step.downshift);
+      }
+      else
+      {
+        line[k] = (T)(line[k] - sum);
+      }
+    }
+  }
+}
+
+template<typename T>
+void WaveletReverse::kernelRows(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH,
+                                Buffer2dSimple<T> winDest, uint32_t numLow, uint32_t width,
+                                uint32_t parity, uint32_t numRows)
+{
+  std::vector<T> line(width);
+  for(uint32_t row = 0; row < numRows; ++row)
+  {
+    auto low = winL.buf_ + (size_t)row * winL.stride_;
+    auto high = winH.buf_ + (size_t)row * winH.stride_;
+    for(uint32_t k = 0; k < width; ++k)
+    {
+      if(((k + parity) & 1) == 0)
+        line[k] = low[(k + parity) >> 1];
+      else
+        line[k] = high[(k + parity - 1) >> 1];
+    }
+    (void)numLow;
+    kernelLine(line.data(), width, parity);
+    auto dest = winDest.buf_ + (size_t)row * winDest.stride_;
+    memcpy(dest, line.data(), width * sizeof(T));
+  }
+}
+
+template<typename T>
+void WaveletReverse::kernelColumns(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH,
+                                   Buffer2dSimple<T> winDest, uint32_t numLow, uint32_t height,
+                                   uint32_t parity, uint32_t numColumns)
+{
+  std::vector<T> line(height);
+  for(uint32_t column = 0; column < numColumns; ++column)
+  {
+    for(uint32_t k = 0; k < height; ++k)
+    {
+      if(((k + parity) & 1) == 0)
+        line[k] = winL.buf_[(size_t)((k + parity) >> 1) * winL.stride_ + column];
+      else
+        line[k] = winH.buf_[(size_t)((k + parity - 1) >> 1) * winH.stride_ + column];
+    }
+    (void)numLow;
+    kernelLine(line.data(), height, parity);
+    for(uint32_t k = 0; k < height; ++k)
+      winDest.buf_[(size_t)k * winDest.stride_ + column] = line[k];
+  }
+}
+
+template<typename T, typename GetRes, typename GetBand, typename GetSplit>
+static bool kernelLevels(
+    WaveletReverse* self, TileComponent* tilec, uint8_t numres, CodecScheduler* scheduler,
+    uint16_t compno, GetRes getRes, GetBand getBand, GetSplit getSplit,
+    void (WaveletReverse::*rows)(Buffer2dSimple<T>, Buffer2dSimple<T>, Buffer2dSimple<T>, uint32_t,
+                                 uint32_t, uint32_t, uint32_t),
+    void (WaveletReverse::*columns)(Buffer2dSimple<T>, Buffer2dSimple<T>, Buffer2dSimple<T>,
+                                    uint32_t, uint32_t, uint32_t, uint32_t),
+    const TileComponentCodingParams* tccp)
+{
+  auto imageComponentFlow = ((DecompressScheduler*)scheduler)->getImageComponentFlow(compno);
+  if(!imageComponentFlow)
+    return true;
+  auto lower = tilec->resolutions_;
+  for(uint8_t res = 1; res < numres; ++res)
+  {
+    auto current = lower + 1;
+    uint32_t lowWidth = lower->width();
+    uint32_t lowHeight = lower->height();
+    uint32_t resWidth = current->width();
+    uint32_t resHeight = current->height();
+    lower = current;
+    if(resWidth == 0 || resHeight == 0)
+      continue;
+    auto split = tccp ? tccp->splitOfResolution(res) : DecompositionSplit::both;
+    auto resFlow = imageComponentFlow->getResflow(res - 1);
+    if(!resFlow)
+      return false;
+    uint32_t parityX = current->x0 & 1;
+    uint32_t parityY = current->y0 & 1;
+    if(splitsHorizontally(split))
+    {
+      // rows of the low and high bands become the low and high split windows
+      uint32_t topRows = splitsVertically(split) ? lowHeight : resHeight;
+      auto winL = getRes(res - 1);
+      auto winH = getBand(res, t1::BAND_ORIENT_HL);
+      auto winDest = getSplit(res, SPLIT_L);
+      resFlow->waveletHoriz_->nextTask().work(
+          [self, rows, winL, winH, winDest, lowWidth, resWidth, parityX, topRows] {
+            (self->*rows)(winL, winH, winDest, lowWidth, resWidth, parityX, topRows);
+          });
+      if(splitsVertically(split) && resHeight > lowHeight)
+      {
+        auto winL2 = getBand(res, t1::BAND_ORIENT_LH);
+        auto winH2 = getBand(res, t1::BAND_ORIENT_HH);
+        auto winDest2 = getSplit(res, SPLIT_H);
+        uint32_t bottomRows = resHeight - lowHeight;
+        resFlow->waveletHoriz_->nextTask().work(
+            [self, rows, winL2, winH2, winDest2, lowWidth, resWidth, parityX, bottomRows] {
+              (self->*rows)(winL2, winH2, winDest2, lowWidth, resWidth, parityX, bottomRows);
+            });
+      }
+    }
+    if(splitsVertically(split))
+    {
+      auto winL = getSplit(res, SPLIT_L);
+      auto winH = getSplit(res, SPLIT_H);
+      auto winDest = getRes(res);
+      resFlow->waveletVert_->nextTask().work(
+          [self, columns, winL, winH, winDest, lowHeight, resHeight, parityY, resWidth] {
+            (self->*columns)(winL, winH, winDest, lowHeight, resHeight, parityY, resWidth);
+          });
+    }
+  }
+  return true;
+}
+
+bool WaveletReverse::tile_kernel(void)
+{
+  if(numres_ == 1U)
+    return true;
+  auto buf = tilec_->getWindow();
+  if(kernel_->reversible)
+  {
+    return kernelLevels<int32_t>(
+        this, tilec_, numres_, scheduler_, compno_,
+        [buf](uint8_t res) { return buf->getResWindowBufferSimple(res); },
+        [buf](uint8_t res, t1::eBandOrientation o) {
+          return buf->getBandWindowBufferPaddedSimple(res, o);
+        },
+        [buf](uint8_t res, eSplitOrientation s) {
+          return buf->getResWindowBufferSplitSimple(res, s);
+        },
+        &WaveletReverse::kernelRows<int32_t>, &WaveletReverse::kernelColumns<int32_t>, tccp_);
+  }
+  return kernelLevels<float>(
+      this, tilec_, numres_, scheduler_, compno_,
+      [buf](uint8_t res) { return buf->getResWindowBufferSimpleF(res); },
+      [buf](uint8_t res, t1::eBandOrientation o) {
+        return buf->getBandWindowBufferPaddedSimpleF(res, o);
+      },
+      [buf](uint8_t res, eSplitOrientation s) {
+        return buf->getResWindowBufferSplitSimpleF(res, s);
+      },
+      &WaveletReverse::kernelRows<float>, &WaveletReverse::kernelColumns<float>, tccp_);
+}
+
 WaveletReverse::~WaveletReverse(void)
 {
   for(const auto& t : partialTasks53_)
@@ -1115,36 +1332,39 @@ bool WaveletReverse::tile_53(void)
   vertPool_ = std::make_unique<dwt_scratch<int32_t>[]>(num_threads);
   for(uint8_t res = 1; res < numres_; ++res)
   {
-    horiz_.sn = bandLL->width();
-    vert_.sn = bandLL->height();
-    for(uint32_t i = 0; i < num_threads; ++i)
-    {
-      horizPool_[i].sn = bandLL->width();
-      vertPool_[i].sn = bandLL->height();
-    }
+    auto split = splitOf(res);
+    auto lowWidth = bandLL->width();
+    auto lowHeight = bandLL->height();
     ++bandLL;
     auto resWidth = bandLL->width();
     auto resHeight = bandLL->height();
     if(resWidth == 0 || resHeight == 0)
       continue;
+    // an axis the level does not split keeps every sample in the low half
+    horiz_.sn = splitsHorizontally(split) ? lowWidth : resWidth;
+    vert_.sn = splitsVertically(split) ? lowHeight : resHeight;
     horiz_.dn = resWidth - horiz_.sn;
     horiz_.parity = bandLL->x0 & 1;
     vert_.dn = resHeight - vert_.sn;
     vert_.parity = bandLL->y0 & 1;
     for(uint32_t i = 0; i < num_threads; ++i)
     {
-      horizPool_[i].dn = resWidth - horizPool_[i].sn;
-      horizPool_[i].parity = bandLL->x0 & 1;
+      horizPool_[i].sn = horiz_.sn;
+      horizPool_[i].dn = horiz_.dn;
+      horizPool_[i].parity = horiz_.parity;
       horizPool_[i].allocatedMem = (int32_t*)poolData_->getHoriz(i);
       horizPool_[i].mem = (int32_t*)poolData_->getHoriz(i);
 
-      vertPool_[i].dn = resHeight - vertPool_[i].sn;
-      vertPool_[i].parity = bandLL->y0 & 1;
+      vertPool_[i].sn = vert_.sn;
+      vertPool_[i].dn = vert_.dn;
+      vertPool_[i].parity = vert_.parity;
       vertPool_[i].allocatedMem = (int32_t*)poolData_->getVert(i);
       vertPool_[i].mem = (int32_t*)poolData_->getVert(i);
     }
-    h_53(res, tileBuffer, resHeight);
-    v_53(res, tileBuffer, resWidth);
+    if(splitsHorizontally(split))
+      h_53(res, tileBuffer, resHeight);
+    if(splitsVertically(split))
+      v_53(res, tileBuffer, resWidth);
   }
 
   return true;
@@ -1650,6 +1870,9 @@ bool WaveletReverse::decompress(void)
 
   if(!wholeTileDecompress_)
     return decompressPartial();
+
+  if(kernel_)
+    return tile_kernel();
 
   if(qmfbid_ == 1)
   {

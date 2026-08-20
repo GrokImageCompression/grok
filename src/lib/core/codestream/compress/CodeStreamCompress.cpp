@@ -58,6 +58,7 @@ struct ITileProcessor;
 #include "ITileProcessorCompress.h"
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
+#include "Qfactor.h"
 #include "TileProcessorCompress.h"
 #include "XYZTransform.h"
 
@@ -508,6 +509,26 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     grklog.error("Number of guard bits %u is greater than 7", numgbits);
     return false;
   }
+  if(parameters->qfactor)
+  {
+    if(parameters->qfactor > maxQfactor)
+    {
+      grklog.error("Quality factor %u is greater than %u", parameters->qfactor, maxQfactor);
+      return false;
+    }
+    if(!parameters->irreversible)
+    {
+      grklog.error("Quality factor requires irreversible compression");
+      return false;
+    }
+    if(image->numcomps != 1 && image->numcomps != 3)
+    {
+      grklog.error("Quality factor requires a single component or a colour image, not %u "
+                   "components",
+                   image->numcomps);
+      return false;
+    }
+  }
   for(uint16_t tileno = 0; tileno < (uint16_t)(cp_.t_grid_width_ * cp_.t_grid_height_); tileno++)
   {
     auto tcp = cp_.tcps_.get(tileno);
@@ -518,6 +539,16 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
                         parameters->mct > 0, image->comps[0].sgnd);
     for(uint16_t i = 0; i < image->numcomps; i++)
       tcp->qcd_->pull((tcp->tccps_ + i)->stepsizes_);
+    if(parameters->qfactor)
+    {
+      auto subsampling = chromaSubsampling(image);
+      for(uint16_t i = 0; i < image->numcomps; i++)
+        generateQfactorStepsizes(parameters->qfactor, (uint8_t)(parameters->numresolution - 1),
+                                 image->comps[i].prec, i, subsampling,
+                                 (tcp->tccps_ + i)->stepsizes_);
+      // CAP and any other marker derived from the quantizer must see the same steps
+      tcp->qcd_->push(tcp->tccps_->stepsizes_);
+    }
 
     tcp->numLayers_ = parameters->numlayers;
     for(uint16_t j = 0; j < tcp->numLayers_; j++)
