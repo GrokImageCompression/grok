@@ -20,10 +20,14 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   parked on one futex. the same file decodes fine to pgx, so the hang is in
   the tiff output path
 - zoo1.jp2 segfaults when decoded to tif
-- compare_images in non-regression mode never compares pixels: the MSE and
-  PEAK values are parsed, printed and ignored, so every NR-ENC compare test
-  is a geometry check only. two tifs differing in 5.1M of 5.2M bytes
-  compare as SUCCEEDED
+- with compare_images fixed (it was blind in both modes), 26 compare tests
+  fail on real decode drift, in five groups. large errors: p0_03, p0_08,
+  p0_09, p0_10, p0_15 miss the reference badly (p0_08 comp 1 MSE 125, peak
+  390), and p1_05, p1_06 are wrong on nearly every sample (MSE ~1900, peak
+  ~230), which reads like a transform or component bug. small drift: p0_04,
+  p0_05, p0_06, p1_02, p1_03, p1_04 and the richter subsampled files are
+  within a few code values of the reference but not bit exact, and p0_05,
+  p1_03 marginally exceed the Table C.6/C.7 conformance limits
 - j2k_multi_region_decompress is built but never registered as a ctest, and
   fails on five of six conformance inputs with null tile data in its
   asynchronous row-wait path
