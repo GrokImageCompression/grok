@@ -10,6 +10,12 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## open bugs (not migration blockers)
 
+- repeated grk_decompress on one codec is a supported flow (sequential tile
+  decode, see 759d7a71 slated tiles) and used to work. it regressed when the
+  all-tiles-cached early return started re-transferring the drained scratch
+  image, nulling the composite's buffers. the reject-second-call guard from
+  6b0a99da is an interim stopgap: revert it, restore repeated decompress,
+  and flip grk_double_decompress_test to assert the restored behavior
 - decode of conformance p0_07.j2k to tif deadlocks every run, all workers
   parked on one futex. the same file decodes fine to pgx, so the hang is in
   the tiff output path
