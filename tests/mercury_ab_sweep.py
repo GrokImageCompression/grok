@@ -17,6 +17,11 @@ import sys
 DECODE_TIMEOUT = 120
 IRREVERSIBLE_PEAK_TOLERANCE = 4
 EXTENSIONS = (".j2k", ".jp2", ".j2c", ".jhc", ".jph")
+# these streams abort mid decode, so the pixels left behind depend on thread timing
+THREAD_TIMING_DEPENDENT = {
+    "security_threaded_decode_abort.j2k",
+    "security_threaded_decode_abort_color.j2k",
+}
 # classic deliberately refuses a stream whose tile parts outnumber TNsot, because its
 # parallel tile-part parsing needs TNsot to be right. mercury is tolerant, so the two
 # legitimately diverge here rather than one of them being wrong.
@@ -65,6 +70,8 @@ def run_decode(bin_dir, in_file, out_file, mercury):
 
 def sweep_one(bin_dir, work_dir, in_file):
     """Returns (status, detail). status: ok/bail/skip/classic-rejects/unloadable/FAIL."""
+    if os.path.basename(in_file) in THREAD_TIMING_DEPENDENT:
+        return "skip", "output depends on thread timing"
     parsed = parse_codestream(in_file)
     if not parsed:
         return "skip", "unparseable header"

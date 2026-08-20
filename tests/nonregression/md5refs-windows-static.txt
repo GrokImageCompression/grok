@@ -35,3 +35,6 @@ d9daf687a2f6bc0ee5273f55267937d5  Bretagne2_ht_lossy.png
 4001a9b4104fd7a5828115fb36f44e60  issue205-tif.jp2.tif
 4001a9b4104fd7a5828115fb36f44e60  issue205.jp2_r0.tif
 97a0fbf373a20bb4de0d1beb1a75f620  issue205.jp2_r1.tif
+663ebdd12dd6a36915ea1152c43cb69a  issue142.j2k_2.pgx
+cc2c8b8a1fe36e399b2349ad63ad55d7  issue205.jp2_0.pgx
+f05d62f4dfb2228f66530300688d32fe  issue205.jp2_2.pgx
