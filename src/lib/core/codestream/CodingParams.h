@@ -414,6 +414,9 @@ struct DecodingParams
   uint16_t layersToDecompress_;
   uint32_t disableRandomAccessFlags_;
   bool skipAllocateComposite_;
+  // decided in CodeStreamDecompress::activateScratch and read back by TileProcessor, so the
+  // tiles and the composite buffer can never pick different sample types
+  bool use16BitDwt_;
 };
 
 struct TLMMarker;

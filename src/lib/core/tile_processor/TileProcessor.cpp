@@ -1045,53 +1045,23 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
 {
   if(!initialized_)
     return false;
+  // All components of every tile share one sample type, decided once for the whole decode in
+  // CodeStreamDecompress::activateScratch: the interleaved image writers (TIFF/PNG/...) select
+  // the element type from component 0 and apply it to every plane, inverse MCT requires a
+  // uniform type across its components, and the composite buffer is allocated from the same
+  // decision.
+  bool can16Bit = cp_->codingParams_.dec_.use16BitDwt_;
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
     if(imageComp->dx == 0 || imageComp->dy == 0)
       return false;
     auto tileComp = tile_->comps_ + compno;
-    auto tccp = tcp_->tccps_ + compno;
-    bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-    bool can16Bit =
-        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16 &&
-        !tccp->usesPart2Transform();
     // 16-bit DWT is currently only supported for whole-tile decode; the region/partial
     // decode path still requires int32_t because SparseCanvas and WaveletReversePartial
     // are not yet templated on sample type.
     if(can16Bit && tileComp->isWholeTileDecoding())
       tileComp->setUse16BitDwt(true);
-  }
-  // All output image components must share a single sample data type: the
-  // interleaved image writers (TIFF/PNG/...) select the element type from
-  // component 0 and apply it to every plane, and inverse MCT likewise requires
-  // a uniform type across its components. A mix is possible because MCT colour
-  // components and standalone components (e.g. an alpha channel) make the 16-bit
-  // eligibility decision independently — for irreversible 9/7, MCT (ICT)
-  // components fall back to int32 while a non-MCT 8-bit component qualifies for
-  // int16. If any component is not 16-bit, force them all to 32-bit.
-  //
-  // TODO(perf): forcing to int32 sacrifices the int16 DWT bandwidth saving on
-  // the otherwise-eligible components. A more efficient alternative is to keep
-  // those components on the int16 DWT path and widen int16 planes to int32 only
-  // at the packing/output boundary. That must be done centrally (e.g. a
-  // GrkImage component-type normalization applied after decode, before handoff),
-  // NOT in a single format writer: all writers (BMP/JPEG/PGX/PNG/PNM/RAW/TIFF)
-  // and grk_image API consumers assume a uniform comps[0] sample type/stride.
-  // Worth revisiting for images with many int16-eligible non-MCT channels.
-  bool all16 = true;
-  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
-  {
-    if(!tile_->comps_[compno].is16BitDwt())
-    {
-      all16 = false;
-      break;
-    }
-  }
-  if(!all16)
-  {
-    for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
-      tile_->comps_[compno].setUse16BitDwt(false);
   }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
