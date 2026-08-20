@@ -188,16 +188,6 @@ void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* 
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
-  // the first run hands the pixel buffers over to the composite image and reads the
-  // stream to the end, so a second run has neither buffers nor bytes left to work with
-  if(decompressCalled_)
-  {
-    grklog.error("decompress: a codec decompresses its stream once. Create a new codec to "
-                 "decompress it again, or use grk_decompress_tile for per-tile decoding");
-    return false;
-  }
-  decompressCalled_ = true;
-
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this decode is in flight.
   auto pinnedExec = TFSingleton::acquire();
@@ -1237,12 +1227,10 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
     }
     if(!cp_.codingParams_.dec_.skipAllocateComposite_)
     {
-      if(ioBandCallback_)
-      {
-        // incremental band writes already consumed the data from scratchImage_;
-        // skip transfer and postProcess
-      }
-      else
+      // an empty scratch would replace the composite pixels with nulls: incremental band
+      // writes consumed the rows, and a repeat run with every tile cached never refilled it
+      bool scratchHoldsData = scratchImage_ && scratchImage_->comps && scratchImage_->comps[0].data;
+      if(!ioBandCallback_ && scratchHoldsData)
       {
         scratchImage_->transferDataTo(multiTileComposite_.get());
         success_ = postProcess(multiTileComposite_.get());

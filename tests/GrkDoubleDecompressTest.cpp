@@ -31,6 +31,9 @@ namespace
   const uint8_t PRECISION = 8;
   const uint32_t TILE_WIDTH = 32;
   const uint32_t TILE_HEIGHT = 32;
+  const uint16_t NUM_LAYERS = 4;
+  const uint16_t FIRST_PASS_LAYERS = 1;
+  const uint16_t PROGRESSION_TILE_INDEX = 0;
 
   // enough of the codestream to get past the main header and into tile data,
   // so the first decompress starts work and then runs out of bytes
@@ -87,7 +90,7 @@ namespace
     return image;
   }
 
-  bool compress(const std::string& path)
+  bool compress(const std::string& path, uint16_t numLayers)
   {
     grk_image* image = makeImage();
     if(!image)
@@ -103,7 +106,13 @@ namespace
     parameters.tile_size_on = true;
     parameters.t_width = TILE_WIDTH;
     parameters.t_height = TILE_HEIGHT;
-    parameters.numlayers = 1;
+    parameters.numlayers = numLayers;
+    if(numLayers > 1)
+    {
+      parameters.allocation_by_rate_distortion = true;
+      for(uint16_t i = 0; i < numLayers; ++i)
+        parameters.layer_rate[i] = (double)(40 - i * 9);
+    }
 
     grk_stream_params streamParams = {};
     snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
@@ -184,11 +193,9 @@ namespace
     return samples;
   }
 
-  bool runDoubleDecompress(const char* label, const std::string& path, bool mercury)
+  grk_object* openCodec(const char* label, const std::string& path, grk_decompress_parameters& params,
+                        grk_header_info& headerInfo)
   {
-    useMercury(mercury);
-
-    grk_decompress_parameters params = {};
     grk_stream_params streamParams = {};
     streamParams.is_read_stream = true;
     snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
@@ -197,15 +204,74 @@ namespace
     if(!codec)
     {
       fprintf(stderr, "%s: grk_decompress_init failed\n", label);
-      return false;
+      return nullptr;
     }
-    grk_header_info headerInfo = {};
     if(!grk_decompress_read_header(codec, &headerInfo))
     {
       fprintf(stderr, "%s: grk_decompress_read_header failed\n", label);
       grk_object_unref(codec);
+      return nullptr;
+    }
+    grk_decompress_update(&params, codec);
+    return codec;
+  }
+
+  // a fully decoded codec must answer a repeat grk_decompress with the same image
+  bool runWholeStream(const char* label, const std::string& path, bool mercury)
+  {
+    useMercury(mercury);
+
+    grk_decompress_parameters params = {};
+    grk_header_info headerInfo = {};
+    grk_object* codec = openCodec(label, path, params, headerInfo);
+    if(!codec)
+      return false;
+
+    bool ok = true;
+    if(!grk_decompress(codec, nullptr))
+    {
+      fprintf(stderr, "%s: the first grk_decompress failed\n", label);
+      grk_object_unref(codec);
       return false;
     }
+    grk_image* image = grk_decompress_get_image(codec);
+    if(!hasUsableData(label, "the first grk_decompress", image))
+    {
+      grk_object_unref(codec);
+      return false;
+    }
+    std::vector<int32_t> firstSamples = capture(image);
+
+    if(!grk_decompress(codec, nullptr))
+    {
+      fprintf(stderr, "%s: the second grk_decompress failed\n", label);
+      ok = false;
+    }
+    image = grk_decompress_get_image(codec);
+    if(!hasUsableData(label, "the second grk_decompress", image))
+      ok = false;
+    else if(capture(image) != firstSamples)
+    {
+      fprintf(stderr, "%s: the second grk_decompress changed the first image's samples\n", label);
+      ok = false;
+    }
+
+    grk_object_unref(codec);
+    if(ok)
+      printf("%s: repeat decompress kept all %zu samples\n", label, firstSamples.size());
+    return ok;
+  }
+
+  // a codec whose first decompress failed must not turn that into a success
+  bool runTruncatedStream(const char* label, const std::string& path, bool mercury)
+  {
+    useMercury(mercury);
+
+    grk_decompress_parameters params = {};
+    grk_header_info headerInfo = {};
+    grk_object* codec = openCodec(label, path, params, headerInfo);
+    if(!codec)
+      return false;
 
     bool ok = true;
     bool firstOk = grk_decompress(codec, nullptr);
@@ -220,27 +286,132 @@ namespace
     }
 
     bool secondOk = grk_decompress(codec, nullptr);
+    if(secondOk && !firstOk)
+    {
+      fprintf(stderr, "%s: the second grk_decompress claimed success after the first failed\n",
+              label);
+      ok = false;
+    }
     if(secondOk)
     {
       grk_image* image = grk_decompress_get_image(codec);
       if(!hasUsableData(label, "the second grk_decompress", image))
         ok = false;
-    }
-    if(firstOk && ok)
-    {
-      grk_image* image = grk_decompress_get_image(codec);
-      if(!hasUsableData(label, "the image after the second grk_decompress", image))
-        ok = false;
-      else if(capture(image) != firstSamples)
+      else if(firstOk && capture(image) != firstSamples)
       {
         fprintf(stderr, "%s: the second grk_decompress changed the first image's samples\n", label);
         ok = false;
       }
     }
-    printf("%s: first %s, second %s\n", label, firstOk ? "true" : "false",
-           secondOk ? "true" : "false");
 
     grk_object_unref(codec);
+    if(ok)
+      printf("%s: first %s, second %s\n", label, firstOk ? "true" : "false",
+             secondOk ? "true" : "false");
+    return ok;
+  }
+
+  bool insideProgressionTile(uint32_t x, uint32_t y)
+  {
+    return x < TILE_WIDTH && y < TILE_HEIGHT;
+  }
+
+  // grk_decompress_set_progression_state marks one tile for a richer re-decode.  Whatever the
+  // second grk_decompress does with that request, every other tile has to survive it untouched.
+  bool runProgressionState(const char* label, const std::string& path, bool mercury)
+  {
+    useMercury(mercury);
+
+    grk_decompress_parameters params = {};
+    params.core.layers_to_decompress = FIRST_PASS_LAYERS;
+    grk_header_info headerInfo = {};
+    grk_object* codec = openCodec(label, path, params, headerInfo);
+    if(!codec)
+      return false;
+
+    if(!grk_decompress(codec, nullptr))
+    {
+      fprintf(stderr, "%s: the first grk_decompress failed\n", label);
+      grk_object_unref(codec);
+      return false;
+    }
+    grk_image* image = grk_decompress_get_image(codec);
+    if(!hasUsableData(label, "the first grk_decompress", image))
+    {
+      grk_object_unref(codec);
+      return false;
+    }
+    std::vector<int32_t> firstSamples = capture(image);
+
+    grk_progression_state state = {};
+    state.single_tile = true;
+    state.tile_index = PROGRESSION_TILE_INDEX;
+    state.num_resolutions = headerInfo.numresolutions;
+    for(uint8_t r = 0; r < state.num_resolutions; ++r)
+      state.layers_per_resolution[r] = NUM_LAYERS;
+    // the mercury fast path decodes without filling the tile cache, so it has no cached tile
+    // to attach the new layer budget to
+    bool stateSet = grk_decompress_set_progression_state(codec, state);
+    if(!stateSet && !mercury)
+    {
+      fprintf(stderr, "%s: grk_decompress_set_progression_state failed\n", label);
+      grk_object_unref(codec);
+      return false;
+    }
+
+    bool ok = true;
+    if(!grk_decompress(codec, nullptr))
+    {
+      fprintf(stderr, "%s: the grk_decompress after the progression state failed\n", label);
+      ok = false;
+    }
+    image = grk_decompress_get_image(codec);
+    if(!hasUsableData(label, "the grk_decompress after the progression state", image))
+    {
+      grk_object_unref(codec);
+      return false;
+    }
+
+    std::vector<int32_t> secondSamples = capture(image);
+    if(secondSamples.size() != firstSamples.size())
+    {
+      fprintf(stderr, "%s: the image changed size from %zu to %zu samples\n", label,
+              firstSamples.size(), secondSamples.size());
+      grk_object_unref(codec);
+      return false;
+    }
+
+    size_t index = 0;
+    size_t changedInsideTile = 0;
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+    {
+      const auto& comp = image->comps[c];
+      for(uint32_t y = 0; y < comp.h; ++y)
+      {
+        for(uint32_t x = 0; x < comp.w; ++x, ++index)
+        {
+          if(firstSamples[index] == secondSamples[index])
+            continue;
+          if(insideProgressionTile(x, y))
+            changedInsideTile++;
+          else
+          {
+            fprintf(stderr,
+                    "%s: component %u sample (%u,%u) outside the requested tile changed from %d "
+                    "to %d\n",
+                    label, c, x, y, firstSamples[index], secondSamples[index]);
+            ok = false;
+            y = comp.h;
+            break;
+          }
+        }
+      }
+    }
+
+    grk_object_unref(codec);
+    if(ok)
+      printf("%s: state %s, %zu samples changed inside tile %u, none outside it\n", label,
+             stateSet ? "set" : "not cached", changedInsideTile, PROGRESSION_TILE_INDEX);
     return ok;
   }
 } // namespace
@@ -251,7 +422,9 @@ int main(void)
 
   std::string wholePath = "double_decompress_whole.j2k";
   std::string truncatedPath = "double_decompress_truncated.j2k";
-  if(!compress(wholePath) || !truncate(wholePath, truncatedPath))
+  std::string layeredPath = "double_decompress_layered.j2k";
+  if(!compress(wholePath, 1) || !truncate(wholePath, truncatedPath) ||
+     !compress(layeredPath, NUM_LAYERS))
   {
     fprintf(stderr, "could not build the test codestreams\n");
     grk_deinitialize();
@@ -263,14 +436,17 @@ int main(void)
   for(bool mercury : mercurySettings)
   {
     std::string suffix = mercury ? " (mercury)" : " (classic)";
-    if(!runDoubleDecompress(("whole stream" + suffix).c_str(), wholePath, mercury))
+    if(!runWholeStream(("whole stream" + suffix).c_str(), wholePath, mercury))
       result = 1;
-    if(!runDoubleDecompress(("truncated stream" + suffix).c_str(), truncatedPath, mercury))
+    if(!runTruncatedStream(("truncated stream" + suffix).c_str(), truncatedPath, mercury))
+      result = 1;
+    if(!runProgressionState(("progression state" + suffix).c_str(), layeredPath, mercury))
       result = 1;
   }
 
   remove(wholePath.c_str());
   remove(truncatedPath.c_str());
+  remove(layeredPath.c_str());
   grk_deinitialize();
   if(result == 0)
     printf("double decompress passed\n");

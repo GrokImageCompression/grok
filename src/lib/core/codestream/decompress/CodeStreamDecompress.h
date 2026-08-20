@@ -614,12 +614,6 @@ private:
   std::atomic<bool> success_{true};
 
   /**
-   * @brief whether decompress() has already run on this codec
-   *
-   */
-  bool decompressCalled_ = false;
-
-  /**
    * @brief number of decompressed tiles
    *
    */

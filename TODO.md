@@ -10,12 +10,17 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## open bugs (not migration blockers)
 
-- repeated grk_decompress on one codec is a supported flow (sequential tile
-  decode, see 759d7a71 slated tiles) and used to work. it regressed when the
-  all-tiles-cached early return started re-transferring the drained scratch
-  image, nulling the composite's buffers. the reject-second-call guard from
-  6b0a99da is an interim stopgap: revert it, restore repeated decompress,
-  and flip grk_double_decompress_test to assert the restored behavior
+- grk_decompress after grk_decompress_set_progression_state is safe but a
+  no-op: decompressImpl filters dirty tiles out via isBestEffortDecompressed
+  (set on every decoded tile, cleared only by the single-tile and lru
+  paths), and under GRK_TILE_CACHE_NONE the tile data is freed anyway. the
+  fix wants a real needs-re-decode signal separate from bestEffortDecompressed_
+  and a raw composite with postProcess deferred to image handoff, so partial
+  re-decode is expressible. per-tile re-decode through grk_decompress_tile
+  works today
+- a repeat grk_decompress is a no-op for classic but a full-stream re-decode
+  for mercury (fastpath bails on pre-allocated component data and falls
+  through to classic). same observable result, very different cost
 - decode of conformance p0_07.j2k to tif deadlocks every run, all workers
   parked on one futex. the same file decodes fine to pgx, so the hang is in
   the tiff output path

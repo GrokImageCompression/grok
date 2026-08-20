@@ -1567,7 +1567,7 @@ GRK_API void GRK_CALLCONV grk_decompress_set_band_callback(grk_object* codec,
 GRK_API bool GRK_CALLCONV grk_image_is_post_process_no_op(grk_image* image);
 
 /**
- * @brief Starts decompression of the JPEG 2000 image.
+ * @brief Starts (or continues) decompression of the JPEG 2000 image.
  *
  * For synchronous decoding (asynchronous = false): blocks until all
  * requested tiles are decompressed.  After return, component data is
@@ -1581,11 +1581,6 @@ GRK_API bool GRK_CALLCONV grk_image_is_post_process_no_op(grk_image* image);
  *
  * The @p tile parameter is only used when integrating a hardware-
  * accelerator plugin; pass NULL for CPU-only decoding.
- *
- * A codec decompresses its stream once: a second call on the same codec
- * logs an error and returns false, leaving the first result untouched.
- * To decompress the same stream again, create a new codec.  To decode
- * further tiles or layers incrementally, use grk_decompress_tile().
  *
  * @param codec  decompression codec (see @ref grk_object)
  * @param tile   plugin tile data, or NULL for CPU-only decoding
