@@ -14,8 +14,8 @@
 //!   at most one slice of a node runs at a time. Node internals thus need no
 //!   synchronization, and every ring is genuinely SPSC.
 //!
-//! Mirrored with loom atomics and exhaustively model-checked in
-//! tests/weft_loom.rs; keep the two in sync.
+//! TODO: no loom model exists for this protocol (an earlier comment claimed
+//! one did). The lost-wakeup fixed in tug() is the class a model would catch.
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -61,30 +61,22 @@ impl NodeState {
     pub fn tug(&self) -> bool {
         let mut s = self.0.load(Ordering::Relaxed);
         loop {
-            if s & SCHEDULED != 0 {
-                if s & DIRTY != 0 {
-                    return false; // already scheduled and already dirty
-                }
-                match self.0.compare_exchange_weak(
-                    s,
-                    s | DIRTY,
-                    Ordering::AcqRel,
-                    Ordering::Relaxed,
-                ) {
-                    Ok(_) => return false,
-                    Err(cur) => s = cur,
-                }
+            // the swap has to go through even when DIRTY already looks set:
+            // only a successful CAS proves the runner has not yet started the
+            // pass that clears it, which is what orders this publish before
+            // the pass that must see it
+            let (next, won) = if s & SCHEDULED != 0 {
+                (s | DIRTY, false)
             } else {
                 debug_assert_eq!(s & DIRTY, 0, "DIRTY without SCHEDULED");
-                match self.0.compare_exchange_weak(
-                    s,
-                    SCHEDULED,
-                    Ordering::AcqRel,
-                    Ordering::Relaxed,
-                ) {
-                    Ok(_) => return true,
-                    Err(cur) => s = cur,
-                }
+                (SCHEDULED, true)
+            };
+            match self
+                .0
+                .compare_exchange_weak(s, next, Ordering::AcqRel, Ordering::Relaxed)
+            {
+                Ok(_) => return won,
+                Err(cur) => s = cur,
             }
         }
     }

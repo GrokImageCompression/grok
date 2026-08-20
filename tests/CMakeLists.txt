@@ -108,6 +108,11 @@ if(GRK_ENABLE_MERCURY)
     add_test(NAME grk_mercury_layers_test
       COMMAND grk_mercury_layers_test ${GRK_DATA_ROOT}/input/nonregression/pacs.ge.j2k)
   endif()
+
+  # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_tile_row_race_test GrkMercuryTileRowRaceTest.cpp)
+  target_link_libraries(grk_mercury_tile_row_race_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_tile_row_race_test COMMAND grk_mercury_tile_row_race_test)
 endif()
 
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)
