@@ -1061,16 +1061,12 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     // left-shifted by qShift and shifted back at the synthesis output, retaining
     // sub-LSB precision through the fixed-point lifting.
     //
-    // qShift = 12 - prec scales a prec-bit image's coefficients to the SAME int16
-    // magnitude that the (previously validated) prec <= 12 int16 9/7 path produced
-    // at qShift 0 — i.e. it stays inside the dynamic-range envelope already known
-    // not to overflow, leaving ~3 bits of int16 headroom for the 2D BIBO lifting
-    // gain.  For the eligible range (prec <= 9, see grk_get_data_type) that yields
-    // 3-4 fractional bits (8-bit -> 4, 9-bit -> 3) — enough for near-float accuracy.
+    // sample peak at 2^12 leaves 3 bits for lifting intermediates that reach ~4x
+    // the peak, and 4-5 fractional bits, which the conformance tolerances need
     // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
     if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec < 12 &&
        tileComp->num_resolutions_ > 1)
-      tileComp->setQShift((uint8_t)(12 - imageComp->prec));
+      tileComp->setQShift((uint8_t)(13 - imageComp->prec));
     else
       tileComp->setQShift(0);
     auto unreducedImageCompWindow =

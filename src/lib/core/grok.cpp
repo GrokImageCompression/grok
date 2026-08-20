@@ -436,7 +436,7 @@ grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_
   //   lifting rounding accumulates into visible error (it compounds across the
   //   ~10 lifting/scaling ops of a 2D level and across decomposition levels).
   //   The 7-bit headroom budgets ~3 bits for the 9/7 2D BIBO gain (intermediate
-  //   lifting values exceed the reconstructed sample) and ~4 bits of fractional
+  //   lifting values exceed the reconstructed sample) and 4-5 bits of fractional
   //   precision to keep that accumulated rounding well under 1 LSB.  So
   //   prec + 7 <= 16  =>  prec <= 9 uses int16 (>= 4 fractional bits, near-float
   //   accuracy); at prec >= 10 the fractional margin collapses, so 10/11/12-bit

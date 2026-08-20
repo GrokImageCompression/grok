@@ -30,7 +30,7 @@
  *  5.  Fixed-point representation (Q1.15 / MulFixedPoint15)
  *  6.  Coefficient decomposition — per-step strategies
  *  7.  Neighbor-sum-first flag and BIBO headroom
- *  8.  Headroom scaling — per-level overflow prevention
+ *  8.  Q-format fractional bits and dynamic range
  *  9.  Eligible images and precision limits
  *  10. Implementation notes (Highway SIMD)
  *
@@ -135,6 +135,12 @@
  *  This is equivalent to multiplying by a Q1.15 fixed-point factor in the
  *  range [-1.0, +1.0).  The "+2^14" provides rounding (vs truncation).
  *
+ *  Shifts by a small number of bits (the ×8/>>3 of step 1 and the final
+ *  Q-format-to-sample shift) round to nearest with TIES TO EVEN.  One sample in
+ *  2^shift lands exactly on a .5 boundary, so rounding those up brightens the
+ *  decoded image by a fraction of an LSB per shift, and the fractions
+ *  accumulate across passes and decomposition levels.
+ *
  *  Since MulFixedPoint15 can only represent factors with |f| < 1.0, any
  *  coefficient whose magnitude exceeds 1.0 must be decomposed into an
  *  integer part (handled by addition) and a fractional part (handled by
@@ -161,11 +167,11 @@
  *  │ 1 (β)   │ -0.052980118   │ Precision boost: |β| is very small, so   │
  *  │          │                │ direct encoding loses too many bits.      │
  *  │          │                │ Instead: multiply each neighbor SEPARATELY│
- *  │          │                │ by (β × 2^3), sum the products with       │
- *  │          │                │ rounding offset 4, then right-shift by 3. │
+ *  │          │                │ by (β × 2^3), sum the products, then      │
+ *  │          │                │ round-shift right by 3, ties to even.      │
  *  │          │                │ fp15 = round(|β| × 2^18) = 13890         │
- *  │          │                │ Net: S[n] += (mf15(D[n-1],c) +           │
- *  │          │                │              mf15(D[n],c) + 4) >> 3      │
+ *  │          │                │ Net: S[n] += rshift_even(mf15(D[n-1],c)   │
+ *  │          │                │              + mf15(D[n],c), 3)          │
  *  │          │                │ This gives 3 extra bits of precision.     │
  *  ├──────────┼────────────────┼──────────────────────────────────────────┤
  *  │ 0 (α)   │ -1.586134342   │ Additive decomposition: |α| > 1.0, so    │
@@ -216,55 +222,35 @@
  *  gain to account for the momentary 17-bit intermediate.
  *
  *
- *  8. HEADROOM SCALING — PER-LEVEL OVERFLOW PREVENTION
- *  ----------------------------------------------------
- *  The principal challenge of 16-bit fixed-point 9/7 synthesis is overflow.
- *  The synthesis lifting steps amplify the signal — the BIBO gain from
- *  subband coefficients to reconstructed output determines the worst-case
- *  intermediate magnitude at each point in the pipeline.
+ *  8. Q-FORMAT FRACTIONAL BITS AND DYNAMIC RANGE
+ *  ----------------------------------------------
+ *  Coefficients arrive already dequantized into a Q-format: PostDecodeFilters
+ *  left-shifts them by qShift (= 13 - prec, set in TileProcessor), synthesis
+ *  runs entirely in that scale across every decomposition level, and the
+ *  fractional bits are shifted back out once, at the final synthesis output
+ *  (or by the inverse MCT, which consumes the Q-format directly).
  *
- *  The 9/7 wavelet has the following cumulative BIBO gains (from
- *  QuantizerOJPH.cpp, `bibo_gains` class):
+ *  Those fractional bits are what keeps the accumulated lifting rounding below
+ *  a sample LSB.  Each of the ~3 roundings a sample sees per 1D pass costs half
+ *  a Q-format LSB, and a 6-level 2D synthesis runs 12 passes.  Each extra
+ *  fractional bit halves the number of samples that land on a different integer
+ *  than the float path picks, which is what the T.803 tolerances measure.
  *
- *    gain_9x7_l[]:  1.000, 1.380, 1.333, 1.307, 1.303, 1.300, 1.299 ...
- *    gain_9x7_h[]:  1.298, 1.313, 1.276, 1.235, 1.231, 1.229, 1.228 ...
+ *  The budget is set by the largest quantity the int16 lanes must hold.  With
+ *  the reconstructed sample peak at 2^(prec-1+qShift) = 2^12:
  *
- *  The 2D worst-case gain (product of horizontal and vertical) peaks at
- *  level 1: 1.380² ≈ 1.90.  This is remarkably low — only ~1 bit of growth
- *  — compared to the 5/3 wavelet's 2.867² ≈ 8.22 (~3 bits).
+ *    scaled input coefficients        ~2.1× the sample peak
+ *    neighbour sums (SUM-FIRST steps) ~3.5× the sample peak
+ *    high-pass samples between the γ and α steps
+ *                                     ~4.0× the sample peak  ← the binding one
  *
- *  However, within a single synthesis level, the per-STEP intermediate
- *  values can transiently exceed the per-level BIBO gain.  When a
- *  SUM-FIRST step is used, the temporary neighbor sum doubles the input
- *  gain for that step.  The worst-case intermediate across all steps
- *  and all levels determines whether the data fits in int16.
+ *  The last is inherent to the lifting factorization: undoing γ leaves the odd
+ *  samples holding a correction that undoing α then cancels.  Measured over the
+ *  ETS/NR corpus the worst intermediate is 17545, 54% of the int16 range, so
+ *  the 3 bits of headroom above the sample peak cover it with room to spare.
  *
- *  HEADROOM SCALING MECHANISM:
- *
- *  Before synthesis begins, we compute the worst-case intermediate
- *  magnitude `headroom_peak` from the BIBO gains and SUM-FIRST flags.
- *  If `headroom_peak` would exceed ~95% of the int16 range (±32767),
- *  we apply a headroom scale factor:
- *
- *    1. The subband coefficients (input to the DWT) are RIGHT-SHIFTED by
- *       `headroom_downshift` bits during the interleave phase.  This
- *       reduces their magnitude, preventing overflow during lifting.
- *
- *    2. After the final synthesis level's vertical pass produces pixel
- *       values, the output is LEFT-SHIFTED by the accumulated
- *       `headroom_downshift` to restore full magnitude before DC shift
- *       and clamping.
- *
- *  This is equivalent to dequantizing at a smaller normalization factor
- *  and then scaling up the output.  For a lossy transform, the precision
- *  loss from the right-shift is at most 1–2 LSBs per downshift step,
- *  which is negligible compared to quantization noise.
- *
- *  For typical usage:
- *    - 8-bit precision:  headroom_downshift = 0 (no scaling needed)
- *    - 10-bit precision: headroom_downshift = 0
- *    - 12-bit precision: headroom_downshift = 0–1
- *    - 14-bit precision: headroom_downshift = 1–2
+ *  Every add in the lifting saturates instead of wrapping, so an image sharper
+ *  than anything in that corpus clips a few samples rather than tearing.
  *
  *
  *  9. ELIGIBLE IMAGES
@@ -273,13 +259,11 @@
  *
  *    1. Irreversible wavelet (qmfbid == 0)
  *    2. Whole-tile decoding (no region-of-interest partial decode)
- *    3. Image precision ≤ 12 bits
+ *    3. Image precision ≤ 9 bits (grk_get_data_type: prec + 7 ≤ 16)
  *
- *  The 12-bit limit is conservative.  With headroom scaling, precisions
- *  up to ~14 bits are theoretically feasible, but the accumulated
- *  precision loss from multiple downshift levels may degrade quality
- *  beyond acceptable thresholds.  The 12-bit cutoff keeps the worst-case
- *  downshift to 0–1 bits.
+ *  The limit is where the fractional margin collapses: at prec 10 the
+ *  Q-format is left with 3 fractional bits, and the accumulated rounding
+ *  then shows up against the T.803 conformance tolerances.
  *
  *  For RGB images with ICT (irreversible multi-component transform):
  *  The ICT is applied AFTER the inverse DWT (on each component
@@ -521,6 +505,45 @@ namespace HWY_NAMESPACE
   }
 
   /**
+   * @brief int16 saturating add / subtract, matching Highway SaturatedAdd/Sub.
+   *
+   * The lifting intermediates reach half the int16 range on the test corpus, so
+   * a sharper image than any of those clips a few samples instead of wrapping.
+   * A strip boundary decides per column whether the scalar or the SIMD kernel
+   * runs, so both must saturate at the same points and combine terms in the
+   * same order.
+   */
+  static inline int16_t sat_add(int16_t a, int16_t b)
+  {
+    return (int16_t)std::clamp((int32_t)a + (int32_t)b, -32768, 32767);
+  }
+  static inline int16_t sat_sub(int16_t a, int16_t b)
+  {
+    return (int16_t)std::clamp((int32_t)a - (int32_t)b, -32768, 32767);
+  }
+
+  /**
+   * @brief Right shift, rounding to nearest with ties to even.
+   *
+   * One value in 2^shift lands exactly halfway between two outputs.  Sending
+   * all of those up brightens the decoded image by a fraction of an LSB per
+   * shift; ties to even splits them evenly.
+   */
+  static inline int16_t rshift_even(int16_t x, int shift)
+  {
+    if(shift <= 0)
+      return x;
+    int16_t bias = (int16_t)((1 << (shift - 1)) - 1 + ((x >> shift) & 1));
+    return (int16_t)(sat_add(x, bias) >> shift);
+  }
+  template <class D, class V> static HWY_INLINE V vrshift_even(D d, V x, int shift)
+  {
+    const auto one = Set(d, (int16_t)(shift > 0 ? 1 : 0));
+    const auto half = Set(d, (int16_t)(shift > 0 ? (1 << (shift - 1)) - 1 : 0));
+    return ShiftRightSame(SaturatedAdd(x, half + And(ShiftRightSame(x, shift), one)), shift);
+  }
+
+  /**
    * @brief Apply K scaling to an even (low-pass) sample.
    *
    * Computes x × K = x + round(x × (K−1)) where K = 1.230174105.
@@ -528,7 +551,7 @@ namespace HWY_NAMESPACE
    */
   static inline int16_t apply_K_scale(int16_t x)
   {
-    return (int16_t)(x + mf15(x, scale_K_frac));
+    return sat_add(x, mf15(x, scale_K_frac));
   }
 
   /**
@@ -539,7 +562,7 @@ namespace HWY_NAMESPACE
    */
   static inline int16_t apply_invK_scale(int16_t x)
   {
-    return (int16_t)(x + mf15(x, scale_invK_frac));
+    return sat_add(x, mf15(x, scale_invK_frac));
   }
 
   /**************************************************************************
@@ -599,7 +622,7 @@ namespace HWY_NAMESPACE
     {
       int16_t d_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
       int16_t d_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
-      scratch[i] = (int16_t)(scratch[i] - mf15((int16_t)(d_prev + d_next), synth_coeff_3));
+      scratch[i] = sat_sub(scratch[i], mf15(sat_add(d_prev, d_next), synth_coeff_3));
     }
 
     // Step 2 — Undo γ: D[n] -= γ × (S[n] + S[n+1])
@@ -607,7 +630,7 @@ namespace HWY_NAMESPACE
     {
       int16_t s_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
       int16_t s_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
-      scratch[i] = (int16_t)(scratch[i] - mf15((int16_t)(s_prev + s_next), synth_coeff_2));
+      scratch[i] = sat_sub(scratch[i], mf15(sat_add(s_prev, s_next), synth_coeff_2));
     }
 
     // Step 1 — Undo β: S[n] += |β| × (D[n-1] + D[n])  [MULTIPLY-FIRST, ×8/>>3]
@@ -615,8 +638,8 @@ namespace HWY_NAMESPACE
     {
       int16_t d_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
       int16_t d_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
-      int16_t prod_sum = (int16_t)(mf15(d_prev, synth_coeff_1) + mf15(d_next, synth_coeff_1) + 4);
-      scratch[i] = (int16_t)(scratch[i] + (prod_sum >> 3));
+      int16_t prod_sum = (int16_t)(mf15(d_prev, synth_coeff_1) + mf15(d_next, synth_coeff_1));
+      scratch[i] = sat_add(scratch[i], rshift_even(prod_sum, 3));
     }
 
     // Step 0 — Undo α: D[n] += sum + frac×sum  [additive decomposition]
@@ -624,9 +647,9 @@ namespace HWY_NAMESPACE
     {
       int16_t s_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
       int16_t s_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
-      int16_t even_sum = (int16_t)(s_prev + s_next);
+      int16_t even_sum = sat_add(s_prev, s_next);
       int16_t frac = mf15(even_sum, synth_coeff_0_frac);
-      scratch[i] = (int16_t)(scratch[i] + even_sum + frac);
+      scratch[i] = sat_add(sat_add(scratch[i], even_sum), frac);
     }
 
     // Scatter to strided destination column (stays in Q-format; sink downshifts)
@@ -667,11 +690,10 @@ namespace HWY_NAMESPACE
     // apply DC shift and clamp, scatter to strided destination column.
     // Must stay bit-identical to hwy_v_synth_16_97's sink (int16 wrapping adds),
     // since strip boundaries decide per column whether SIMD or scalar runs.
-    int16_t round = (int16_t)(qShift > 0 ? (1 << (qShift - 1)) : 0);
     for(uint32_t i = 0; i < height; ++i)
     {
-      int16_t s = (int16_t)((int16_t)(scratch[i] + round) >> qShift);
-      *dest = std::clamp((int16_t)(s + dc), dcMin, dcMax);
+      int16_t s = rshift_even(scratch[i], qShift);
+      *dest = std::clamp(sat_add(s, dc), dcMin, dcMax);
       dest += strideDest;
     }
   }
@@ -728,8 +750,6 @@ namespace HWY_NAMESPACE
     const auto vc2 = Set(di, synth_coeff_2);
     const auto vc1 = Set(di, synth_coeff_1);
     const auto vc0_frac = Set(di, synth_coeff_0_frac);
-    const auto v4 = Set(di, (int16_t)4);
-
     int16_t* E = scratch;
     int16_t* O = scratch + sn;
 
@@ -738,7 +758,7 @@ namespace HWY_NAMESPACE
     for(k = 0; k + L <= sn; k += L)
     {
       auto v = LoadU(di, bandL + k);
-      StoreU(v + MulFixedPoint15(v, vK_frac), di, E + k);
+      StoreU(SaturatedAdd(v, MulFixedPoint15(v, vK_frac)), di, E + k);
     }
     for(; k < sn; k++)
       E[k] = apply_K_scale(bandL[k]);
@@ -746,7 +766,7 @@ namespace HWY_NAMESPACE
     for(k = 0; k + L <= dn; k += L)
     {
       auto v = LoadU(di, bandH + k);
-      StoreU(v + MulFixedPoint15(v, vinvK_frac), di, O + k);
+      StoreU(SaturatedAdd(v, MulFixedPoint15(v, vinvK_frac)), di, O + k);
     }
     for(; k < dn; k++)
       O[k] = apply_invK_scale(bandH[k]);
@@ -757,7 +777,7 @@ namespace HWY_NAMESPACE
     {
       /* --- Step 3 (δ): E[k] -= δ × (O[k-1] + O[k]) --- */
       /* k=0 boundary: O[-1] mirrors to O[0] */
-      E[0] = (int16_t)(E[0] - mf15((int16_t)(O[0] + O[0]), synth_coeff_3));
+      E[0] = sat_sub(E[0], mf15(sat_add(O[0], O[0]), synth_coeff_3));
       /* SIMD bulk: k=1..min(sn,dn)-L, O[k-1] and O[k] both in-bounds */
       {
         uint32_t simd_end = std::min(sn, dn);
@@ -766,7 +786,7 @@ namespace HWY_NAMESPACE
           auto ol = LoadU(di, O + k - 1);
           auto or_ = LoadU(di, O + k);
           auto e = LoadU(di, E + k);
-          StoreU(e - MulFixedPoint15(ol + or_, vc3), di, E + k);
+          StoreU(SaturatedSub(e, MulFixedPoint15(SaturatedAdd(ol, or_), vc3)), di, E + k);
         }
       }
       /* Scalar tail (remaining + boundary if sn > dn) */
@@ -774,7 +794,7 @@ namespace HWY_NAMESPACE
       {
         int16_t ol = O[k - 1];
         int16_t or_ = (k < dn) ? O[k] : O[dn - 1];
-        E[k] = (int16_t)(E[k] - mf15((int16_t)(ol + or_), synth_coeff_3));
+        E[k] = sat_sub(E[k], mf15(sat_add(ol, or_), synth_coeff_3));
       }
 
       /* --- Step 2 (γ): O[k] -= γ × (E[k] + E[k+1]) --- */
@@ -785,18 +805,19 @@ namespace HWY_NAMESPACE
           auto el = LoadU(di, E + k);
           auto er = LoadU(di, E + k + 1);
           auto o = LoadU(di, O + k);
-          StoreU(o - MulFixedPoint15(el + er, vc2), di, O + k);
+          StoreU(SaturatedSub(o, MulFixedPoint15(SaturatedAdd(el, er), vc2)), di, O + k);
         }
       }
       for(; k < dn; k++)
       {
         int16_t el = E[k];
         int16_t er = (k + 1 < sn) ? E[k + 1] : E[sn - 1];
-        O[k] = (int16_t)(O[k] - mf15((int16_t)(el + er), synth_coeff_2));
+        O[k] = sat_sub(O[k], mf15(sat_add(el, er), synth_coeff_2));
       }
 
       /* --- Step 1 (β): E[k] += (mf15(O[k-1],c) + mf15(O[k],c) + 4) >> 3 --- */
-      E[0] = (int16_t)(E[0] + ((mf15(O[0], synth_coeff_1) + mf15(O[0], synth_coeff_1) + 4) >> 3));
+      E[0] = sat_add(
+          E[0], rshift_even((int16_t)(mf15(O[0], synth_coeff_1) + mf15(O[0], synth_coeff_1)), 3));
       {
         uint32_t simd_end = std::min(sn, dn);
         for(k = 1; k + L <= simd_end; k += L)
@@ -804,16 +825,16 @@ namespace HWY_NAMESPACE
           auto ol = LoadU(di, O + k - 1);
           auto or_ = LoadU(di, O + k);
           auto e = LoadU(di, E + k);
-          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1) + v4;
-          StoreU(e + ShiftRight<3>(ps), di, E + k);
+          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1);
+          StoreU(SaturatedAdd(e, vrshift_even(di, ps, 3)), di, E + k);
         }
       }
       for(; k < sn; k++)
       {
         int16_t ol = O[k - 1];
         int16_t or_ = (k < dn) ? O[k] : O[dn - 1];
-        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1) + 4);
-        E[k] = (int16_t)(E[k] + (ps >> 3));
+        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1));
+        E[k] = sat_add(E[k], rshift_even(ps, 3));
       }
 
       /* --- Step 0 (α): O[k] += sum + mf15(sum, frac) --- */
@@ -824,16 +845,16 @@ namespace HWY_NAMESPACE
           auto el = LoadU(di, E + k);
           auto er = LoadU(di, E + k + 1);
           auto o = LoadU(di, O + k);
-          auto sum = el + er;
-          StoreU(o + sum + MulFixedPoint15(sum, vc0_frac), di, O + k);
+          auto sum = SaturatedAdd(el, er);
+          StoreU(SaturatedAdd(SaturatedAdd(o, sum), MulFixedPoint15(sum, vc0_frac)), di, O + k);
         }
       }
       for(; k < dn; k++)
       {
         int16_t el = E[k];
         int16_t er = (k + 1 < sn) ? E[k + 1] : E[sn - 1];
-        int16_t sum = (int16_t)(el + er);
-        O[k] = (int16_t)(O[k] + sum + mf15(sum, synth_coeff_0_frac));
+        int16_t sum = sat_add(el, er);
+        O[k] = sat_add(sat_add(O[k], sum), mf15(sum, synth_coeff_0_frac));
       }
     }
     else /* parity == 1 */
@@ -846,18 +867,18 @@ namespace HWY_NAMESPACE
           auto ol = LoadU(di, O + k);
           auto or_ = LoadU(di, O + k + 1);
           auto e = LoadU(di, E + k);
-          StoreU(e - MulFixedPoint15(ol + or_, vc3), di, E + k);
+          StoreU(SaturatedSub(e, MulFixedPoint15(SaturatedAdd(ol, or_), vc3)), di, E + k);
         }
       }
       for(; k < sn; k++)
       {
         int16_t ol = O[k];
         int16_t or_ = (k + 1 < dn) ? O[k + 1] : O[dn - 1];
-        E[k] = (int16_t)(E[k] - mf15((int16_t)(ol + or_), synth_coeff_3));
+        E[k] = sat_sub(E[k], mf15(sat_add(ol, or_), synth_coeff_3));
       }
 
       /* --- Step 2 (γ): O[k] -= γ × (E[k-1] + E[k]) --- */
-      O[0] = (int16_t)(O[0] - mf15((int16_t)(E[0] + E[0]), synth_coeff_2));
+      O[0] = sat_sub(O[0], mf15(sat_add(E[0], E[0]), synth_coeff_2));
       {
         uint32_t simd_end = std::min(dn, sn);
         for(k = 1; k + L <= simd_end; k += L)
@@ -865,14 +886,14 @@ namespace HWY_NAMESPACE
           auto el = LoadU(di, E + k - 1);
           auto er = LoadU(di, E + k);
           auto o = LoadU(di, O + k);
-          StoreU(o - MulFixedPoint15(el + er, vc2), di, O + k);
+          StoreU(SaturatedSub(o, MulFixedPoint15(SaturatedAdd(el, er), vc2)), di, O + k);
         }
       }
       for(; k < dn; k++)
       {
         int16_t el = (k > 0) ? E[k - 1] : E[0];
         int16_t er = (k < sn) ? E[k] : E[sn - 1];
-        O[k] = (int16_t)(O[k] - mf15((int16_t)(el + er), synth_coeff_2));
+        O[k] = sat_sub(O[k], mf15(sat_add(el, er), synth_coeff_2));
       }
 
       /* --- Step 1 (β): E[k] += (mf15(O[k],c) + mf15(O[k+1],c) + 4) >> 3 --- */
@@ -883,22 +904,22 @@ namespace HWY_NAMESPACE
           auto ol = LoadU(di, O + k);
           auto or_ = LoadU(di, O + k + 1);
           auto e = LoadU(di, E + k);
-          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1) + v4;
-          StoreU(e + ShiftRight<3>(ps), di, E + k);
+          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1);
+          StoreU(SaturatedAdd(e, vrshift_even(di, ps, 3)), di, E + k);
         }
       }
       for(; k < sn; k++)
       {
         int16_t ol = O[k];
         int16_t or_ = (k + 1 < dn) ? O[k + 1] : O[dn - 1];
-        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1) + 4);
-        E[k] = (int16_t)(E[k] + (ps >> 3));
+        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1));
+        E[k] = sat_add(E[k], rshift_even(ps, 3));
       }
 
       /* --- Step 0 (α): O[k] += sum + mf15(sum, frac) where sum = E[k-1]+E[k] --- */
       {
-        int16_t sum0 = (int16_t)(E[0] + E[0]);
-        O[0] = (int16_t)(O[0] + sum0 + mf15(sum0, synth_coeff_0_frac));
+        int16_t sum0 = sat_add(E[0], E[0]);
+        O[0] = sat_add(sat_add(O[0], sum0), mf15(sum0, synth_coeff_0_frac));
       }
       {
         uint32_t simd_end = std::min(dn, sn);
@@ -907,16 +928,16 @@ namespace HWY_NAMESPACE
           auto el = LoadU(di, E + k - 1);
           auto er = LoadU(di, E + k);
           auto o = LoadU(di, O + k);
-          auto sum = el + er;
-          StoreU(o + sum + MulFixedPoint15(sum, vc0_frac), di, O + k);
+          auto sum = SaturatedAdd(el, er);
+          StoreU(SaturatedAdd(SaturatedAdd(o, sum), MulFixedPoint15(sum, vc0_frac)), di, O + k);
         }
       }
       for(; k < dn; k++)
       {
         int16_t el = (k > 0) ? E[k - 1] : E[0];
         int16_t er = (k < sn) ? E[k] : E[sn - 1];
-        int16_t sum = (int16_t)(el + er);
-        O[k] = (int16_t)(O[k] + sum + mf15(sum, synth_coeff_0_frac));
+        int16_t sum = sat_add(el, er);
+        O[k] = sat_add(sat_add(O[k], sum), mf15(sum, synth_coeff_0_frac));
       }
     }
 
@@ -986,8 +1007,6 @@ namespace HWY_NAMESPACE
     const auto vcoeff0_frac = Set(di, synth_coeff_0_frac);
     const auto vK_frac = Set(di, scale_K_frac);
     const auto vinvK_frac = Set(di, scale_invK_frac);
-    const auto v4 = Set(di, (int16_t)4);
-
     /* ------------------------------------------------------------------ */
     /*  Phase 1: Interleave L/H into scratch with K / (2/K) scaling       */
     /* ------------------------------------------------------------------ */
@@ -998,8 +1017,8 @@ namespace HWY_NAMESPACE
       {
         auto v0 = LoadU(di, bandL + (size_t)lIdx * strideL);
         auto v1 = LoadU(di, bandL + (size_t)lIdx * strideL + L);
-        v0 = v0 + MulFixedPoint15(v0, vK_frac);
-        v1 = v1 + MulFixedPoint15(v1, vK_frac);
+        v0 = SaturatedAdd(v0, MulFixedPoint15(v0, vK_frac));
+        v1 = SaturatedAdd(v1, MulFixedPoint15(v1, vK_frac));
         Store(v0, di, scratch + (size_t)i * PLL);
         Store(v1, di, scratch + (size_t)i * PLL + L);
         lIdx++;
@@ -1008,8 +1027,8 @@ namespace HWY_NAMESPACE
       {
         auto v0 = LoadU(di, bandH + (size_t)hIdx * strideH);
         auto v1 = LoadU(di, bandH + (size_t)hIdx * strideH + L);
-        v0 = v0 + MulFixedPoint15(v0, vinvK_frac);
-        v1 = v1 + MulFixedPoint15(v1, vinvK_frac);
+        v0 = SaturatedAdd(v0, MulFixedPoint15(v0, vinvK_frac));
+        v1 = SaturatedAdd(v1, MulFixedPoint15(v1, vinvK_frac));
         Store(v0, di, scratch + (size_t)i * PLL);
         Store(v1, di, scratch + (size_t)i * PLL + L);
         hIdx++;
@@ -1031,8 +1050,8 @@ namespace HWY_NAMESPACE
       auto n1 = Load(di, scratch + nr * PLL + L);
       auto t0 = Load(di, scratch + (size_t)i * PLL);
       auto t1 = Load(di, scratch + (size_t)i * PLL + L);
-      t0 = t0 - MulFixedPoint15(p0 + n0, vcoeff3);
-      t1 = t1 - MulFixedPoint15(p1 + n1, vcoeff3);
+      t0 = SaturatedSub(t0, MulFixedPoint15(SaturatedAdd(p0, n0), vcoeff3));
+      t1 = SaturatedSub(t1, MulFixedPoint15(SaturatedAdd(p1, n1), vcoeff3));
       Store(t0, di, scratch + (size_t)i * PLL);
       Store(t1, di, scratch + (size_t)i * PLL + L);
     }
@@ -1048,8 +1067,8 @@ namespace HWY_NAMESPACE
       auto n1 = Load(di, scratch + nr * PLL + L);
       auto t0 = Load(di, scratch + (size_t)i * PLL);
       auto t1 = Load(di, scratch + (size_t)i * PLL + L);
-      t0 = t0 - MulFixedPoint15(p0 + n0, vcoeff2);
-      t1 = t1 - MulFixedPoint15(p1 + n1, vcoeff2);
+      t0 = SaturatedSub(t0, MulFixedPoint15(SaturatedAdd(p0, n0), vcoeff2));
+      t1 = SaturatedSub(t1, MulFixedPoint15(SaturatedAdd(p1, n1), vcoeff2));
       Store(t0, di, scratch + (size_t)i * PLL);
       Store(t1, di, scratch + (size_t)i * PLL + L);
     }
@@ -1065,10 +1084,10 @@ namespace HWY_NAMESPACE
       auto n1 = Load(di, scratch + nr * PLL + L);
       auto t0 = Load(di, scratch + (size_t)i * PLL);
       auto t1 = Load(di, scratch + (size_t)i * PLL + L);
-      auto ps0 = MulFixedPoint15(p0, vcoeff1) + MulFixedPoint15(n0, vcoeff1) + v4;
-      auto ps1 = MulFixedPoint15(p1, vcoeff1) + MulFixedPoint15(n1, vcoeff1) + v4;
-      t0 = t0 + ShiftRight<3>(ps0);
-      t1 = t1 + ShiftRight<3>(ps1);
+      auto ps0 = MulFixedPoint15(p0, vcoeff1) + MulFixedPoint15(n0, vcoeff1);
+      auto ps1 = MulFixedPoint15(p1, vcoeff1) + MulFixedPoint15(n1, vcoeff1);
+      t0 = SaturatedAdd(t0, vrshift_even(di, ps0, 3));
+      t1 = SaturatedAdd(t1, vrshift_even(di, ps1, 3));
       Store(t0, di, scratch + (size_t)i * PLL);
       Store(t1, di, scratch + (size_t)i * PLL + L);
     }
@@ -1084,10 +1103,10 @@ namespace HWY_NAMESPACE
       auto n1 = Load(di, scratch + nr * PLL + L);
       auto t0 = Load(di, scratch + (size_t)i * PLL);
       auto t1 = Load(di, scratch + (size_t)i * PLL + L);
-      auto sum0 = p0 + n0;
-      auto sum1 = p1 + n1;
-      t0 = t0 + sum0 + MulFixedPoint15(sum0, vcoeff0_frac);
-      t1 = t1 + sum1 + MulFixedPoint15(sum1, vcoeff0_frac);
+      auto sum0 = SaturatedAdd(p0, n0);
+      auto sum1 = SaturatedAdd(p1, n1);
+      t0 = SaturatedAdd(SaturatedAdd(t0, sum0), MulFixedPoint15(sum0, vcoeff0_frac));
+      t1 = SaturatedAdd(SaturatedAdd(t1, sum1), MulFixedPoint15(sum1, vcoeff0_frac));
       Store(t0, di, scratch + (size_t)i * PLL);
       Store(t1, di, scratch + (size_t)i * PLL + L);
     }
@@ -1104,16 +1123,15 @@ namespace HWY_NAMESPACE
     /* ------------------------------------------------------------------ */
     if(dc != 0)
     {
-      const auto vRound = Set(di, (int16_t)(qShift > 0 ? (1 << (qShift - 1)) : 0));
       const auto vdc = Set(di, dc);
       const auto vmin = Set(di, dcMin);
       const auto vmax = Set(di, dcMax);
       for(uint32_t i = 0; i < height; ++i)
       {
-        auto s0 = ShiftRightSame(Load(di, scratch + (size_t)i * PLL) + vRound, qShift);
-        auto s1 = ShiftRightSame(Load(di, scratch + (size_t)i * PLL + L) + vRound, qShift);
-        StoreU(Clamp(s0 + vdc, vmin, vmax), di, dest + (size_t)i * strideDest);
-        StoreU(Clamp(s1 + vdc, vmin, vmax), di, dest + (size_t)i * strideDest + L);
+        auto s0 = vrshift_even(di, Load(di, scratch + (size_t)i * PLL), qShift);
+        auto s1 = vrshift_even(di, Load(di, scratch + (size_t)i * PLL + L), qShift);
+        StoreU(Clamp(SaturatedAdd(s0, vdc), vmin, vmax), di, dest + (size_t)i * strideDest);
+        StoreU(Clamp(SaturatedAdd(s1, vdc), vmin, vmax), di, dest + (size_t)i * strideDest + L);
       }
     }
     else
@@ -1407,7 +1425,7 @@ extern "C" double grk_bench_dwt_16_97(uint32_t width, uint32_t height, uint8_t n
     grk_aligned_free(window);
     return -1.0;
   }
-  const int16_t qShift = 4;
+  const int16_t qShift = 5;
   double best = std::numeric_limits<double>::max();
   for(uint32_t it = 0; it < iters; ++it)
   {
