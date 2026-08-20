@@ -158,13 +158,12 @@ namespace  grk::t1::ojph {
   // Loads 4 bytes from p as a little-endian 32-bit integer; that is, the
   // byte at the lowest address goes into the least-significant byte of the
   // result, irrespective of the machine's endianness.
+  // assembled from bytes rather than cast, since p is any byte offset of
+  // the coded segment and the compiler folds this into one load anyway
   static inline ui32 load_le_ui32(const ui8 *p)
   {
-    if constexpr (std::endian::native == std::endian::little)
-      return *(const ui32 *)p;
-    else
-      return (ui32)p[0] | ((ui32)p[1] << 8)
-        | ((ui32)p[2] << 16) | ((ui32)p[3] << 24);
+    return (ui32)p[0] | ((ui32)p[1] << 8)
+      | ((ui32)p[2] << 16) | ((ui32)p[3] << 24);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -173,10 +172,16 @@ namespace  grk::t1::ojph {
   // of the machine's endianness.
   static inline ui32 load_le_ui16x2(const ui16 *p)
   {
-    if constexpr (std::endian::native == std::endian::little)
-      return *(const ui32 *)p;
-    else
-      return (ui32)p[0] | ((ui32)p[1] << 16);
+    return (ui32)p[0] | ((ui32)p[1] << 16);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Stores the low 16 bits of v at p and the high 16 bits at p + 1, the
+  // inverse of load_le_ui16x2.
+  static inline void store_le_ui16x2(ui16 *p, ui32 v)
+  {
+    p[0] = (ui16)v;
+    p[1] = (ui16)(v >> 16);
   }
 
   /////////////////////////////////////////////////////////////////////////////

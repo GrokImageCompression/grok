@@ -100,7 +100,7 @@ namespace  grk::t1::ojph {
 
       ui32 val = 0xFFFFFFFF;       // feed in 0xFF if buffer is exhausted
       if (melp->size > 4) {        // if there is data in the MEL segment
-        val = *(ui32*)melp->data;  // read 32 bits from MEL data
+        val = load_le_ui32(melp->data); // read 32 bits from MEL data
         melp->data += 4;           // advance pointer
         melp->size -= 4;           // reduce counter
       }
@@ -318,7 +318,7 @@ namespace  grk::t1::ojph {
       if (vlcp->size > 3)  // if there are more than 3 bytes left in VLC
       {
         // (vlcp->data - 3) move pointer back to read 32 bits at once
-        val = *(ui32*)(vlcp->data - 3); // then read 32 bits
+        val = load_le_ui32(vlcp->data - 3); // then read 32 bits
         vlcp->data -= 4;          // move data pointer back by 4
         vlcp->size -= 4;          // reduce available byte by 4
       }
@@ -465,7 +465,7 @@ namespace  grk::t1::ojph {
       ui32 val = 0;
       if (mrp->size > 3) // If there are 3 byte or more
       { // (mrp->data - 3) move pointer back to read 32 bits at once
-        val = *(ui32*)(mrp->data - 3); // read 32 bits
+        val = load_le_ui32(mrp->data - 3); // read 32 bits
         mrp->data -= 4;                // move back pointer
         mrp->size -= 4;                // reduce count
       }
@@ -1702,7 +1702,7 @@ namespace  grk::t1::ojph {
               __m128i r = _mm_or_si128(t0, t1);
               r = _mm_shuffle_epi8(r, shuffle_mask);
 
-              *(ui32*)dp = (ui32)_mm_extract_epi32(r, 0);
+              store_le_ui16x2(dp, (ui32)_mm_extract_epi32(r, 0));
             }
             dp[0] = 0; // set an extra entry on the right with 0
           }
@@ -1769,13 +1769,13 @@ namespace  grk::t1::ojph {
               // We need data for at least 5 columns out of 8.
               // Therefore loading 32 bits is easier than loading 16 bits
               // twice.
-              ui32 ps = *(ui32*)prev_sig;
-              ui32 ns = *(ui32*)(cur_sig + mstr);
+              ui32 ps = load_le_ui16x2(prev_sig);
+              ui32 ns = load_le_ui16x2(cur_sig + mstr);
               ui32 u = (ps & 0x88888888) >> 3; // the row on top
               if (!stripe_causal)
                 u |= (ns & 0x11111111) << 3;   // the row below
 
-              ui32 cs = *(ui32*)cur_sig;
+              ui32 cs = load_le_ui16x2(cur_sig);
               // vertical integration
               ui32 mbr =  cs;                // this sig. info.
               mbr |= (cs & 0x77777777) << 1; //above neighbors
