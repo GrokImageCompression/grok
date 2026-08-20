@@ -22,3 +22,11 @@ extern-kernels = []
 
 [dependencies]
 thiserror = "2"
+
+# only pulled in under RUSTFLAGS="--cfg loom", which swaps the weft wakeup word
+# onto loom's atomics for the model in src/weft/loom_wakeup.rs
+[target.'cfg(loom)'.dependencies]
+loom = "0.7"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }

@@ -32,10 +32,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   mirroring WaveletReverse97's trivial case only halves the height-1 error.
   needs the forward single-sample rule derived for grok's 9/7 normalization
   at every degenerate level, plus a lossy-output review
-- weft's wakeup protocol has no loom model (node.rs claimed one existed in
-  tests/weft_loom.rs, it does not). the tug() lost-wakeup was exactly the
-  class a model catches. write the model, mirror node.rs atomics, wire it
-  into cargo test
 
 ## phase 1: close the eligibility gaps
 

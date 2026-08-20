@@ -14,9 +14,12 @@
 //!   at most one slice of a node runs at a time. Node internals thus need no
 //!   synchronization, and every ring is genuinely SPSC.
 //!
-//! TODO: no loom model exists for this protocol (an earlier comment claimed
-//! one did). The lost-wakeup fixed in tug() is the class a model would catch.
+//! Both are model-checked by the `loom_wakeup` module, which runs this file's
+//! code on loom's atomics under `--cfg loom`.
 
+#[cfg(loom)]
+use loom::sync::atomic::{AtomicU32, Ordering};
+#[cfg(not(loom))]
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::rt::Ctx;
@@ -110,7 +113,9 @@ impl NodeState {
     }
 }
 
-#[cfg(test)]
+// loom's atomics panic outside a loom model, so these single-threaded checks
+// only run in the ordinary build
+#[cfg(all(test, not(loom)))]
 mod tests {
     use super::*;
 

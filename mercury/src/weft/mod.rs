@@ -13,9 +13,11 @@
 //! - [`ring::ring`] — SPSC slot ring, zero-copy hand-off, capacity =
 //!   backpressure
 //! - [`node::Node`] + [`node::NodeState`] — non-blocking slices and the
-//!   SCHEDULED/DIRTY wakeup word (model-checked in tests/weft_loom.rs)
+//!   SCHEDULED/DIRTY wakeup word (model-checked by `loom_wakeup`)
 //! - [`rt::Runtime`] — minimal pool with tail-chaining
 
+#[cfg(all(test, loom))]
+mod loom_wakeup;
 pub mod node;
 pub mod ring;
 pub mod rt;

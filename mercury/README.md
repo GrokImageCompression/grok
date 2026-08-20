@@ -151,6 +151,17 @@ end-to-end decode is validated through **Grok's own test suite** (run with
 small in-crate `#[cfg(test)]` unit tests cover header/packet parsing and tag
 trees.
 
+Those unit tests link against Grok's kernel archives, so `cargo test` needs
+them on the line:
+
+```
+RUSTFLAGS="-L <grok build>/bin -l static=mercury_kernels -l static=hwy -l stdc++" cargo test
+```
+
+Adding `--cfg loom` to that `RUSTFLAGS` swaps the weft wakeup word onto loom's
+atomics and runs the model in `src/weft/loom_wakeup.rs` instead of the
+single-threaded node tests. Exhaustive, around 70 s.
+
 `WEFT_DEBUG=1` enables stall-gate and synthesis-ladder diagnostics on wedged
 graphs. `GRK_MERCURY_DEBUG=1` (host side) logs why a stream fell back to the
 classic pipeline.
