@@ -21,13 +21,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   non-zero origin: getPaddedBandWindow (ResWindow.h, has a standing todo on
   its padding factor) feeding WaveletReversePartial. repro:
   grk_compress -t 14,15 then grk_decompress -d 0,43,61,45
-- encode_97_v returns early on height <= 1, skipping DC shift AND the
-  int-to-float conversion, so 9/7 encodes of one-row finest-level tiles are
-  badly wrong (worst error ~14768 at height 1) and heights 2-4 are also
-  broken (~7300) by something beyond that function. a one-row-only fix
-  mirroring WaveletReverse97's trivial case only halves the height-1 error.
-  needs the forward single-sample rule derived for grok's 9/7 normalization
-  at every degenerate level, plus a lossy-output review
 
 ## phase 1: close the eligibility gaps
 

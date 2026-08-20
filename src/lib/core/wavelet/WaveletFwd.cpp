@@ -442,7 +442,16 @@ namespace HWY_NAMESPACE
                    const uint32_t stride, const uint32_t numrows, float dcShift)
   {
     if(width == 1)
+    {
+      // a lone column is passed through unlifted, doubled on an odd column
+      // where the decompressor's step size drops the high-pass gain
+      if(parity == 1)
+      {
+        for(uint32_t j = 0; j < numrows; ++j)
+          res[(size_t)j * stride] *= 2.0f;
+      }
       return;
+    }
 
     const HWY_FULL(float) d;
     const size_t lanes = Lanes(d);
@@ -627,7 +636,21 @@ namespace HWY_NAMESPACE
     const uint32_t sn = (height + !parity) >> 1;
     const uint32_t dn = height - sn;
     if(height <= 1)
+    {
+      // a lone row still carries the dc shift and the int to float conversion,
+      // and doubles on an odd row where the step size drops the high-pass gain
+      if(height == 1)
+      {
+        const HWY_FULL(int32_t) di;
+        auto v = intInput ? ConvertTo(d, Load(di, (const int32_t*)res)) : Load(d, res);
+        if(dcShift != 0.0f)
+          v = v - Set(d, dcShift);
+        if(parity == 1)
+          v = v + v;
+        StoreN(v, d, res, numcols);
+      }
       return;
+    }
 
     auto temp = scratch;
     if(intInput)
