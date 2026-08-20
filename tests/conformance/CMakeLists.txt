@@ -5,6 +5,24 @@ set(BASELINE_CONF ${GRK_DATA_ROOT}/baseline/conformance)
 set(BASELINE_NR ${GRK_DATA_ROOT}/baseline/nonregression)
 set(INPUT_CONF ${GRK_DATA_ROOT}/input/conformance)
 
+# clang on arm64 fuses multiply-add in the irreversible decode path, which
+# moves a few samples of these files by one against the x86 baselines
+set(macos_fma_tolerance_files p0_04.j2k p0_06.j2k p1_02.j2k p1_04.j2k p1_05.j2k file2.jp2 zoo2.jp2)
+set(fma_peak_tolerance 1)
+set(fma_mse_tolerance 0.001)
+
+function(compare2base_mode out_var filename num_components)
+  if(APPLE AND filename IN_LIST macos_fma_tolerance_files)
+    string(REPEAT "${fma_peak_tolerance}:" ${num_components} peak)
+    string(REPEAT "${fma_mse_tolerance}:" ${num_components} mse)
+    string(REGEX REPLACE ":$" "" peak "${peak}")
+    string(REGEX REPLACE ":$" "" mse "${mse}")
+    set(${out_var} -p ${peak} -m ${mse} PARENT_SCOPE)
+  else()
+    set(${out_var} -d PARENT_SCOPE)
+  endif()
+endfunction()
+
 
 # List of components by file (normally p0_13.j2k have 257 components but for this
 # set of test we consider only 4)
@@ -353,12 +371,13 @@ foreach(numFileC1P0 RANGE 1 16)
                        PROPERTIES DEPENDS
                        ETS-C1P0-${filenameInput}-decode)
 
+  compare2base_mode(compare_mode ${filenameInput} ${nbComponents})
   add_test(NAME NR-C1P0-${filenameInput}-compare2base
       COMMAND compare_images
      -b ${BASELINE_NR}/${filenameRef}
      -t ${TEMP}/c1${filenameInput}.pgx
      -n ${nbComponents}
-     -d
+     ${compare_mode}
      -s b_t_
      )
 
@@ -410,12 +429,13 @@ foreach(numFileC1P1 RANGE 1 7)
                        PROPERTIES DEPENDS
                        ETS-C1P1-${filenameInput}-decode)
 
+  compare2base_mode(compare_mode ${filenameInput} ${nbComponents})
   add_test(NAME NR-C1P1-${filenameInput}-compare2base
       COMMAND compare_images
      -b ${BASELINE_NR}/${filenameRef}
      -t ${TEMP}/c1${filenameInput}.pgx
      -n ${nbComponents}
-     -d
+     ${compare_mode}
      -s b_t_
      )
 
@@ -462,12 +482,13 @@ foreach(numFileJP2 RANGE 1 9)
     PROPERTIES DEPENDS
     ETS-JP2-${filenameInput}-decode)
 
+  compare2base_mode(compare_mode ${filenameInput} 3)
   add_test(NAME NR-JP2-${filenameInput}-compare2base
     COMMAND compare_images
     -b ${BASELINE_NR}/${filenameRef}
     -t ${TEMP}/${filenameInput}.tif
     -n 3
-    -d
+    ${compare_mode}
     -s b_t_
   )
 
@@ -599,12 +620,13 @@ foreach(r_file ${richter_jp2_conf_files})
     PROPERTIES DEPENDS
     ETS-RIC-${filenameInput}-decode)
 
+  compare2base_mode(compare_mode ${filenameInput} 3)
   add_test(NAME NR-RIC-${filenameInput}-compare2base
     COMMAND compare_images
     -b ${BASELINE_NR}/${filenameRef}
     -t ${TEMP}/${filenameInput}.ppm
     ${ric_test_args}
-    -d
+    ${compare_mode}
   )
 
   set_tests_properties(NR-RIC-${filenameInput}-compare2base

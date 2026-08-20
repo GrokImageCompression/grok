@@ -134,10 +134,6 @@ mark_as_advanced(CMAKE_RUNTIME_OUTPUT_DIRECTORY CMAKE_LIBRARY_OUTPUT_DIRECTORY C
 # Compiler specific flags:
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   list(APPEND GROK_COMPILE_OPTIONS -Wall -Wextra -Wconversion -Wsign-conversion -Wunused-parameter)
-  # fused multiply-add rounds once where separate mul and add round twice, and
-  # compilers fuse by default wherever the target has it, so decoded pixels
-  # would differ between arm64 and x86
-  list(APPEND GROK_COMPILE_OPTIONS -ffp-contract=off)
 elseif(MSVC)
   list(APPEND GROK_COMPILE_OPTIONS /MP)
 endif()
