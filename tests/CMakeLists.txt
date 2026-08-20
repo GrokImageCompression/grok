@@ -232,6 +232,11 @@ add_executable(grk_decode_range_test GrkDecodeRangeTest.cpp)
 target_link_libraries(grk_decode_range_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_decode_range_test COMMAND grk_decode_range_test)
 
+# synthesizes its own image, so it needs no GRK_DATA_ROOT
+add_executable(grk_int32_reversible_53_test GrkInt32Reversible53Test.cpp)
+target_link_libraries(grk_int32_reversible_53_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_int32_reversible_53_test COMMAND grk_int32_reversible_53_test)
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
 target_link_libraries(grk_double_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
