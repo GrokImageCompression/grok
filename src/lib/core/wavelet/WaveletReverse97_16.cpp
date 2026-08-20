@@ -570,12 +570,11 @@ namespace HWY_NAMESPACE
       return;
     if(height == 1)
     {
+      // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+      // (the float 9/7 path skips the same scaling for this case)
       // coefficients are in Q-format; output stays in Q-format (intermediate level
       // or MCT component) — the sink (final non-MCT level / inverse MCT) downshifts.
-      if(parity == 0)
-        *dest = apply_K_scale(*bandL);
-      else
-        *dest = apply_invK_scale(*bandH);
+      *dest = (parity == 0) ? *bandL : *bandH;
       return;
     }
 
@@ -715,7 +714,9 @@ namespace HWY_NAMESPACE
       return;
     if(width == 1)
     {
-      dest[0] = (parity == 0) ? apply_K_scale(bandL[0]) : apply_invK_scale(bandH[0]);
+      // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+      // (the float 9/7 path skips the same scaling for this case)
+      dest[0] = (parity == 0) ? bandL[0] : bandH[0];
       return;
     }
 
