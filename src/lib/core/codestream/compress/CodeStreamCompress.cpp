@@ -556,10 +556,12 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
         return false;
       }
       tcp->numpocs_ = numTileProgressions - 1;
+      tcp->hasPoc_ = true;
     }
     else
     {
       tcp->numpocs_ = 0;
+      tcp->hasPoc_ = false;
     }
     if(parameters->mct_data)
     {

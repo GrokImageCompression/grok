@@ -295,7 +295,8 @@ TileCodingParams::TileCodingParams(CodingParams* cp) : cp_(cp)
 TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
     : cp_(rhs.cp_), wholeTileDecompress_(rhs.wholeTileDecompress_), csty_(rhs.csty_),
       prg_(rhs.prg_), numLayers_(rhs.numLayers_), layersToDecompress_(rhs.layersToDecompress_),
-      mct_(rhs.mct_), numpocs_(rhs.numpocs_), pptMarkersCount_(rhs.pptMarkersCount_),
+      mct_(rhs.mct_), numpocs_(rhs.numpocs_), hasPoc_(rhs.hasPoc_),
+      pptMarkersCount_(rhs.pptMarkersCount_),
       pptMarkers_(nullptr), // will be deep copied if needed
       pptData_(nullptr), pptBuffer_(nullptr), pptLength_(rhs.pptLength_),
       mainQcdQntsty(rhs.mainQcdQntsty), mainQcdNumStepSizes(rhs.mainQcdNumStepSizes),
@@ -779,7 +780,7 @@ bool TileCodingParams::readPoc(uint8_t* headerData, uint16_t headerSize, int til
     std::lock_guard<std::mutex> lock(pocMutex_);
     if(tilePartIndex == -1)
     {
-      uint32_t oldNum = (numpocs_ == 0) ? 0 : numpocs_ + 1;
+      uint32_t oldNum = hasPoc_ ? numpocs_ + 1 : 0;
       if(oldNum + currentNumProgressions > GRK_MAXRLVLS)
       {
         grklog.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
@@ -791,6 +792,7 @@ bool TileCodingParams::readPoc(uint8_t* headerData, uint16_t headerSize, int til
         progressionOrderChange_[oldNum + i] = newPocs[i];
       }
       numpocs_ = oldNum + currentNumProgressions - 1;
+      hasPoc_ = true;
     }
     else
     {
@@ -815,7 +817,7 @@ void TileCodingParams::finalizePocs(void)
   }
 
   // Validate main header POCs if any
-  if(numpocs_ > 0)
+  if(hasPoc_ || numpocs_ > 0)
     for(uint32_t i = 0; i <= numpocs_; ++i)
     {
       auto& prog = progressionOrderChange_[i];
@@ -1885,7 +1887,7 @@ uint32_t TileCodingParams::getNumProgressions()
 }
 bool TileCodingParams::hasPoc(void)
 {
-  return numpocs_ > 0;
+  return hasPoc_ || numpocs_ > 0;
 }
 TileComponentCodingParams::TileComponentCodingParams()
     : csty_(0), numresolutions_(0), cblkw_expn_(0), cblkh_expn_(0), cblkStyle_(0), qmfbid_(0),

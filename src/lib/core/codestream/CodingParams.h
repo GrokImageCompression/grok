@@ -271,8 +271,10 @@ struct TileCodingParams
   uint8_t mct_ = 0;
   /** rates of layers */
   double rates_[maxCompressLayersGRK];
-  /** number of progression order changes */
+  /** number of progression order changes, minus one, so it cannot tell one from none */
   uint32_t numpocs_ = 0;
+  /** set when a main header POC was read, so that a single one is not read as none */
+  bool hasPoc_ = false;
   /** progression order changes */
   grk_progression progressionOrderChange_[GRK_MAXRLVLS];
   /** number of ppt markers (reserved size) */
