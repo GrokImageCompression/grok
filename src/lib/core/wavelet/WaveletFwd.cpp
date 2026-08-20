@@ -1388,52 +1388,21 @@ namespace HWY_NAMESPACE
 
     if(height <= 1)
     {
+      // a lone row keeps the dc shift and the narrowing to int16 but no K scaling.
+      // on an odd row it is a high-pass coefficient, and the block coder's doubling
+      // of every non-LL band already supplies the spec's doubling of a lone odd sample
       if(height == 1)
       {
-        // Single row: apply K scaling.  Even parity (lowpass) → 1/K.
-        // Odd parity (high-pass): D' = D/2, then D'×K.
-        if(parity == 0)
+        if(intInput)
         {
-          if(intInput)
-          {
-            for(uint32_t j = 0; j < numcols; ++j)
-            {
-              int16_t v = (int16_t)((int32_t)resolution[j] - (int32_t)dcShift);
-              resolution[j] = (int32_t)fwd_mf15(v, fwd97_invK);
-            }
-          }
-          else
-          {
-            auto* fres = (float*)resolution;
-            for(uint32_t j = 0; j < numcols; ++j)
-            {
-              int16_t v = (int16_t)(fres[j] - dcShift);
-              resolution[j] = (int32_t)fwd_mf15(v, fwd97_invK);
-            }
-          }
+          for(uint32_t j = 0; j < numcols; ++j)
+            resolution[j] = (int32_t)(int16_t)((int32_t)resolution[j] - (int32_t)dcShift);
         }
         else
         {
-          // Odd parity: halve then multiply by K → net = K/2
-          if(intInput)
-          {
-            for(uint32_t j = 0; j < numcols; ++j)
-            {
-              int16_t v = (int16_t)((int32_t)resolution[j] - (int32_t)dcShift);
-              int16_t half = (int16_t)((v + 1) >> 1); // halve with rounding
-              resolution[j] = (int32_t)(int16_t)(half + fwd_mf15(half, fwd97_K_frac));
-            }
-          }
-          else
-          {
-            auto* fres = (float*)resolution;
-            for(uint32_t j = 0; j < numcols; ++j)
-            {
-              int16_t v = (int16_t)(fres[j] - dcShift);
-              int16_t half = (int16_t)((v + 1) >> 1);
-              resolution[j] = (int32_t)(int16_t)(half + fwd_mf15(half, fwd97_K_frac));
-            }
-          }
+          auto* fres = (float*)resolution;
+          for(uint32_t j = 0; j < numcols; ++j)
+            resolution[j] = (int32_t)(int16_t)(fres[j] - dcShift);
         }
       }
       return;
@@ -1572,28 +1541,10 @@ namespace HWY_NAMESPACE
   HWY_ATTR void encode_97_16_h(int32_t* resolution, int16_t* scratch, const uint32_t width,
                                const uint8_t parity, const uint32_t stride, const uint32_t numrows)
   {
+    // a lone column is left unscaled: on an odd column the block coder's doubling
+    // of every non-LL band already supplies the spec's doubling of a lone odd sample
     if(width <= 1)
-    {
-      if(width == 1)
-      {
-        // Single sample: even → 1/K, odd → halve then ×K
-        if(parity == 0)
-        {
-          for(uint32_t r = 0; r < numrows; ++r)
-            resolution[r * stride] = (int32_t)fwd_mf15((int16_t)resolution[r * stride], fwd97_invK);
-        }
-        else
-        {
-          for(uint32_t r = 0; r < numrows; ++r)
-          {
-            int16_t v = (int16_t)resolution[r * stride];
-            int16_t half = (int16_t)((v + 1) >> 1);
-            resolution[r * stride] = (int32_t)(int16_t)(half + fwd_mf15(half, fwd97_K_frac));
-          }
-        }
-      }
       return;
-    }
 
     const HWY_FULL(int16_t) d16;
     const size_t lanes16 = Lanes(d16);
@@ -1702,22 +1653,12 @@ namespace HWY_NAMESPACE
   {
     if(width <= 1)
     {
-      if(width == 1)
+      // the row arrived halved by the vertical pass, so a lone odd column doubles
+      // here to sit at half the spec's value like every other HH coefficient
+      if(width == 1 && parity == 1)
       {
-        // Single sample: even → 1/K, odd → just ×K (no halving)
-        if(parity == 0)
-        {
-          for(uint32_t r = 0; r < numrows; ++r)
-            resolution[r * stride] = (int32_t)fwd_mf15((int16_t)resolution[r * stride], fwd97_invK);
-        }
-        else
-        {
-          for(uint32_t r = 0; r < numrows; ++r)
-          {
-            int16_t v = (int16_t)resolution[r * stride];
-            resolution[r * stride] = (int32_t)(int16_t)(v + fwd_mf15(v, fwd97_K_frac));
-          }
-        }
+        for(uint32_t r = 0; r < numrows; ++r)
+          resolution[r * stride] = (int32_t)(int16_t)(resolution[r * stride] << 1);
       }
       return;
     }
