@@ -435,13 +435,14 @@ grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_
   //   fixed-point coefficients must ALSO carry fractional bits, or the per-step
   //   lifting rounding accumulates into visible error (it compounds across the
   //   ~10 lifting/scaling ops of a 2D level and across decomposition levels).
-  //   The 7-bit headroom budgets ~3 bits for the 9/7 2D BIBO gain (intermediate
-  //   lifting values exceed the reconstructed sample) and 4-5 bits of fractional
-  //   precision to keep that accumulated rounding well under 1 LSB.  So
-  //   prec + 7 <= 16  =>  prec <= 9 uses int16 (>= 4 fractional bits, near-float
-  //   accuracy); at prec >= 10 the fractional margin collapses, so 10/11/12-bit
-  //   (incl. DCI) decode in 32-bit float — exact, and consistent with the int32
-  //   region/partial-decode path.  See doc/16BitDWT.md and WaveletReverse97_16.cpp.
+  //   The 8-bit headroom budgets ~3 bits for the 9/7 2D BIBO gain (intermediate
+  //   lifting values exceed the reconstructed sample) and 5 bits of fractional
+  //   precision, which is what keeps the accumulated rounding inside the T.803
+  //   conformance tolerances.  So prec + 8 <= 16  =>  prec <= 8 uses int16; at
+  //   9 bits the fractional margin drops to 4 bits and the deviation from float
+  //   doubles, so 9-bit and up (incl. DCI) decode in 32-bit float — exact, and
+  //   consistent with the int32 region/partial-decode path.  See doc/16BitDWT.md
+  //   and WaveletReverse97_16.cpp.
   int recommended;
   if(qmfbid == 1) // reversible 5/3
   {
@@ -456,7 +457,7 @@ grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_
     // int16, so decompress has no such restriction.
     if(compress && is_mct)
       return GRK_INT_32;
-    recommended = (int)prec + 7;
+    recommended = (int)prec + 8;
   }
   return recommended <= 16 ? GRK_INT_16 : GRK_INT_32;
 }

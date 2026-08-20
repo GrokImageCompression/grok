@@ -259,7 +259,7 @@
  *
  *    1. Irreversible wavelet (qmfbid == 0)
  *    2. Whole-tile decoding (no region-of-interest partial decode)
- *    3. Image precision ≤ 9 bits (grk_get_data_type: prec + 7 ≤ 16)
+ *    3. Image precision ≤ 8 bits (grk_get_data_type: prec + 8 ≤ 16)
  *
  *  The limit is where the fractional margin collapses: at prec 10 the
  *  Q-format is left with 3 fractional bits, and the accumulated rounding
