@@ -28,6 +28,7 @@
 
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "grok.h"
@@ -81,9 +82,17 @@ namespace
 
 using MapFunction = void* (*)(void*, size_t, int, int, int, off_t);
 
+static void* rawMap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+  return (void*)syscall(SYS_mmap, addr, length, prot, flags, fd, offset);
+}
+
+// a fully static binary has no next mmap for dlsym to find, so the raw system
+// call stands in for it
 static MapFunction systemMap(const char* name)
 {
-  return (MapFunction)dlsym(RTLD_NEXT, name);
+  auto next = (MapFunction)dlsym(RTLD_NEXT, name);
+  return next ? next : rawMap;
 }
 
 // the decoder maps a file for reading with exactly these arguments, and this
@@ -93,8 +102,6 @@ static void* mapWithBlockedPage(MapFunction system, void* addr, size_t length, i
                                 int fd, off_t offset)
 {
   bool decoderReadMapping = !addr && fd >= 0 && prot == PROT_READ && (flags & MAP_SHARED);
-  if(!system)
-    return MAP_FAILED;
   if(!decoderReadMapping)
     return system(addr, length, prot, flags, fd, offset);
 
