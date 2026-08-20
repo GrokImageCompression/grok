@@ -38,6 +38,20 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   YCbCrCoefficients (529) plus ReferenceBlackWhite (532) model against
   grok's eycc transform code, write correct coefficients if so and teach
   the reader to distinguish them from 601, otherwise warn on write
+- NR-DEC-issue205.jp2-43-decode-md5 hashes the glob issue205*, which also
+  matches issue205-tif.jp2.tif written by a concurrent test, so the hash is
+  sometimes taken mid-write and the test flakes. narrow the glob
+- part 2 decode (DFS, ATK) has no test stream for an ATK kernel with K other
+  than 1, for reversible ATK rounding, or for a DFS level with no split
+  (resolvePart2 should reject it). part 2 encode is untouched
+
+
+
+- dropping a codec while a tile fetch is being scheduled crashes with
+  pure virtual method called in CurlFetcher::configureHeaders: ~CurlFetcher
+  stops and joins the worker, but the derived HTTPFetcher or S3Fetcher part
+  is already gone when the worker calls prepareAuthHeaders. the derived
+  destructor has to stop the worker, not the base one
 
 
 ## phase 1: close the eligibility gaps
@@ -58,6 +72,8 @@ stream input and resolution reduction, are done):
    write_plt/write_tlm
 7. precinct smaller than code-block is rejected at plan stage (effective
    block size clamping not wired)
+8. part 2 transforms (DFS, ATK) bail to classic, and classic itself only
+   decodes them whole tile at full resolution
 
 ## phase 2: performance completion
 
