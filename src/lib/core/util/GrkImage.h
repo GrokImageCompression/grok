@@ -28,6 +28,7 @@
 #include "GrkImageMeta.h"
 #include "GrkImageSIMD.h"
 #include "RescaleComponent.h"
+#include "SyccToRGB.h"
 
 namespace grk
 {
@@ -292,22 +293,6 @@ private:
    **/
   template<typename T>
   bool compositePlanar(uint16_t srcNumComps, grk_image_comp* srcComps);
-  /*--------------------------------------------------------
-  Matrix for sYCC, Amendment 1 to IEC 61966-2-1
-
-  Y  |  0.299   0.587    0.114  |    R
-  Cb | -0.1687 -0.3312   0.5    | x  G
-  Cr |  0.5    -0.4187  -0.0812 |    B
-
-  Inverse:
-
-  R   |1        -3.68213e-05    1.40199     |    Y
-  G = |1.00003  -0.344125      -0.714128    | x  Cb - 2^(prec - 1)
-  B   |0.999823  1.77204       -8.04142e-06 |    Cr - 2^(prec - 1)
-
-  -----------------------------------------------------------*/
-  template<typename T>
-  void sycc_to_rgb(T offset, T upb, T y, T cb, T cr, T* out_r, T* out_g, T* out_b);
 
   template<typename T>
   bool sycc444_to_rgb(void);
@@ -1010,49 +995,6 @@ bool GrkImage::compositePlanar(uint16_t srcNumComps, grk_image_comp* srcComps)
   }
 
   return true;
-}
-
-/*--------------------------------------------------------
-Matrix for sYCC, Amendment 1 to IEC 61966-2-1
-
-Y  |  0.299   0.587    0.114  |    R
-Cb | -0.1687 -0.3312   0.5    | x  G
-Cr |  0.5    -0.4187  -0.0812 |    B
-
-Inverse:
-
-R   |1        -3.68213e-05    1.40199     |    Y
-G = |1.00003  -0.344125      -0.714128    | x  Cb - 2^(prec - 1)
-B   |0.999823  1.77204       -8.04142e-06 |    Cr - 2^(prec - 1)
-
------------------------------------------------------------*/
-template<typename T>
-void GrkImage::sycc_to_rgb(T offset, T upb, T y, T cb, T cr, T* out_r, T* out_g, T* out_b)
-{
-  T r, g, b;
-
-  cb -= offset;
-  cr -= offset;
-  r = y + (T)(1.402 * cr);
-  if(r < 0)
-    r = 0;
-  else if(r > upb)
-    r = upb;
-  *out_r = r;
-
-  g = y - (T)(0.344 * cb + 0.714 * cr);
-  if(g < 0)
-    g = 0;
-  else if(g > upb)
-    g = upb;
-  *out_g = g;
-
-  b = y + (T)(1.772 * cb);
-  if(b < 0)
-    b = 0;
-  else if(b > upb)
-    b = upb;
-  *out_b = b;
 }
 
 template<typename T>

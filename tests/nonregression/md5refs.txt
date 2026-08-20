@@ -228,7 +228,7 @@ a190e10941e6145e69816c909f832c1a  issue559-eci-091-CIELab.jp2_0.pgx
 3fccf3c7ecd3b9de46b94b53a1fa0362  issue559-eci-091-CIELab.jp2_1.pgx
 f3081c8e9e9a175f223382a7443b480f  issue559-eci-091-CIELab.jp2_2.pgx
 d7ce6e6d56f96d50130c0b2a47619ad0  issue653-zero-unknownbox.jp2.png
-3102acc13886d2ed4f70451181143eb1  issue726.png
+8e8e4359354508ed6d5cb29a42c16a01  issue726.png
 d7ce6e6d56f96d50130c0b2a47619ad0  issue818.png
 01b0ac7c51880a6d32d3c8977dd49e01  Bretagne2_ht_lossy.png
 521a6d328e3b803e3d033791b15e9f02  Bretagne2_ht.png
@@ -350,8 +350,8 @@ d35710a9aa61cbefd464a68303ed211b  161388041dff7f85465687873c5a1d9680413331_0.pgx
 c71f46a5f3b7cb178b6eda46c88333e9  mono_icc.tif
 da9fdf369cee75617555cd36b2f8346b  mono_icc_0.pgx
 aa889065febf22b7ce78aff3c2897377  mono_icc_force.tif
-c0461fa6e16317953036e4f478226851  sycc_420_odd_origin_x_coord.bmp
-b11c3db2916f4abbd1ed57ca6f1969ca  sycc_420_odd_origin_x_coord.png
+5e2e3c20db857411fb87a9b0ce0025b9  sycc_420_odd_origin_x_coord.bmp
+354ff2daa59dc0e8c0595e4d6ccb9090  sycc_420_odd_origin_x_coord.png
 0e8d96b6894ccdb2239caba9a44eb073  sycc_420_odd_origin_x_coord.tif
 631241b3ffb5e969a51b657712a45488  boats_plt_tlm_cprl.tif
 631241b3ffb5e969a51b657712a45488  boats_plt_tlm_pcrl.tif

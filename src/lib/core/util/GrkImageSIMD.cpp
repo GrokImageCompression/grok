@@ -22,6 +22,7 @@
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
 #include <cstring>
+#include "util/SyccToRGB.h"
 
 HWY_BEFORE_NAMESPACE();
 namespace grk
@@ -112,26 +113,29 @@ namespace HWY_NAMESPACE
   }
 
   /* ─── YCC 4:4:4 → RGB ───
-   * Matches scalar: cb -= offset; cr -= offset; r = y + (int)(1.402 * cr); etc.
-   * Key: truncation to int happens between the float multiply and the int add. */
+   * Fixed point twin of grk::sycc_to_rgb in SyccToRGB.h: the scaled coefficient times a
+   * chroma sample is an exact integer in double, so both paths round to nearest on the
+   * same value. Double lanes give half the lanes of int32 on AVX2. */
   static void Hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr,
                                      int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
                                      uint32_t src_stride, uint32_t dst_stride, int32_t offset,
                                      int32_t upb)
   {
-    const HWY_FULL(float) df;
+    const HWY_FULL(double) dd;
     const HWY_FULL(int32_t) di;
-    const uint32_t L = (uint32_t)Lanes(df);
+    const hn::Half<decltype(di)> di_half;
+    const uint32_t L = (uint32_t)Lanes(dd);
 
-    const auto vOffset_i = Set(di, offset);
-    const auto vZero_i = Zero(di);
-    const auto vUpb_i = Set(di, upb);
+    const auto vOffset = Set(di_half, offset);
+    const auto vZero = Zero(di_half);
+    const auto vUpb = Set(di_half, upb);
+    const auto vRounding = Set(dd, (double)syccRoundingOffset);
+    const auto vInverseScale = Set(dd, 1.0 / syccCoefficientScale);
 
-    /* YCC→RGB coefficients (positive values for correct truncation matching) */
-    const auto c_cr_r = Set(df, 1.402f);
-    const auto c_cb_g = Set(df, 0.344f);
-    const auto c_cr_g = Set(df, 0.714f);
-    const auto c_cb_b = Set(df, 1.772f);
+    const auto c_cr_r = Set(dd, (double)syccCrToRed);
+    const auto c_cb_g = Set(dd, (double)syccCbToGreen);
+    const auto c_cr_g = Set(dd, (double)syccCrToGreen);
+    const auto c_cb_b = Set(dd, (double)syccCbToBlue);
 
     for(uint32_t j = 0; j < h; ++j)
     {
@@ -145,44 +149,31 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto vi_y = LoadU(di, yRow + i);
-        /* Integer offset subtraction (matches: cb -= offset) */
-        auto vi_cb = Sub(LoadU(di, cbRow + i), vOffset_i);
-        auto vi_cr = Sub(LoadU(di, crRow + i), vOffset_i);
-        auto fcb = ConvertTo(df, vi_cb);
-        auto fcr = ConvertTo(df, vi_cr);
+        auto vi_y = LoadU(di_half, yRow + i);
+        auto vcb = PromoteTo(dd, Sub(LoadU(di_half, cbRow + i), vOffset));
+        auto vcr = PromoteTo(dd, Sub(LoadU(di_half, crRow + i), vOffset));
 
-        /* r = y + (int)(1.402 * cr) */
-        auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
-        /* g = y - (int)(0.344 * cb + 0.714 * cr) */
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
-                        vUpb_i);
-        /* b = y + (int)(1.772 * cb) */
-        auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
+        auto scaledRed = Mul(c_cr_r, vcr);
+        auto scaledGreen = Add(Mul(c_cb_g, vcb), Mul(c_cr_g, vcr));
+        auto scaledBlue = Mul(c_cb_b, vcb);
 
-        StoreU(vr, di, rRow + i);
-        StoreU(vg, di, gRow + i);
-        StoreU(vb, di, bRow + i);
+        auto vr = Clamp(Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledRed, vRounding),
+                                                             vInverseScale)))),
+                        vZero, vUpb);
+        auto vg = Clamp(Sub(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledGreen, vRounding),
+                                                              vInverseScale)))),
+                        vZero, vUpb);
+        auto vb = Clamp(Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledBlue, vRounding),
+                                                              vInverseScale)))),
+                        vZero, vUpb);
+
+        StoreU(vr, di_half, rRow + i);
+        StoreU(vg, di_half, gRow + i);
+        StoreU(vb, di_half, bRow + i);
       }
-      if(i < w)
-      {
-        auto m_i = hn::FirstN(di, w - i);
-
-        auto vi_y = hn::MaskedLoad(m_i, di, yRow + i);
-        auto vi_cb = Sub(hn::MaskedLoad(m_i, di, cbRow + i), vOffset_i);
-        auto vi_cr = Sub(hn::MaskedLoad(m_i, di, crRow + i), vOffset_i);
-        auto fcb = ConvertTo(df, vi_cb);
-        auto fcr = ConvertTo(df, vi_cr);
-
-        auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
-                        vUpb_i);
-        auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
-
-        hn::BlendedStore(vr, m_i, di, rRow + i);
-        hn::BlendedStore(vg, m_i, di, gRow + i);
-        hn::BlendedStore(vb, m_i, di, bRow + i);
-      }
+      for(; i < w; ++i)
+        grk::sycc_to_rgb<int32_t>(offset, upb, yRow[i], cbRow[i], crRow[i], rRow + i, gRow + i,
+                                  bRow + i);
     }
   }
 

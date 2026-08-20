@@ -51,9 +51,10 @@ void hwy_scale_div_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, i
 /* YCC 4:4:4 to RGB conversion using Highway SIMD.
  * Reads from planar y/cb/cr, writes to planar r/g/b.
  * offset = 1 << (prec - 1), upb = (1 << prec) - 1 */
-void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr, int32_t* r,
-                            int32_t* g, int32_t* b, uint32_t w, uint32_t h, uint32_t src_stride,
-                            uint32_t dst_stride, int32_t offset, int32_t upb);
+GRK_SIMD_API void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr,
+                                         int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
+                                         uint32_t src_stride, uint32_t dst_stride, int32_t offset,
+                                         int32_t upb);
 
 /* eYCC to RGB conversion using Highway SIMD.
  * In-place: reads/writes from the same yd/bd/rd arrays. */

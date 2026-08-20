@@ -65,6 +65,14 @@ add_executable(grk_rate_control_test GrkRateControlTest.cpp)
 target_link_libraries(grk_rate_control_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_control_test COMMAND grk_rate_control_test)
 
+add_executable(grk_sycc_rounding_test GrkSyccRoundingTest.cpp)
+target_include_directories(grk_sycc_rounding_test PRIVATE
+  ${GROK_SOURCE_DIR}/src/lib/core/util
+  ${CMAKE_BINARY_DIR}/src/lib/core
+)
+target_link_libraries(grk_sycc_rounding_test ${GROK_CORE_NAME})
+add_test(NAME grk_sycc_rounding_test COMMAND grk_sycc_rounding_test)
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util
