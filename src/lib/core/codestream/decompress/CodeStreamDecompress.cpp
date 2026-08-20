@@ -188,6 +188,16 @@ void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* 
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
+  // the first run hands the pixel buffers over to the composite image and reads the
+  // stream to the end, so a second run has neither buffers nor bytes left to work with
+  if(decompressCalled_)
+  {
+    grklog.error("decompress: a codec decompresses its stream once. Create a new codec to "
+                 "decompress it again, or use grk_decompress_tile for per-tile decoding");
+    return false;
+  }
+  decompressCalled_ = true;
+
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this decode is in flight.
   auto pinnedExec = TFSingleton::acquire();

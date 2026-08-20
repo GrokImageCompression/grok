@@ -221,3 +221,8 @@ endif()
 add_executable(grk_degenerate_97_test GrkDegenerate97Test.cpp)
 target_link_libraries(grk_degenerate_97_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_degenerate_97_test COMMAND grk_degenerate_97_test)
+
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
+target_link_libraries(grk_double_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_double_decompress_test COMMAND grk_double_decompress_test)

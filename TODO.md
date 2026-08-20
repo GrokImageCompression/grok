@@ -12,8 +12,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 - createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
   only. other stream creators may have the same unowned-handle pattern
-- a second grk_decompress call on the same codec returns true but hands back
-  an image whose comps[0].data is null
 - region decode returns wrong pixels for tiled images on a fixed set of
   source rows regardless of window position (61x67 with 14x15 tiles: rows
   28, 39, 40, 43, 44, 55, 56, 58, 59). single-tile windows and whole-tile
