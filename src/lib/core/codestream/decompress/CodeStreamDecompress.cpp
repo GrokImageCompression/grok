@@ -1309,11 +1309,20 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
 
 //////////////////////////////////////////////////////////////////
 
+Rect32 CodeStreamDecompress::tileGridBounds(void) const
+{
+  // clip to UINT32_MAX so a grid extent wider than uint32_t does not wrap to 0
+  uint64_t x1 = (uint64_t)cp_.tx0_ + (uint64_t)cp_.t_grid_width_ * cp_.t_width_;
+  uint64_t y1 = (uint64_t)cp_.ty0_ + (uint64_t)cp_.t_grid_height_ * cp_.t_height_;
+
+  return Rect32(cp_.tx0_, cp_.ty0_, (uint32_t)std::min<uint64_t>(x1, UINT32_MAX),
+                (uint32_t)std::min<uint64_t>(y1, UINT32_MAX));
+}
+
 bool CodeStreamDecompress::setDecompressRegion(RectD region)
 {
   compositeBoundsReduced_ = false;
   auto image = headerImage_;
-  auto imageBounds = headerImage_->getBounds();
 
   if(region != RectD(0, 0, 0, 0))
   {
@@ -1418,7 +1427,7 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
       tileCompletion_ = std::make_unique<TileCompletion>(
-          tileCache_.get(), imageBounds, cp_.t_width_, cp_.t_height_,
+          tileCache_.get(), tileGridBounds(), cp_.t_width_, cp_.t_height_,
           [this](uint16_t tileIndexBegin, uint16_t) { onRowCompleted(tileIndexBegin); },
           [this]() {
             scheduleTileBatch();

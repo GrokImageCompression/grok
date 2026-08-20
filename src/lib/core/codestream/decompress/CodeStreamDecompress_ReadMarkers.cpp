@@ -196,9 +196,8 @@ void CodeStreamDecompress::postReadHeader(void)
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
-      auto bounds = headerImage_->getBounds();
       tileCompletion_ = std::make_unique<TileCompletion>(
-          tileCache_.get(), bounds, cp_.t_width_, cp_.t_height_,
+          tileCache_.get(), tileGridBounds(), cp_.t_width_, cp_.t_height_,
           [this](uint16_t tileIndexBegin, uint16_t) { onRowCompleted(tileIndexBegin); },
           [this]() { scheduleTileBatch(); }, tilesToDecompress_.getSlatedTileRect());
     }

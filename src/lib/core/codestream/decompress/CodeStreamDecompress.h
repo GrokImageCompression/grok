@@ -208,6 +208,15 @@ protected:
 private:
   void postReadHeader(void);
 
+  /**
+   * @brief Bounds of the whole tile grid, in unreduced canvas coordinates.
+   *
+   * TileCompletion divides these bounds by the tile size to derive its tile grid, so they
+   * have to span every tile. The image area is not enough: a tile grid anchored left of or
+   * above the image origin has more tile columns or rows than the image area covers.
+   */
+  Rect32 tileGridBounds(void) const;
+
   void onRowCompleted(uint16_t tileIndexBegin);
   void scheduleTileBatch();
   static constexpr int32_t maxRowsAhead_ = 2;
