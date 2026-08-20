@@ -169,17 +169,20 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   bool isAZ = file.starts_with("/vsiaz/");
   bool isADLS = file.starts_with("/vsiadls/");
   bool isGS = file.starts_with("/vsigs/");
-  CurlFetcher* fetcher;
+  // the fetcher starts a worker thread and a curl handle the moment it is
+  // built, and both init and the stream constructor throw, so hold it until
+  // the stream takes it over
+  std::unique_ptr<CurlFetcher> fetcher;
   if(isS3)
-    fetcher = new S3Fetcher();
+    fetcher = std::make_unique<S3Fetcher>();
   else if(isAZ)
-    fetcher = new AZFetcher();
+    fetcher = std::make_unique<AZFetcher>();
   else if(isADLS)
-    fetcher = new ADLSFetcher();
+    fetcher = std::make_unique<ADLSFetcher>();
   else if(isGS)
-    fetcher = new GSFetcher();
+    fetcher = std::make_unique<GSFetcher>();
   else
-    fetcher = new HTTPFetcher();
+    fetcher = std::make_unique<HTTPFetcher>();
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();
   auto initial_double_buffer_len =
@@ -187,10 +190,13 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auto double_buffer_len = getDoubleBufferLength(streamParams_.double_buffer_len);
   initial_double_buffer_len = std::min(initial_double_buffer_len, (size_t)dataLen);
   double_buffer_len = std::min(double_buffer_len, (size_t)dataLen);
-  auto stream = new BufferedStream(nullptr, initial_double_buffer_len, double_buffer_len,
-                                   true // read-only stream
+  auto stream = std::make_unique<BufferedStream>(nullptr, initial_double_buffer_len,
+                                                 double_buffer_len,
+                                                 true // read-only stream
   );
-  stream->setUserData(fetcher, [](void* p) { delete static_cast<CurlFetcher*>(p); }, dataLen);
+  auto fetcherOwnedByStream = fetcher.release();
+  stream->setUserData(
+      fetcherOwnedByStream, [](void* p) { delete static_cast<CurlFetcher*>(p); }, dataLen);
   StreamCallbacks callbacks(
       [](uint8_t* buffer, size_t numBytes, void* user_data) -> size_t {
         auto fetcher = static_cast<CurlFetcher*>(user_data);
@@ -202,15 +208,12 @@ IStream* StreamGenerator::createCurlFetchStream(void)
       },
       nullptr);
   stream->setCallbacks(callbacks);
-  stream->setFetcher(fetcher);
+  stream->setFetcher(fetcherOwnedByStream);
 
-  if(!validateStream(stream))
-  {
-    delete stream;
+  if(!validateStream(stream.get()))
     return nullptr;
-  }
 
-  return stream;
+  return stream.release();
 #else
   grklog.error("CurlSyncFetch stream unavailable: libcurl not enabled.");
   return nullptr;

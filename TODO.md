@@ -10,8 +10,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
 
 ## classic output bugs found by the sweep (not migration blockers)
 
-- createMappedFileReadStream fd/leak class: fixed, but the audit was per-file
-  only. other stream creators may have the same unowned-handle pattern
 
 ## phase 1: close the eligibility gaps
 

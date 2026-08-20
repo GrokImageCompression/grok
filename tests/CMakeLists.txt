@@ -231,3 +231,10 @@ add_test(NAME grk_degenerate_97_test COMMAND grk_degenerate_97_test)
 add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
 target_link_libraries(grk_double_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_double_decompress_test COMMAND grk_double_decompress_test)
+
+# a network stream builds its fetcher before the path is known to be usable
+if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(grk_fetch_stream_leak_test GrkFetchStreamLeakTest.cpp)
+  target_link_libraries(grk_fetch_stream_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_fetch_stream_leak_test COMMAND grk_fetch_stream_leak_test)
+endif()

@@ -526,6 +526,7 @@ void CurlFetcher::fetch_total_size()
   {
     grklog.error("HEAD request failed: %s", curl_easy_strerror(res));
     curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
     throw std::runtime_error("Failed to fetch file size");
   }
 
@@ -535,6 +536,7 @@ void CurlFetcher::fetch_total_size()
   {
     grklog.error("HEAD request returned HTTP %ld", response_code);
     curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
     throw std::runtime_error("Invalid HEAD response");
   }
 
