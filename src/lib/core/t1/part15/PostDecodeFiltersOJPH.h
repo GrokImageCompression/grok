@@ -18,6 +18,7 @@
 #pragma once
 
 #include "BlockExec.h"
+#include "CodeStreamLimits.h"
 
 namespace grk::t1::ojph
 {
@@ -72,7 +73,7 @@ public:
   explicit RoiScaleOJPHFilter(DecompressBlockExec* block)
       : roiShift(block->roishift), scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
   {
-    assert(block->bandNumbps <= 31);
+    assert(block->bandNumbps <= maxBitPlanesHT);
   }
   inline void copy(T* dest, const T* src, uint32_t len)
   {
@@ -100,7 +101,7 @@ public:
   explicit ScaleOJPHFilter(DecompressBlockExec* block)
       : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
   {
-    assert(block->bandNumbps <= 31);
+    assert(block->bandNumbps <= maxBitPlanesHT);
   }
   inline void copy(T* dest, const T* src, uint32_t len)
   {
@@ -170,7 +171,7 @@ public:
       : scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)) *
                (float)(1u << block->qShift))
   {
-    assert(block->bandNumbps <= 31);
+    assert(block->bandNumbps <= maxBitPlanesHT);
   }
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
@@ -201,7 +202,7 @@ public:
         scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)) *
                (float)(1u << block->qShift))
   {
-    assert(block->bandNumbps <= 31);
+    assert(block->bandNumbps <= maxBitPlanesHT);
   }
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {

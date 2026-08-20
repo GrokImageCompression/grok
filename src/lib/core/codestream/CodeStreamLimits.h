@@ -33,6 +33,8 @@ const uint16_t maxTotalTilePartsJ2K = 65535;
 const uint32_t maxTilePartSizeJ2K = UINT_MAX;
 const uint16_t maxNumLayersJ2K = 65535;
 const uint32_t maxBitPlanesJ2K = 30;
+// the HT block coder keeps a band's bit planes in the 31 magnitude bits of a 32 bit word
+const uint8_t maxBitPlanesHT = 31;
 
 // Limits in Grok library
 #define T1_NMSEDEC_BITS 7

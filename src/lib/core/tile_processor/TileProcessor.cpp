@@ -381,7 +381,13 @@ bool TileProcessor::init(void)
         band->maxBitPlanes_ =
             tccp->roishift_ +
             (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits_ - 1U));
-        // assert(band->numbps <= maxBitPlanesJ2K);
+        if(tcp_->isHT() && band->maxBitPlanes_ > maxBitPlanesHT)
+        {
+          grklog.error("Band has %u bit planes, but the HT block coder supports at most %u",
+                       band->maxBitPlanes_, maxBitPlanesHT);
+          delete[] resolutions;
+          return false;
+        }
       }
       // initialize precincts and code blocks
       if(!res->init(current_plugin_tile_, isCompressor_, tcp_->numLayers_, this, tccp, resno))
