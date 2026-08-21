@@ -367,6 +367,13 @@ if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL AND BUILD_SHARED_LIBS AND CMAKE_SYSTE
   add_executable(grk_fetch_shutdown_leak_test GrkFetchShutdownLeakTest.cpp)
   target_link_libraries(grk_fetch_shutdown_leak_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_fetch_shutdown_leak_test COMMAND grk_fetch_shutdown_leak_test)
+
+  # freezes the fetch worker one curl call short of prepareAuthHeaders, then
+  # drops the codec, to catch the pure virtual dispatch during destruction
+  add_executable(grk_fetch_pure_virtual_test GrkFetchPureVirtualTest.cpp)
+  target_link_libraries(grk_fetch_pure_virtual_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_fetch_pure_virtual_test COMMAND grk_fetch_pure_virtual_test)
+  set_tests_properties(grk_fetch_pure_virtual_test PROPERTIES TIMEOUT 90)
 endif()
 
 # five windows per file, each decoded asynchronously and waited on swath by swath

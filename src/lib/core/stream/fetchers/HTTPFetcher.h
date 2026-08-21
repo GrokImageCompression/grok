@@ -29,6 +29,12 @@ namespace grk
 
 class HTTPFetcher : public CurlFetcher
 {
+public:
+  ~HTTPFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {

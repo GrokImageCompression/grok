@@ -30,6 +30,12 @@ namespace grk
 
 class ADLSFetcher : public CurlFetcher
 {
+public:
+  ~ADLSFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {

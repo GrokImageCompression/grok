@@ -264,6 +264,12 @@ protected:
 
   void fetchWorker();
 
+  // stop and join the worker thread. must run before any derived part is
+  // destroyed, since the worker dispatches prepareAuthHeaders and auth
+  // through the vtable. idempotent: the joinable() guard makes a second
+  // call a no-op.
+  void stopWorker();
+
   static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* s)
   {
     s->append((char*)contents, size * nmemb);

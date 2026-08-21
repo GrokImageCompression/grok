@@ -188,6 +188,13 @@ enum class AWSCredentialSource
  */
 class S3Fetcher : public CurlFetcher
 {
+public:
+  ~S3Fetcher() override
+  {
+    stopWorker();
+  }
+
+private:
   // Cached credentials shared across all S3Fetcher instances.
   // Temporary credentials (STS, SSO, EC2, etc.) are cached until expiration
   // with a 60-second safety margin, matching GDAL behavior.

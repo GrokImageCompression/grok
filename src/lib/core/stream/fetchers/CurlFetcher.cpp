@@ -79,7 +79,7 @@ CurlFetcher::CurlFetcher(void) : tileWriteCallback_(tileWriteCallback)
   fetchThread_ = std::thread(&CurlFetcher::fetchWorker, this);
 }
 
-CurlFetcher::~CurlFetcher()
+void CurlFetcher::stopWorker()
 {
   {
     std::lock_guard<std::mutex> lock(queue_mutex_);
@@ -89,6 +89,13 @@ CurlFetcher::~CurlFetcher()
   throttleCV_.notify_all(); // Wake worker from throttle wait
   if(fetchThread_.joinable())
     fetchThread_.join();
+}
+
+CurlFetcher::~CurlFetcher()
+{
+  // safety net: a derived destructor already joined the worker, but a direct
+  // CurlFetcher with no derived part relies on this call
+  stopWorker();
   if(multi_handle_)
     curl_multi_cleanup(multi_handle_);
   curl_global_cleanup();

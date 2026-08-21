@@ -30,6 +30,12 @@ namespace grk
 
 class GSFetcher : public CurlFetcher
 {
+public:
+  ~GSFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {
