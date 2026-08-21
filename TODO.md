@@ -18,26 +18,6 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   and a raw composite with postProcess deferred to image handoff, so partial
   re-decode is expressible. per-tile re-decode through grk_decompress_tile
   works today
-- p0_07.j2k async simulate-synchronous decode still deadlocks: the sync
-  incremental band path was fixed (a row is not waited on until all its
-  tiles are scheduled), but scheduleTileBatch's throttle has the same
-  exposure for a swath covering a row whose last tile part sits past the
-  window. needs the same not-fully-scheduled predicate on the async wait
-- GrkImage::sycc444_to_rgb dispatches int32 to the SIMD hwy_sycc444_to_rgb_i32
-  and everything else to the scalar sycc_to_rgb, and the two round
-  differently (file2.jp2 decoded through int32 differs by 1 on 58 samples)
-- the int16 decode eligibility rule is evaluated twice, in
-  TileProcessor::createDecompressTileComponentWindows and again in
-  CodeStreamDecompress::activateScratch for the multi-tile composite, and
-  GrkImage::compositePlanar has no int32 to int16 branch, so a disagreement
-  between the two is a heap overrun. decide once and carry the result
-- eycc images are written to tif as PHOTOMETRIC_YCBCR implying rec.601
-  coefficients (TIFFFormat.h writeHeader), so converting readers get wrong
-  colors, and grok reads its own eycc tif back as sycc. byte round trips
-  are unaffected. preferred fix: check whether eycc's inverse fits tiff's
-  YCbCrCoefficients (529) plus ReferenceBlackWhite (532) model against
-  grok's eycc transform code, write correct coefficients if so and teach
-  the reader to distinguish them from 601, otherwise warn on write
 - NR-DEC-issue205.jp2-43-decode-md5 hashes the glob issue205*, which also
   matches issue205-tif.jp2.tif written by a concurrent test, so the hash is
   sometimes taken mid-write and the test flakes. narrow the glob
