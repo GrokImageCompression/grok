@@ -107,6 +107,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         assert image.comps[0].w == w
         assert image.comps[0].h == h
         assert image.comps[0].prec == prec
@@ -121,6 +122,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         for c in range(nc):
             assert image.comps[c].w == w
             assert image.comps[c].h == h
@@ -173,6 +175,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         grok_core.grk_object_unref(codec)
 
     def test_16bit_roundtrip(self, tmp_path):
