@@ -27,7 +27,14 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <io.h>
+#define dup _dup
+#define dup2 _dup2
+#define close _close
+#else
 #include <unistd.h>
+#endif
 
 #include "grok.h"
 
