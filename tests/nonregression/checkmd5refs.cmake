@@ -77,20 +77,20 @@ if(PLATFORM_KEY)
     endif()
 endif()
 
-# Extract filename without extension
-get_filename_component(OUTFILENAME_NAME_WE ${OUTFILENAME} NAME_WE)
+# Match only this decode's own outputs. The stem keeps everything up to the
+# final extension (issue205.jp2.pgx -> issue205.jp2) and the glob is pinned to
+# the output's own extension, so a multi-component decode (issue205.jp2_0.pgx)
+# is still caught while a sibling test's issue205-tif.jp2.tif or issue205.jp2_r0.tif
+# is not: a broader glob hashed those mid-write and flaked.
+get_filename_component(_outfilename_name ${OUTFILENAME} NAME)
+string(REGEX REPLACE "\\.[^.]*$" "" _outfilename_stem "${_outfilename_name}")
+string(REGEX MATCH "\\.[^.]*$" _outfilename_ext "${_outfilename_name}")
 
-# Search for the files with different extensions
-file(GLOB globfiles
-    "Temporary/${OUTFILENAME_NAME_WE}*.pgx"
-    "Temporary/${OUTFILENAME_NAME_WE}*.pgm"
-    "Temporary/${OUTFILENAME_NAME_WE}*.png"
-    "Temporary/${OUTFILENAME_NAME_WE}*.bmp"
-    "Temporary/${OUTFILENAME_NAME_WE}*.tif")
+file(GLOB globfiles "Temporary/${_outfilename_stem}*${_outfilename_ext}")
 
 # Check if no files are found
 if(NOT globfiles)
-    message(SEND_ERROR "Could not find output PGX/PGM/PNG/BMP/TIF files: ${OUTFILENAME_NAME_WE}")
+    message(SEND_ERROR "Could not find output files: Temporary/${_outfilename_stem}*${_outfilename_ext}")
 endif()
 
 # Read the active reference file content
