@@ -18,20 +18,9 @@ corpora with a CI lane, fuzzing local + CIFuzz + oss-fuzz, TSAN soak clean.
   and a raw composite with postProcess deferred to image handoff, so partial
   re-decode is expressible. per-tile re-decode through grk_decompress_tile
   works today
-- NR-DEC-issue205.jp2-43-decode-md5 hashes the glob issue205*, which also
-  matches issue205-tif.jp2.tif written by a concurrent test, so the hash is
-  sometimes taken mid-write and the test flakes. narrow the glob
 - part 2 decode (DFS, ATK) has no test stream for an ATK kernel with K other
   than 1, for reversible ATK rounding, or for a DFS level with no split
   (resolvePart2 should reject it). part 2 encode is untouched
-
-
-
-- dropping a codec while a tile fetch is being scheduled crashes with
-  pure virtual method called in CurlFetcher::configureHeaders: ~CurlFetcher
-  stops and joins the worker, but the derived HTTPFetcher or S3Fetcher part
-  is already gone when the worker calls prepareAuthHeaders. the derived
-  destructor has to stop the worker, not the base one
 
 
 ## phase 1: close the eligibility gaps
