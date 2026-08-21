@@ -73,6 +73,13 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
   auto pltMarkers = tileProcessor->getPacketLengthCache()->getMarkers();
   if(pltMarkers && !pltMarkers->isEnabled())
     pltMarkers = nullptr;
+  // Bound the PLT skip-corrupt-packet path: the smallest legal packet with no
+  // SOP/EPH is a 1-byte header, so a tile cannot hold more packets than it has
+  // compressed bytes. A malformed precinct grid can declare far more packets
+  // than that, and skipping each corrupt one would iterate the whole bogus
+  // grid. Once skips exceed the byte budget the grid is provably lying.
+  const size_t maxCorruptSkips = compressedPackets->length();
+  size_t corruptSkips = 0;
   for(auto prog_iter_num = 0U; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     auto currPi = packetManager.getPacketIter(prog_iter_num);
@@ -130,6 +137,11 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
                       "layer=%02d",
                       tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
                       currPi->getLayno());
+          if(++corruptSkips > maxCorruptSkips)
+          {
+            grklog.warn("Tile %u is truncated.", tile_no);
+            return true;
+          }
         }
         // ToDo: skip corrupt packet if SOP marker is present
       }

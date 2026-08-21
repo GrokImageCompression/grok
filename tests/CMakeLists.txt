@@ -146,6 +146,18 @@ add_executable(grk_tile_part_rejection_race_test GrkTilePartRejectionRaceTest.cp
 target_link_libraries(grk_tile_part_rejection_race_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_tile_part_rejection_race_test COMMAND grk_tile_part_rejection_race_test)
 
+# Regression for an OSS-Fuzz timeout: a bogus precinct grid with PLT markers made
+# T2 packet parsing skip corrupt packets across the whole grid without end. The
+# test must RETURN; the TIMEOUT turns a regression hang into a failure.
+add_executable(grk_t2_corrupt_packet_bound_test GrkT2CorruptPacketBoundTest.cpp)
+target_link_libraries(grk_t2_corrupt_packet_bound_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_t2_corrupt_packet_bound_test
+    COMMAND grk_t2_corrupt_packet_bound_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6491002333102080)
+  set_tests_properties(grk_t2_corrupt_packet_bound_test PROPERTIES TIMEOUT 60)
+endif()
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)
