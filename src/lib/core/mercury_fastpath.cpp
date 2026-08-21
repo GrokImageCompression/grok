@@ -490,6 +490,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // same contract as classic's T2 packet skip: 0 decodes every layer, and a
   // limit at or above the stream's layer count is a full decode
   mparams.max_layers = dec.layersToDecompress_;
+  // classic ignores PLT when a PLM is present or the app disabled it
+  mparams.disable_plt =
+      cs.cp_.plmMarkers_ != nullptr || (dec.disableRandomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) != 0;
 
   uint8_t err[256] = {0};
   MercuryPlan* plan = nullptr;

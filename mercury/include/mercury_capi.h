@@ -116,6 +116,8 @@ typedef struct MercuryDecodeParams
   /* Decode only the first max_layers quality layers; 0 decodes all of them.
    * A value at or above num_layers is also a full decode. */
   uint16_t max_layers;
+  /* Nonzero ignores PLT markers (host saw a PLM, or the app opted out). */
+  bool disable_plt;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.

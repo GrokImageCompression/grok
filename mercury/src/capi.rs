@@ -320,13 +320,19 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let (reduce, max_layers) = if params.is_null() {
-        (0, 0)
+    let (reduce, max_layers, use_plt) = if params.is_null() {
+        (0, 0, true)
     } else {
-        unsafe { ((*params).reduce, (*params).max_layers) }
+        unsafe {
+            (
+                (*params).reduce,
+                (*params).max_layers,
+                !(*params).disable_plt,
+            )
+        }
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        draft(&*src, &header, reduce, max_layers)
+        draft(&*src, &header, reduce, max_layers, use_plt)
     }));
     match r {
         Ok(Ok(plan)) => Box::into_raw(Box::new(MercuryPlan { plan, src })),
@@ -350,6 +356,8 @@ pub struct MercuryDecodeParams {
     /// Decode only the first `max_layers` quality layers; 0 decodes all of
     /// them, as does any value at or above `num_layers`.
     pub max_layers: u16,
+    /// Nonzero ignores PLT markers (host saw a PLM, or the app opted out).
+    pub disable_plt: bool,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),

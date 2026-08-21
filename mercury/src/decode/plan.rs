@@ -233,12 +233,14 @@ struct PrecBand {
 }
 
 /// `max_layers` keeps only the first that many quality layers (0 = all),
-/// truncating the coding passes the dropped layers carry.
+/// truncating the coding passes the dropped layers carry. `use_plt` lets the
+/// parse hop over non-contributing packets by their PLT lengths.
 pub fn draft(
     file: &dyn ReadAt,
     hdr: &MainHeaderIn,
     reduce: u8,
     max_layers: u16,
+    use_plt: bool,
 ) -> Result<DecodePlan, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
@@ -294,6 +296,8 @@ pub fn draft(
 
     // --- walk the SOT chain: collect each tile's packet-data segments ---
     let mut tile_segs: Vec<Vec<(u64, u64)>> = vec![Vec::new(); num_tiles];
+    // Raw PLT payloads per tile: (Zplt, comma-coded length bytes).
+    let mut tile_plt: Vec<Vec<(u8, Vec<u8>)>> = vec![Vec::new(); num_tiles];
     let mut sot_pos = hdr.first_sot_off;
     loop {
         let mut sot = [0u8; 12];
@@ -332,6 +336,13 @@ pub fn draft(
                 _ => {}
             }
             let l = u16::from_be_bytes([m[2], m[3]]) as u64;
+            // PLT (A.7.1): Zplt byte then comma-coded packet lengths.
+            if use_plt && code == 0xFF58 && l >= 3 {
+                let mut payload = vec![0u8; (l - 2) as usize];
+                file.draw_at(&mut payload, mp + 4).map_err(io_snag)?;
+                let lengths = payload.split_off(1);
+                tile_plt[isot].push((payload[0], lengths));
+            }
             mp += 2 + l;
             if mp + 4 > sot_pos + psot {
                 return Err(DecodeError::Logic("SOD not found in tile-part".into()));
@@ -354,6 +365,7 @@ pub fn draft(
     let mut tiles: Vec<TilePlan> = Vec::with_capacity(num_tiles);
     for t in 0..num_tiles {
         let geom = chart_tile_geom(&hdr.siz, &hdr.cod, t as u16);
+        let plt = plt_packet_lengths(std::mem::take(&mut tile_plt[t]));
         let comps = comb_tile(
             file,
             &mut win,
@@ -366,6 +378,7 @@ pub fn draft(
             d,
             target_res,
             max_layers,
+            plt.as_deref(),
         )?;
         tiles.push(TilePlan { comps, geom });
     }
@@ -382,6 +395,39 @@ pub fn draft(
     })
 }
 
+/// Decode one tile's PLT markers into per-packet lengths, in packet order.
+/// Markers sort by Zplt, stably, so within one Zplt key tile-parts keep stream
+/// order (same grouping classic grok uses); a comma-coded length may continue
+/// across markers. None disables the shortcut: no markers, a dangling
+/// continuation, a zero length (a packet is at least one byte), or a length
+/// past 32 bits.
+fn plt_packet_lengths(mut markers: Vec<(u8, Vec<u8>)>) -> Option<Vec<u32>> {
+    if markers.is_empty() {
+        return None;
+    }
+    markers.sort_by_key(|&(zplt, _)| zplt);
+    let mut lengths = Vec::new();
+    let mut acc: u64 = 0;
+    let mut continued = false;
+    for (_, data) in &markers {
+        for &b in data {
+            acc = (acc << 7) | (b & 0x7F) as u64;
+            if acc > u32::MAX as u64 {
+                return None;
+            }
+            continued = b & 0x80 != 0;
+            if !continued {
+                if acc == 0 {
+                    return None;
+                }
+                lengths.push(acc as u32);
+                acc = 0;
+            }
+        }
+    }
+    if continued { None } else { Some(lengths) }
+}
+
 /// Parse all of one tile's packets and build its band plans.
 #[allow(clippy::too_many_arguments)]
 fn comb_tile(
@@ -396,6 +442,7 @@ fn comb_tile(
     d: u32,
     target_res: usize,
     max_layers: u16,
+    plt: Option<&[u32]>,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
     let pkt_debug = std::env::var_os("MERCURY_PKT_DEBUG").is_some();
     let num_comps = geom.components.len();
@@ -591,8 +638,25 @@ fn comb_tile(
         .collect();
 
     let mut vpos: u64 = 0;
+    let mut plt_idx: usize = 0;
     for (_, pkt) in &pkts {
         let (c, r) = (pkt.comp as usize, pkt.res as usize);
+        // A PLT length covers the whole packet, SOP and header included
+        // (A.7.1), so a packet that contributes no block records hops by
+        // length, header unparsed. Skipped layers are the tail layers of a
+        // precinct and skipped resolutions never parse at all, so the tag-tree
+        // state the parsed packets need is never behind.
+        let dropped_layer = max_layers != 0 && pkt.layer >= max_layers;
+        let contributes = r <= target_res && !dropped_layer;
+        let plt_len = plt.and_then(|v| v.get(plt_idx)).copied();
+        if !contributes {
+            if let Some(len) = plt_len {
+                plt_idx += 1;
+                vpos += len as u64;
+                continue;
+            }
+        }
+        let pkt_start = vpos;
         let tc = &geom.components[c];
         let res = &tc.resolutions[r];
         let (px0, py0, npx, _) = grids[c][r];
@@ -701,14 +765,9 @@ fn comb_tile(
         // in the real file (a packet never spans tile-parts).
         let (body_real, _) = stream.unspool(vpos + hdr_len).unwrap_or((0, 0));
         let mut body = body_real;
-        // reduced-away resolutions and layers past the limit have no block
-        // records to fill; their headers are still parsed above
-        let dropped_layer = max_layers != 0 && pkt.layer >= max_layers;
-        let bands_to_fill: &[PrecBand] = if r > target_res || dropped_layer {
-            &[]
-        } else {
-            &prec_bands
-        };
+        // a non-contributing packet only reaches here with no PLT length to
+        // hop by; its header is still parsed but fills no block records
+        let bands_to_fill: &[PrecBand] = if contributes { &prec_bands } else { &[] };
         for (band_idx, pb) in bands_to_fill.iter().enumerate() {
             let contribs = &parsed.contributions[band_idx];
             let band = &mut comps[c][r].bands[band_idx];
@@ -758,6 +817,17 @@ fn comb_tile(
             prec_states[c][r][pkt.prec as usize] = None;
         }
         vpos += hdr_len + parsed.body_bytes;
+        // a PLT length that disagrees with the parse means one of them lied,
+        // so reject and fall back to classic
+        if let Some(len) = plt_len {
+            plt_idx += 1;
+            let parsed_len = vpos - pkt_start;
+            if parsed_len != len as u64 {
+                return Err(DecodeError::Logic(format!(
+                    "plan: PLT length {len} != parsed packet length {parsed_len} at vpos {pkt_start}"
+                )));
+            }
+        }
     }
 
     Ok(comps)
@@ -877,7 +947,7 @@ mod tests {
     fn reduce_past_the_last_level_is_rejected() {
         let empty: Vec<u8> = Vec::new();
         for reduce in [NUM_LEVELS, NUM_LEVELS + 1, 200] {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0) else {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0, true) else {
                 panic!("reduce {reduce} must be rejected");
             };
             assert!(msg.contains("no decomposition level"), "got {msg}");
@@ -890,7 +960,7 @@ mod tests {
         // what matters is that the failure is not the reduce rejection
         let empty: Vec<u8> = Vec::new();
         for reduce in 0..NUM_LEVELS {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0) else {
+            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0, true) else {
                 panic!("there is no SOT to walk");
             };
             assert!(!msg.contains("no decomposition level"), "got {msg}");
@@ -1084,20 +1154,56 @@ mod tests {
         out
     }
 
-    fn synth_stream() -> Vec<u8> {
+    /// The stream's packets in progression (= stream) order.
+    fn synth_packets() -> Vec<Vec<u8>> {
         let mut packets = Vec::new();
         for layer in 0..LAYERS {
-            packets.extend(synth_packet(layer == 0, 1)); // res 0: LL
-            packets.extend(synth_packet(layer == 0, 3)); // res 1: HL, LH, HH
+            packets.push(synth_packet(layer == 0, 1)); // res 0: LL
+            packets.push(synth_packet(layer == 0, 3)); // res 1: HL, LH, HH
         }
+        packets
+    }
+
+    /// One tile-part carrying the given PLT markers and packets.
+    fn assemble_stream(packets: &[Vec<u8>], plt_markers: &[(u8, Vec<u8>)]) -> Vec<u8> {
+        let body: usize = packets.iter().map(|p| p.len()).sum();
+        let markers: usize = plt_markers.iter().map(|(_, d)| 5 + d.len()).sum();
         const TILE_PART_HEADER: usize = 14; // SOT (12) + SOD (2)
-        let psot = (TILE_PART_HEADER + packets.len()) as u32;
+        let psot = (TILE_PART_HEADER + markers + body) as u32;
         let mut out = vec![0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00];
         out.extend(psot.to_be_bytes());
         out.extend([0x00, 0x01]); // TPsot, TNsot
+        for (zplt, data) in plt_markers {
+            out.extend([0xFF, 0x58]);
+            out.extend(((data.len() + 3) as u16).to_be_bytes());
+            out.push(*zplt);
+            out.extend(data);
+        }
         out.extend([0xFF, 0x93]); // SOD
-        out.extend(packets);
+        for p in packets {
+            out.extend(p);
+        }
         out.extend([0xFF, 0xD9]); // EOC
+        out
+    }
+
+    fn synth_stream() -> Vec<u8> {
+        assemble_stream(&synth_packets(), &[])
+    }
+
+    /// Comma-code packet lengths (A.7.1): 7-bit groups, high bit = continued.
+    fn plt_encode(lengths: &[u32]) -> Vec<u8> {
+        let mut out = Vec::new();
+        for &len in lengths {
+            let mut groups = vec![(len & 0x7F) as u8];
+            let mut v = len >> 7;
+            while v != 0 {
+                groups.push((v & 0x7F) as u8 | 0x80);
+                v >>= 7;
+            }
+            groups.reverse();
+            out.extend(groups);
+        }
         out
     }
 
@@ -1153,7 +1259,7 @@ mod tests {
         let per_layer = (BLOCKS_PER_LAYER * BODY_LEN) as usize;
 
         for keep in 1..=LAYERS {
-            let plan = draft(&stream, &hdr, 0, keep).expect("plan must build");
+            let plan = draft(&stream, &hdr, 0, keep, true).expect("plan must build");
             assert_eq!(
                 coded_bytes(&plan),
                 per_layer * keep as usize,
@@ -1171,10 +1277,92 @@ mod tests {
     fn zero_and_oversized_layer_limits_decode_everything() {
         let stream = synth_stream();
         let hdr = synth_header();
-        let full = coded_bytes(&draft(&stream, &hdr, 0, LAYERS).expect("plan must build"));
+        let full = coded_bytes(&draft(&stream, &hdr, 0, LAYERS, true).expect("plan must build"));
         for max_layers in [0, LAYERS + 1, u16::MAX] {
-            let plan = draft(&stream, &hdr, 0, max_layers).expect("plan must build");
+            let plan = draft(&stream, &hdr, 0, max_layers, true).expect("plan must build");
             assert_eq!(coded_bytes(&plan), full, "max_layers {max_layers}");
         }
+    }
+
+    fn packet_lengths(packets: &[Vec<u8>]) -> Vec<u32> {
+        packets.iter().map(|p| p.len() as u32).collect()
+    }
+
+    /// A stream cut after layer 0 whose PLT still lists every packet: the
+    /// dropped-layer packets can only be crossed by hopping their PLT lengths,
+    /// so this fails whenever the parse touches them.
+    #[test]
+    fn plt_hops_dropped_layer_packets_without_parsing() {
+        let packets = synth_packets();
+        let plt = plt_encode(&packet_lengths(&packets));
+        let layer0 = &packets[..2];
+        let stream = assemble_stream(layer0, &[(0, plt)]);
+        let hdr = synth_header();
+
+        let baseline = draft(&synth_stream(), &hdr, 0, 1, true).expect("baseline must build");
+        let plan = draft(&stream, &hdr, 0, 1, true).expect("plan must hop the dropped layers");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+
+        assert!(
+            draft(&stream, &hdr, 0, 1, false).is_err(),
+            "without PLT the dropped layers must be parsed, and they are missing"
+        );
+    }
+
+    /// Every packet contributes, so every PLT length is cross-checked against
+    /// its parsed extent, and the plan matches the no-PLT parse.
+    #[test]
+    fn plt_lengths_agree_with_a_full_parse() {
+        let packets = synth_packets();
+        let plt = plt_encode(&packet_lengths(&packets));
+        let stream = assemble_stream(&packets, &[(0, plt)]);
+        let hdr = synth_header();
+
+        let baseline = draft(&synth_stream(), &hdr, 0, 0, true).expect("baseline must build");
+        let plan = draft(&stream, &hdr, 0, 0, true).expect("plan must build");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+    }
+
+    #[test]
+    fn plt_disagreeing_with_a_parsed_packet_is_rejected() {
+        let packets = synth_packets();
+        let mut lengths = packet_lengths(&packets);
+        lengths[0] += 1;
+        let stream = assemble_stream(&packets, &[(0, plt_encode(&lengths))]);
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true) else {
+            panic!("a lying PLT must be rejected");
+        };
+        assert!(msg.contains("PLT length"), "got {msg}");
+    }
+
+    #[test]
+    fn corrupt_plt_is_ignored() {
+        let packets = synth_packets();
+        let mut data = plt_encode(&packet_lengths(&packets));
+        *data.last_mut().unwrap() |= 0x80; // dangling continuation
+        let stream = assemble_stream(&packets, &[(0, data)]);
+        let hdr = synth_header();
+
+        let baseline = draft(&synth_stream(), &hdr, 0, 0, true).expect("baseline must build");
+        let plan = draft(&stream, &hdr, 0, 0, true).expect("plan must parse without PLT");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+    }
+
+    #[test]
+    fn plt_lengths_thread_across_markers_and_sort_by_zplt() {
+        // 300 comma-codes as [0x82, 0x2C]; split it across two markers handed
+        // out of stream order
+        let markers = vec![(1u8, vec![0x2C, 5]), (0u8, vec![7, 0x82])];
+        assert_eq!(plt_packet_lengths(markers), Some(vec![7, 300, 5]));
+    }
+
+    #[test]
+    fn plt_lengths_reject_malformed_codes() {
+        assert_eq!(plt_packet_lengths(vec![]), None);
+        assert_eq!(plt_packet_lengths(vec![(0, vec![0x85])]), None); // dangling
+        assert_eq!(plt_packet_lengths(vec![(0, vec![0x00])]), None); // zero length
+        assert_eq!(plt_packet_lengths(vec![(0, vec![0xFF; 5])]), None); // > 32 bits
     }
 }

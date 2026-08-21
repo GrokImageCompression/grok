@@ -132,6 +132,11 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(grk_repeat_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_repeat_decompress_test COMMAND grk_repeat_decompress_test)
 
+  # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_plt_test GrkMercuryPltTest.cpp)
+  target_link_libraries(grk_mercury_plt_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_plt_test COMMAND grk_mercury_plt_test)
+
   # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
   add_executable(grk_mercury_precinct_clamp_test GrkMercuryPrecinctClampTest.cpp)
   target_link_libraries(grk_mercury_precinct_clamp_test ${GROK_CORE_NAME} spdlog::spdlog)
