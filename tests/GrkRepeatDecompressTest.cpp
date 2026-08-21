@@ -294,8 +294,13 @@ namespace
 
 int main(void)
 {
+#if defined(_WIN32)
+  _putenv_s("GRK_MERCURY", "1");
+  _putenv_s("GRK_MERCURY_DEBUG", "1");
+#else
   setenv("GRK_MERCURY", "1", 1);
   setenv("GRK_MERCURY_DEBUG", "1", 1);
+#endif
   grk_initialize(nullptr, 0, nullptr);
   grk_msg_handlers handlers = {};
   handlers.info_callback = appendLog;
