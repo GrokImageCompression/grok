@@ -133,6 +133,11 @@ if(GRK_ENABLE_MERCURY)
   add_test(NAME grk_repeat_decompress_test COMMAND grk_repeat_decompress_test)
 endif()
 
+# synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+add_executable(grk_tile_part_rejection_race_test GrkTilePartRejectionRaceTest.cpp)
+target_link_libraries(grk_tile_part_rejection_race_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_tile_part_rejection_race_test COMMAND grk_tile_part_rejection_race_test)
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)

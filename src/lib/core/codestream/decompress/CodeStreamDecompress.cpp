@@ -1275,7 +1275,8 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
       if(!ioBandCallback_ && scratchHoldsData)
       {
         scratchImage_->transferDataTo(multiTileComposite_.get());
-        success_ = postProcess(multiTileComposite_.get());
+        if(!postProcess(multiTileComposite_.get()))
+          success_ = false;
       }
     }
   };
@@ -1333,8 +1334,10 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
     {
       // When using strip-based band callback, skip composite here;
       // it will be done in the row callback after all tiles in the row are complete.
-      if(!ioBandCallback_)
-        success_ = scratchImage_->composite(tileImage);
+      // only ever clear success_: the parse thread can fail the whole decode
+      // while this runs, and writing true here would erase that
+      if(!ioBandCallback_ && !scratchImage_->composite(tileImage))
+        success_ = false;
     }
     // complete tile
     auto tileIndex = tileProcessor->getIndex();
