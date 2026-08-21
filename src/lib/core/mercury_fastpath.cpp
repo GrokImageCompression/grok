@@ -298,9 +298,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
   const std::string& path = cs.inputFilePath_;
 
-  // Eligibility: full-image, all-components decode of a stream with no
-  // palette/ICC/channel-definition post-processing. Reduce and a quality
-  // layer limit are handled; everything else stays on the classic pipeline.
+  // Eligibility: full-image, all-components decode. Reduce, a quality layer
+  // limit, and palette/ICC/channel-definition post-processing are handled;
+  // everything else stays on the classic pipeline.
   auto& dec = cs.cp_.codingParams_.dec_;
   if(dec.skipAllocateComposite_)
     MFP_BAIL("skipAllocate set");
@@ -332,9 +332,11 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     if(!coversImage)
       MFP_BAIL("decode sub-window set");
   }
-  if(img->meta && (img->meta->color.palette || img->meta->color.icc_profile_buf ||
-                   img->meta->color.channel_definition))
-    MFP_BAIL("palette/ICC/cdef present");
+  // palette/ICC/channel-definition need no bail: the full-composite path runs
+  // postProcess (same as classic's postMultiTile), and the band-callback path
+  // hands raw strips to the consumer callback exactly as classic does, which is
+  // where that post-processing happens. the A/B sweep confirms both are
+  // bit-exact against classic.
   for(uint16_t c = 0; c < img->numcomps; c++)
   {
     if(img->comps[c].dx != 1 || img->comps[c].dy != 1)
