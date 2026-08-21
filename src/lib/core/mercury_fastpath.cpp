@@ -373,6 +373,20 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   if(tcp->sawCoc_)
     MFP_BAIL("COC present");
 
+  // A precinct smaller than the code-block clamps the effective block size
+  // (B.7: xcb' = min(xcb, PPx), and band precincts halve above resolution 0).
+  // Mercury parses with the nominal block size, so these streams stay classic.
+  if(t0.csty_ & CCP_CSTY_PRECINCT)
+  {
+    for(uint8_t r = 0; r < t0.numresolutions_; r++)
+    {
+      int shift = r == 0 ? 0 : 1;
+      if(t0.precWidthExp_[r] - shift < t0.cblkw_expn_ ||
+         t0.precHeightExp_[r] - shift < t0.cblkh_expn_)
+        MFP_BAIL("precinct smaller than code-block");
+    }
+  }
+
   std::vector<MercurySizComp> mhComps(nc);
   for(uint16_t c = 0; c < nc; c++)
   {
