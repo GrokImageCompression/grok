@@ -4,7 +4,7 @@
 //! Used by the decode pipeline ([`crate::decode::graph`]) and golden tests.
 
 use super::synthesis::{SamplePrec, StepSpec, Synthesis, SynthesisParams};
-use super::{align_samples16, align_samples32, KERNEL_W5X3, KERNEL_W9X7};
+use super::{KERNEL_W5X3, KERNEL_W9X7, align_samples16, align_samples32};
 use crate::decode::DecodeError;
 
 /// A band's position and size (JPEG 2000 canvas coordinates, `pos + size`).
@@ -423,6 +423,178 @@ mod tests {
         // spans 100 rows, which used to trip an assert and panic
         let msg = reject_reason(&spec(100, 100, 0));
         assert!(msg.contains("lh subband has no height"), "{msg}");
+    }
+
+    use super::super::synthesis::{PullStatus, RowSource};
+
+    /// Deterministic band sample at absolute band coordinates.
+    fn band_sample(sb: usize, x: i32, y: i32) -> i32 {
+        (x * 31 + y * 17 + sb as i32 * 101).rem_euclid(64) - 32
+    }
+
+    /// Serves band rows from `band_sample`, starting at each band's window
+    /// origin — the same values a full source serves on the overlap.
+    struct ArraySource {
+        /// per band: (x0, y0, width) of the served window
+        origin: [(i32, i32, i32); 4],
+        next_row: [i32; 4],
+    }
+
+    impl ArraySource {
+        fn warp(origin: [(i32, i32, i32); 4]) -> Self {
+            let next_row = [origin[0].1, origin[1].1, origin[2].1, origin[3].1];
+            ArraySource { origin, next_row }
+        }
+    }
+
+    impl RowSource for ArraySource {
+        fn subband_ready(&self, _sb: i32) -> bool {
+            true
+        }
+        unsafe fn pack(&mut self, sb: i32, buf: *mut u8, width: i32) {
+            let (x0, _, w) = self.origin[sb as usize];
+            assert_eq!(w, width, "band {sb} width");
+            let y = self.next_row[sb as usize];
+            self.next_row[sb as usize] += 1;
+            let out = buf as *mut i32;
+            for i in 0..width {
+                unsafe { *out.add(i as usize) = band_sample(sb as usize, x0 + i, y) };
+            }
+        }
+    }
+
+    /// Pull every row the spec's node describes; returns rows of node-width
+    /// i32 samples.
+    fn pull_all(spec: &LevelSpec) -> Vec<Vec<i32>> {
+        use super::super::synthesis::AlignedVec;
+        let engine = warp_w5x3_prec(spec, SamplePrec::I32).expect("engine must build");
+        let mut engine = engine;
+        let mut src = ArraySource::warp([
+            (spec.ll.x0, spec.ll.y0, spec.ll.w),
+            (spec.hl.x0, spec.hl.y0, spec.hl.w),
+            (spec.lh.x0, spec.lh.y0, spec.lh.w),
+            (spec.hl.x0, spec.lh.y0, spec.hl.w), // hh: hl's width, lh's height
+        ]);
+        let mut rows = Vec::new();
+        let mut buf = AlignedVec::bare(engine.hem_row_bytes().max(64));
+        for _ in 0..spec.node.h {
+            match unsafe { engine.try_draw(buf.as_mut_ptr(), &mut src) } {
+                PullStatus::Row => {
+                    let row = unsafe {
+                        std::slice::from_raw_parts(buf.as_ptr() as *const i32, spec.node.w as usize)
+                    };
+                    rows.push(row.to_vec());
+                }
+                PullStatus::Stalled => panic!("engine stalled with an always-ready source"),
+            }
+        }
+        rows
+    }
+
+    /// A windowed spec (a padded sub-rect of the full level, with its B-15
+    /// band splits) must synthesize the window's interior bit-exact against
+    /// the full-level engine.
+    #[test]
+    fn windowed_specs_match_the_full_synthesis() {
+        let full = LevelSpec {
+            node: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 64,
+                h: 48,
+            },
+            ll: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+            hl: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+            lh: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+        };
+        let reference = pull_all(&full);
+
+        // vertical window rows 8..40, padded to node rows 4..44
+        let vertical = LevelSpec {
+            node: BandDims {
+                x0: 0,
+                y0: 4,
+                w: 64,
+                h: 40,
+            },
+            ll: BandDims {
+                x0: 0,
+                y0: 2,
+                w: 32,
+                h: 20,
+            },
+            hl: BandDims {
+                x0: 0,
+                y0: 2,
+                w: 32,
+                h: 20,
+            },
+            lh: BandDims {
+                x0: 0,
+                y0: 2,
+                w: 32,
+                h: 20,
+            },
+        };
+        let got = pull_all(&vertical);
+        for y in 8..40 {
+            assert_eq!(
+                got[(y - 4) as usize],
+                reference[y as usize],
+                "vertical window row {y}"
+            );
+        }
+
+        // horizontal window cols 16..48, padded to node cols 12..52
+        let horizontal = LevelSpec {
+            node: BandDims {
+                x0: 12,
+                y0: 0,
+                w: 40,
+                h: 48,
+            },
+            ll: BandDims {
+                x0: 6,
+                y0: 0,
+                w: 20,
+                h: 24,
+            },
+            hl: BandDims {
+                x0: 6,
+                y0: 0,
+                w: 20,
+                h: 24,
+            },
+            lh: BandDims {
+                x0: 6,
+                y0: 0,
+                w: 20,
+                h: 24,
+            },
+        };
+        let got = pull_all(&horizontal);
+        for y in 0..48 {
+            assert_eq!(
+                got[y as usize][(16 - 12)..(48 - 12)],
+                reference[y as usize][16..48],
+                "horizontal window row {y}"
+            );
+        }
     }
 
     #[test]

@@ -8,6 +8,7 @@ pub mod graph;
 pub mod plan;
 pub mod read_at;
 pub mod stripe_decoder;
+pub mod window;
 
 pub use read_at::ReadAt;
 

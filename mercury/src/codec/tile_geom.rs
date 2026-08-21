@@ -6,7 +6,7 @@
 use crate::codec::params::{CodParams, SizParams};
 
 /// Dimensions of a rectangle on the canvas.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Dims {
     pub x0: u32,
     pub y0: u32,

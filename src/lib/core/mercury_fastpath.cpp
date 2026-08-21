@@ -319,19 +319,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   auto img = cs.multiTileComposite_.get();
   if(!img || !img->comps || img->numcomps == 0)
     MFP_BAIL("no composite image");
-  // A decode window that fully covers the image canvas is a no-op: mercury
-  // decodes the whole image either way. Only a true sub-region needs the
-  // classic region path, which mercury does not implement yet. A window
-  // covering the unreduced canvas covers every reduced one too, and a window
-  // given in reduced coordinates only ever fails this test, so reduce needs no
-  // separate handling here.
-  if(cs.cp_.dw_x1 > cs.cp_.dw_x0 || cs.cp_.dw_y1 > cs.cp_.dw_y0)
-  {
-    bool coversImage = cs.cp_.dw_x0 <= img->x0 && cs.cp_.dw_y0 <= img->y0 &&
-                       cs.cp_.dw_x1 >= img->x1 && cs.cp_.dw_y1 >= img->y1;
-    if(!coversImage)
-      MFP_BAIL("decode sub-window set");
-  }
+  // A decode window needs no bail: grok resolved it into region_ (canvas
+  // coordinates, clipped) at read-header time, the composite already carries
+  // the reduced window bounds, and mercury is handed the window below so it
+  // skips the tiles, precincts, and synthesis rows outside it.
   // palette/ICC/channel-definition need no bail: the full-composite path runs
   // postProcess (same as classic's postMultiTile), and the band-callback path
   // hands raw strips to the consumer callback exactly as classic does, which is
@@ -457,10 +448,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     fillQuant(tcp->tccps_[c], qccRanges[c - 1], qccSteps[c - 1], ov.quant);
   }
 
-  mhdr.x_siz = img->x1;
-  mhdr.y_siz = img->y1;
-  mhdr.x_o_siz = img->x0;
-  mhdr.y_o_siz = img->y0;
+  // SIZ canvas from the header image: under a decode window the composite's
+  // bounds are the window rect, not the image, and tile geometry needs the
+  // real canvas.
+  mhdr.x_siz = cs.headerImage_->x1;
+  mhdr.y_siz = cs.headerImage_->y1;
+  mhdr.x_o_siz = cs.headerImage_->x0;
+  mhdr.y_o_siz = cs.headerImage_->y0;
   mhdr.xt_siz = cs.cp_.t_width_;
   mhdr.yt_siz = cs.cp_.t_height_;
   mhdr.xt_o_siz = cs.cp_.tx0_;
@@ -484,6 +478,24 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mhdr.codestream_off = 0; // informational; mercury drives off first_sot_off
   mhdr.first_sot_off = cs.markerCache_->getTileStreamStart();
 
+  // TLM tile-part table: with it, mercury reads only the tile-part headers of
+  // the tiles it decodes instead of scanning the SOT chain. hasTLM() is false
+  // when the app disabled TLM (GRK_RANDOM_ACCESS_TLM invalidates the marker).
+  std::vector<MercuryTlmEntry> mhTlm;
+  if(cs.cp_.hasTLM())
+  {
+    const auto& tileParts = cs.cp_.tlmMarkers_->getTileParts();
+    for(uint32_t t = 0; t < tileParts.size(); t++)
+    {
+      if(!tileParts[t])
+        continue;
+      for(const auto& part : *tileParts[t])
+        mhTlm.push_back({part->offset_, (uint32_t)part->length_, (uint16_t)t});
+    }
+  }
+  mhdr.tlm = mhTlm.empty() ? nullptr : mhTlm.data();
+  mhdr.num_tlm = (uint32_t)mhTlm.size();
+
   MercuryDecodeParams mparams;
   memset(&mparams, 0, sizeof mparams);
   mparams.reduce = dec.reduce_;
@@ -493,6 +505,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // classic ignores PLT when a PLM is present or the app disabled it
   mparams.disable_plt =
       cs.cp_.plmMarkers_ != nullptr || (dec.disableRandomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) != 0;
+  if(!cs.region_.empty())
+  {
+    mparams.win_x0 = cs.region_.x0;
+    mparams.win_y0 = cs.region_.y0;
+    mparams.win_x1 = cs.region_.x1;
+    mparams.win_y1 = cs.region_.y1;
+  }
 
   uint8_t err[256] = {0};
   MercuryPlan* plan = nullptr;
@@ -613,7 +632,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       MFP_BAIL("decompress_num_comps != numcomps");
     }
     // Match grok's whole-image sample type (see composite branch below).
-    grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
+    grk_data_type outType =
+        cs.region_.empty() ? mercuryOutType(cs.defaultTcp_.get(), img) : GRK_INT_32;
     bool is16 = outType == GRK_INT_16;
     auto scratch = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
         new GrkImage(), RefCountedDeleter<GrkImage>());
@@ -662,7 +682,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
   // Match grok's whole-image sample type so the API-visible comp->data_type
   // (and thus writers / grk_image consumers) is identical to the classic path.
-  grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
+  grk_data_type outType =
+        cs.region_.empty() ? mercuryOutType(cs.defaultTcp_.get(), img) : GRK_INT_32;
   bool is16 = outType == GRK_INT_16;
 
   // Allocate planes (int16 or int32 per outType) and stream rows into them.

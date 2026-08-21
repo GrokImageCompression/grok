@@ -30,8 +30,9 @@ use crate::codec::params::{
     CodParams, CodingModes, PrecinctSize, ProgressionOrder, QcdParams, QuantStyle, SizComponent,
     SizParams,
 };
+use crate::codec::tile_geom::Dims;
 use crate::decode::graph::{Rows, weave_with_coder};
-use crate::decode::plan::{DecodePlan, MainHeaderIn, draft};
+use crate::decode::plan::{DecodePlan, MainHeaderIn, TlmEntry, draft};
 use crate::decode::read_at::ReadAt;
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 
@@ -115,6 +116,16 @@ pub struct MercuryQccOverride {
     pub quant: MercuryQuant,
 }
 
+/// One tile-part's position, from the host's parsed TLM markers.
+#[repr(C)]
+pub struct MercuryTlmEntry {
+    /// Absolute file offset of the tile-part's SOT marker.
+    pub offset: u64,
+    /// Tile-part length (Psot).
+    pub length: u32,
+    pub tile: u16,
+}
+
 /// The full main header. Field order matches `MercuryMainHeader` in
 /// include/mercury_capi.h exactly.
 #[repr(C)]
@@ -152,6 +163,11 @@ pub struct MercuryMainHeader {
     pub codestream_off: u64,
     /// Absolute file offset of the first SOT marker.
     pub first_sot_off: u64,
+    /// Tile-part table from the host's parsed TLM markers, per tile in
+    /// tile-part order; NULL/0 when the stream has no trusted TLM. Lets the
+    /// plan read only the tiles it decodes instead of scanning the SOT chain.
+    pub tlm: *const MercuryTlmEntry,
+    pub num_tlm: u32,
 }
 
 /// Convert a `MercuryQuant` into mercury's owned `QcdParams`.
@@ -253,12 +269,26 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
         v
     };
 
+    let tlm = if h.tlm.is_null() || h.num_tlm == 0 {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(h.tlm, h.num_tlm as usize) }
+            .iter()
+            .map(|e| TlmEntry {
+                tile: e.tile,
+                offset: e.offset,
+                length: e.length,
+            })
+            .collect()
+    };
+
     Ok(MainHeaderIn {
         siz,
         cod,
         qcd,
         qcc,
         first_sot_off: h.first_sot_off,
+        tlm,
     })
 }
 
@@ -320,19 +350,20 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let (reduce, max_layers, use_plt) = if params.is_null() {
-        (0, 0, true)
+    let (reduce, max_layers, use_plt, window) = if params.is_null() {
+        (0, 0, true, None)
     } else {
-        unsafe {
-            (
-                (*params).reduce,
-                (*params).max_layers,
-                !(*params).disable_plt,
-            )
-        }
+        let p = unsafe { &*params };
+        let window = (p.win_x1 > p.win_x0 && p.win_y1 > p.win_y0).then_some(Dims {
+            x0: p.win_x0,
+            y0: p.win_y0,
+            x1: p.win_x1,
+            y1: p.win_y1,
+        });
+        (p.reduce, p.max_layers, !p.disable_plt, window)
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        draft(&*src, &header, reduce, max_layers, use_plt)
+        draft(&*src, &header, reduce, max_layers, use_plt, window)
     }));
     match r {
         Ok(Ok(plan)) => Box::into_raw(Box::new(MercuryPlan { plan, src })),
@@ -358,6 +389,13 @@ pub struct MercuryDecodeParams {
     pub max_layers: u16,
     /// Nonzero ignores PLT markers (host saw a PLM, or the app opted out).
     pub disable_plt: bool,
+    /// Decode window in canvas coordinates (unreduced, clipped to the image);
+    /// all-zero (or empty) decodes the whole image. Tiles, precincts, and
+    /// synthesis rows the window never needs are skipped.
+    pub win_x0: u32,
+    pub win_y0: u32,
+    pub win_x1: u32,
+    pub win_y1: u32,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),

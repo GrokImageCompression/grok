@@ -83,6 +83,14 @@ typedef struct MercuryQccOverride
   MercuryQuant quant;
 } MercuryQccOverride;
 
+/* One tile-part's position, from the host's parsed TLM markers. */
+typedef struct MercuryTlmEntry
+{
+  uint64_t offset; /* absolute file offset of the tile-part's SOT marker */
+  uint32_t length; /* tile-part length (Psot) */
+  uint16_t tile;
+} MercuryTlmEntry;
+
 typedef struct MercuryMainHeader
 {
   uint32_t x_siz, y_siz, x_o_siz, y_o_siz;
@@ -105,6 +113,11 @@ typedef struct MercuryMainHeader
   /* Codestream layout in the file the read_at/fd addresses. */
   uint64_t codestream_off; /* absolute file offset of the SOC marker */
   uint64_t first_sot_off; /* absolute file offset of the first SOT marker */
+  /* Tile-part table from the host's parsed TLM markers, per tile in tile-part
+   * order; NULL/0 when the stream has no trusted TLM. Lets the plan read only
+   * the tiles it decodes instead of scanning the SOT chain. */
+  const MercuryTlmEntry* tlm;
+  uint32_t num_tlm;
 } MercuryMainHeader;
 
 /* Per-decode options. NULL selects the defaults (every field zero). */
@@ -118,6 +131,10 @@ typedef struct MercuryDecodeParams
   uint16_t max_layers;
   /* Nonzero ignores PLT markers (host saw a PLM, or the app opted out). */
   bool disable_plt;
+  /* Decode window in canvas coordinates (unreduced, clipped to the image);
+   * all-zero (or empty) decodes the whole image. Tiles, precincts, and
+   * synthesis rows the window never needs are skipped. */
+  uint32_t win_x0, win_y0, win_x1, win_y1;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
