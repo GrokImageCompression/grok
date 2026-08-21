@@ -983,14 +983,14 @@ bool GrkImage::compositePlanar(uint16_t srcNumComps, grk_image_comp* srcComps)
     }
     else
     {
-      auto src_ptr = (T*)srcComp->data;
-      for(uint32_t j = 0; j < destWin.height(); ++j)
-      {
-        memcpy((T*)destComp->data + destIndex, src_ptr + srcIndex,
-               (size_t)destWin.width() * sizeof(T));
-        destIndex += destLineOffset + destWin.width();
-        srcIndex += srcLineOffset + destWin.width();
-      }
+      // Any other (src,dest) type pair would need a conversion the branches above do not
+      // implement: narrowing int32 src into an int16 dest here would memcpy sizeof(T) bytes
+      // per element into a smaller buffer and run off the end. Fail the decode instead of
+      // corrupting the heap.
+      grklog.error("GrkImage::compositePlanar: unsupported sample type combination for "
+                   "component %u (source %d, dest %d)",
+                   compno, srcComp->data_type, destComp->data_type);
+      return false;
     }
   }
 

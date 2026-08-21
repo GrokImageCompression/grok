@@ -131,6 +131,14 @@ if(GRK_ENABLE_MERCURY)
   add_executable(grk_repeat_decompress_test GrkRepeatDecompressTest.cpp)
   target_link_libraries(grk_repeat_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_repeat_decompress_test COMMAND grk_repeat_decompress_test)
+
+  add_executable(grk_mercury_composite_type_test GrkMercuryCompositeTypeTest.cpp)
+  target_link_libraries(grk_mercury_composite_type_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    add_test(NAME grk_mercury_composite_type_test
+      COMMAND grk_mercury_composite_type_test
+              ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6270477761576960)
+  endif()
 endif()
 
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT

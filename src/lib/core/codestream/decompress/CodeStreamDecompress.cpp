@@ -2550,14 +2550,16 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   }
   cp_.codingParams_.dec_.use16BitDwt_ = allEligible;
 
-  // Allocate the composite buffer as int16 as well, avoiding int16→int32 widening during
-  // tile compositing. Only do this when there's no region decode, because partial tiles have
-  // wholeTileDecompress_=false and fall back to int32 DWT.
-  if(allEligible && scratch->has_multiple_tiles && region_.empty())
-  {
-    for(uint16_t i = 0; i < scratch->numcomps; i++)
-      scratch->comps[i].data_type = GRK_INT_16;
-  }
+  // Decide the composite sample type from the same inputs TileProcessor uses, and set it
+  // explicitly on every component. copyHeaderTo above may have carried a stale int16 type
+  // from the mercury fast path (it marks multiTileComposite_ int16, then can bail leaving the
+  // type mutated), so setting int32 here when in doubt is what keeps the composite type from
+  // disagreeing with a tile that decodes int32. int16 is only an allocation optimization: it
+  // is safe only when every slated tile decodes whole (no region decode), matching
+  // TileProcessor's `can16Bit && isWholeTileDecoding()`.
+  bool useInt16Composite = allEligible && scratch->has_multiple_tiles && region_.empty();
+  for(uint16_t i = 0; i < scratch->numcomps; i++)
+    scratch->comps[i].data_type = useInt16Composite ? GRK_INT_16 : GRK_INT_32;
 
   // no need to allocate composite data if there is only one tile
   // i.e. no compositing — UNLESS band callback is active, which needs
