@@ -19,7 +19,6 @@
 
 #include "geometry.h"
 #include "MemManager.h"
-#include "lanes.h"
 
 namespace grk
 {
@@ -401,8 +400,8 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
   }
   uint32_t alignedBufferWidth(uint32_t width)
   {
-    static uint32_t align = grok::NumLanes();
-    return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
+    // whole vectors per row at the widest lane count, kernels walk stride * height by Lanes(T)
+    return grk_make_aligned_width<T>(width);
   }
   bool alloc2d(bool clear)
   {

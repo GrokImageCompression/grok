@@ -36,9 +36,10 @@ static void safe_strcpy(char (&dest)[N], const char* src)
 
 static int32_t readPixel(const grk_image_comp& comp, uint32_t index)
 {
+  uint64_t offset = (uint64_t)(index / comp.w) * comp.stride + index % comp.w;
   if(comp.data_type == GRK_INT_16)
-    return static_cast<int16_t*>(comp.data)[index];
-  return static_cast<int32_t*>(comp.data)[index];
+    return static_cast<int16_t*>(comp.data)[offset];
+  return static_cast<int32_t*>(comp.data)[offset];
 }
 
 namespace grk

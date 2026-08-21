@@ -85,7 +85,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImageSIMD.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/XYZTransform.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/lanes.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MemStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MappedFile.cpp

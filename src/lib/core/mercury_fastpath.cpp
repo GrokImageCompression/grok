@@ -68,8 +68,6 @@ struct ITileProcessor;
 #include "TileCompletion.h"
 #include "CodeStreamDecompress.h"
 
-#include "lanes.h"
-
 #include "mercury_capi.h"
 
 /* grok's part-1 block coder behind mercury's BlockCoder contract —
@@ -288,32 +286,6 @@ static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage*
       return GRK_INT_32;
   }
   return GRK_INT_16;
-}
-
-// Allocate an output plane with the SAME row stride the classic pipeline
-// produces. Classic hands the tile-window buffer straight to the image
-// (transferWindowData), and that buffer rounds its width up to grk::NumLanes()
-// elements (buffer.h alignedBufferWidth), independent of sample type.
-// GrkImage::allocData instead uses a per-type 64-byte alignment — 32 elements
-// for int16 — so for a narrow int16 image the two strides diverge (w=16:
-// classic 16, allocData 32). A consumer that walks comp->data assuming rows are
-// alignedBufferWidth-strided (grok's own GrkJP2MetadataTest, and any flat
-// reader) then reads into the padding. Match classic for int16; int32 keeps
-// allocData (it already agrees with classic on every tested width, and the
-// image writers honour stride regardless of these bytes).
-static bool allocFastPathPlane(grk_image_comp* comp)
-{
-  if(comp->data_type != GRK_INT_16)
-    return GrkImage::allocData(comp);
-  uint32_t lanes = grok::NumLanes();
-  uint32_t stride = (uint32_t)((((uint64_t)comp->w + lanes - 1) / lanes) * lanes);
-  void* data = grk_aligned_malloc((uint64_t)stride * comp->h * sizeof(int16_t));
-  if(!data)
-    return false;
-  comp->data = data;
-  comp->stride = stride;
-  comp->owns_data = true;
-  return true;
 }
 
 bool mercuryFastPath(CodeStreamDecompress& cs)
@@ -635,8 +607,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       comp->data_type = outType;
       comp->h = bandRows;
       // allocCompositeData no-ops on single-tile images; allocate directly
-      // (classic stride for int16 — see allocFastPathPlane)
-      if(!allocFastPathPlane(comp))
+      if(!GrkImage::allocData(comp))
       {
         mercury_unwarp_loom(plan);
         MFP_BAIL("scratch band buffer alloc failed");
@@ -682,7 +653,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   {
     auto comp = img->comps + c;
     comp->data_type = outType;
-    if(!allocFastPathPlane(comp))
+    if(!GrkImage::allocData(comp))
     {
       mercury_unwarp_loom(plan);
       return false;
