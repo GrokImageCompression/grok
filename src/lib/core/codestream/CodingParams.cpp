@@ -1143,7 +1143,7 @@ bool TileCodingParams::readMct(uint8_t* headerData, uint16_t headerSize)
   uint16_t tmp;
   uint16_t indix;
   assert(headerData != nullptr);
-  if(headerSize < 2)
+  if(headerSize <= 6)
   {
     grklog.error("Error reading MCT marker");
     return false;
@@ -1234,11 +1234,6 @@ bool TileCodingParams::readMct(uint8_t* headerData, uint16_t headerSize)
   {
     grklog.warn("multiple MCT markers not supported");
     return true;
-  }
-  if(headerSize <= 6)
-  {
-    grklog.error("Error reading MCT marker");
-    return false;
   }
   headerSize = (uint16_t)(headerSize - 6);
 
