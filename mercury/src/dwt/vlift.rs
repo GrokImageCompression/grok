@@ -10,6 +10,9 @@ use crate::ffi_dwt::{self, MercuryLiftingStep};
 
 use super::{KERNEL_W5X3, KERNEL_W9X7, align_samples16, align_samples32};
 
+/// Room for the advanced source-row pointers; every lifting table is 2-tap.
+const MAX_SUPPORT_LENGTH: usize = 8;
+
 /// Vertical synthesis lifting step on 16-bit samples.
 ///
 /// # Safety
@@ -32,7 +35,8 @@ pub unsafe fn mercury_ply_vlift_16(
     let st = &*step;
     let alignment = align_samples16();
 
-    // Adjust pointers for alignment.
+    // Skip whole aligned blocks below the start. The source rows advance
+    // with the destination or the taps read the wrong columns.
     let mut actual_start = start_loc;
     let mut din = dst_in;
     let mut dout = dst_out;
@@ -42,6 +46,18 @@ pub unsafe fn mercury_ply_vlift_16(
         dout = dout.add(alignment as usize);
     }
     let total_width = width + actual_start;
+    let advance = (start_loc - actual_start) as usize;
+    let mut advanced_rows = [std::ptr::null_mut::<i16>(); MAX_SUPPORT_LENGTH];
+    let src_bufs = if advance > 0 {
+        let support = st.support_length as usize;
+        assert!(support <= MAX_SUPPORT_LENGTH);
+        for k in 0..support {
+            advanced_rows[k] = (*src_bufs.add(k)).add(advance);
+        }
+        advanced_rows.as_mut_ptr()
+    } else {
+        src_bufs
+    };
 
     // 16-bit kernels level_builder builds: W5X3 reversible, W9X7 Q13.
     if st.kernel_id == KERNEL_W5X3 {
@@ -127,6 +143,8 @@ pub unsafe fn mercury_ply_vlift_32(
     let st = &*step;
     let alignment = align_samples32();
 
+    // Same block skip as the 16-bit path: source rows advance with the
+    // destination.
     let mut actual_start = start_loc;
     let mut din = dst_in;
     let mut dout = dst_out;
@@ -136,6 +154,18 @@ pub unsafe fn mercury_ply_vlift_32(
         dout = dout.add(alignment as usize);
     }
     let total_width = width + actual_start;
+    let advance = (start_loc - actual_start) as usize;
+    let mut advanced_rows = [std::ptr::null_mut::<i32>(); MAX_SUPPORT_LENGTH];
+    let src_bufs = if advance > 0 {
+        let support = st.support_length as usize;
+        assert!(support <= MAX_SUPPORT_LENGTH);
+        for k in 0..support {
+            advanced_rows[k] = (*src_bufs.add(k)).add(advance);
+        }
+        advanced_rows.as_mut_ptr()
+    } else {
+        src_bufs
+    };
 
     // W5X3 reversible i32, or W9X7 irreversible (f32 in i32 lines, 2-tap).
     match st.kernel_id {
@@ -205,6 +235,110 @@ unsafe fn tabby_vlift_32(
                 sum += (*icoeffs.add(t as usize) as i64) * (*sp.add(ku) as i64);
             }
             *dst_out.add(ku) = *dst_in.add(ku) - ((sum >> downshift) as i32);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dwt::fixed97;
+    use crate::dwt::synthesis::AlignedVec;
+
+    fn heddle(step_idx: u8, coeffs: &mut [f32; 2], icoeffs: &mut [i32; 2]) -> MercuryLiftingStep {
+        MercuryLiftingStep {
+            step_idx,
+            support_length: 2,
+            downshift: 0,
+            extend: 0,
+            support_min: -1,
+            rounding_offset: 0,
+            coeffs: coeffs.as_mut_ptr(),
+            icoeffs: icoeffs.as_mut_ptr(),
+            reversible: false,
+            kernel_id: KERNEL_W9X7,
+        }
+    }
+
+    /// A start offset beyond one aligned block advances the destination
+    /// pointers by whole blocks; the source rows must advance with them.
+    /// Before the fix the sources stayed at column 0, so every tap read the
+    /// wrong column once the block skip ran.
+    #[test]
+    fn block_skip_advances_source_rows_with_the_destination() {
+        // 16-bit Q13 path (step 3 = δ)
+        let alignment = crate::dwt::align_samples16() as usize;
+        let start = 2 * alignment + 3;
+        let width = 50usize;
+        let n = start + width + 64;
+        let mut coeffs = [0.0f32; 2];
+        let mut icoeffs = [0i32; 2];
+        let mut step = heddle(3, &mut coeffs, &mut icoeffs);
+        let mut src0 = AlignedVec::bare(n * 2);
+        let mut src1 = AlignedVec::bare(n * 2);
+        let mut din = AlignedVec::bare(n * 2);
+        let mut dout = AlignedVec::bare(n * 2);
+        let as_i16 =
+            |b: &AlignedVec| unsafe { std::slice::from_raw_parts(b.as_ptr() as *const i16, n) };
+        unsafe {
+            for (i, b) in [&mut src0, &mut src1, &mut din].iter_mut().enumerate() {
+                let s = std::slice::from_raw_parts_mut(b.as_mut_ptr() as *mut i16, n);
+                for (k, v) in s.iter_mut().enumerate() {
+                    *v = ((k * 31 + i * 17) % 4001) as i16 - 2000;
+                }
+            }
+            let mut rows = [src0.as_ptr() as *mut i16, src1.as_ptr() as *mut i16];
+            mercury_ply_vlift_16(
+                rows.as_mut_ptr(),
+                din.as_ptr() as *mut i16,
+                dout.as_mut_ptr() as *mut i16,
+                width as i32,
+                start as i32,
+                &mut step,
+            );
+        }
+        for k in start..start + width {
+            let want = fixed97::ply_step(3, as_i16(&din)[k], as_i16(&src0)[k], as_i16(&src1)[k]);
+            assert_eq!(as_i16(&dout)[k], want, "i16 column {k}");
+        }
+
+        // 32-bit f32 path (2-tap irreversible)
+        let alignment = crate::dwt::align_samples32() as usize;
+        let start = 2 * alignment + 3;
+        let n = start + width + 64;
+        let mut coeffs = [0.443506852f32, 0.443506852];
+        let mut icoeffs = [0i32; 2];
+        let mut step = heddle(3, &mut coeffs, &mut icoeffs);
+        let mut src0 = AlignedVec::bare(n * 4);
+        let mut src1 = AlignedVec::bare(n * 4);
+        let mut din = AlignedVec::bare(n * 4);
+        let mut dout = AlignedVec::bare(n * 4);
+        let as_f32 =
+            |b: &AlignedVec| unsafe { std::slice::from_raw_parts(b.as_ptr() as *const f32, n) };
+        unsafe {
+            for (i, b) in [&mut src0, &mut src1, &mut din].iter_mut().enumerate() {
+                let s = std::slice::from_raw_parts_mut(b.as_mut_ptr() as *mut f32, n);
+                for (k, v) in s.iter_mut().enumerate() {
+                    *v = ((k * 31 + i * 17) % 4001) as f32 / 8192.0 - 0.25;
+                }
+            }
+            let mut rows = [src0.as_ptr() as *mut i32, src1.as_ptr() as *mut i32];
+            mercury_ply_vlift_32(
+                rows.as_mut_ptr(),
+                din.as_ptr() as *mut i32,
+                dout.as_mut_ptr() as *mut i32,
+                width as i32,
+                start as i32,
+                &mut step,
+            );
+        }
+        for k in start..start + width {
+            let want = as_f32(&din)[k] - 0.443506852 * (as_f32(&src0)[k] + as_f32(&src1)[k]);
+            let got = as_f32(&dout)[k];
+            assert!(
+                (got - want).abs() < 1e-4,
+                "f32 column {k}: got {got} want {want}"
+            );
         }
     }
 }
