@@ -685,7 +685,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // Match grok's whole-image sample type so the API-visible comp->data_type
   // (and thus writers / grk_image consumers) is identical to the classic path.
   grk_data_type outType =
-        cs.region_.empty() ? mercuryOutType(cs.defaultTcp_.get(), img) : GRK_INT_32;
+      cs.region_.empty() ? mercuryOutType(cs.defaultTcp_.get(), img) : GRK_INT_32;
   bool is16 = outType == GRK_INT_16;
 
   // Allocate planes (int16 or int32 per outType) and stream rows into them.

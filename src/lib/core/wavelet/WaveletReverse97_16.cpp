@@ -536,7 +536,8 @@ namespace HWY_NAMESPACE
     int16_t bias = (int16_t)((1 << (shift - 1)) - 1 + ((x >> shift) & 1));
     return (int16_t)(sat_add(x, bias) >> shift);
   }
-  template <class D, class V> static HWY_INLINE V vrshift_even(D d, V x, int shift)
+  template<class D, class V>
+  static HWY_INLINE V vrshift_even(D d, V x, int shift)
   {
     const auto one = Set(d, (int16_t)(shift > 0 ? 1 : 0));
     const auto half = Set(d, (int16_t)(shift > 0 ? (1 << (shift - 1)) - 1 : 0));
