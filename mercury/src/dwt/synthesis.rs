@@ -740,6 +740,12 @@ impl Synthesis {
         self.params.sample_prec.fibre_bytes()
     }
 
+    /// (unit_height, unit_width): dimensions with a single line, where
+    /// lifting (and the 9/7 K gains) are skipped.
+    pub fn unit_dims(&self) -> (bool, bool) {
+        (self.params.unit_height, self.params.unit_width)
+    }
+
     /// Upper bound on bytes written to `output` by one pull. The interleave
     /// kernel stores two whole SIMD vectors per iteration, so this rounds the
     /// nominal row up to a vector multiple plus two vectors of tail slack.

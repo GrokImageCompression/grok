@@ -64,6 +64,46 @@ void mercury_hwy_vply_32_5x3_weave_s1(int32_t** src, int32_t* dst_in, int32_t* d
   hwy_vlift_32_5x3_synth_s1(src, dst_in, dst_out, samples, cast_step(step));
 }
 
+void mercury_hwy_vply_16_97_weave_s0(int16_t** src, int16_t* dst_in, int16_t* dst_out, int samples)
+{
+  hwy_vlift_16_97_s0(src, dst_in, dst_out, samples);
+}
+
+void mercury_hwy_vply_16_97_weave_s1(int16_t** src, int16_t* dst_in, int16_t* dst_out, int samples)
+{
+  hwy_vlift_16_97_s1(src, dst_in, dst_out, samples);
+}
+
+void mercury_hwy_vply_16_97_weave_s2(int16_t** src, int16_t* dst_in, int16_t* dst_out, int samples)
+{
+  hwy_vlift_16_97_s2(src, dst_in, dst_out, samples);
+}
+
+void mercury_hwy_vply_16_97_weave_s3(int16_t** src, int16_t* dst_in, int16_t* dst_out, int samples)
+{
+  hwy_vlift_16_97_s3(src, dst_in, dst_out, samples);
+}
+
+void mercury_hwy_hply_16_97_weave_s0(int16_t* src, int16_t* dst, int samples)
+{
+  hwy_hlift_16_97_s0(src, dst, samples);
+}
+
+void mercury_hwy_hply_16_97_weave_s1(int16_t* src, int16_t* dst, int samples)
+{
+  hwy_hlift_16_97_s1(src, dst, samples);
+}
+
+void mercury_hwy_hply_16_97_weave_s2(int16_t* src, int16_t* dst, int samples)
+{
+  hwy_hlift_16_97_s2(src, dst, samples);
+}
+
+void mercury_hwy_hply_16_97_weave_s3(int16_t* src, int16_t* dst, int samples)
+{
+  hwy_hlift_16_97_s3(src, dst, samples);
+}
+
 void mercury_hwy_hply_16_5x3_weave_s0(int16_t* src, int16_t* dst, int samples)
 {
   hwy_hlift_16_5x3_synth_s0(src, dst, samples);

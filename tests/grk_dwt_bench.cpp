@@ -68,7 +68,7 @@ int main(int argc, char** argv)
       int32_t mercuryKind; // -1 = no mercury counterpart
     } lanes[] = {
         {"9/7 f32", grk_bench_dwt_97, 0},
-        {"9/7 i16", grk_bench_dwt_16_97, -1},
+        {"9/7 i16", grk_bench_dwt_16_97, 3},
         {"5/3 i32", grk_bench_dwt_53, 2},
         {"5/3 i16", grk_bench_dwt_16_53, 1},
     };

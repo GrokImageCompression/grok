@@ -538,7 +538,8 @@ unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
 
 /// DWT-only benchmark: run a full multi-level inverse synthesis pyramid on
 /// synthetic subband rows, single-threaded, bypassing T1 and the weft
-/// scheduler. `kind`: 0 = f32 9/7, 1 = i16 5/3, 2 = i32 5/3. Returns best
+/// scheduler. `kind`: 0 = f32 9/7, 1 = i16 5/3, 2 = i32 5/3, 3 = i16 Q13
+/// 9/7. Returns best
 /// seconds per full pyramid over `iters` runs, negative on bad arguments.
 /// Counterpart of the grk_bench_dwt_* hooks in grok's wavelet TUs.
 #[unsafe(no_mangle)]
@@ -549,7 +550,9 @@ pub extern "C" fn mercury_bench_dwt(
     levels: i32,
     iters: i32,
 ) -> f64 {
-    use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7};
+    use crate::dwt::level_builder::{
+        BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7, warp_w9x7_i16,
+    };
     use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, SamplePrec, Synthesis};
     use std::collections::VecDeque;
 
@@ -559,7 +562,7 @@ pub extern "C" fn mercury_bench_dwt(
     let dim = |full: i32, shift: i32| (full + (1 << shift) - 1) >> shift;
     let fibre = match kind {
         0 | 2 => 4usize,
-        1 => 2usize,
+        1 | 3 => 2usize,
         _ => return -1.0,
     };
 
@@ -621,6 +624,7 @@ pub extern "C" fn mercury_bench_dwt(
             .map(|s| match kind {
                 0 => warp_w9x7(s),
                 1 => warp_w5x3_prec(s, SamplePrec::I16),
+                3 => warp_w9x7_i16(s),
                 _ => warp_w5x3_prec(s, SamplePrec::I32),
             })
             .collect();
@@ -719,6 +723,20 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
                     *o = ((s * sc).round_ties_even() as i32)
                         .saturating_add(dc)
                         .clamp(0, mx);
+                }
+            }
+        }
+        Rows::Q13(r) => {
+            // Q13 fixed point: shift the fractional bits back out with ties
+            // to even, like the classic int16 sink.
+            let shift = crate::dwt::fixed97::Q13_FRACTION_BITS.saturating_sub(prec);
+            if signed {
+                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                    *o = (crate::dwt::fixed97::rshift_even(v, shift) as i32).clamp(-dc, mx - dc);
+                }
+            } else {
+                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                    *o = (crate::dwt::fixed97::rshift_even(v, shift) as i32 + dc).clamp(0, mx);
                 }
             }
         }

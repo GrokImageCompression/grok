@@ -183,6 +183,103 @@ namespace HWY_NAMESPACE
     }
   }
 
+  /* int16 fixed-point 9/7 synthesis steps (Q13 samples). Constants and
+   * saturation points must match mercury's dwt/fixed97.rs so the scalar
+   * reference and these kernels stay bit-identical. Step 0 = α (applied
+   * last), 1 = β, 2 = γ, 3 = δ. */
+  static constexpr int16_t q13_coeff_3 = 14533; /* δ 0.443506852 in Q1.15 */
+  static constexpr int16_t q13_coeff_2 = 28931; /* γ 0.882911075 in Q1.15 */
+  static constexpr int16_t q13_coeff_1 = 13888; /* |β| 0.052980118 × 2^18 */
+  static constexpr int16_t q13_coeff_0_frac = 19206; /* |α|−1 = 0.586134342 in Q1.15 */
+
+  template<int STEP, class D, class V>
+  static HWY_INLINE V q13_97_step(D d, V tgt, V n0, V n1)
+  {
+    if constexpr(STEP == 0)
+    {
+      /* α: |α| > 1 decomposes as tgt + sum + mf15(sum, |α|−1) */
+      auto sum = hn::SaturatedAdd(n0, n1);
+      auto frac = hn::MulFixedPoint15(sum, hn::Set(d, q13_coeff_0_frac));
+      return hn::SaturatedAdd(hn::SaturatedAdd(tgt, sum), frac);
+    }
+    else if constexpr(STEP == 1)
+    {
+      /* β: multiply-first ×8 boost, wrapping product sum, ties-to-even >>3 */
+      auto coeff = hn::Set(d, q13_coeff_1);
+      auto products = hn::Add(hn::MulFixedPoint15(n0, coeff), hn::MulFixedPoint15(n1, coeff));
+      auto bias = hn::Add(hn::Set(d, (int16_t)3),
+                          hn::And(hn::ShiftRight<3>(products), hn::Set(d, (int16_t)1)));
+      return hn::SaturatedAdd(tgt, hn::ShiftRight<3>(hn::SaturatedAdd(products, bias)));
+    }
+    else
+    {
+      constexpr int16_t coeff = STEP == 2 ? q13_coeff_2 : q13_coeff_3;
+      return hn::SaturatedSub(tgt,
+                              hn::MulFixedPoint15(hn::SaturatedAdd(n0, n1), hn::Set(d, coeff)));
+    }
+  }
+
+  template<int STEP>
+  static HWY_INLINE void vlift_16_97(int16_t** src, int16_t* dst_in, int16_t* dst_out, int samples)
+  {
+    const hn::ScalableTag<int16_t> d;
+    const size_t N = hn::Lanes(d);
+    int16_t *s0 = src[0], *s1 = src[1];
+    for(int c = 0; c < samples; c += (int)N)
+    {
+      auto v =
+          q13_97_step<STEP>(d, hn::Load(d, dst_in + c), hn::Load(d, s0 + c), hn::Load(d, s1 + c));
+      hn::Store(v, d, dst_out + c);
+    }
+  }
+
+  template<int STEP>
+  static HWY_INLINE void hlift_16_97(int16_t* src, int16_t* dst, int samples)
+  {
+    const hn::ScalableTag<int16_t> d;
+    const size_t N = hn::Lanes(d);
+    for(int c = 0; c < samples; c += (int)N)
+    {
+      auto v = q13_97_step<STEP>(d, hn::Load(d, dst + c), hn::LoadU(d, src + c),
+                                 hn::LoadU(d, src + c + 1));
+      hn::Store(v, d, dst + c);
+    }
+  }
+
+  /* HWY_EXPORT needs plain function names, so the four steps are expanded. */
+  static void Impl_vlift_16_97_s0(int16_t** s, int16_t* di, int16_t* d_o, int n)
+  {
+    vlift_16_97<0>(s, di, d_o, n);
+  }
+  static void Impl_vlift_16_97_s1(int16_t** s, int16_t* di, int16_t* d_o, int n)
+  {
+    vlift_16_97<1>(s, di, d_o, n);
+  }
+  static void Impl_vlift_16_97_s2(int16_t** s, int16_t* di, int16_t* d_o, int n)
+  {
+    vlift_16_97<2>(s, di, d_o, n);
+  }
+  static void Impl_vlift_16_97_s3(int16_t** s, int16_t* di, int16_t* d_o, int n)
+  {
+    vlift_16_97<3>(s, di, d_o, n);
+  }
+  static void Impl_hlift_16_97_s0(int16_t* s, int16_t* d, int n)
+  {
+    hlift_16_97<0>(s, d, n);
+  }
+  static void Impl_hlift_16_97_s1(int16_t* s, int16_t* d, int n)
+  {
+    hlift_16_97<1>(s, d, n);
+  }
+  static void Impl_hlift_16_97_s2(int16_t* s, int16_t* d, int n)
+  {
+    hlift_16_97<2>(s, d, n);
+  }
+  static void Impl_hlift_16_97_s3(int16_t* s, int16_t* d, int n)
+  {
+    hlift_16_97<3>(s, d, n);
+  }
+
   static void Impl_hlift_32_2tap_irrev(int32_t* src, int32_t* dst, int samples,
                                        merc_lifting_step* step)
   {
@@ -253,6 +350,14 @@ HWY_EXPORT(Impl_vlift_32_5x3_synth_s0);
 HWY_EXPORT(Impl_vlift_32_5x3_synth_s1);
 HWY_EXPORT(Impl_hlift_16_5x3_synth_s0);
 HWY_EXPORT(Impl_hlift_16_5x3_synth_s1);
+HWY_EXPORT(Impl_vlift_16_97_s0);
+HWY_EXPORT(Impl_vlift_16_97_s1);
+HWY_EXPORT(Impl_vlift_16_97_s2);
+HWY_EXPORT(Impl_vlift_16_97_s3);
+HWY_EXPORT(Impl_hlift_16_97_s0);
+HWY_EXPORT(Impl_hlift_16_97_s1);
+HWY_EXPORT(Impl_hlift_16_97_s2);
+HWY_EXPORT(Impl_hlift_16_97_s3);
 HWY_EXPORT(Impl_hlift_32_2tap_irrev);
 HWY_EXPORT(Impl_hlift_32_5x3_synth_s0);
 HWY_EXPORT(Impl_hlift_32_5x3_synth_s1);
@@ -288,6 +393,38 @@ void hwy_vlift_32_5x3_synth_s0(int32_t** s, int32_t* di, int32_t* d_o, int n, me
 void hwy_vlift_32_5x3_synth_s1(int32_t** s, int32_t* di, int32_t* d_o, int n, merc_lifting_step* st)
 {
   HWY_DYNAMIC_DISPATCH(Impl_vlift_32_5x3_synth_s1)(s, di, d_o, n, st);
+}
+void hwy_vlift_16_97_s0(int16_t** s, int16_t* di, int16_t* d_o, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_vlift_16_97_s0)(s, di, d_o, n);
+}
+void hwy_vlift_16_97_s1(int16_t** s, int16_t* di, int16_t* d_o, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_vlift_16_97_s1)(s, di, d_o, n);
+}
+void hwy_vlift_16_97_s2(int16_t** s, int16_t* di, int16_t* d_o, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_vlift_16_97_s2)(s, di, d_o, n);
+}
+void hwy_vlift_16_97_s3(int16_t** s, int16_t* di, int16_t* d_o, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_vlift_16_97_s3)(s, di, d_o, n);
+}
+void hwy_hlift_16_97_s0(int16_t* s, int16_t* d, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_hlift_16_97_s0)(s, d, n);
+}
+void hwy_hlift_16_97_s1(int16_t* s, int16_t* d, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_hlift_16_97_s1)(s, d, n);
+}
+void hwy_hlift_16_97_s2(int16_t* s, int16_t* d, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_hlift_16_97_s2)(s, d, n);
+}
+void hwy_hlift_16_97_s3(int16_t* s, int16_t* d, int n)
+{
+  HWY_DYNAMIC_DISPATCH(Impl_hlift_16_97_s3)(s, d, n);
 }
 void hwy_hlift_16_5x3_synth_s0(int16_t* s, int16_t* d, int n)
 {

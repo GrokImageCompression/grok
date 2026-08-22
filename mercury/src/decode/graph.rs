@@ -35,10 +35,11 @@ use crate::decode::DecodeError;
 use crate::decode::plan::{BandPlan, DecodePlan, TilePlan};
 use crate::decode::stripe_decoder::{
     BlockCoder, MercuryStripeBlockInfo, mercury_weave_stripe_f32, mercury_weave_stripe16,
-    mercury_weave_stripe32,
+    mercury_weave_stripe16_q13, mercury_weave_stripe32,
 };
 use crate::decode::window::{TileCompWindow, band_window, intersect};
-use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7};
+use crate::dwt::fixed97;
+use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7, warp_w9x7_i16};
 use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
 use crate::weft::Node;
@@ -68,12 +69,14 @@ enum Path {
     I32,
     /// Irreversible 9/7: f32 in normalized units.
     F32,
+    /// Irreversible 9/7: int16 Q13 fixed point (see dwt::fixed97).
+    Q13,
 }
 
 impl Path {
     fn fibre_bytes(self) -> usize {
         match self {
-            Path::I16 => 2,
+            Path::I16 | Path::Q13 => 2,
             Path::I32 | Path::F32 => 4,
         }
     }
@@ -251,6 +254,15 @@ impl SubbandDecodeNode {
                     band.k_max_prime,
                     coder,
                 ),
+                Path::Q13 => mercury_weave_stripe16_q13(
+                    infos.as_ptr(),
+                    infos.len() as i32,
+                    dst_lines.as_ptr() as *const *mut i16,
+                    stripe_rows,
+                    band.k_max_prime,
+                    band.delta,
+                    coder,
+                ),
             }
         };
         if !ok {
@@ -377,6 +389,10 @@ struct LevelInputs {
     /// `ll_src_off` bytes in (the child's window starts left of this one's).
     ll_skip_rows: u32,
     ll_src_off: usize,
+    /// Q13 path: LL rows are rescaled by K per non-unit direction of this
+    /// level as they are consumed (fp15 fraction of factor − 1; 0 = none).
+    /// The f32 path folds these gains into the deltas instead.
+    ll_scale_frac: i16,
 }
 
 impl RowSource for LevelInputs {
@@ -398,6 +414,14 @@ impl RowSource for LevelInputs {
                 unsafe {
                     std::ptr::copy_nonoverlapping(row.as_ptr().add(self.ll_src_off), buf, bytes)
                 };
+                if self.ll_scale_frac != 0 {
+                    let samples = buf as *mut i16;
+                    for k in 0..width as usize {
+                        unsafe {
+                            *samples.add(k) = fixed97::scale_k(*samples.add(k), self.ll_scale_frac)
+                        };
+                    }
+                }
                 ll.unwind(1);
                 self.ll_released = true;
                 return;
@@ -510,6 +534,10 @@ pub enum Rows<'a> {
     /// Irreversible path: normalized floats (sample / 2^precision,
     /// signed around 0). Convert with v = (fval·2^prec + 2^(prec−1)) as int.
     F32(&'a [&'a [f32]]),
+    /// Irreversible int16 path: the same normalized value in Q13 fixed point
+    /// (fval × 2^13). Convert with a ties-to-even shift by 13 − prec, then
+    /// the DC offset.
+    Q13(&'a [&'a [i16]]),
 }
 
 /// Receives each full-image-width row exactly once, in order. When the
@@ -580,22 +608,49 @@ macro_rules! impl_rct_sample {
 impl_rct_sample!(i16, i32, Rows::I16);
 impl_rct_sample!(i32, i64, Rows::I32);
 
+// Inverse ICT (irreversible YCbCr→RGB) coefficients.
+const CR_FACT_R: f32 = (2.0 * (1.0 - 0.299)) as f32;
+const CB_FACT_B: f32 = (2.0 * (1.0 - 0.114)) as f32;
+const CR_FACT_G: f32 = (2.0 * 0.299 * (1.0 - 0.299) / (1.0 - (0.299 + 0.114))) as f32;
+const CB_FACT_G: f32 = (2.0 * 0.114 * (1.0 - 0.114) / (1.0 - (0.299 + 0.114))) as f32;
+
 impl Sample for f32 {
     fn skein<'a>(refs: &'a [&'a [f32]]) -> Rows<'a> {
         Rows::F32(refs)
     }
-    /// Inverse ICT (irreversible YCbCr→RGB): f32 FMA, G from Cr then Cb.
+    /// Inverse ICT: f32 FMA, G from Cr then Cb.
     fn untangle_color(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
-        const CR_FACT_R: f32 = (2.0 * (1.0 - 0.299)) as f32;
-        const CB_FACT_B: f32 = (2.0 * (1.0 - 0.114)) as f32;
-        const CR_FACT_G: f32 = (2.0 * 0.299 * (1.0 - 0.299) / (1.0 - (0.299 + 0.114))) as f32;
-        const CB_FACT_G: f32 = (2.0 * 0.114 * (1.0 - 0.114) / (1.0 - (0.299 + 0.114))) as f32;
         for x in 0..y.len() {
             let (yv, cbv, crv) = (y[x], cb[x], cr[x]);
             let green = crv.mul_add(-CR_FACT_G, yv);
             y[x] = crv.mul_add(CR_FACT_R, yv);
             cb[x] = cbv.mul_add(-CB_FACT_G, green);
             cr[x] = cbv.mul_add(CB_FACT_B, yv);
+        }
+    }
+}
+
+/// Q13 fixed-point sample (int16, see dwt::fixed97).
+#[repr(transparent)]
+#[derive(Clone, Copy, Default)]
+struct Q13Sample(i16);
+
+impl Sample for Q13Sample {
+    fn skein<'a>(refs: &'a [&'a [Q13Sample]]) -> Rows<'a> {
+        // repr(transparent): a Q13Sample slice is an i16 slice
+        Rows::Q13(unsafe { &*(refs as *const [&[Q13Sample]] as *const [&[i16]]) })
+    }
+    /// Inverse ICT computed in f32 on the Q13 scale (the ICT is
+    /// scale-invariant), rounded back per sample — the classic int16 path
+    /// does the same, so no fixed-point ICT error accumulates.
+    fn untangle_color(y: &mut [Q13Sample], cb: &mut [Q13Sample], cr: &mut [Q13Sample]) {
+        let q = |v: f32| Q13Sample(v.round_ties_even().clamp(-32768.0, 32767.0) as i16);
+        for x in 0..y.len() {
+            let (yv, cbv, crv) = (y[x].0 as f32, cb[x].0 as f32, cr[x].0 as f32);
+            let green = crv.mul_add(-CR_FACT_G, yv);
+            y[x] = q(crv.mul_add(CR_FACT_R, yv));
+            cb[x] = q(cbv.mul_add(-CB_FACT_G, green));
+            cr[x] = q(cbv.mul_add(CB_FACT_B, yv));
         }
     }
 }
@@ -751,7 +806,7 @@ pub fn weave_with_coder(
     // the float path: it never overflows and is at least as accurate as grok's
     // int16 fixed-point 9/7.
     let path = if !plan.cod.reversible {
-        Path::F32
+        if plan.q13 { Path::Q13 } else { Path::F32 }
     } else {
         let num_comps = plan.siz.comp_count();
         let mct = plan.cod.use_ycc && num_comps >= 3;
@@ -845,7 +900,7 @@ fn dress_tile_loom(
     );
     let width = plan.width as usize;
     let sb: usize = path.fibre_bytes();
-    let prec = if path == Path::I16 {
+    let prec = if path.fibre_bytes() == 2 {
         SamplePrec::I16
     } else {
         SamplePrec::I32
@@ -872,8 +927,9 @@ fn dress_tile_loom(
         /// node ids are known.
         band_node_levels: Vec<(usize, usize)>,
         /// Per level: (leading child LL rows to drain, byte offset into each
-        /// kept child row). All zero on a whole-tile decode.
-        ll_feed: Vec<(u32, usize)>,
+        /// kept child row, Q13 LL rescale fp15 fraction). Offsets are zero on
+        /// a whole-tile decode; the fraction is zero off the Q13 path.
+        ll_feed: Vec<(u32, usize, i16)>,
     }
     struct ColSpec {
         chains: Vec<ChainSpec>,
@@ -950,10 +1006,10 @@ fn dress_tile_loom(
                     hl: bd(&w.bands[l + 1][0]),
                     lh: bd(&w.bands[l + 1][1]),
                 };
-                engines.push(if path == Path::F32 {
-                    warp_w9x7(&spec)?
-                } else {
-                    warp_w5x3_prec(&spec, prec)?
+                engines.push(match path {
+                    Path::F32 => warp_w9x7(&spec)?,
+                    Path::Q13 => warp_w9x7_i16(&spec)?,
+                    _ => warp_w5x3_prec(&spec, prec)?,
                 });
                 ll_rects.push(ll);
             }
@@ -974,7 +1030,7 @@ fn dress_tile_loom(
             // from its own window origin, which starts above and left of the
             // parent's LL rect.
             let mut ll_feed = Vec::with_capacity(levels);
-            ll_feed.push((0u32, 0usize)); // level 0 reads leaves, not a ring
+            ll_feed.push((0u32, 0usize, 0i16)); // level 0 reads leaves, not a ring
             for l in 1..levels {
                 let child_node = w.res[l];
                 let ll = ll_rects[l];
@@ -982,7 +1038,20 @@ fn dress_tile_loom(
                     child_node.y0 <= ll.y0 && child_node.x0 <= ll.x0,
                     "LL rect must sit inside the child's padded window"
                 );
-                ll_feed.push((ll.y0 - child_node.y0, (ll.x0 - child_node.x0) as usize * sb));
+                let scale_frac = if path == Path::Q13 {
+                    match engines[l].unit_dims() {
+                        (false, false) => fixed97::SCALE_K2_FRAC,
+                        (true, true) => 0,
+                        _ => fixed97::SCALE_K_FRAC,
+                    }
+                } else {
+                    0
+                };
+                ll_feed.push((
+                    ll.y0 - child_node.y0,
+                    (ll.x0 - child_node.x0) as usize * sb,
+                    scale_frac,
+                ));
             }
 
             let mut slices_wiring: Vec<Vec<Vec<LeafSlice>>> = (0..levels)
@@ -1157,6 +1226,7 @@ fn dress_tile_loom(
                         ll_released: false,
                         ll_skip_rows: ch.ll_feed[l].0,
                         ll_src_off: ch.ll_feed[l].1,
+                        ll_scale_frac: ch.ll_feed[l].2,
                     },
                     out: out_prod,
                     consumer: if is_top {
@@ -1229,6 +1299,7 @@ fn dress_tile_loom(
         Path::I16 => b.mount(make_hem::<i16>(hem_args)),
         Path::I32 => b.mount(make_hem::<i32>(hem_args)),
         Path::F32 => b.mount(make_hem::<f32>(hem_args)),
+        Path::Q13 => b.mount(make_hem::<Q13Sample>(hem_args)),
     };
     assert_eq!(got_sink, sink_id);
 

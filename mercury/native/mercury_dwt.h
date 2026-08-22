@@ -50,6 +50,16 @@ void mercury_hwy_vply_32_5x3_weave_s1(int32_t** src, int32_t* dstIn, int32_t* ds
 
 void mercury_hwy_hply_16_5x3_weave_s0(int16_t* src, int16_t* dst, int samples);
 void mercury_hwy_hply_16_5x3_weave_s1(int16_t* src, int16_t* dst, int samples);
+
+/* int16 fixed-point 9/7 (Q13 samples), one kernel per synthesis step. */
+void mercury_hwy_vply_16_97_weave_s0(int16_t** src, int16_t* dstIn, int16_t* dstOut, int samples);
+void mercury_hwy_vply_16_97_weave_s1(int16_t** src, int16_t* dstIn, int16_t* dstOut, int samples);
+void mercury_hwy_vply_16_97_weave_s2(int16_t** src, int16_t* dstIn, int16_t* dstOut, int samples);
+void mercury_hwy_vply_16_97_weave_s3(int16_t** src, int16_t* dstIn, int16_t* dstOut, int samples);
+void mercury_hwy_hply_16_97_weave_s0(int16_t* src, int16_t* dst, int samples);
+void mercury_hwy_hply_16_97_weave_s1(int16_t* src, int16_t* dst, int samples);
+void mercury_hwy_hply_16_97_weave_s2(int16_t* src, int16_t* dst, int samples);
+void mercury_hwy_hply_16_97_weave_s3(int16_t* src, int16_t* dst, int samples);
 void mercury_hwy_hply_32_2tap_irrev(int32_t* src, int32_t* dst, int samples,
                                     MercuryLiftingStep* step);
 void mercury_hwy_hply_32_5x3_weave_s0(int32_t* src, int32_t* dst, int samples,

@@ -1,13 +1,14 @@
 //! Vertical lifting step engine (synthesis direction only — decoder).
 //!
 //! Dispatches to Highway SIMD kernels for the tables level_builder builds —
-//! W5X3 (i16/i32) and W9X7 (f32 in i32 lines, 2-tap irreversible) — with a
-//! scalar fallback as reference for any future kernel.
+//! W5X3 (i16/i32), W9X7 f32 (in i32 lines, 2-tap irreversible), and W9X7
+//! int16 Q13 (per-step kernels, see fixed97) — with a scalar fallback as
+//! reference for any future kernel.
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi_dwt::{self, MercuryLiftingStep};
 
-use super::{align_samples16, align_samples32, KERNEL_W5X3, KERNEL_W9X7};
+use super::{KERNEL_W5X3, KERNEL_W9X7, align_samples16, align_samples32};
 
 /// Vertical synthesis lifting step on 16-bit samples.
 ///
@@ -42,7 +43,7 @@ pub unsafe fn mercury_ply_vlift_16(
     }
     let total_width = width + actual_start;
 
-    // Only 16-bit kernel level_builder builds is W5X3 reversible.
+    // 16-bit kernels level_builder builds: W5X3 reversible, W9X7 Q13.
     if st.kernel_id == KERNEL_W5X3 {
         match st.step_idx {
             0 => ffi_dwt::mercury_hwy_vply_16_5x3_weave_s0(src_bufs, din, dout, total_width),
@@ -50,8 +51,35 @@ pub unsafe fn mercury_ply_vlift_16(
         }
         return;
     }
+    if st.kernel_id == KERNEL_W9X7 {
+        match st.step_idx {
+            0 => ffi_dwt::mercury_hwy_vply_16_97_weave_s0(src_bufs, din, dout, total_width),
+            1 => ffi_dwt::mercury_hwy_vply_16_97_weave_s1(src_bufs, din, dout, total_width),
+            2 => ffi_dwt::mercury_hwy_vply_16_97_weave_s2(src_bufs, din, dout, total_width),
+            _ => ffi_dwt::mercury_hwy_vply_16_97_weave_s3(src_bufs, din, dout, total_width),
+        }
+        return;
+    }
 
     tabby_vlift_16(src_bufs, din, dout, total_width, actual_start, st);
+}
+
+/// Scalar reference for the int16 fixed-point 9/7 kernels — the kernel
+/// equivalence test pins the SIMD kernels to this, bit for bit.
+#[cfg(test)]
+pub(crate) unsafe fn q13_vlift_16(
+    src_bufs: *mut *mut i16,
+    dst_in: *mut i16,
+    dst_out: *mut i16,
+    width: i32,
+    step_idx: u8,
+) {
+    let src0 = *src_bufs;
+    let src1 = *src_bufs.add(1);
+    for k in 0..width as usize {
+        *dst_out.add(k) =
+            crate::dwt::fixed97::ply_step(step_idx, *dst_in.add(k), *src0.add(k), *src1.add(k));
+    }
 }
 
 /// Scalar fallback, vertical synthesis lifting (16-bit).

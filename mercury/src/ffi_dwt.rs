@@ -70,9 +70,41 @@ unsafe extern "C" {
         step: *mut MercuryLiftingStep,
     );
 
+    // Vertical synthesis lifting, int16 fixed-point 9/7 (Q13), one per step
+    pub fn mercury_hwy_vply_16_97_weave_s0(
+        src: *mut *mut i16,
+        dst_in: *mut i16,
+        dst_out: *mut i16,
+        samples: i32,
+    );
+    pub fn mercury_hwy_vply_16_97_weave_s1(
+        src: *mut *mut i16,
+        dst_in: *mut i16,
+        dst_out: *mut i16,
+        samples: i32,
+    );
+    pub fn mercury_hwy_vply_16_97_weave_s2(
+        src: *mut *mut i16,
+        dst_in: *mut i16,
+        dst_out: *mut i16,
+        samples: i32,
+    );
+    pub fn mercury_hwy_vply_16_97_weave_s3(
+        src: *mut *mut i16,
+        dst_in: *mut i16,
+        dst_out: *mut i16,
+        samples: i32,
+    );
+
     // Horizontal synthesis lifting, W5X3 i16
     pub fn mercury_hwy_hply_16_5x3_weave_s0(src: *mut i16, dst: *mut i16, samples: i32);
     pub fn mercury_hwy_hply_16_5x3_weave_s1(src: *mut i16, dst: *mut i16, samples: i32);
+
+    // Horizontal synthesis lifting, int16 fixed-point 9/7 (Q13), one per step
+    pub fn mercury_hwy_hply_16_97_weave_s0(src: *mut i16, dst: *mut i16, samples: i32);
+    pub fn mercury_hwy_hply_16_97_weave_s1(src: *mut i16, dst: *mut i16, samples: i32);
+    pub fn mercury_hwy_hply_16_97_weave_s2(src: *mut i16, dst: *mut i16, samples: i32);
+    pub fn mercury_hwy_hply_16_97_weave_s3(src: *mut i16, dst: *mut i16, samples: i32);
 
     // Horizontal synthesis lifting, W5X3 i32
     pub fn mercury_hwy_hply_32_5x3_weave_s0(

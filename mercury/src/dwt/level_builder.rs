@@ -290,6 +290,30 @@ pub fn warp_w9x7(spec: &LevelSpec) -> Result<Synthesis, DecodeError> {
     Ok(Synthesis::warp(params, &steps, &steps))
 }
 
+/// W9X7 int16 fixed-point lifting-step table (Q13 samples, see
+/// [`super::fixed97`]). Same step geometry as [`w9x7_draft`]; the arithmetic
+/// is hardcoded in kernels keyed on `step_idx`, so the coefficient fields
+/// are informational.
+pub fn w9x7_i16_draft() -> Vec<StepSpec> {
+    const A: f32 = -1.586134342;
+    const B: f32 = -0.052980118;
+    const C: f32 = 0.882911075;
+    const D: f32 = 0.443506852;
+    vec![
+        treadle_step(0, 0, 0, [A, A], [0, 0], KERNEL_W9X7),
+        treadle_step(-1, 0, 0, [B, B], [0, 0], KERNEL_W9X7),
+        treadle_step(0, 0, 0, [C, C], [0, 0], KERNEL_W9X7),
+        treadle_step(-1, 0, 0, [D, D], [0, 0], KERNEL_W9X7),
+    ]
+}
+
+/// Build one W9X7 irreversible engine on int16 Q13 fixed-point samples.
+pub fn warp_w9x7_i16(spec: &LevelSpec) -> Result<Synthesis, DecodeError> {
+    let params = draft_params(spec, SamplePrec::I16, false, 4, true)?;
+    let steps = w9x7_i16_draft();
+    Ok(Synthesis::warp(params, &steps, &steps))
+}
+
 /// W9X7 `low_scale`/`high_scale` (1/DC gain of the derived low analysis
 /// filter, 1/Nyquist gain of the high), in f32. Numerically (1/K, K/2)
 /// with K = 1.2301741.
@@ -594,6 +618,116 @@ mod tests {
                 reference[y as usize][16..48],
                 "horizontal window row {y}"
             );
+        }
+    }
+
+    /// The int16 Q13 9/7 engine must track the f32 engine within a few Q13
+    /// LSBs (well under one sample LSB at the path's 8-bit precision limit).
+    /// Sources fold the one-level 2D band gains the way the decode graph
+    /// does: into the f32 deltas for the float path, into the Q13 dequant
+    /// for the fixed-point path.
+    #[test]
+    fn q13_engine_tracks_the_float_engine() {
+        use super::super::synthesis::AlignedVec;
+        struct FnSource<F: FnMut(i32, *mut u8, i32)> {
+            fill: F,
+        }
+        impl<F: FnMut(i32, *mut u8, i32)> RowSource for FnSource<F> {
+            fn subband_ready(&self, _sb: i32) -> bool {
+                true
+            }
+            unsafe fn pack(&mut self, sb: i32, buf: *mut u8, width: i32) {
+                (self.fill)(sb, buf, width)
+            }
+        }
+
+        let spec = LevelSpec {
+            node: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 64,
+                h: 48,
+            },
+            ll: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+            hl: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+            lh: BandDims {
+                x0: 0,
+                y0: 0,
+                w: 32,
+                h: 24,
+            },
+        };
+        let (low, high) = w9x7_gains();
+        let gain = [
+            1.0 / (low * low),
+            1.0 / (low * high),
+            1.0 / (high * low),
+            1.0 / (high * high),
+        ];
+        // normalized band values in ±0.25 — sample scale for the BIBO budget
+        let value = |sb: i32, x: i32, y: i32| band_sample(sb as usize, x, y) as f32 / 128.0;
+
+        let mut engine_f = warp_w9x7(&spec).expect("f32 engine");
+        let mut engine_q = warp_w9x7_i16(&spec).expect("q13 engine");
+
+        let mut next_f = [0i32; 4];
+        let mut src_f = FnSource {
+            fill: |sb: i32, buf: *mut u8, width: i32| {
+                let y = next_f[sb as usize];
+                next_f[sb as usize] += 1;
+                let out = buf as *mut f32;
+                for i in 0..width {
+                    unsafe { *out.add(i as usize) = value(sb, i, y) * gain[sb as usize] };
+                }
+            },
+        };
+        let mut next_q = [0i32; 4];
+        let mut src_q = FnSource {
+            fill: |sb: i32, buf: *mut u8, width: i32| {
+                let y = next_q[sb as usize];
+                next_q[sb as usize] += 1;
+                let out = buf as *mut i16;
+                for i in 0..width {
+                    let q = (value(sb, i, y) * gain[sb as usize] * 8192.0).round_ties_even();
+                    unsafe { *out.add(i as usize) = q as i16 };
+                }
+            },
+        };
+
+        let mut buf_f = AlignedVec::bare(engine_f.hem_row_bytes().max(64));
+        let mut buf_q = AlignedVec::bare(engine_q.hem_row_bytes().max(64));
+        let mut max_diff = 0.0f32;
+        for y in 0..spec.node.h {
+            let s = unsafe { engine_f.try_draw(buf_f.as_mut_ptr(), &mut src_f) };
+            assert_eq!(s, PullStatus::Row, "f32 row {y}");
+            let s = unsafe { engine_q.try_draw(buf_q.as_mut_ptr(), &mut src_q) };
+            assert_eq!(s, PullStatus::Row, "q13 row {y}");
+            let row_f = unsafe {
+                std::slice::from_raw_parts(buf_f.as_ptr() as *const f32, spec.node.w as usize)
+            };
+            let row_q = unsafe {
+                std::slice::from_raw_parts(buf_q.as_ptr() as *const i16, spec.node.w as usize)
+            };
+            for x in 0..spec.node.w as usize {
+                let diff = (row_q[x] as f32 / 8192.0 - row_f[x]).abs();
+                max_diff = max_diff.max(diff);
+                assert!(
+                    diff <= 8.0 / 8192.0,
+                    "row {y} col {x}: q13 {} vs f32 {} (max so far {max_diff})",
+                    row_q[x],
+                    row_f[x]
+                );
+            }
         }
     }
 

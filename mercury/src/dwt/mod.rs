@@ -1,6 +1,7 @@
 //! DWT lifting engines — Rust, dispatching to Highway SIMD kernels via FFI,
 //! with scalar fallbacks.
 
+pub mod fixed97;
 pub mod hlift;
 pub mod hsyn;
 pub mod level_builder;

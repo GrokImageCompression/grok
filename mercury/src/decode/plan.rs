@@ -138,6 +138,21 @@ pub struct DecodePlan {
     /// Decode window in canvas coordinates (unreduced, clipped to the image);
     /// None decodes the whole image.
     pub window: Option<Dims>,
+    /// Irreversible 9/7 runs on int16 Q13 fixed-point samples instead of f32
+    /// (see dwt::fixed97). Band deltas are then one-level gains, not the
+    /// accumulated normalization.
+    pub q13: bool,
+}
+
+/// The int16 fixed-point 9/7 path fits when every component's precision is
+/// at most 8 bits (grok's grk_get_data_type rule, prec + 8 <= 16): below
+/// that the Q13 fractional margin absorbs the lifting rounding, above it the
+/// accumulated rounding shows against the T.803 tolerances.
+/// MERCURY_FORCE_F32 keeps the float path for A/B comparison.
+pub fn q13_97(cod: &CodParams, siz: &SizParams) -> bool {
+    !cod.reversible
+        && siz.components.iter().all(|c| c.precision <= 8)
+        && std::env::var_os("MERCURY_FORCE_F32").is_none()
 }
 
 /// `ceil(a / 2^b)`, the canvas reduction of T.800 Annex B.
@@ -525,6 +540,7 @@ pub fn draft(
         siz: hdr.siz.clone(),
         reduce,
         window,
+        q13: q13_97(&hdr.cod, &hdr.siz),
     })
 }
 
@@ -690,6 +706,7 @@ fn comb_tile(
     // decoder's delta is the raw QCD step times that accumulated range.
     if !cod.reversible {
         let (low, high) = crate::dwt::level_builder::w9x7_gains();
+        let q13 = q13_97(cod, siz);
         for c in 0..num_comps {
             let tc = &geom.components[c];
             let steps = &quant[c].steps;
@@ -703,6 +720,11 @@ fn comb_tile(
             // actually run, so under reduce it restarts at the target.
             let mut norm = 1.0f32;
             for l in (0..target_res).rev() {
+                // Q13: one-level gains only; the graph rescales LL rows by
+                // K per non-unit direction as each level consumes them.
+                if q13 {
+                    norm = 1.0;
+                }
                 let res = &tc.resolutions[l + 1];
                 let ll = &tc.resolutions[l].dims;
                 let hl = &res.subbands[0].dims;

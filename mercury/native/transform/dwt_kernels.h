@@ -39,6 +39,14 @@ extern void hwy_vlift_32_5x3_synth_s1(int32_t**, int32_t*, int32_t*, int, merc_l
 extern void hwy_vlift_32_2tap_irrev(int32_t**, int32_t*, int32_t*, int, merc_lifting_step*);
 extern void hwy_hlift_16_5x3_synth_s0(int16_t*, int16_t*, int);
 extern void hwy_hlift_16_5x3_synth_s1(int16_t*, int16_t*, int);
+extern void hwy_vlift_16_97_s0(int16_t**, int16_t*, int16_t*, int);
+extern void hwy_vlift_16_97_s1(int16_t**, int16_t*, int16_t*, int);
+extern void hwy_vlift_16_97_s2(int16_t**, int16_t*, int16_t*, int);
+extern void hwy_vlift_16_97_s3(int16_t**, int16_t*, int16_t*, int);
+extern void hwy_hlift_16_97_s0(int16_t*, int16_t*, int);
+extern void hwy_hlift_16_97_s1(int16_t*, int16_t*, int);
+extern void hwy_hlift_16_97_s2(int16_t*, int16_t*, int);
+extern void hwy_hlift_16_97_s3(int16_t*, int16_t*, int);
 extern void hwy_hlift_32_5x3_synth_s0(int32_t*, int32_t*, int, merc_lifting_step*);
 extern void hwy_hlift_32_5x3_synth_s1(int32_t*, int32_t*, int, merc_lifting_step*);
 extern void hwy_hlift_32_2tap_irrev(int32_t*, int32_t*, int, merc_lifting_step*);

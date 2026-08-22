@@ -138,6 +138,38 @@ pub unsafe fn mercury_weave_stripe32(
     })
 }
 
+/// Decode a stripe row to i16 Q13 lines, irreversible fixed-point dequant:
+/// out = sat_i16(round_ties_even(±|mag| · δ · 2^13 / 2^(31−K_max))).
+/// `delta` = band's raw QCD step size × ONE level's 2D gain — unlike the f32
+/// path's accumulated normalization; the Q13 path rescales LL rows between
+/// levels instead (graph::LevelInputs), keeping every level's intermediates
+/// within the int16 headroom budget.
+///
+/// # Safety
+/// Same contract as [`mercury_weave_stripe16`].
+pub unsafe fn mercury_weave_stripe16_q13(
+    blocks: *const MercuryStripeBlockInfo,
+    num_blocks: i32,
+    dst_lines: *const *mut i16,
+    stripe_height: i32,
+    k_max: i32,
+    delta: f32,
+    coder: BlockCoder,
+) -> bool {
+    let q13 = (1u32 << crate::dwt::fixed97::Q13_FRACTION_BITS) as f32;
+    let fscale = if k_max <= 31 {
+        delta * q13 / (1u64 << (31 - k_max)) as f32
+    } else {
+        delta * q13 * (1u64 << (k_max - 31)) as f32
+    };
+    weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
+        let mag = (val & 0x7FFF_FFFF) as f32 * fscale;
+        let signed = if val < 0 { -mag } else { mag };
+        // `as i32` saturates on overflow; clamp narrows to the i16 range
+        (signed.round_ties_even() as i32).clamp(-32768, 32767) as i16
+    })
+}
+
 /// Decode a stripe row to f32 lines, irreversible dequant (normalized):
 /// out = ±(|mag| · δ / 2^(31−K_max)), sign bit OR'd back onto the float.
 /// `delta` = band's raw QCD step size × accumulated synthesis-gain normalization.

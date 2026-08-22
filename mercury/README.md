@@ -142,6 +142,10 @@ tile, 9 levels, ~3 GB decoded):
 - Irreversible 9/7 matches OpenJPEG within final rounding (≤ 1 LSB, i.e.
   spec-correct); different valid 9/7 inverse implementations disagree at the
   ±1 LSB level.
+- Images with every component ≤ 8 bits decode 9/7 on int16 Q13 fixed point
+  (`dwt/fixed97.rs`) instead of f32 — same eligibility rule as grok's classic
+  int16 path, ~2× the f32 engine throughput, within ±1 output LSB of it.
+  `MERCURY_FORCE_F32=1` keeps the float path for A/B.
 
 ## Validation
 
