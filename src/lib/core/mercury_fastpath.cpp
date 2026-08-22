@@ -593,7 +593,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   if(!plan)
   {
     grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
-    return false;
+    char bailMsg[300];
+    snprintf(bailMsg, sizeof bailMsg, "plan rejected: %s", (const char*)err);
+    MFP_BAIL(bailMsg);
   }
 
   // The plan must describe the same image grok's headers do. The composite's
