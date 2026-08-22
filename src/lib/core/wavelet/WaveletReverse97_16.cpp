@@ -169,7 +169,7 @@
  *  │          │                │ Instead: multiply each neighbor SEPARATELY│
  *  │          │                │ by (β × 2^3), sum the products, then      │
  *  │          │                │ round-shift right by 3, ties to even.      │
- *  │          │                │ fp15 = round(|β| × 2^18) = 13890         │
+ *  │          │                │ fp15 = round(|β| × 2^18) = 13888         │
  *  │          │                │ Net: S[n] += rshift_even(mf15(D[n-1],c)   │
  *  │          │                │              + mf15(D[n],c), 3)          │
  *  │          │                │ This gives 3 extra bits of precision.     │
@@ -180,7 +180,7 @@
  *  │          │                │        = D[n] + sum - (α+1) × sum         │
  *  │          │                │        = D[n] + sum + mf15(sum, frac)     │
  *  │          │                │ where frac = -(α+1) = 0.586134342        │
- *  │          │                │ fp15 = round(0.586134342 × 2^15) = 19205 │
+ *  │          │                │ fp15 = round(0.586134342 × 2^15) = 19206 │
  *  │          │                │ Note: -(α+1) is POSITIVE since α < -1.    │
  *  └──────────┴────────────────┴──────────────────────────────────────────┘
  *
@@ -190,7 +190,7 @@
  *      K−1 = 0.230174105 → fp15 = round(0.230174105 × 2^15) = 7542
  *
  *    2/K = 1.625732422 > 1.0 → decompose: x×(2/K) = x + mf15(x, 2/K−1)
- *      2/K−1 = 0.625732422 → fp15 = round(0.625732422 × 2^15) = 20506
+ *      2/K−1 = 0.625732422 → fp15 = round(0.625732422 × 2^15) = 20504
  *
  *
  *  7. NEIGHBOR-SUM-FIRST FLAG AND BIBO HEADROOM
@@ -416,7 +416,7 @@ namespace HWY_NAMESPACE
    * amplification:
    *
    *   1. Multiply each neighbor SEPARATELY by (|β| × 8) in Q1.15:
-   *        synth_coeff_1 = round(|β| × 2^18) = round(0.052980118 × 262144) = 13890
+   *        synth_coeff_1 = round(|β| × 2^18) = round(0.052980118 × 262144) = 13888
    *      Each product is ≈ 0.424 × neighbor, well within int16 range.
    *
    *   2. Sum the two products with rounding offset 4:
@@ -450,7 +450,7 @@ namespace HWY_NAMESPACE
    *         = D[n] + sum + 0.586134342 × sum
    *
    * The fractional part 0.586134342 = -(α + 1) fits in Q1.15:
-   *   synth_coeff_0_frac = round(0.586134342 × 2^15) = 19205
+   *   synth_coeff_0_frac = round(0.586134342 × 2^15) = 19206
    *
    * In code:
    *   frac = MulFixedPoint15(sum, synth_coeff_0_frac)
@@ -479,7 +479,7 @@ namespace HWY_NAMESPACE
    * Since 2/K > 1.0, we decompose:  x × (2/K) = x + MulFixedPoint15(x, 2/K−1)
    *
    *   2/K − 1 = 0.625732422
-   *   scale_invK_frac = round(0.625732422 × 2^15) = 20506
+   *   scale_invK_frac = round(0.625732422 × 2^15) = 20504
    */
   static const int16_t scale_invK_frac = (int16_t)(0.5 + 0.625732422 * (double)(1 << 15));
 
