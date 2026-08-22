@@ -1,4 +1,20 @@
 
+## Mercury Decode
+
+`mercury_decode.py` records wall time and peak RSS for classic and Mercury
+decodes at each requested thread count. Pass small, medium, and large eligible
+images to compare scaling across image sizes.
+
+```bash
+uv run --no-project benchmark/mercury_decode.py \
+    build/bin build/mercury-benchmark \
+    small.jp2 medium.jp2 large.jp2 \
+    --threads 1 2 4 0 --runs 3 --warmups 1 > mercury.csv
+```
+
+The script requires Linux and GNU `time` at `/usr/bin/time`. A Mercury plan
+rejection fails the run instead of recording a classic fallback.
+
 ## Windows Benchmarks
 
 powershell

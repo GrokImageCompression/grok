@@ -7,8 +7,8 @@
 //!   the [`BlockCoder`](crate::decode::stripe_decoder::BlockCoder) contract
 //!   (grok passes its part-1/HTJ2K coder here).
 //! - **row callback**: each full-width row, in order, as per-component `i32`
-//!   sample rows in the host's convention — unsigned DC-shifted back to
-//!   `[0, 2^prec)` and clamped, signed raw, floats converted per the
+//!   or `i16` sample rows in the host's convention. Unsigned values are DC-shifted back
+//!   to `[0, 2^prec)` and clamped, signed raw, floats converted per the
 //!   sample-conversion spec (see `dye_comp_row`).
 //!
 //! Flow: `mercury_warp_loom{,_fd}` (rejects anything the plan stage can't
@@ -63,6 +63,11 @@ pub type MercuryT1Fn = extern "C" fn(
 /// i32 samples. Pointers are valid only for the duration of the call.
 pub type MercuryRowFn =
     extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const i32, num_comps: u32, width: u64);
+
+/// Row delivery for output that fits signed i16. The pointer contract is the
+/// same as [`MercuryRowFn`].
+pub type MercuryRowI16Fn =
+    extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const i16, num_comps: u32, width: u64);
 
 pub const MERCURY_OK: i32 = 0;
 pub const MERCURY_EBADARG: i32 = -1;
@@ -683,29 +688,69 @@ pub extern "C" fn mercury_bench_dwt(
     best
 }
 
-/// Convert one component's row to absolute i32 samples (see module doc).
-/// Ports mercury_decompress's cvt spec, minus the width narrowing.
-fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [i32]) {
+const I16_SIGNED_PRECISION_BITS: u32 = 16;
+const I16_UNSIGNED_PRECISION_BITS: u32 = 15;
+
+trait OutputSample: Copy + Default + Send + 'static {
+    fn from_i32(value: i32) -> Self;
+    fn supports(precision: u32, signed: bool) -> bool;
+}
+
+impl OutputSample for i32 {
+    fn from_i32(value: i32) -> Self {
+        value
+    }
+
+    fn supports(_precision: u32, _signed: bool) -> bool {
+        true
+    }
+}
+
+impl OutputSample for i16 {
+    fn from_i32(value: i32) -> Self {
+        value as i16
+    }
+
+    fn supports(precision: u32, signed: bool) -> bool {
+        precision
+            <= if signed {
+                I16_SIGNED_PRECISION_BITS
+            } else {
+                I16_UNSIGNED_PRECISION_BITS
+            }
+    }
+}
+
+/// Convert one component's row to absolute samples (see module doc).
+fn dye_comp_row<T: OutputSample>(
+    rows: &Rows<'_>,
+    ci: usize,
+    prec: u32,
+    signed: bool,
+    out: &mut [T],
+) {
     let dc = 1i32 << (prec - 1);
     let mx = (1i64 << prec) as i32 - 1;
     match rows {
         Rows::I16(r) => {
             if signed {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = v as i32;
+                    *o = T::from_i32(v as i32);
                 }
             } else {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = (v as i32 + dc).clamp(0, mx);
+                    *o = T::from_i32((v as i32 + dc).clamp(0, mx));
                 }
             }
         }
         Rows::I32(r) => {
             if signed {
-                out.copy_from_slice(r[ci]);
+                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                    *o = T::from_i32(v);
+                }
             } else {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = (v + dc).clamp(0, mx);
+                    *o = T::from_i32((v + dc).clamp(0, mx));
                 }
             }
         }
@@ -715,14 +760,16 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
             if signed {
                 let sc = (1i64 << (prec - 1)) as f32;
                 for (o, &s) in out.iter_mut().zip(r[ci]) {
-                    *o = ((s * sc).round_ties_even() as i32).clamp(-dc, mx - dc);
+                    *o = T::from_i32(((s * sc).round_ties_even() as i32).clamp(-dc, mx - dc));
                 }
             } else {
                 let sc = (1i64 << prec) as f32;
                 for (o, &s) in out.iter_mut().zip(r[ci]) {
-                    *o = ((s * sc).round_ties_even() as i32)
-                        .saturating_add(dc)
-                        .clamp(0, mx);
+                    *o = T::from_i32(
+                        ((s * sc).round_ties_even() as i32)
+                            .saturating_add(dc)
+                            .clamp(0, mx),
+                    );
                 }
             }
         }
@@ -732,11 +779,15 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
             let shift = crate::dwt::fixed97::Q13_FRACTION_BITS.saturating_sub(prec);
             if signed {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = (crate::dwt::fixed97::rshift_even(v, shift) as i32).clamp(-dc, mx - dc);
+                    *o = T::from_i32(
+                        (crate::dwt::fixed97::rshift_even(v, shift) as i32).clamp(-dc, mx - dc),
+                    );
                 }
             } else {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = (crate::dwt::fixed97::rshift_even(v, shift) as i32 + dc).clamp(0, mx);
+                    *o = T::from_i32(
+                        (crate::dwt::fixed97::rshift_even(v, shift) as i32 + dc).clamp(0, mx),
+                    );
                 }
             }
         }
@@ -746,14 +797,18 @@ fn dye_comp_row(rows: &Rows<'_>, ci: usize, prec: u32, signed: bool, out: &mut [
 struct SendPtr(*mut c_void);
 unsafe impl Send for SendPtr {}
 
-/// Decode `plan` to completion, streaming rows to `row_fn`. Consumes and
-/// frees `plan` (even on failure). `t1` is required (mercury ships no
-/// built-in coder; null → EBADARG); `threads` 0 = one worker per core.
-#[unsafe(no_mangle)]
-pub extern "C" fn mercury_weave(
+fn weave_rows<T: OutputSample>(
     plan: *mut MercuryPlan,
     t1: Option<MercuryT1Fn>,
-    row_fn: Option<MercuryRowFn>,
+    row_fn: Option<
+        extern "C" fn(
+            ctx: *mut c_void,
+            row: u32,
+            comps: *const *const T,
+            num_comps: u32,
+            width: u64,
+        ),
+    >,
     row_ctx: *mut c_void,
     threads: u32,
 ) -> i32 {
@@ -780,6 +835,14 @@ pub extern "C" fn mercury_weave(
     };
 
     let MercuryPlan { plan, src } = *handle;
+    if !plan
+        .siz
+        .components
+        .iter()
+        .all(|component| T::supports(component.precision as u32, component.is_signed))
+    {
+        return MERCURY_EBADARG;
+    }
     let height = plan.height as u64;
     let width = plan.width as usize;
     let comps: Vec<(u32, bool)> = plan
@@ -789,7 +852,7 @@ pub extern "C" fn mercury_weave(
         .map(|c| (c.precision as u32, c.is_signed))
         .collect();
 
-    let mut scratch: Vec<Vec<i32>> = comps.iter().map(|_| vec![0i32; width]).collect();
+    let mut scratch: Vec<Vec<T>> = comps.iter().map(|_| vec![T::default(); width]).collect();
     // Row pointers stored as usize so the closure stays Send; rebuilt (and
     // only read) inside each serial sink call.
     let mut ptrs: Vec<usize> = vec![0; comps.len()];
@@ -805,7 +868,7 @@ pub extern "C" fn mercury_weave(
         row_fn(
             ctx.0,
             row_no,
-            ptrs.as_ptr().cast::<*const i32>(),
+            ptrs.as_ptr().cast::<*const T>(),
             nc,
             width as u64,
         );
@@ -819,5 +882,98 @@ pub extern "C" fn mercury_weave(
         Ok(Ok(emitted)) if emitted == height => MERCURY_OK,
         Ok(Ok(_)) | Ok(Err(_)) => MERCURY_EDECODE,
         Err(_) => MERCURY_EPANIC,
+    }
+}
+
+/// Decode `plan` to completion, streaming i32 rows to `row_fn`. Consumes and
+/// frees `plan` even on failure. `threads` 0 uses one worker per core.
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryRowFn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+/// Decode `plan` to completion, streaming i16 rows to `row_fn`. Returns
+/// `MERCURY_EBADARG` if any component's absolute samples do not fit i16.
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_i16(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryRowI16Fn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_i16_conversion(rows: &Rows<'_>, precision: u32, signed: bool, expected: &[i32]) {
+        let mut output_i32 = vec![0i32; expected.len()];
+        let mut output_i16 = vec![0i16; expected.len()];
+        dye_comp_row(rows, 0, precision, signed, &mut output_i32);
+        dye_comp_row(rows, 0, precision, signed, &mut output_i16);
+        assert_eq!(output_i32, expected);
+        assert_eq!(
+            output_i16,
+            expected
+                .iter()
+                .map(|&value| value as i16)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn i16_row_output_matches_i32_conversion() {
+        let reversible_i16 = [-128i16, 0, 127];
+        let reversible_i16_components: &[&[i16]] = &[&reversible_i16];
+        assert_i16_conversion(
+            &Rows::I16(reversible_i16_components),
+            8,
+            false,
+            &[0, 128, 255],
+        );
+
+        let reversible_i32 = [-32768i32, 0, 32767];
+        let reversible_i32_components: &[&[i32]] = &[&reversible_i32];
+        assert_i16_conversion(
+            &Rows::I32(reversible_i32_components),
+            16,
+            true,
+            &reversible_i32,
+        );
+
+        let irreversible_f32 = [-0.5f32, 0.0, 127.0 / 256.0];
+        let irreversible_f32_components: &[&[f32]] = &[&irreversible_f32];
+        assert_i16_conversion(
+            &Rows::F32(irreversible_f32_components),
+            8,
+            false,
+            &[0, 128, 255],
+        );
+
+        let irreversible_q13 = [-4096i16, 0, 4064];
+        let irreversible_q13_components: &[&[i16]] = &[&irreversible_q13];
+        assert_i16_conversion(
+            &Rows::Q13(irreversible_q13_components),
+            8,
+            false,
+            &[0, 128, 255],
+        );
+    }
+
+    #[test]
+    fn i16_output_rejects_values_outside_its_range() {
+        assert!(i16::supports(I16_UNSIGNED_PRECISION_BITS, false));
+        assert!(!i16::supports(I16_UNSIGNED_PRECISION_BITS + 1, false));
+        assert!(i16::supports(I16_SIGNED_PRECISION_BITS, true));
+        assert!(!i16::supports(I16_SIGNED_PRECISION_BITS + 1, true));
     }
 }

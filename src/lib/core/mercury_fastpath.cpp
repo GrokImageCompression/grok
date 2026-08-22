@@ -81,39 +81,24 @@ namespace grk
 
 namespace
 {
-  // Mercury always emits full-width absolute samples as int32. When the output
-  // image type is INT_16 (grk_get_data_type says the component is int16-eligible
-  // and every component agrees — see mercuryOutType) the sink narrows each sample
-  // to int16 on the way into the plane; the values are known to fit (mercury's
-  // f32 9/7 and exact 5/3 emit the same absolute samples grok's int16 path does).
-  static inline void writeRow(void* plane, bool is16, size_t off, const int32_t* src,
-                              uint64_t width)
+  template<typename T>
+  static inline void writeRow(void* plane, size_t off, const T* src, uint64_t width)
   {
-    if(is16)
-    {
-      auto dst = (int16_t*)plane + off;
-      for(uint64_t x = 0; x < width; x++)
-        dst[x] = (int16_t)src[x];
-    }
-    else
-    {
-      memcpy((int32_t*)plane + off, src, width * sizeof(int32_t));
-    }
+    memcpy((T*)plane + off, src, width * sizeof(T));
   }
 
   struct RowCtx
   {
     void** planes;
     uint32_t* strides;
-    bool is16;
   };
 
-  void rowSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps,
-               uint64_t width)
+  template<typename T>
+  void rowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps, uint64_t width)
   {
     auto ctx = (RowCtx*)c;
     for(uint32_t i = 0; i < numComps; i++)
-      writeRow(ctx->planes[i], ctx->is16, (size_t)row * ctx->strides[i], comps[i], width);
+      writeRow(ctx->planes[i], (size_t)row * ctx->strides[i], comps[i], width);
   }
 
   // Streaming band mode: rows accumulate in a rows_per_strip-high scratch
@@ -127,7 +112,6 @@ namespace
     GrkImage* scratch;
     std::vector<void*> planes;
     std::vector<uint32_t> strides;
-    bool is16;
     uint32_t bandRows; // scratch window height
     uint32_t height; // full image height
     uint32_t filled = 0;
@@ -135,14 +119,14 @@ namespace
     bool cbFailed = false;
   };
 
-  void bandSink(void* c, uint32_t row, const int32_t* const* comps, uint32_t numComps,
-                uint64_t width)
+  template<typename T>
+  void bandSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps, uint64_t width)
   {
     auto ctx = (BandCtx*)c;
     if(ctx->cbFailed)
       return;
     for(uint32_t i = 0; i < numComps; i++)
-      writeRow(ctx->planes[i], ctx->is16, (size_t)ctx->filled * ctx->strides[i], comps[i], width);
+      writeRow(ctx->planes[i], (size_t)ctx->filled * ctx->strides[i], comps[i], width);
     ctx->filled++;
     if(ctx->filled == ctx->bandRows || row + 1 == ctx->height)
     {
@@ -621,6 +605,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     }
   }
 
+  const auto mercuryThreads = static_cast<uint32_t>(TFSingleton::num_threads());
+
   // Streaming band mode: the app registered an incremental band writer
   // (header already on disk), so decode into a sliding rows_per_strip
   // window instead of a full composite. After the first flushed band the
@@ -658,7 +644,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     ctx.cb = cs.ioBandCallback_;
     ctx.cbUserData = cs.ioBandUserData_;
     ctx.scratch = scratch.get();
-    ctx.is16 = is16;
     ctx.bandRows = bandRows;
     ctx.height = info.height;
     for(uint16_t c = 0; c < scratch->numcomps; c++)
@@ -666,7 +651,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       ctx.planes.push_back(scratch->comps[c].data);
       ctx.strides.push_back(scratch->comps[c].stride);
     }
-    int32_t rc = mercury_weave(plan, mercury_grok_t1_decode, bandSink, &ctx, 0);
+    int32_t rc =
+        is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, bandSink<int16_t>, &ctx,
+                                 mercuryThreads)
+             : mercury_weave(plan, mercury_grok_t1_decode, bandSink<int32_t>, &ctx, mercuryThreads);
     if(rc != MERCURY_OK || ctx.cbFailed)
     {
       if(ctx.bandsFlushed == 0 && !ctx.cbFailed)
@@ -703,8 +691,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     planes[c] = comp->data;
     strides[c] = comp->stride;
   }
-  RowCtx ctx{planes.data(), strides.data(), is16};
-  int32_t rc = mercury_weave(plan, mercury_grok_t1_decode, rowSink, &ctx, 0);
+  RowCtx ctx{planes.data(), strides.data()};
+  int32_t rc =
+      is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, rowSink<int16_t>, &ctx, mercuryThreads)
+           : mercury_weave(plan, mercury_grok_t1_decode, rowSink<int32_t>, &ctx, mercuryThreads);
   // Classic runs postProcess on the composite after tile transfer
   // (postMultiTile) — precision/rescale, sycc/esycc->RGB, grey->RGB,
   // upsample, ICC. Mercury rows are the same final absolute samples the

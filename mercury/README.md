@@ -108,9 +108,11 @@ Grok drives the engine through [include/mercury_capi.h](include/mercury_capi.h):
    own pipeline.
 2. `mercury_plan_info` / `mercury_plan_comp_info` — query image geometry so
    the host can allocate output planes.
-3. `mercury_weave(plan, t1_fn, row_fn, …)` — decode, calling `t1_fn` per
-   code-block and `row_fn` for each finished full-width row (in order).
-   A null `t1_fn` is rejected — the host must supply tier-1.
+3. `mercury_weave(plan, t1_fn, row_fn, …)` or `mercury_weave_i16(...)`
+   decodes the image, calling `t1_fn` per code-block and `row_fn` for each finished
+   full-width row (in order). The i16 entry avoids an i32 staging row when
+   the final samples fit signed i16. A null `t1_fn` is rejected. The host
+   must supply tier-1.
 
 [examples/capi_smoke.c](examples/capi_smoke.c) exercises all three surfaces.
 

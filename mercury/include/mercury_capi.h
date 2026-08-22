@@ -49,6 +49,11 @@ typedef int32_t (*mercury_t1_fn)(const uint8_t* coded_data, int32_t coded_length
 typedef void (*mercury_row_fn)(void* ctx, uint32_t row, const int32_t* const* comps,
                                uint32_t num_comps, uint64_t width);
 
+/* i16 row delivery for output where unsigned precision <= 15 and signed
+ * precision <= 16. The pointer lifetime and ordering match mercury_row_fn. */
+typedef void (*mercury_row_i16_fn)(void* ctx, uint32_t row, const int16_t* const* comps,
+                                   uint32_t num_comps, uint64_t width);
+
 /* Main header, parsed by the host codec and handed in; mercury does not parse
  * it. Every pointer is borrowed for the mercury_warp_loom{,_fd} call only;
  * mercury copies what it keeps. */
@@ -171,6 +176,8 @@ void mercury_unwarp_loom(MercuryPlan* plan);
  * mercury_weave wins). threads 0 = one per core. */
 int32_t mercury_weave(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_fn row_fn, void* row_ctx,
                       uint32_t threads);
+int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_fn row_fn,
+                          void* row_ctx, uint32_t threads);
 
 #ifdef __cplusplus
 }
