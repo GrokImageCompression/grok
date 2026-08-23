@@ -815,6 +815,27 @@ fn comb_tile(
         grids.push(g);
     }
 
+    // Every packet spends at least one bit of packet data, so a tile whose
+    // declared packet count needs more than eight bits per byte it has cannot
+    // be real. Checked before the enumeration below so neither that loop nor
+    // `pkts` ever scales with a hostile precinct count.
+    let declared_packets = grids
+        .iter()
+        .flatten()
+        .fold(0u64, |total, &(_, _, npx, npy)| {
+            total.saturating_add(
+                (npx as u64)
+                    .saturating_mul(npy as u64)
+                    .saturating_mul(cod.num_layers as u64),
+            )
+        });
+    if declared_packets / 8 > stream.total {
+        return Err(DecodeError::Logic(format!(
+            "plan: {declared_packets} declared packets in a tile of {} packet bytes",
+            stream.total
+        )));
+    }
+
     // --- packet schedule in progression order ---
     // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
     // projected onto the reference grid, see prec_position.
@@ -1645,6 +1666,24 @@ mod tests {
             let plan = draft(&stream, &hdr, 0, max_layers, true, None).expect("plan must build");
             assert_eq!(coded_bytes(&plan), full, "max_layers {max_layers}");
         }
+    }
+
+    /// Layer count high enough that the 8x8 stream's two precincts declare more
+    /// packets than eight per byte the tile carries.
+    const OVERSIZED_LAYERS: u16 = 10_000;
+
+    /// A packet costs at least one bit of packet data, so a tile declaring more
+    /// packets than its bytes can hold is rejected before the packet schedule
+    /// is enumerated.
+    #[test]
+    fn more_declared_packets_than_the_tile_bytes_is_rejected() {
+        let stream = synth_stream();
+        let mut hdr = synth_header();
+        hdr.cod.num_layers = OVERSIZED_LAYERS;
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+            panic!("a tile declaring {OVERSIZED_LAYERS} layers of packets must be rejected");
+        };
+        assert!(msg.contains("declared packets"), "got {msg}");
     }
 
     fn packet_lengths(packets: &[Vec<u8>]) -> Vec<u32> {
