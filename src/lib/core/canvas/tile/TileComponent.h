@@ -51,22 +51,27 @@ struct TileComponent : public Rect32
 
   ~TileComponent()
   {
-    if(resolutions_)
-    {
-      for(auto resno = 0U; resno < num_resolutions_; ++resno)
-      {
-        const auto res = resolutions_ + resno;
-        for(auto bandIndex = 0U; bandIndex < 3; ++bandIndex)
-        {
-          auto band = res->band + bandIndex;
-          for(auto prc : band->precincts_)
-            delete prc;
-          band->precincts_.clear();
-        }
-      }
-      delete[] resolutions_;
-    }
+    deleteResolutions();
     dealloc();
+  }
+
+  void deleteResolutions()
+  {
+    if(!resolutions_)
+      return;
+    for(auto resno = 0U; resno < num_resolutions_; ++resno)
+    {
+      const auto res = resolutions_ + resno;
+      for(auto bandIndex = 0U; bandIndex < 3; ++bandIndex)
+      {
+        auto band = res->band + bandIndex;
+        for(auto prc : band->precincts_)
+          delete prc;
+        band->precincts_.clear();
+      }
+    }
+    delete[] resolutions_;
+    resolutions_ = nullptr;
   }
 
   /**
@@ -298,7 +303,7 @@ struct TileComponent : public Rect32
   void init(Resolution* resolutions, bool isCompressor, bool wholeTileDecompress, uint8_t reduce,
             TileComponentCodingParams* tccp)
   {
-    delete[] resolutions_;
+    deleteResolutions();
     resolutions_ = resolutions;
     num_resolutions_ = tccp->numresolutions_;
     currentPacketProgressionState_ = PacketProgressionState(num_resolutions_);

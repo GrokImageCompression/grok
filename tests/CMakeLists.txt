@@ -171,6 +171,18 @@ add_executable(grk_tile_part_rejection_race_test GrkTilePartRejectionRaceTest.cp
 target_link_libraries(grk_tile_part_rejection_race_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_tile_part_rejection_race_test COMMAND grk_tile_part_rejection_race_test)
 
+# Regression for an OSS-Fuzz leak: a late tile part of an already-scheduled tile
+# re-initialized the tile while its decompress was running, leaking precincts and
+# racing the tile release into a use-after-free.
+add_executable(grk_late_tile_part_reschedule_test GrkLateTilePartRescheduleTest.cpp)
+target_link_libraries(grk_late_tile_part_reschedule_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_late_tile_part_reschedule_test
+    COMMAND grk_late_tile_part_reschedule_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6359702766944256)
+  set_tests_properties(grk_late_tile_part_reschedule_test PROPERTIES TIMEOUT 120)
+endif()
+
 # Regression for an OSS-Fuzz timeout: a bogus precinct grid with PLT markers made
 # T2 packet parsing skip corrupt packets across the whole grid without end. The
 # test must RETURN; the TIMEOUT turns a regression hang into a failure.

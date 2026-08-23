@@ -385,9 +385,12 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
 
   auto cached = tileCache_->get(tileIndex);
-  // Skip tiles that are already decompressed (best-effort or normal)
+  // Skip tiles that are already decompressed (best-effort or normal) or already
+  // handed to the scheduler: a late tile part must not re-init a tile whose
+  // decompress tasks are still running
   if(cached && cached->processor() &&
      (cached->processor()->isBestEffortDecompressed() ||
+      cached->processor()->scheduledForDecompression() ||
       (cached->processor()->getImage() && !cached->dirty())))
   {
     auto sotFields = headerData;
