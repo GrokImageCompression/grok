@@ -17,33 +17,70 @@
 
 #pragma once
 
+#include <cstdint>
+#include <vector>
+
 namespace grk::t1
 {
+// storage grows to cover the highest layer written, and a read of a layer
+// that was never written returns zero
+template<typename T>
+struct PerLayerValues
+{
+  T get(uint16_t layno) const
+  {
+    return layno < values_.size() ? values_[layno] : (T)0;
+  }
+  void set(uint16_t layno, T value)
+  {
+    grow(layno);
+    values_[layno] = value;
+  }
+  void increment(uint16_t layno, T delta)
+  {
+    grow(layno);
+    values_[layno] = (T)(values_[layno] + delta);
+  }
+  void clear()
+  {
+    values_.clear();
+  }
+  size_t size() const
+  {
+    return values_.size();
+  }
+
+private:
+  void grow(uint16_t layno)
+  {
+    if(layno >= values_.size())
+      values_.resize((size_t)layno + 1);
+  }
+  std::vector<T> values_;
+};
+
 // note: block lives in canvas coordinates
 struct CodeblockImpl
 {
-  CodeblockImpl(uint16_t numLayers)
-      : numbps_(0), numlenbits_(0), signalledPassesByLayer_(nullptr), numLayers_(numLayers)
-  {}
+  CodeblockImpl(uint16_t numLayers) : numbps_(0), numlenbits_(0), numLayers_(numLayers) {}
   ~CodeblockImpl()
   {
     compressedStream.dealloc();
-    delete[] signalledPassesByLayer_;
   }
   uint8_t getNumPassesInLayer(uint16_t layno)
   {
     assert(layno < numLayers_);
-    return signalledPassesByLayer_[layno];
+    return signalledPassesByLayer_.get(layno);
   }
   void setNumPassesInLayer(uint16_t layno, uint8_t passes)
   {
     assert(layno < numLayers_);
-    signalledPassesByLayer_[layno] = passes;
+    signalledPassesByLayer_.set(layno, passes);
   }
   void incNumPassesInLayer(uint16_t layno, uint8_t delta)
   {
     assert(layno < numLayers_);
-    signalledPassesByLayer_[layno] += delta;
+    signalledPassesByLayer_.increment(layno, delta);
   }
   Buffer8* getCompressedStream(void)
   {
@@ -67,16 +104,11 @@ struct CodeblockImpl
   }
 
 protected:
-  void init()
-  {
-    assert(!signalledPassesByLayer_);
-    signalledPassesByLayer_ = new uint8_t[numLayers_];
-    memset(signalledPassesByLayer_, 0, numLayers_);
-  }
+  void init() {}
   Buffer8 compressedStream;
   uint8_t numbps_;
   uint8_t numlenbits_;
-  uint8_t* signalledPassesByLayer_;
+  PerLayerValues<uint8_t> signalledPassesByLayer_;
   uint16_t numLayers_;
 
 private:

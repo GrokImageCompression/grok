@@ -48,6 +48,16 @@ target_include_directories(grk_lru_cache_test PRIVATE
 target_link_libraries(grk_lru_cache_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_lru_cache_test COMMAND grk_lru_cache_test)
 
+add_executable(grk_per_layer_values_test grk_per_layer_values_test.cpp GrkPerLayerValuesTest.cpp)
+target_include_directories(grk_per_layer_values_test PRIVATE
+  ${GROK_SOURCE_DIR}/src/lib/core/t1/codeblock
+  ${GROK_SOURCE_DIR}/src/lib/core/t1/part1/block_coder
+  ${GROK_SOURCE_DIR}/src/lib/core/util
+  ${CMAKE_BINARY_DIR}/src/lib/core
+)
+target_link_libraries(grk_per_layer_values_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_per_layer_values_test COMMAND grk_per_layer_values_test)
+
 add_executable(grk_dwt_bench grk_dwt_bench.cpp)
 target_link_libraries(grk_dwt_bench ${GROK_CORE_NAME})
 

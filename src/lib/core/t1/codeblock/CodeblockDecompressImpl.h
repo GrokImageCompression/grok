@@ -44,25 +44,6 @@ const uint8_t htOpenSegmentPasses = UINT8_MAX;
 struct Segment
 {
   /**
-   * @brief Constructs a Segment
-   */
-  Segment(uint16_t numlayers)
-      : numLayers_(numlayers), calculatedPassesInLayer_(new uint8_t[numLayers_]),
-        signalledBytesInLayer_(new uint16_t[numLayers_])
-  {
-    clear();
-  }
-
-  /**
-   * @brief Destroys a Segment
-   */
-  ~Segment(void)
-  {
-    delete[] calculatedPassesInLayer_;
-    delete[] signalledBytesInLayer_;
-  }
-
-  /**
    * @brief Clears a Segment
    */
   void clear()
@@ -71,8 +52,8 @@ struct Segment
     headerTotalPasses_ = 0;
     totalBytes_ = 0;
     maxPasses_ = 0;
-    memset(calculatedPassesInLayer_, 0, numLayers_ * sizeof(uint8_t));
-    memset(signalledBytesInLayer_, 0, numLayers_ * sizeof(uint16_t));
+    calculatedPassesInLayer_.clear();
+    signalledBytesInLayer_.clear();
     for(auto& b : data_chunks_)
       delete b;
     data_chunks_.clear();
@@ -83,8 +64,8 @@ struct Segment
     grklog.info(
         "Segment %p: total passes: %d, max passes: %d, calculated passes in layer: %d total "
         "bytes: %d signalled bytes in layer: %d",
-        this, totalPasses_, maxPasses_, calculatedPassesInLayer_[layno], totalBytes_,
-        signalledBytesInLayer_[layno]);
+        this, totalPasses_, maxPasses_, calculatedPassesInLayer_.get(layno), totalBytes_,
+        signalledBytesInLayer_.get(layno));
   }
 
   /**
@@ -117,11 +98,6 @@ struct Segment
   }
 
   /**
-   * @brief Number of layers for this code block
-   */
-  uint16_t numLayers_ = 0;
-
-  /**
    * @brief Running total of number of passes across multiple layers, accumulated
    * by the data parser (parsePacketData). Only advances for packets whose data is
    * actually parsed.
@@ -144,7 +120,7 @@ struct Segment
    * @brief Number of passes contributed by layer, calculated by decompress codeblock
    * when parsing packet header
    */
-  uint8_t* calculatedPassesInLayer_;
+  PerLayerValues<uint8_t> calculatedPassesInLayer_;
 
   /**
    * @brief Total number of bytes in segment
@@ -154,7 +130,7 @@ struct Segment
   /**
    * @brief Number of bytes signalled by layer
    */
-  uint16_t* signalledBytesInLayer_;
+  PerLayerValues<uint16_t> signalledBytesInLayer_;
 
   std::vector<Buffer8*> data_chunks_;
 };
@@ -227,7 +203,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   Segment* getSegment(uint16_t index)
   {
     if(index == segs_.size())
-      segs_.push_back(new Segment(numLayers_));
+      segs_.push_back(new Segment());
 
     return segs_[index];
   }
@@ -244,8 +220,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     // 1. read signalled passes in layer
     uint8_t remainingPassesInLayer;
     bio->getnumpasses(&remainingPassesInLayer);
-    assert(signalledPassesByLayer_[layno] == 0);
-    signalledPassesByLayer_[layno] = remainingPassesInLayer;
+    assert(getNumPassesInLayer(layno) == 0);
+    setNumPassesInLayer(layno, remainingPassesInLayer);
 
     // 2. read signalled length bits
     uint8_t increment = bio->getcommacode();
@@ -271,6 +247,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     {
       // 1. set seg->calculatedPassesInLayer_
       auto seg = segs_.back();
+      uint8_t calculatedPasses;
       if(seg->maxPasses_ == maxPassesPerSegmentJ2K)
       {
         /* sanity check when there is no mode switch */
@@ -281,36 +258,35 @@ struct CodeblockDecompressImpl : public CodeblockImpl
                       remainingPassesInLayer);
           throw CorruptPacketHeaderException();
         }
-        else
-        {
-          seg->calculatedPassesInLayer_[layno] = remainingPassesInLayer;
-        }
+        calculatedPasses = remainingPassesInLayer;
       }
       else
       {
         assert(seg->maxPasses_ >= seg->headerTotalPasses_);
-        seg->calculatedPassesInLayer_[layno] = std::min<uint8_t>(
-            (uint8_t)(seg->maxPasses_ - seg->headerTotalPasses_), remainingPassesInLayer);
+        calculatedPasses = std::min<uint8_t>((uint8_t)(seg->maxPasses_ - seg->headerTotalPasses_),
+                                             remainingPassesInLayer);
       }
-      if(seg->calculatedPassesInLayer_[layno] > remainingPassesInLayer)
+      seg->calculatedPassesInLayer_.set(layno, calculatedPasses);
+      if(calculatedPasses > remainingPassesInLayer)
       {
         grklog.warn("readHeader: number of segment passes %d in packet"
                     "is greater than total layer passes in packet %d ",
-                    seg->calculatedPassesInLayer_[layno], remainingPassesInLayer);
+                    calculatedPasses, remainingPassesInLayer);
         throw CorruptPacketHeaderException();
       }
 
       // 2. read signalled number of bytes in this layer for current segment
-      uint8_t bits_to_read = numlenbits() + floorlog2(seg->calculatedPassesInLayer_[layno]);
-      seg->signalledBytesInLayer_[layno] = (uint16_t)readLength(bio, bits_to_read);
-      signalledLayerDataBytes += seg->signalledBytesInLayer_[layno];
-      assert(remainingPassesInLayer >= seg->calculatedPassesInLayer_[layno]);
-      remainingPassesInLayer -= seg->calculatedPassesInLayer_[layno];
+      uint8_t bits_to_read = numlenbits() + floorlog2(calculatedPasses);
+      auto signalledBytes = (uint16_t)readLength(bio, bits_to_read);
+      seg->signalledBytesInLayer_.set(layno, signalledBytes);
+      signalledLayerDataBytes += signalledBytes;
+      assert(remainingPassesInLayer >= calculatedPasses);
+      remainingPassesInLayer -= calculatedPasses;
 
       // 2b. advance the header-side pass total for this segment (mirrors the
       // data-side update in parsePacketData), so segment-boundary decisions in
       // subsequent layers do not depend on the data having been parsed
-      seg->headerTotalPasses_ += seg->calculatedPassesInLayer_[layno];
+      seg->headerTotalPasses_ += calculatedPasses;
 
       // 3. create next segment if this layer spans multiple segments
       if(remainingPassesInLayer > 0)
@@ -319,8 +295,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     } while(remainingPassesInLayer > 0);
     // LOCAL-ONLY debug: mirror mercury's MERCURY_PKT_DEBUG block dump
     if(std::getenv("GRK_PKT_DEBUG"))
-      fprintf(stderr, "  GBLK passes=%u numbps=%u len=%u\n", signalledPassesByLayer_[layno],
-              numbps(), segs_.back()->signalledBytesInLayer_[layno]);
+      fprintf(stderr, "  GBLK passes=%u numbps=%u len=%u\n", getNumPassesInLayer(layno), numbps(),
+              segs_.back()->signalledBytesInLayer_.get(layno));
   }
 
   /**
@@ -448,15 +424,15 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   void recordLayerContribution(Segment* seg, uint16_t layno, uint8_t passes, uint32_t bytes,
                                uint32_t& signalledLayerDataBytes)
   {
-    seg->calculatedPassesInLayer_[layno] = passes;
-    seg->signalledBytesInLayer_[layno] = (uint16_t)bytes;
+    seg->calculatedPassesInLayer_.set(layno, passes);
+    seg->signalledBytesInLayer_.set(layno, (uint16_t)bytes);
     seg->headerTotalPasses_ += passes;
     signalledLayerDataBytes += bytes;
   }
 
   Segment* newHTSegment(uint8_t maxPasses)
   {
-    segs_.push_back(new Segment(numLayers_));
+    segs_.push_back(new Segment());
     segs_.back()->maxPasses_ = maxPasses;
     return segs_.back();
   }
@@ -533,7 +509,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   void parsePacketData(uint16_t layno, size_t& remainingTilePartBytes, bool isHT,
                        uint8_t* layerData, uint32_t& layerDataOffset)
   {
-    if(!signalledPassesByLayer_[layno])
+    if(!getNumPassesInLayer(layno))
       return;
 
     // 1. prepare to parse data for segments:
@@ -546,54 +522,55 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       return;
 
     dataParsedLayers_ = std::max(dataParsedLayers_, (uint16_t)(layno + 1));
-    uint8_t signalledPassesInLayer = signalledPassesByLayer_[layno];
+    uint8_t signalledPassesInLayer = getNumPassesInLayer(layno);
 
     // 2.run through all signalled passes in layer for all code block segments, generating
     // segment buffers as we go
     do
     {
       // 1. parse number of bytes and push segment buffer
-      if(((*dSeg)->signalledBytesInLayer_[layno] > remainingTilePartBytes))
+      if(((*dSeg)->signalledBytesInLayer_.get(layno) > remainingTilePartBytes))
       {
+        // release() frees this segment, so clear the layer contribution first
+        (*dSeg)->signalledBytesInLayer_.set(layno, 0);
+        (*dSeg)->totalPasses_ = 0;
         // HT doesn't tolerate truncated code blocks since decoding runs both forward
         // and reverse. So, in this case, we ignore the entire code block
         if(isHT)
           release();
-        (*dSeg)->signalledBytesInLayer_[layno] = 0;
-        (*dSeg)->totalPasses_ = 0;
         return;
       }
-      if((*dSeg)->signalledBytesInLayer_[layno])
+      if((*dSeg)->signalledBytesInLayer_.get(layno))
       {
         // 1. sanity check on (*seg)->signalledBytesInLayer_
-        if(UINT_MAX - (*dSeg)->signalledBytesInLayer_[layno] < (*dSeg)->totalBytes_)
+        if(UINT_MAX - (*dSeg)->signalledBytesInLayer_.get(layno) < (*dSeg)->totalBytes_)
           throw CorruptPacketDataException();
 
         // 2. correct for truncated packet
-        if((*dSeg)->signalledBytesInLayer_[layno] > remainingTilePartBytes)
+        if((*dSeg)->signalledBytesInLayer_.get(layno) > remainingTilePartBytes)
         {
           grklog.warn("CodeblockDecompress: signalled segment bytes in layer %d exceeds remaining"
                       "tile part bytes %d. Packet is trancated.",
-                      (*dSeg)->signalledBytesInLayer_[layno], remainingTilePartBytes);
+                      (*dSeg)->signalledBytesInLayer_.get(layno), remainingTilePartBytes);
 
-          (*dSeg)->signalledBytesInLayer_[layno] = (uint16_t)remainingTilePartBytes;
+          (*dSeg)->signalledBytesInLayer_.set(layno, (uint16_t)remainingTilePartBytes);
         }
 
         // 3. push segment buffer
-        (*dSeg)->data_chunks_.push_back(new Buffer8(layerData + layerDataOffset,
-                                                    (*dSeg)->signalledBytesInLayer_[layno], false));
-        layerDataOffset += (*dSeg)->signalledBytesInLayer_[layno];
+        (*dSeg)->data_chunks_.push_back(new Buffer8(
+            layerData + layerDataOffset, (*dSeg)->signalledBytesInLayer_.get(layno), false));
+        layerDataOffset += (*dSeg)->signalledBytesInLayer_.get(layno);
 
         // 4. update total bytes in segment
-        (*dSeg)->totalBytes_ += (*dSeg)->signalledBytesInLayer_[layno];
-        assert(remainingTilePartBytes >= (*dSeg)->signalledBytesInLayer_[layno]);
-        remainingTilePartBytes -= (*dSeg)->signalledBytesInLayer_[layno];
+        (*dSeg)->totalBytes_ += (*dSeg)->signalledBytesInLayer_.get(layno);
+        assert(remainingTilePartBytes >= (*dSeg)->signalledBytesInLayer_.get(layno));
+        remainingTilePartBytes -= (*dSeg)->signalledBytesInLayer_.get(layno);
       }
 
       // 2. update total passes in segment
-      (*dSeg)->totalPasses_ += (*dSeg)->calculatedPassesInLayer_[layno];
-      assert(signalledPassesInLayer >= (*dSeg)->calculatedPassesInLayer_[layno]);
-      signalledPassesInLayer -= (*dSeg)->calculatedPassesInLayer_[layno];
+      (*dSeg)->totalPasses_ += (*dSeg)->calculatedPassesInLayer_.get(layno);
+      assert(signalledPassesInLayer >= (*dSeg)->calculatedPassesInLayer_.get(layno));
+      signalledPassesInLayer -= (*dSeg)->calculatedPassesInLayer_.get(layno);
 
       // 3. this layer spans multiple segments, so move to next segment
       if(signalledPassesInLayer > 0)
@@ -871,7 +848,7 @@ private:
   void newSegment(uint8_t cblk_sty)
   {
     uint8_t previousMaxPasses = segs_.empty() ? 0 : segs_.back()->maxPasses_;
-    segs_.push_back(new Segment(numLayers_));
+    segs_.push_back(new Segment());
     segs_.back()->maxPasses_ = partOneMaxPasses(cblk_sty, previousMaxPasses);
   }
 
