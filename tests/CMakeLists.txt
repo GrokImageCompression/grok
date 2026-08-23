@@ -173,6 +173,21 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_t2_corrupt_packet_bound_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz out-of-memory: a stream declaring 58368 quality
+# layers made T2 packet parsing create a block per code block in the precinct.
+# The test fails if peak resident memory exceeds 1 GB.
+add_executable(grk_packet_parser_oom_test GrkPacketParserOomTest.cpp)
+target_link_libraries(grk_packet_parser_oom_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(grk_packet_parser_oom_test psapi)
+endif()
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_packet_parser_oom_test
+    COMMAND grk_packet_parser_oom_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6299706624638976)
+  set_tests_properties(grk_packet_parser_oom_test PROPERTIES TIMEOUT 60)
+endif()
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)

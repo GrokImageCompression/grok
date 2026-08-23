@@ -340,7 +340,10 @@ void PacketParser::readData(void)
     bool isHT = tileProcessor_->getTCP()->isHT();
     for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
     {
-      auto cblk = prc->getDecompressBlock(cblkno);
+      // blocks never included in a packet header were never created, skip them
+      auto cblk = prc->tryGetDecompressBlock(cblkno);
+      if(!cblk)
+        continue;
       try
       {
         cblk->parsePacketData(layno_, layerBytesAvailable_, isHT, layerData_, layerDataOffset);
