@@ -30,36 +30,10 @@
 #include <cstring>
 #include <string>
 
-#if defined(_WIN32)
-#include <windows.h>
-// psapi.h must follow windows.h
-#include <psapi.h>
-#else
-#include <sys/resource.h>
-#include <sys/time.h>
-#endif
-
+#include "GrkPeakResidentBytes.h"
 #include "grok.h"
 
 static const size_t peak_resident_bytes_cap = 1024ULL * 1024ULL * 1024ULL;
-
-static size_t peak_resident_bytes(void)
-{
-#if defined(_WIN32)
-  PROCESS_MEMORY_COUNTERS counters;
-  memset(&counters, 0, sizeof(counters));
-  if(!GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters)))
-    return 0;
-  return (size_t)counters.PeakWorkingSetSize;
-#else
-  struct rusage usage;
-  memset(&usage, 0, sizeof(usage));
-  if(getrusage(RUSAGE_SELF, &usage) != 0)
-    return 0;
-  // ru_maxrss is in kilobytes on Linux
-  return (size_t)usage.ru_maxrss * 1024ULL;
-#endif
-}
 
 int main(int argc, char** argv)
 {
@@ -98,7 +72,7 @@ int main(int argc, char** argv)
 
   grk_deinitialize();
 
-  size_t peak = peak_resident_bytes();
+  size_t peak = peakResidentBytes();
   printf("packet parser oom test peak rss %zu bytes on %s\n", peak, path.c_str());
   if(peak > peak_resident_bytes_cap)
   {
