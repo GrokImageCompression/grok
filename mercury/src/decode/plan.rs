@@ -97,15 +97,53 @@ pub struct BandPlan {
     pub y0: u32,
     pub width: u32,
     pub height: u32,
-    /// Global code-block grid (canvas-anchored).
-    pub blocks_wide: u32,
     /// `guard_bits + epsilon_b - 1` for this band.
     pub k_max_prime: i32,
     /// Irreversible dequant scale: raw QCD step size times accumulated
     /// synthesis-gain normalization (0.0 for reversible).
     pub delta: f32,
-    /// Blocks in band-global raster order.
-    pub blocks: Vec<BlockRec>,
+    /// Stored block rectangle in the band-global block grid. A windowed decode
+    /// keeps only the blocks its in-window precincts fill, so the origin is
+    /// not the band's first block.
+    stored_block_x0: u32,
+    stored_block_y0: u32,
+    stored_blocks_wide: u32,
+    stored_blocks_high: u32,
+    /// Blocks of the stored rectangle in raster order.
+    blocks: Vec<BlockRec>,
+}
+
+impl BandPlan {
+    /// Offset of a band-global block position within `blocks`. A position
+    /// outside the stored rectangle is a planner bug, and the assert keeps a
+    /// wrapped subtraction from landing on some other row's block.
+    fn stored_index(&self, block_x: u32, block_y: u32) -> usize {
+        let x = block_x.wrapping_sub(self.stored_block_x0);
+        let y = block_y.wrapping_sub(self.stored_block_y0);
+        assert!(
+            x < self.stored_blocks_wide && y < self.stored_blocks_high,
+            "block ({block_x}, {block_y}) outside the stored rectangle"
+        );
+        y as usize * self.stored_blocks_wide as usize + x as usize
+    }
+
+    fn block_mut(&mut self, block_x: u32, block_y: u32) -> &mut BlockRec {
+        let i = self.stored_index(block_x, block_y);
+        &mut self.blocks[i]
+    }
+
+    /// The `count` blocks from band-global block column `block_x` of block row
+    /// `block_y`.
+    pub fn block_row(&self, block_y: u32, block_x: u32, count: u32) -> &[BlockRec] {
+        let first = self.stored_index(block_x, block_y);
+        let last = self.stored_index(block_x + count - 1, block_y);
+        &self.blocks[first..last + 1]
+    }
+
+    #[cfg(test)]
+    fn blocks(&self) -> impl Iterator<Item = &BlockRec> {
+        self.blocks.iter()
+    }
 }
 
 /// Per-resolution bands: res 0 has one (LL); higher have three (HL, LH, HH).
@@ -296,6 +334,93 @@ struct PrecBand {
     nbh: u32,
 }
 
+/// Half-open block rectangle in the band-global block grid.
+#[derive(Clone, Copy)]
+struct BlockRect {
+    x0: u32,
+    y0: u32,
+    x1: u32,
+    y1: u32,
+}
+
+impl BlockRect {
+    const EMPTY: BlockRect = BlockRect {
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0,
+    };
+}
+
+/// Grow `rect` to cover one precinct's block range in one band.
+fn unite_block_rect(rect: &mut Option<BlockRect>, pb: &PrecBand) {
+    if pb.nbw == 0 || pb.nbh == 0 {
+        return;
+    }
+    let add = BlockRect {
+        x0: pb.bx0,
+        y0: pb.by0,
+        x1: pb.bx0 + pb.nbw,
+        y1: pb.by0 + pb.nbh,
+    };
+    *rect = Some(match *rect {
+        None => add,
+        Some(had) => BlockRect {
+            x0: had.x0.min(add.x0),
+            y0: had.y0.min(add.y0),
+            x1: had.x1.max(add.x1),
+            y1: had.y1.max(add.y1),
+        },
+    });
+}
+
+/// Per-band block ranges of the precinct at grid position (px, py). Both the
+/// precinct and code-block grids are anchored at the canvas origin, so a block
+/// never straddles two precincts.
+fn chart_prec_bands(
+    res: &crate::codec::tile_geom::ResolutionGeom,
+    px: u32,
+    py: u32,
+    ps: crate::codec::params::PrecinctSize,
+    r: usize,
+    block_w: u32,
+    block_h: u32,
+) -> Vec<PrecBand> {
+    // for r > 0 the precinct halves into the band domain
+    let band_scale = if r == 0 { 1 } else { 2 };
+    let bpw = ps.width / band_scale;
+    let bph = ps.height / band_scale;
+    res.subbands
+        .iter()
+        .map(|sb| {
+            let rx0 = (px * bpw).max(sb.dims.x0);
+            let ry0 = (py * bph).max(sb.dims.y0);
+            let rx1 = ((px + 1) * bpw).min(sb.dims.x1);
+            let ry1 = ((py + 1) * bph).min(sb.dims.y1);
+            if rx0 >= rx1 || ry0 >= ry1 {
+                return PrecBand {
+                    bx0: 0,
+                    by0: 0,
+                    nbw: 0,
+                    nbh: 0,
+                };
+            }
+            let first_bx = sb.dims.x0 / block_w;
+            let first_by = sb.dims.y0 / block_h;
+            let bx0 = rx0 / block_w - first_bx;
+            let by0 = ry0 / block_h - first_by;
+            let bx1 = (rx1 - 1) / block_w - first_bx;
+            let by1 = (ry1 - 1) / block_h - first_by;
+            PrecBand {
+                bx0,
+                by0,
+                nbw: bx1 - bx0 + 1,
+                nbh: by1 - by0 + 1,
+            }
+        })
+        .collect()
+}
+
 /// `max_layers` keeps only the first that many quality layers (0 = all),
 /// truncating the coding passes the dropped layers carry. `use_plt` lets the
 /// parse hop over non-contributing packets by their PLT lengths. `window`
@@ -412,6 +537,7 @@ pub fn draft(
             }
             let seg = comb_tile_part(
                 file,
+                file_len,
                 e.offset,
                 e.length as u64,
                 use_plt.then(|| &mut tile_plt[t]),
@@ -438,8 +564,13 @@ pub fn draft(
                 return Err(DecodeError::Logic("plan: Psot=0 not supported".into()));
             }
             if tile_in_window[isot] {
-                let seg =
-                    comb_tile_part(file, sot_pos, psot, use_plt.then(|| &mut tile_plt[isot]))?;
+                let seg = comb_tile_part(
+                    file,
+                    file_len,
+                    sot_pos,
+                    psot,
+                    use_plt.then(|| &mut tile_plt[isot]),
+                )?;
                 tile_segs[isot].push(seg);
             }
             sot_pos += psot;
@@ -546,9 +677,11 @@ pub fn draft(
 
 /// Scan one tile-part's header markers to SOD, collecting PLT payloads on the
 /// way when a sink is given. Returns the packet-data segment (absolute
-/// offset, length).
+/// offset, length), clipped to the file: a Psot reaching past the end means a
+/// truncated (or lying) stream, and those bytes do not exist.
 fn comb_tile_part(
     file: &dyn ReadAt,
+    file_len: u64,
     sot_pos: u64,
     psot: u64,
     mut plt_sink: Option<&mut Vec<(u8, Vec<u8>)>>,
@@ -587,7 +720,7 @@ fn comb_tile_part(
             return Err(DecodeError::Logic("SOD not found in tile-part".into()));
         }
     }
-    Ok((mp, sot_pos + psot - mp))
+    Ok((mp, (sot_pos + psot).min(file_len).saturating_sub(mp)))
 }
 
 /// Decode one tile's PLT markers into per-packet lengths, in packet order.
@@ -660,7 +793,113 @@ fn comb_tile(
         }
     }
 
-    // --- band plans, sized from geometry ---
+    // --- precinct grids per (comp, res) ---
+    // grid[c][r] = (px0, py0, npx, npy); raster index = (py-py0)*npx + (px-px0).
+    let mut grids: Vec<Vec<(u32, u32, u32, u32)>> = Vec::with_capacity(num_comps);
+    for c in 0..num_comps {
+        let tc = &geom.components[c];
+        let mut g = Vec::with_capacity(n_res);
+        for r in 0..n_res {
+            let res = &tc.resolutions[r];
+            if res.dims.is_empty() {
+                g.push((0, 0, 0, 0));
+                continue;
+            }
+            let ps = cod.precinct_span(r as u8);
+            let px0 = res.dims.x0 / ps.width;
+            let py0 = res.dims.y0 / ps.height;
+            let px1 = (res.dims.x1 - 1) / ps.width;
+            let py1 = (res.dims.y1 - 1) / ps.height;
+            g.push((px0, py0, px1 - px0 + 1, py1 - py0 + 1));
+        }
+        grids.push(g);
+    }
+
+    // --- packet schedule in progression order ---
+    // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
+    // projected onto the reference grid, see prec_position.
+    // The same walk collects the block rectangle each band stores: the writer
+    // below fills every band of a precinct that passes the any-band window
+    // predicate, so a band's rectangle unions its own range over all those
+    // precincts, not just the ones whose slice of it is in the window.
+    let mut band_rects: Vec<Vec<Vec<Option<BlockRect>>>> = (0..num_comps)
+        .map(|c| {
+            (0..n_res)
+                .map(|r| vec![None; geom.components[c].resolutions[r].subbands.len()])
+                .collect()
+        })
+        .collect();
+    let mut pkts: Vec<([u64; 5], Pkt)> = Vec::new();
+    let order = cod.order;
+    for c in 0..num_comps {
+        let dx = siz.components[c].xr_siz as u64;
+        let dy = siz.components[c].yr_siz as u64;
+        let tc = &geom.components[c];
+        for r in 0..n_res {
+            let (px0, py0, npx, npy) = grids[c][r];
+            if npx == 0 {
+                continue;
+            }
+            let res = &tc.resolutions[r];
+            let ps = cod.precinct_span(r as u8);
+            let scale = 1u64 << (d - r as u32);
+            for py in py0..py0 + npy {
+                for px in px0..px0 + npx {
+                    let ypos =
+                        prec_position(py, py0, ps.height, res.dims.y0, geom.tile_y0, scale * dy);
+                    let xpos =
+                        prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
+                    let prec = (py - py0) * npx + (px - px0);
+                    let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
+                    // every code-block spends at least one header bit, so a
+                    // precinct needing more than eight header bits per byte the
+                    // tile has cannot be real (classic's PacketParser check)
+                    let prec_blocks: u64 = prec_bands
+                        .iter()
+                        .map(|pb| pb.nbw as u64 * pb.nbh as u64)
+                        .sum();
+                    if prec_blocks / 8 > stream.total {
+                        return Err(DecodeError::Logic(format!(
+                            "plan: precinct with {prec_blocks} code-blocks in a tile of {} \
+                             packet bytes",
+                            stream.total
+                        )));
+                    }
+                    let in_win = wins
+                        .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
+                        .unwrap_or(true);
+                    if wins.is_some() && in_win {
+                        for (band_idx, pb) in prec_bands.iter().enumerate() {
+                            unite_block_rect(&mut band_rects[c][r][band_idx], pb);
+                        }
+                    }
+                    for l in 0..cod.num_layers {
+                        let (cu, ru, lu) = (c as u64, r as u64, l as u64);
+                        let key = match order {
+                            ProgressionOrder::Lrcp => [lu, ru, cu, py as u64, px as u64],
+                            ProgressionOrder::Rlcp => [ru, lu, cu, py as u64, px as u64],
+                            ProgressionOrder::Rpcl => [ru, ypos, xpos, cu, lu],
+                            ProgressionOrder::Pcrl => [ypos, xpos, cu, ru, lu],
+                            ProgressionOrder::Cprl => [cu, ypos, xpos, ru, lu],
+                        };
+                        pkts.push((
+                            key,
+                            Pkt {
+                                comp: c as u16,
+                                res: r as u8,
+                                layer: l,
+                                prec,
+                                in_win,
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    pkts.sort_by(|a, b| a.0.cmp(&b.0));
+
+    // --- band plans, sized to the block rectangle the walk will fill ---
     let mut comps: Vec<Vec<ResPlan>> = Vec::with_capacity(num_comps);
     for c in 0..num_comps {
         let tc = &geom.components[c];
@@ -675,22 +914,35 @@ fn comb_tile(
                 .map(|(i, sb)| {
                     let qcd_idx = if r == 0 { 0 } else { 1 + 3 * (r - 1) + i };
                     let epsilon_b = band_ranging(q, qcd_idx)?;
+                    // reduced-away resolutions are still parsed (packet lengths
+                    // only come from the headers) but never decoded
+                    let rect = if r > target_res {
+                        BlockRect::EMPTY
+                    } else if wins.is_some() {
+                        band_rects[c][r][i].unwrap_or(BlockRect::EMPTY)
+                    } else {
+                        BlockRect {
+                            x0: 0,
+                            y0: 0,
+                            x1: sb.blocks_wide,
+                            y1: sb.blocks_high,
+                        }
+                    };
+                    let wide = rect.x1 - rect.x0;
+                    let high = rect.y1 - rect.y0;
                     Ok(BandPlan {
                         band_type: sb.band_type,
                         x0: sb.dims.x0,
                         y0: sb.dims.y0,
                         width: sb.dims.width(),
                         height: sb.dims.height(),
-                        blocks_wide: sb.blocks_wide,
                         k_max_prime: q.guard_bits as i32 + epsilon_b - 1,
                         delta: 0.0,
-                        // reduced-away resolutions are still parsed (packet
-                        // lengths only come from the headers) but never decoded
-                        blocks: if r > target_res {
-                            Vec::new()
-                        } else {
-                            vec![BlockRec::default(); (sb.blocks_wide * sb.blocks_high) as usize]
-                        },
+                        stored_block_x0: rect.x0,
+                        stored_block_y0: rect.y0,
+                        stored_blocks_wide: wide,
+                        stored_blocks_high: high,
+                        blocks: vec![BlockRec::default(); wide as usize * high as usize],
                     })
                 })
                 .collect::<Result<Vec<_>, DecodeError>>()?;
@@ -754,81 +1006,6 @@ fn comb_tile(
         }
     }
 
-    // --- precinct grids per (comp, res) ---
-    // grid[c][r] = (px0, py0, npx, npy); raster index = (py-py0)*npx + (px-px0).
-    let mut grids: Vec<Vec<(u32, u32, u32, u32)>> = Vec::with_capacity(num_comps);
-    for c in 0..num_comps {
-        let tc = &geom.components[c];
-        let mut g = Vec::with_capacity(n_res);
-        for r in 0..n_res {
-            let res = &tc.resolutions[r];
-            if res.dims.is_empty() {
-                g.push((0, 0, 0, 0));
-                continue;
-            }
-            let ps = cod.precinct_span(r as u8);
-            let px0 = res.dims.x0 / ps.width;
-            let py0 = res.dims.y0 / ps.height;
-            let px1 = (res.dims.x1 - 1) / ps.width;
-            let py1 = (res.dims.y1 - 1) / ps.height;
-            g.push((px0, py0, px1 - px0 + 1, py1 - py0 + 1));
-        }
-        grids.push(g);
-    }
-
-    // --- packet schedule in progression order ---
-    // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
-    // projected onto the reference grid, see prec_position.
-    let mut pkts: Vec<([u64; 5], Pkt)> = Vec::new();
-    let order = cod.order;
-    for c in 0..num_comps {
-        let dx = siz.components[c].xr_siz as u64;
-        let dy = siz.components[c].yr_siz as u64;
-        let tc = &geom.components[c];
-        for r in 0..n_res {
-            let (px0, py0, npx, npy) = grids[c][r];
-            if npx == 0 {
-                continue;
-            }
-            let res = &tc.resolutions[r];
-            let ps = cod.precinct_span(r as u8);
-            let scale = 1u64 << (d - r as u32);
-            for py in py0..py0 + npy {
-                for px in px0..px0 + npx {
-                    let ypos =
-                        prec_position(py, py0, ps.height, res.dims.y0, geom.tile_y0, scale * dy);
-                    let xpos =
-                        prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
-                    let prec = (py - py0) * npx + (px - px0);
-                    let in_win = wins
-                        .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
-                        .unwrap_or(true);
-                    for l in 0..cod.num_layers {
-                        let (cu, ru, lu) = (c as u64, r as u64, l as u64);
-                        let key = match order {
-                            ProgressionOrder::Lrcp => [lu, ru, cu, py as u64, px as u64],
-                            ProgressionOrder::Rlcp => [ru, lu, cu, py as u64, px as u64],
-                            ProgressionOrder::Rpcl => [ru, ypos, xpos, cu, lu],
-                            ProgressionOrder::Pcrl => [ypos, xpos, cu, ru, lu],
-                            ProgressionOrder::Cprl => [cu, ypos, xpos, ru, lu],
-                        };
-                        pkts.push((
-                            key,
-                            Pkt {
-                                comp: c as u16,
-                                res: r as u8,
-                                layer: l,
-                                prec,
-                                in_win,
-                            },
-                        ));
-                    }
-                }
-            }
-        }
-    }
-    pkts.sort_by(|a, b| a.0.cmp(&b.0));
-
     // --- parse packet headers in stream order ---
     // Persistent precinct state, keyed [comp][res][precinct raster index].
     let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = (0..num_comps)
@@ -882,43 +1059,7 @@ fn comb_tile(
         let px = px0 + pkt.prec % npx;
         let py = py0 + pkt.prec / npx;
 
-        // Band-domain precinct rectangle: for r>0 the precinct halves.
-        let band_scale = if r == 0 { 1 } else { 2 };
-        let bpw = ps.width / band_scale;
-        let bph = ps.height / band_scale;
-
-        // Per-band block ranges for this precinct. Both the precinct and
-        // code-block grids are anchored at the canvas origin.
-        let prec_bands: Vec<PrecBand> = res
-            .subbands
-            .iter()
-            .map(|sb| {
-                let rx0 = (px * bpw).max(sb.dims.x0);
-                let ry0 = (py * bph).max(sb.dims.y0);
-                let rx1 = ((px + 1) * bpw).min(sb.dims.x1);
-                let ry1 = ((py + 1) * bph).min(sb.dims.y1);
-                if rx0 >= rx1 || ry0 >= ry1 {
-                    return PrecBand {
-                        bx0: 0,
-                        by0: 0,
-                        nbw: 0,
-                        nbh: 0,
-                    };
-                }
-                let first_bx = sb.dims.x0 / block_w;
-                let first_by = sb.dims.y0 / block_h;
-                let bx0 = rx0 / block_w - first_bx;
-                let by0 = ry0 / block_h - first_by;
-                let bx1 = (rx1 - 1) / block_w - first_bx;
-                let by1 = (ry1 - 1) / block_h - first_by;
-                PrecBand {
-                    bx0,
-                    by0,
-                    nbw: bx1 - bx0 + 1,
-                    nbh: by1 - by0 + 1,
-                }
-            })
-            .collect();
+        let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
         let state_slot = &mut prec_states[c][r][pkt.prec as usize];
         let state = state_slot.get_or_insert_with(|| PrecState {
             trees: prec_bands
@@ -1000,8 +1141,7 @@ fn comb_tile(
                     .sum();
                 let lx = li as u32 % pb.nbw;
                 let ly = li as u32 / pb.nbw;
-                let g = (pb.by0 + ly) * band.blocks_wide + (pb.bx0 + lx);
-                let rec = &mut band.blocks[g as usize];
+                let rec = band.block_mut(pb.bx0 + lx, pb.by0 + ly);
                 if rec.num_passes == 0 {
                     // First contribution (inclusion always adds ≥1 pass).
                     rec.file_off = body;
@@ -1459,7 +1599,7 @@ mod tests {
             .iter()
             .flat_map(|t| t.comps.iter().flatten())
             .flat_map(|r| r.bands.iter())
-            .flat_map(|b| b.blocks.iter())
+            .flat_map(|b| b.blocks())
             .map(|blk| blk.bolt_len())
             .sum()
     }
@@ -1469,7 +1609,7 @@ mod tests {
             .iter()
             .flat_map(|t| t.comps.iter().flatten())
             .flat_map(|r| r.bands.iter())
-            .flat_map(|b| b.blocks.iter())
+            .flat_map(|b| b.blocks())
             .map(|blk| blk.num_passes)
             .collect()
     }
@@ -1642,7 +1782,7 @@ mod tests {
                 .iter()
                 .flatten()
                 .flat_map(|r| r.bands.iter())
-                .flat_map(|b| b.blocks.iter())
+                .flat_map(|b| b.blocks())
                 .map(|blk| blk.num_passes)
                 .collect()
         };

@@ -160,9 +160,8 @@ impl SubbandDecodeNode {
         dst_lines: &[*mut u8],
         scratch: &mut Vec<u8>,
     ) -> Result<(), DecodeError> {
-        let bw = band.blocks_wide;
         let stripe_rows = dst_lines.len() as i32;
-        let recs = &band.blocks[(row * bw + bx0) as usize..(row * bw + bx0 + nbw) as usize];
+        let recs = band.block_row(row, bx0, nbw);
 
         // Gather coded bytes for the whole block row. Multi-layer blocks
         // concatenate their per-layer chunks into one stream.

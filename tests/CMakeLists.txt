@@ -198,6 +198,22 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_packet_parser_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz out-of-memory: a stream declaring a canvas
+# 0x2020ff20 samples wide made the mercury plan size its block-record tables
+# from the declared geometry instead of the decode window.
+# The test fails if peak resident memory exceeds 1 GB.
+add_executable(grk_mercury_plan_oom_test GrkMercuryPlanOomTest.cpp)
+target_link_libraries(grk_mercury_plan_oom_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(grk_mercury_plan_oom_test psapi)
+endif()
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_mercury_plan_oom_test
+    COMMAND grk_mercury_plan_oom_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6390098506350592)
+  set_tests_properties(grk_mercury_plan_oom_test PROPERTIES TIMEOUT 60)
+endif()
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)

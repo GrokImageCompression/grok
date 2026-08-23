@@ -40,6 +40,7 @@ namespace
   const uint32_t IMAGE_WIDTH = 200;
   const uint32_t IMAGE_HEIGHT = 150;
   const uint16_t NUM_COMPONENTS = 3;
+  const uint8_t CSTY_PRECINCTS = 0x01;
   const uint8_t PRECISION = 8;
 
   std::mutex logMutex;
@@ -105,6 +106,10 @@ namespace
     uint32_t wx0, wy0, wx1, wy1;
     uint8_t reduce;
     uint16_t layersToDecompress;
+    // uniform precinct size, 0 leaves the default (one precinct per band)
+    uint32_t precinct;
+    // code-block size, 0 leaves the default
+    uint32_t codeBlock;
   };
 
   int32_t sampleAt(const grk_image_comp& comp, uint64_t index)
@@ -201,6 +206,21 @@ namespace
       parameters.tile_size_on = true;
       parameters.t_width = config.tileWidth;
       parameters.t_height = config.tileHeight;
+    }
+    if(config.codeBlock)
+    {
+      parameters.cblockw_init = config.codeBlock;
+      parameters.cblockh_init = config.codeBlock;
+    }
+    if(config.precinct)
+    {
+      parameters.csty |= CSTY_PRECINCTS;
+      parameters.res_spec = parameters.numresolution;
+      for(uint32_t r = 0; r < (uint32_t)parameters.res_spec; ++r)
+      {
+        parameters.prcw_init[r] = config.precinct;
+        parameters.prch_init[r] = config.precinct;
+      }
     }
 
     grk_stream_params streamParams = {};
@@ -346,19 +366,31 @@ int main(void)
   grk_initialize(nullptr, 0, nullptr);
 
   const Config configs[] = {
-      // name, tileW, tileH, irrev, plt, tlm, wx0, wy0, wx1, wy1, reduce, layers
-      {"single_tile_interior", 0, 0, false, false, false, 50, 40, 150, 110, 0, 0},
-      {"single_tile_odd_origin", 0, 0, false, false, false, 51, 41, 149, 109, 0, 0},
-      {"tiled_interior", 64, 50, false, false, false, 80, 60, 150, 120, 0, 0},
-      {"tiled_corner", 64, 50, false, false, false, 10, 10, 30, 30, 0, 0},
-      {"tiled_edge", 64, 50, false, false, false, 100, 100, 200, 150, 0, 0},
-      {"tiled_full_cover", 64, 50, false, false, false, 0, 0, 200, 150, 0, 0},
-      {"tiled_reduced", 64, 50, false, false, false, 80, 60, 150, 120, 2, 0},
-      {"tiled_layers", 64, 50, false, false, false, 80, 60, 150, 120, 0, 2},
-      {"tiled_plt_tlm", 64, 50, false, true, true, 80, 60, 150, 120, 0, 0},
-      {"tiled_plt_tlm_reduced_layers", 64, 50, false, true, true, 80, 60, 150, 120, 1, 2},
-      {"tiled_irreversible", 64, 50, true, false, false, 80, 60, 150, 120, 0, 0},
-      {"single_row_of_tiles", 64, 50, false, true, true, 10, 60, 190, 90, 0, 0},
+      // name, tileW, tileH, irrev, plt, tlm, wx0, wy0, wx1, wy1, reduce, layers,
+      // precinct, codeBlock
+      {"single_tile_interior", 0, 0, false, false, false, 50, 40, 150, 110, 0, 0, 0, 0},
+      {"single_tile_odd_origin", 0, 0, false, false, false, 51, 41, 149, 109, 0, 0, 0, 0},
+      {"tiled_interior", 64, 50, false, false, false, 80, 60, 150, 120, 0, 0, 0, 0},
+      {"tiled_corner", 64, 50, false, false, false, 10, 10, 30, 30, 0, 0, 0, 0},
+      {"tiled_edge", 64, 50, false, false, false, 100, 100, 200, 150, 0, 0, 0, 0},
+      {"tiled_full_cover", 64, 50, false, false, false, 0, 0, 200, 150, 0, 0, 0, 0},
+      {"tiled_reduced", 64, 50, false, false, false, 80, 60, 150, 120, 2, 0, 0, 0},
+      {"tiled_layers", 64, 50, false, false, false, 80, 60, 150, 120, 0, 2, 0, 0},
+      {"tiled_plt_tlm", 64, 50, false, true, true, 80, 60, 150, 120, 0, 0, 0, 0},
+      {"tiled_plt_tlm_reduced_layers", 64, 50, false, true, true, 80, 60, 150, 120, 1, 2, 0, 0},
+      {"tiled_irreversible", 64, 50, true, false, false, 80, 60, 150, 120, 0, 0, 0, 0},
+      {"single_row_of_tiles", 64, 50, false, true, true, 10, 60, 190, 90, 0, 0, 0, 0},
+      // several precincts per band, so a window keeps a block rectangle that
+      // starts past the band's first block
+      {"precincts_far_corner", 0, 0, false, false, false, 168, 120, 200, 150, 0, 0, 128, 0},
+      {"precincts_far_corner_reduced", 0, 0, false, false, false, 168, 120, 200, 150, 1, 0, 128, 0},
+      {"precincts_interior", 0, 0, false, false, false, 90, 70, 160, 130, 0, 0, 128, 0},
+      {"precincts_irreversible", 0, 0, true, false, false, 168, 120, 200, 150, 0, 0, 128, 0},
+      {"precincts_tiled", 128, 100, false, true, true, 168, 120, 200, 150, 0, 0, 128, 0},
+      // 32x32 blocks put the far-corner window past the band's first block row
+      {"precincts_small_blocks", 0, 0, false, false, false, 168, 136, 200, 150, 0, 0, 128, 32},
+      {"precincts_small_blocks_layers", 0, 0, false, false, false, 168, 136, 200, 150, 0, 2, 128,
+       32},
   };
 
   int result = 0;
