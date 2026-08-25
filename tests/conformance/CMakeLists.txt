@@ -542,6 +542,11 @@ endforeach()
 set(P2_conformance_records
   "ATK_DFS_IRV.j2c|p2_dfs_irv|3|2:2:2|70:70:70"
   "ATK_DFS_REV.j2c|p2_dfs_atk|3|256:256:256|65:65:65"
+  # Kakadu 8.6.2 streams, baselines are the encoder input for the lossless pair
+  # and kdu_expand's own output for the irreversible one
+  "atk_rev_haar.j2c|p2_atk_rev_haar|1|0|0"
+  "atk_rev_53_rounding.j2c|p2_atk_rev_53|3|0:0:0|0:0:0"
+  "atk_irv_k.j2c|p2_atk_irv_k|1|2|0.5"
 )
 
 foreach(record ${P2_conformance_records})
@@ -573,6 +578,23 @@ foreach(record ${P2_conformance_records})
                        ETS-P2-${filenameInput}-decode)
 
 endforeach()
+
+# a DFS level that splits neither way leaves a resolution with no subbands,
+# so the decoder has to turn the stream away instead of building one
+add_test(NAME ETS-P2-dfs_nosplit_level.j2c-reject
+    COMMAND grk_decompress
+    -i ${INPUT_CONF}/dfs_nosplit_level.j2c
+    -o ${TEMP}/dfs_nosplit_level.j2c.pgx
+    )
+set_tests_properties(ETS-P2-dfs_nosplit_level.j2c-reject PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME ETS-P2-dfs_nosplit_level.j2c-reject-message
+    COMMAND grk_decompress
+    -i ${INPUT_CONF}/dfs_nosplit_level.j2c
+    -o ${TEMP}/dfs_nosplit_level.j2c.pgx
+    )
+set_tests_properties(ETS-P2-dfs_nosplit_level.j2c-reject-message PROPERTIES
+                     PASS_REGULAR_EXPRESSION "splits neither way at decomposition level")
 
 #--------------------------------------------------------------------------
 # Tests for JP2 file

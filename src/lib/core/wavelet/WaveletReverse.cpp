@@ -652,8 +652,26 @@ namespace
     return (uint32_t)folded;
   }
 
-  // the high band comes dequantized without its nominal gain of two, like the 9/7 path
-  const double highBandGain = 2.0;
+  // magnitude of the analysis high pass response at Nyquist, run as a two sample
+  // recursion over the lifting steps in analysis order. the high band arrives
+  // normalized to unit Nyquist gain, so synthesis puts this gain back before lifting.
+  // the same recursion on a constant signal returns the ATK marker's scale factor.
+  double nyquistGain(const TransformKernel& kernel)
+  {
+    double even = 1.0;
+    double odd = -1.0;
+    for(size_t stepIndex = kernel.steps.size(); stepIndex-- > 0;)
+    {
+      double sum = 0;
+      for(auto coefficient : kernel.steps[stepIndex].coefficients)
+        sum += coefficient;
+      if(((kernel.lastStepParity + stepIndex) & 1) == 0)
+        odd += sum * even;
+      else
+        even += sum * odd;
+    }
+    return std::fabs(odd);
+  }
 } // namespace
 
 template<typename T>
@@ -665,7 +683,7 @@ void WaveletReverse::kernelLine(T* line, uint32_t length, uint32_t parity) const
   if(!kernel.reversible)
   {
     double lowScale = kernel.scale;
-    double highScale = highBandGain / kernel.scale;
+    double highScale = nyquistGain(kernel);
     for(uint32_t k = 0; k < length; ++k)
       line[k] = (T)(line[k] * (((k + parity) & 1) ? highScale : lowScale));
   }
