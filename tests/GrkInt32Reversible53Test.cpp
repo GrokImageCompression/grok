@@ -46,6 +46,17 @@ namespace
 
   void discardLog(const char*, void*) {}
 
+  const char* pipelineName = "mercury";
+
+  void useMercury(bool on)
+  {
+#if defined(_WIN32)
+    _putenv_s("GRK_MERCURY", on ? "1" : "0");
+#else
+    setenv("GRK_MERCURY", on ? "1" : "0", 1);
+#endif
+  }
+
   // sharp extremes on the left so a reduced decode overshoots the range, varied
   // values on the right so the lossless round trip has something to reproduce
   int32_t sourceSample(uint32_t x, uint32_t y)
@@ -70,7 +81,7 @@ namespace
     grk_image* image = grk_image_new(1, &params, GRK_CLRSPC_GRAY, true);
     if(!image || !image->comps[0].data)
     {
-      fprintf(stderr, "could not build the source image\n");
+      fprintf(stderr, "%s: could not build the source image\n", pipelineName);
       return false;
     }
     image->x0 = IMAGE_X0;
@@ -102,7 +113,7 @@ namespace
     grk_object* codec = grk_compress_init(&streamParams, &parameters, image);
     bool ok = codec && grk_compress(codec, nullptr) != 0;
     if(!ok)
-      fprintf(stderr, "compress failed\n");
+      fprintf(stderr, "%s: compress failed\n", pipelineName);
     if(codec)
       grk_object_unref(codec);
     grk_object_unref(&image->obj);
@@ -122,24 +133,24 @@ namespace
     codec = grk_decompress_init(&streamParams, &params);
     if(!codec)
     {
-      fprintf(stderr, "reduce %u: grk_decompress_init failed\n", reduce);
+      fprintf(stderr, "%s reduce %u: grk_decompress_init failed\n", pipelineName, reduce);
       return nullptr;
     }
     grk_header_info headerInfo = {};
     if(!grk_decompress_read_header(codec, &headerInfo))
     {
-      fprintf(stderr, "reduce %u: grk_decompress_read_header failed\n", reduce);
+      fprintf(stderr, "%s reduce %u: grk_decompress_read_header failed\n", pipelineName, reduce);
       return nullptr;
     }
     if(!grk_decompress(codec, nullptr))
     {
-      fprintf(stderr, "reduce %u: grk_decompress failed\n", reduce);
+      fprintf(stderr, "%s reduce %u: grk_decompress failed\n", pipelineName, reduce);
       return nullptr;
     }
     grk_image* image = grk_decompress_get_image(codec);
     if(!image || !image->comps[0].data)
     {
-      fprintf(stderr, "reduce %u: no decoded image\n", reduce);
+      fprintf(stderr, "%s reduce %u: no decoded image\n", pipelineName, reduce);
       return nullptr;
     }
     return image->comps;
@@ -159,15 +170,16 @@ namespace
     bool ok = comp != nullptr;
     if(ok && (comp->w != WIDTH || comp->h != HEIGHT))
     {
-      fprintf(stderr, "full decode is %ux%u, expected %ux%u\n", comp->w, comp->h, WIDTH, HEIGHT);
+      fprintf(stderr, "%s: full decode is %ux%u, expected %ux%u\n", pipelineName, comp->w, comp->h,
+              WIDTH, HEIGHT);
       ok = false;
     }
     // the whole point of this test is the int32 wavelet, so say so out loud if
     // the precision ever stops steering the decode onto it
     if(ok && comp->data_type != GRK_INT_32)
     {
-      fprintf(stderr, "%u bit reversible decoded as data type %d, expected int32\n", PRECISION,
-              (int)comp->data_type);
+      fprintf(stderr, "%s: %u bit reversible decoded as data type %d, expected int32\n",
+              pipelineName, PRECISION, (int)comp->data_type);
       ok = false;
     }
     for(uint32_t y = 0; ok && y < HEIGHT; ++y)
@@ -177,8 +189,8 @@ namespace
         int32_t want = sourceSample(x, y);
         if(got != want)
         {
-          fprintf(stderr, "lossless round trip lost sample (%u,%u): got %d, expected %d\n", x, y,
-                  got, want);
+          fprintf(stderr, "%s: lossless round trip lost sample (%u,%u): got %d, expected %d\n",
+                  pipelineName, x, y, got, want);
           ok = false;
           break;
         }
@@ -198,8 +210,8 @@ namespace
         int32_t got = sampleAt(comp, x, y);
         if(got < SAMPLE_MIN || got > SAMPLE_MAX)
         {
-          fprintf(stderr, "reduce %u sample (%u,%u) = %d is outside [%d, %d]\n", reduce, x, y, got,
-                  SAMPLE_MIN, SAMPLE_MAX);
+          fprintf(stderr, "%s reduce %u sample (%u,%u) = %d is outside [%d, %d]\n", pipelineName,
+                  reduce, x, y, got, SAMPLE_MIN, SAMPLE_MAX);
           ok = false;
           break;
         }
@@ -222,17 +234,22 @@ int main(void)
 
   const std::string path = "int32_reversible_53.j2k";
   int status = 0;
-  if(!compress(path))
-    status = 1;
-  else
+  for(bool mercury : {true, false})
   {
-    if(!roundTripIsExact(path))
+    useMercury(mercury);
+    pipelineName = mercury ? "mercury" : "classic";
+    if(!compress(path))
       status = 1;
-    for(uint8_t reduce = 1; reduce < NUM_RESOLUTIONS; ++reduce)
-      if(!reducedDecodeIsInRange(path, reduce))
+    else
+    {
+      if(!roundTripIsExact(path))
         status = 1;
+      for(uint8_t reduce = 1; reduce < NUM_RESOLUTIONS; ++reduce)
+        if(!reducedDecodeIsInRange(path, reduce))
+          status = 1;
+    }
+    remove(path.c_str());
   }
-  remove(path.c_str());
   grk_deinitialize();
   return status;
 }

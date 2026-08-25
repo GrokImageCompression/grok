@@ -69,6 +69,8 @@ def decode_environment(mercury):
     if mercury:
         environment["GRK_MERCURY"] = "1"
         environment["GRK_MERCURY_DEBUG"] = "1"
+    else:
+        environment["GRK_MERCURY"] = "0"
     return environment
 
 

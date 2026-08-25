@@ -53,7 +53,8 @@ const uint8_t B12_POS = 12;
   const mqc_state** curctx;                                                              \
   uint32_t c, a;                                                                         \
   uint8_t ct;                                                                            \
-  bool approaching_red = (coder.backup_->i == BACKUP_DISABLED) &&                        \
+  /* a segment with no bytes has nothing to resume from */                               \
+  bool approaching_red = coder.num_buffers && (coder.backup_->i == BACKUP_DISABLED) &&   \
                          mqc->bp + red_zone >= mqc->end &&                               \
                          ((coder.cur_buffer_index + 1 >= coder.num_buffers) ||           \
                           coder.buffer_lengths[coder.cur_buffer_index + 1] <= red_zone); \

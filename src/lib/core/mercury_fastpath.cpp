@@ -274,7 +274,8 @@ static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage*
 
 bool mercuryFastPath(CodeStreamDecompress& cs)
 {
-  if(!std::getenv("GRK_MERCURY"))
+  const char* mercuryEnv = std::getenv("GRK_MERCURY");
+  if(mercuryEnv && std::strcmp(mercuryEnv, "0") == 0)
     return false;
   for(uint16_t c = 0; c < cs.cp_.tcps_.get(0)->numComps_; ++c)
     if(cs.cp_.tcps_.get(0)->tccps_[c].usesPart2Transform())
@@ -347,6 +348,15 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     MFP_BAIL("POC present");
   if(tcp->sawCoc_)
     MFP_BAIL("COC present");
+
+  // classic rejects this in validateQuantization at tile init, too late for the fast path
+  if(tcp->mainQcdQntsty != CCP_QNTSTY_SIQNT)
+    for(uint16_t c = 0; c < nc; c++)
+    {
+      const auto& t = tcp->tccps_[c];
+      if(!t.fromQCC_ && !t.fromTileHeader_ && tcp->mainQcdNumStepSizes < t.numStepSizesNeeded())
+        MFP_BAIL("main QCD has fewer step sizes than the sub-bands it covers");
+    }
 
   // A precinct smaller than the code-block clamps the effective block size
   // (B.7: xcb' = min(xcb, PPx), and band precincts halve above resolution 0).
@@ -722,7 +732,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
 } // namespace grk
 
-#else // GRK_MERCURY_BUILD: fast path unavailable (Windows / no cargo)
+#else // GRK_MERCURY_BUILD: fast path unavailable (no cargo at configure time)
 
 namespace grk
 {

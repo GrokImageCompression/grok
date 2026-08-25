@@ -43,6 +43,17 @@ namespace
 
   void discardLog(const char*, void*) {}
 
+  const char* pipelineName = "mercury";
+
+  void useMercury(bool on)
+  {
+#if defined(_WIN32)
+    _putenv_s("GRK_MERCURY", on ? "1" : "0");
+#else
+    setenv("GRK_MERCURY", on ? "1" : "0", 1);
+#endif
+  }
+
   int32_t rangeMin(const Case& c)
   {
     return c.sgnd ? -(1 << (c.precision - 1)) : 0;
@@ -55,8 +66,9 @@ namespace
 
   const char* describe(const Case& c, std::string& storage)
   {
-    storage = std::string(c.irreversible ? "9/7" : "5/3") + " " + std::to_string(c.precision) +
-              " bit " + (c.sgnd ? "signed" : "unsigned") + " reduce " + std::to_string(c.reduce);
+    storage = std::string(pipelineName) + " " + (c.irreversible ? "9/7" : "5/3") + " " +
+              std::to_string(c.precision) + " bit " + (c.sgnd ? "signed" : "unsigned") +
+              " reduce " + std::to_string(c.reduce);
     return storage.c_str();
   }
 
@@ -167,17 +179,22 @@ int main(void)
   grk_set_msg_handlers(handlers);
 
   int status = 0;
-  // 12 bit 5/3 and 8 bit 9/7 both decode through the int16 paths
-  for(bool irreversible : {false, true})
-    for(bool sgnd : {true, false})
-      for(uint8_t reduce : {(uint8_t)0, (uint8_t)1})
-      {
-        Case c = {irreversible, (uint8_t)(irreversible ? 8 : 12), sgnd, reduce};
-        std::string path = std::string("decode_range_") + (irreversible ? "97_" : "53_") +
-                           (sgnd ? "signed_" : "unsigned_") + std::to_string(reduce) + ".j2k";
-        if(!compress(c, path) || !decodedWithinRange(c, path))
-          status = 1;
-      }
+  for(bool mercury : {true, false})
+  {
+    useMercury(mercury);
+    pipelineName = mercury ? "mercury" : "classic";
+    // 12 bit 5/3 and 8 bit 9/7 both decode through the int16 paths
+    for(bool irreversible : {false, true})
+      for(bool sgnd : {true, false})
+        for(uint8_t reduce : {(uint8_t)0, (uint8_t)1})
+        {
+          Case c = {irreversible, (uint8_t)(irreversible ? 8 : 12), sgnd, reduce};
+          std::string path = std::string("decode_range_") + (irreversible ? "97_" : "53_") +
+                             (sgnd ? "signed_" : "unsigned_") + std::to_string(reduce) + ".j2k";
+          if(!compress(c, path) || !decodedWithinRange(c, path))
+            status = 1;
+        }
+  }
   grk_deinitialize();
   return status;
 }

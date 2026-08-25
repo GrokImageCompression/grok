@@ -285,11 +285,10 @@ target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
 
 # mercury streaming fast path — compile mercury's DWT kernels against grok's
 # Highway and link the extern-kernels mercury staticlib (built in-tree by
-# cargo). requires cargo: when it is absent (e.g. the Alpine musl guard job)
-# the fast path is dropped and mercury_fastpath.cpp compiles to a no-op
-# fallback. run cargo --version rather than trusting find_program: the
-# oss-fuzz base-builder image puts a cargo wrapper on PATH without a rust
-# toolchain behind it.
+# cargo). requires cargo: when it is absent the fast path is dropped and
+# mercury_fastpath.cpp compiles to a no-op fallback. run cargo --version
+# rather than trusting find_program: the oss-fuzz base-builder image puts a
+# cargo wrapper on PATH without a rust toolchain behind it.
 set(MERCURY_DIR ${CMAKE_SOURCE_DIR}/mercury)
 find_program(CARGO_EXECUTABLE cargo)
 set(GRK_ENABLE_MERCURY OFF)

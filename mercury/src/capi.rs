@@ -735,7 +735,7 @@ fn dye_comp_row<T: OutputSample>(
         Rows::I16(r) => {
             if signed {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = T::from_i32(v as i32);
+                    *o = T::from_i32((v as i32).clamp(-dc, mx - dc));
                 }
             } else {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
@@ -746,7 +746,7 @@ fn dye_comp_row<T: OutputSample>(
         Rows::I32(r) => {
             if signed {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
-                    *o = T::from_i32(v);
+                    *o = T::from_i32(v.clamp(-dc, mx - dc));
                 }
             } else {
                 for (o, &v) in out.iter_mut().zip(r[ci]) {
@@ -948,6 +948,25 @@ mod tests {
             16,
             true,
             &reversible_i32,
+        );
+
+        // a reduced 5/3 decode overshoots the sample range next to an edge
+        let overshoot_i16 = [-2560i16, 0, 2559];
+        let overshoot_i16_components: &[&[i16]] = &[&overshoot_i16];
+        assert_i16_conversion(
+            &Rows::I16(overshoot_i16_components),
+            12,
+            true,
+            &[-2048, 0, 2047],
+        );
+
+        let overshoot_i32 = [-5038i32, 0, 5119];
+        let overshoot_i32_components: &[&[i32]] = &[&overshoot_i32];
+        assert_i16_conversion(
+            &Rows::I32(overshoot_i32_components),
+            13,
+            true,
+            &[-4096, 0, 4095],
         );
 
         let irreversible_f32 = [-0.5f32, 0.0, 127.0 / 256.0];

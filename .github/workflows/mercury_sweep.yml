@@ -41,8 +41,8 @@ jobs:
       run: cmake --build . --config $BUILD_TYPE -j$(nproc)
 
     - name: assert mercury is in the build
-      # without rust the library builds without mercury and GRK_MERCURY=1
-      # silently decodes with classic, turning the sweep into classic vs classic
+      # without rust the library builds without mercury and every decode is
+      # classic, turning the sweep into classic vs classic
       run: nm -D ${{ github.workspace }}/build/bin/libgrokj2k.so | grep -q mercury_warp_loom
 
     - name: runner cpu

@@ -49,10 +49,11 @@ def parse_codestream(path):
 
 def run_decode(bin_dir, in_file, out_file, mercury):
     env = dict(os.environ)
-    env.pop("GRK_MERCURY", None)
     if mercury:
         env["GRK_MERCURY"] = "1"
         env["GRK_MERCURY_DEBUG"] = "1"
+    else:
+        env["GRK_MERCURY"] = "0"
     try:
         r = subprocess.run(
             [os.path.join(bin_dir, "grk_decompress"), "-i", in_file, "-o", out_file],

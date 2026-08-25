@@ -77,6 +77,12 @@ void BlockCoder::decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* 
   }
 }
 
+void BlockCoder::decompressDiscardBackup(void)
+{
+  if(coder.cached_)
+    coder.backup_->i = BACKUP_DISABLED;
+}
+
 void BlockCoder::setFinalLayer(bool isFinal)
 {
   coder.finalLayer_ = isFinal;

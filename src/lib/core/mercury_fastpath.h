@@ -8,7 +8,7 @@
  * mercury_grok_t1_decode shim) straight into multiTileComposite_'s
  * planes. Anything the plan rejects falls back to the classic pipeline.
  *
- * Gated by GRK_MERCURY=1 in the environment.
+ * On by default. GRK_MERCURY=0 in the environment forces the classic pipeline.
  */
 #pragma once
 

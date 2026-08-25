@@ -274,9 +274,9 @@ namespace
 int main(void)
 {
 #if defined(_WIN32)
-  _putenv_s("GRK_MERCURY", "");
+  _putenv_s("GRK_MERCURY", "0");
 #else
-  unsetenv("GRK_MERCURY");
+  setenv("GRK_MERCURY", "0", 1);
 #endif
 
   grk_msg_handlers handlers = {};

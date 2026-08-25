@@ -209,9 +209,9 @@ int main(void)
 {
   // the fast path is a second decoder; this test is about the classic one
 #if defined(_WIN32)
-  _putenv_s("GRK_MERCURY", "");
+  _putenv_s("GRK_MERCURY", "0");
 #else
-  unsetenv("GRK_MERCURY");
+  setenv("GRK_MERCURY", "0", 1);
 #endif
 
   grk_initialize(nullptr, 0, nullptr);

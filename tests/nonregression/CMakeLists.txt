@@ -283,7 +283,6 @@ foreach(TEST_CMD_LINE ${TEST_CMD_LINE_LIST})
     if(IS_FAILING)
       set(FAILED_TEST_FOUND 1)
       string(SUBSTRING ${EXE_NAME} 1 -1 EXE_NAME)  # Remove '!' from !grk_compress or !core_decompress
-      list(REMOVE_AT CMD_ARG_LIST 0)
     endif()
 
     string(REGEX MATCH "^grk_compress$|^grk_compress_no_raw$|^grk_compress_no_raw_lossless$|^grk_decompress$|^core_decompress$" EXE_NAME_FOUND ${EXE_NAME})

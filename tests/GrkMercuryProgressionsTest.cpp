@@ -59,12 +59,9 @@ namespace
   void useMercury(bool on)
   {
 #if defined(_WIN32)
-    _putenv_s("GRK_MERCURY", on ? "1" : "");
+    _putenv_s("GRK_MERCURY", on ? "1" : "0");
 #else
-    if(on)
-      setenv("GRK_MERCURY", "1", 1);
-    else
-      unsetenv("GRK_MERCURY");
+    setenv("GRK_MERCURY", on ? "1" : "0", 1);
 #endif
   }
 

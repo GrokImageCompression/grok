@@ -336,6 +336,15 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
 endif()
 
+add_executable(grk_differential_layers_test GrkDifferentialLayersTest.cpp)
+target_link_libraries(grk_differential_layers_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  # TERMALL: every coding pass is its own segment
+  add_test(NAME grk_differential_layers_p0_04_test
+    COMMAND grk_differential_layers_test
+            ${GRK_DATA_ROOT}/input/conformance/p0_04.j2k)
+endif()
+
 add_executable(grk_subsampled_tiff_readback_test GrkSubsampledTiffReadbackTest.cpp)
 target_link_libraries(grk_subsampled_tiff_readback_test ${GROK_CODEC_NAME})
 if(GRK_DATA_ROOT)

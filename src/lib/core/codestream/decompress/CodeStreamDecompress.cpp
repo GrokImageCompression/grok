@@ -1114,7 +1114,8 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
                   imageBounds.x0, imageBounds.y0, imageBounds.x1, imageBounds.y1, tileIndex);
       croppedImageBounds = imageBounds;
     }
-    activeImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
+    if(!activeImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
+      return false;
     activeImage_->postReadHeader(&cp_);
   }
 

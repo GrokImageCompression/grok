@@ -582,14 +582,18 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   /**
    * @brief Increments iterator for next segment to be decompressed
    * @param segIter reference to std::vector<Segment>::iterator
+   * @param coder pointer to block decoder
    */
-  void nextToBeDecompressedSegment(std::vector<Segment*>::iterator& s)
+  template<typename T>
+  void nextToBeDecompressedSegment(std::vector<Segment*>::iterator& s, T* coder)
   {
     compressDataOffset_ += (*s)->totalBytes_;
     passno_ = 0;
     needsSegInit_ = true;
     s++;
     numDecompressedSegments_++;
+    // a pending backup marks a position in the segment we are leaving
+    coder->decompressDiscardBackup();
   }
 #define T1_TYPE_MQ 0 /** Normal coding using entropy coder */
 #define T1_TYPE_RAW 1 /** Raw compressing*/
@@ -654,7 +658,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     //  THEN we can deduce that the previous decode reached end of segment
     if(passno_ == (*seg)->totalPasses_ &&
        (dataParsedLayers_ == numLayers_ || seg != segBegin + numDataParsedSegments_ - 1))
-      nextToBeDecompressedSegment(seg);
+      nextToBeDecompressedSegment(seg, coder);
 
     coder->decompressInitOrientation(orientation);
     auto segEnd = toBeDecompressedEnd();
@@ -700,7 +704,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
 
       // force end of segment when bitPlanesToDecompress_ reaches zero
       if((passno_ == (*seg)->totalPasses_ || bitPlanesToDecompress_ == 0))
-        nextToBeDecompressedSegment(seg);
+        nextToBeDecompressedSegment(seg, coder);
     }
     coder->decompressFinish(cblksty, dataParsedLayers_ == numLayers_);
     needsSegUpdate_ = true;

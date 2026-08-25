@@ -188,9 +188,9 @@ jobs:
         submodules: true
     - name: static build + test in Alpine (musl) container
       run: |
-        docker run --rm -v "$PWD":/src -w /src alpine:3.20 sh -c '
+        docker run --rm -v "$PWD":/src -w /src alpine:3.22 sh -c '
           set -e
-          apk add --no-cache build-base cmake git bash perl nasm linux-headers python3
+          apk add --no-cache build-base cmake git bash perl nasm linux-headers python3 rust cargo
           git clone --depth=1 --branch=master \
             https://github.com/GrokImageCompression/grok-test-data.git /tmp/grok-test-data
           cmake -S . -B build-alpine \
@@ -206,6 +206,8 @@ jobs:
             echo "ERROR: grk_compress is not statically linked"; exit 1
           fi
           echo "confirmed fully static musl binary"
+          # the binary is stripped
+          strings build-alpine/bin/grk_decompress | grep -q "mercury fast path" || { echo "ERROR: mercury not in build"; exit 1; }
           ctest --test-dir build-alpine --output-on-failure
         '
 

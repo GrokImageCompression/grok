@@ -152,8 +152,9 @@ tile, 9 levels, ~3 GB decoded):
 ## Validation
 
 This crate has no runnable standalone test harness — it links into Grok, so
-end-to-end decode is validated through **Grok's own test suite** (run with
-`GRK_MERCURY=1`) and A/B'd against Grok's classic pipeline and OpenJPEG. The
+end-to-end decode is validated through **Grok's own test suite** (the fast path
+is on by default in Grok, and `GRK_MERCURY=0` forces the classic pipeline) and
+A/B'd against Grok's classic pipeline and OpenJPEG. The
 small in-crate `#[cfg(test)]` unit tests cover header/packet parsing and tag
 trees.
 

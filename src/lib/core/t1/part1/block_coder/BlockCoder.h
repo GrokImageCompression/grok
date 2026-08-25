@@ -51,6 +51,7 @@ public:
   void decompressFinish(uint32_t cblksty, bool finalLayer);
   void decompressBackup(void);
   void decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress);
+  void decompressDiscardBackup(void);
   void setFinalLayer(bool isFinal);
   static bool cacheAll(uint32_t strategy);
 
