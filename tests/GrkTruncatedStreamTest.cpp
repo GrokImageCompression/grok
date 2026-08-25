@@ -29,50 +29,50 @@
 
 namespace
 {
-  const uint32_t REPEATS = 24;
-  const uint32_t REDUCE = 3;
+const uint32_t REPEATS = 24;
+const uint32_t REDUCE = 3;
 
-  void discardLog(const char*, void*) {}
+void discardLog(const char*, void*) {}
 
-  // decoding a truncated stream may fail; the point is that it must not
-  // corrupt memory or crash while doing so
-  bool decodeEndsCleanly(const std::string& path)
+// decoding a truncated stream may fail; the point is that it must not
+// corrupt memory or crash while doing so
+bool decodeEndsCleanly(const std::string& path)
+{
+  grk_decompress_parameters params = {};
+  params.core.reduce = REDUCE;
+  grk_stream_params streamParams = {};
+  streamParams.is_read_stream = true;
+  snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
+
+  grk_object* codec = grk_decompress_init(&streamParams, &params);
+  if(!codec)
+    return true;
+  grk_header_info headerInfo = {};
+  if(grk_decompress_read_header(codec, &headerInfo) && grk_decompress(codec, nullptr))
   {
-    grk_decompress_parameters params = {};
-    params.core.reduce = REDUCE;
-    grk_stream_params streamParams = {};
-    streamParams.is_read_stream = true;
-    snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
-
-    grk_object* codec = grk_decompress_init(&streamParams, &params);
-    if(!codec)
-      return true;
-    grk_header_info headerInfo = {};
-    if(grk_decompress_read_header(codec, &headerInfo) && grk_decompress(codec, nullptr))
+    grk_image* image = grk_decompress_get_image(codec);
+    // touch every sample so a freed tile buffer shows up under a sanitizer
+    if(image)
     {
-      grk_image* image = grk_decompress_get_image(codec);
-      // touch every sample so a freed tile buffer shows up under a sanitizer
-      if(image)
+      for(uint16_t c = 0; c < image->numcomps; ++c)
       {
-        for(uint16_t c = 0; c < image->numcomps; ++c)
-        {
-          const auto& comp = image->comps[c];
-          if(!comp.data)
-            continue;
-          int64_t sum = 0;
-          for(uint32_t y = 0; y < comp.h; ++y)
-            for(uint32_t x = 0; x < comp.w; ++x)
-              sum += comp.data_type == GRK_INT_16
-                         ? static_cast<int16_t*>(comp.data)[(size_t)y * comp.stride + x]
-                         : static_cast<int32_t*>(comp.data)[(size_t)y * comp.stride + x];
-          if(sum == INT64_MIN)
-            fprintf(stderr, "unreachable\n");
-        }
+        const auto& comp = image->comps[c];
+        if(!comp.data)
+          continue;
+        int64_t sum = 0;
+        for(uint32_t y = 0; y < comp.h; ++y)
+          for(uint32_t x = 0; x < comp.w; ++x)
+            sum += comp.data_type == GRK_INT_16
+                       ? static_cast<int16_t*>(comp.data)[(size_t)y * comp.stride + x]
+                       : static_cast<int32_t*>(comp.data)[(size_t)y * comp.stride + x];
+        if(sum == INT64_MIN)
+          fprintf(stderr, "unreachable\n");
       }
     }
-    grk_object_unref(codec);
-    return true;
   }
+  grk_object_unref(codec);
+  return true;
+}
 } // namespace
 
 int main(int argc, char** argv)

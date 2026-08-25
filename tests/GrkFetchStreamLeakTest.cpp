@@ -29,65 +29,65 @@
 
 namespace
 {
-  const uint32_t WARMUP_FAILURES = 4;
-  const uint32_t MEASURED_FAILURES = 64;
-  // the decoder starts no threads or files of its own on this path, so any
-  // real growth is one leaked fetcher per iteration
-  const long ALLOWED_GROWTH = 8;
-  // the first fails while parsing the path, the second while asking a dead
-  // local port for the object size
-  const char* FAILING_PATHS[] = {"/vsis3/bucket-with-no-key",
-                                 "/vsicurl/http://127.0.0.1:1/no-such-object.jp2"};
-  const uint32_t NUM_FAILING_PATHS = sizeof(FAILING_PATHS) / sizeof(FAILING_PATHS[0]);
+const uint32_t WARMUP_FAILURES = 4;
+const uint32_t MEASURED_FAILURES = 64;
+// the decoder starts no threads or files of its own on this path, so any
+// real growth is one leaked fetcher per iteration
+const long ALLOWED_GROWTH = 8;
+// the first fails while parsing the path, the second while asking a dead
+// local port for the object size
+const char* FAILING_PATHS[] = {"/vsis3/bucket-with-no-key",
+                               "/vsicurl/http://127.0.0.1:1/no-such-object.jp2"};
+const uint32_t NUM_FAILING_PATHS = sizeof(FAILING_PATHS) / sizeof(FAILING_PATHS[0]);
 
-  void discardLog(const char*, void*) {}
+void discardLog(const char*, void*) {}
 
-  long countEntries(const char* directory)
+long countEntries(const char* directory)
+{
+  DIR* dir = opendir(directory);
+  if(!dir)
+    return -1;
+  long count = 0;
+  while(struct dirent* entry = readdir(dir))
   {
-    DIR* dir = opendir(directory);
-    if(!dir)
-      return -1;
-    long count = 0;
-    while(struct dirent* entry = readdir(dir))
-    {
-      if(strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
-        count++;
-    }
-    closedir(dir);
-    return count;
+    if(strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      count++;
   }
+  closedir(dir);
+  return count;
+}
 
-  bool initFailsAsExpected(const char* path)
+bool initFailsAsExpected(const char* path)
+{
+  grk_decompress_parameters params = {};
+  grk_stream_params streamParams = {};
+  streamParams.is_read_stream = true;
+  snprintf(streamParams.file, sizeof(streamParams.file), "%s", path);
+
+  grk_object* codec = grk_decompress_init(&streamParams, &params);
+  if(codec)
   {
-    grk_decompress_parameters params = {};
-    grk_stream_params streamParams = {};
-    streamParams.is_read_stream = true;
-    snprintf(streamParams.file, sizeof(streamParams.file), "%s", path);
-
-    grk_object* codec = grk_decompress_init(&streamParams, &params);
-    if(codec)
-    {
-      grk_object_unref(codec);
-      return false;
-    }
-    return true;
+    grk_object_unref(codec);
+    return false;
   }
+  return true;
+}
 
-  bool runFailingSetups(uint32_t repeats)
+bool runFailingSetups(uint32_t repeats)
+{
+  for(uint32_t i = 0; i < repeats; ++i)
   {
-    for(uint32_t i = 0; i < repeats; ++i)
+    for(uint32_t p = 0; p < NUM_FAILING_PATHS; ++p)
     {
-      for(uint32_t p = 0; p < NUM_FAILING_PATHS; ++p)
+      if(!initFailsAsExpected(FAILING_PATHS[p]))
       {
-        if(!initFailsAsExpected(FAILING_PATHS[p]))
-        {
-          fprintf(stderr, "decompress init unexpectedly succeeded for %s\n", FAILING_PATHS[p]);
-          return false;
-        }
+        fprintf(stderr, "decompress init unexpectedly succeeded for %s\n", FAILING_PATHS[p]);
+        return false;
       }
     }
-    return true;
   }
+  return true;
+}
 } // namespace
 
 int main(void)
@@ -119,8 +119,8 @@ int main(void)
   long threadGrowth = threadsAfter - threadsBefore;
   long descriptorGrowth = descriptorsAfter - descriptorsBefore;
   uint32_t setups = MEASURED_FAILURES * NUM_FAILING_PATHS;
-  printf("threads %ld -> %ld, descriptors %ld -> %ld over %u failed stream setups\n",
-         threadsBefore, threadsAfter, descriptorsBefore, descriptorsAfter, setups);
+  printf("threads %ld -> %ld, descriptors %ld -> %ld over %u failed stream setups\n", threadsBefore,
+         threadsAfter, descriptorsBefore, descriptorsAfter, setups);
 
   if(threadGrowth > ALLOWED_GROWTH)
   {

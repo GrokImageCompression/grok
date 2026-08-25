@@ -172,8 +172,7 @@ int runTest(const std::string& path)
       const auto& compositeComp = composite->comps[c];
       if(tileComp.data_type != compositeComp.data_type)
       {
-        fprintf(stderr,
-                "tile %u component %u decodes into data type %d but the composite is %d\n",
+        fprintf(stderr, "tile %u component %u decodes into data type %d but the composite is %d\n",
                 tileIndex, c, (int)tileComp.data_type, (int)compositeComp.data_type);
         ++failures;
         continue;
@@ -183,9 +182,8 @@ int runTest(const std::string& path)
         for(uint32_t x = 0; x < tileComp.w; ++x)
         {
           int32_t fromTile = readSample(tileComp, x, y);
-          int32_t fromComposite =
-              readSample(compositeComp, tileComp.x0 - compositeComp.x0 + x,
-                         tileComp.y0 - compositeComp.y0 + y);
+          int32_t fromComposite = readSample(compositeComp, tileComp.x0 - compositeComp.x0 + x,
+                                             tileComp.y0 - compositeComp.y0 + y);
           if(fromTile != fromComposite)
           {
             fprintf(stderr, "tile %u component %u sample (%u,%u) is %d, composite has %d\n",

@@ -35,49 +35,48 @@
 
 namespace
 {
-  const size_t NUM_IDENTIFIER_BYTES = 22;
-  const uint8_t JP2_RFC3745_SIGNATURE[] = {0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50,
-                                           0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a};
-  const size_t SIGNATURE_LENGTH = sizeof(JP2_RFC3745_SIGNATURE);
-  const uint8_t JP2_BRAND[] = {0x6a, 0x70};
-  const size_t BRAND_OFFSET = 20;
-  const uint8_t FILLER_BYTE = 0xa5;
+const size_t NUM_IDENTIFIER_BYTES = 22;
+const uint8_t JP2_RFC3745_SIGNATURE[] = {0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50,
+                                         0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a};
+const size_t SIGNATURE_LENGTH = sizeof(JP2_RFC3745_SIGNATURE);
+const uint8_t JP2_BRAND[] = {0x6a, 0x70};
+const size_t BRAND_OFFSET = 20;
+const uint8_t FILLER_BYTE = 0xa5;
 
-  void discardLog(const char*, void*) {}
+void discardLog(const char*, void*) {}
 
-  size_t pageLength(void)
-  {
-    return (size_t)sysconf(_SC_PAGESIZE);
-  }
+size_t pageLength(void)
+{
+  return (size_t)sysconf(_SC_PAGESIZE);
+}
 
-  // fills a whole number of pages, so the mapping ends exactly where the
-  // blocked page begins
-  bool writePagedFile(const std::string& path, size_t length, size_t identifierOffset,
-                      bool withBrand)
-  {
-    std::string contents(length, (char)FILLER_BYTE);
-    memcpy(&contents[identifierOffset], JP2_RFC3745_SIGNATURE, SIGNATURE_LENGTH);
-    if(withBrand)
-      memcpy(&contents[identifierOffset + BRAND_OFFSET], JP2_BRAND, sizeof(JP2_BRAND));
+// fills a whole number of pages, so the mapping ends exactly where the
+// blocked page begins
+bool writePagedFile(const std::string& path, size_t length, size_t identifierOffset, bool withBrand)
+{
+  std::string contents(length, (char)FILLER_BYTE);
+  memcpy(&contents[identifierOffset], JP2_RFC3745_SIGNATURE, SIGNATURE_LENGTH);
+  if(withBrand)
+    memcpy(&contents[identifierOffset + BRAND_OFFSET], JP2_BRAND, sizeof(JP2_BRAND));
 
-    FILE* file = fopen(path.c_str(), "wb");
-    if(!file)
-      return false;
-    bool written = fwrite(contents.data(), 1, length, file) == length;
-    fclose(file);
-    return written;
-  }
+  FILE* file = fopen(path.c_str(), "wb");
+  if(!file)
+    return false;
+  bool written = fwrite(contents.data(), 1, length, file) == length;
+  fclose(file);
+  return written;
+}
 
-  grk_object* initAtOffset(const std::string& path, size_t offset)
-  {
-    grk_decompress_parameters params = {};
-    grk_stream_params streamParams = {};
-    streamParams.is_read_stream = true;
-    streamParams.initial_offset = offset;
-    snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
+grk_object* initAtOffset(const std::string& path, size_t offset)
+{
+  grk_decompress_parameters params = {};
+  grk_stream_params streamParams = {};
+  streamParams.is_read_stream = true;
+  streamParams.initial_offset = offset;
+  snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
 
-    return grk_decompress_init(&streamParams, &params);
-  }
+  return grk_decompress_init(&streamParams, &params);
+}
 } // namespace
 
 using MapFunction = void* (*)(void*, size_t, int, int, int, off_t);

@@ -49,10 +49,9 @@ void compareOnePlane(const char* label, uint8_t precision, uint32_t width, uint3
       continue;
     ++g_failures;
     if(g_failures <= maxReportedFailures)
-      std::fprintf(stderr,
-                   "FAIL %s prec %u: y %d cb %d cr %d scalar (%d,%d,%d) simd (%d,%d,%d)\n", label,
-                   precision, y[index], cb[index], cr[index], red, green, blue, simdRed[index],
-                   simdGreen[index], simdBlue[index]);
+      std::fprintf(stderr, "FAIL %s prec %u: y %d cb %d cr %d scalar (%d,%d,%d) simd (%d,%d,%d)\n",
+                   label, precision, y[index], cb[index], cr[index], red, green, blue,
+                   simdRed[index], simdGreen[index], simdBlue[index]);
   }
 }
 

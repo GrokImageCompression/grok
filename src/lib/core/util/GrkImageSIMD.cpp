@@ -157,15 +157,15 @@ namespace HWY_NAMESPACE
         auto scaledGreen = Add(Mul(c_cb_g, vcb), Mul(c_cr_g, vcr));
         auto scaledBlue = Mul(c_cb_b, vcb);
 
-        auto vr = Clamp(Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledRed, vRounding),
-                                                             vInverseScale)))),
-                        vZero, vUpb);
-        auto vg = Clamp(Sub(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledGreen, vRounding),
-                                                              vInverseScale)))),
-                        vZero, vUpb);
-        auto vb = Clamp(Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledBlue, vRounding),
-                                                              vInverseScale)))),
-                        vZero, vUpb);
+        auto vr = Clamp(
+            Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledRed, vRounding), vInverseScale)))),
+            vZero, vUpb);
+        auto vg = Clamp(
+            Sub(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledGreen, vRounding), vInverseScale)))),
+            vZero, vUpb);
+        auto vb = Clamp(
+            Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledBlue, vRounding), vInverseScale)))),
+            vZero, vUpb);
 
         StoreU(vr, di_half, rRow + i);
         StoreU(vg, di_half, gRow + i);

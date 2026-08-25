@@ -29,196 +29,196 @@
 
 namespace
 {
-  const uint8_t PRECISION = 13;
-  const uint32_t WIDTH = 900;
-  const uint32_t HEIGHT = 300;
-  const uint32_t IMAGE_X0 = 3;
-  const uint32_t IMAGE_Y0 = 5;
-  const uint32_t TILE_X0 = 1;
-  const uint32_t TILE_Y0 = 3;
-  const uint32_t TILE_WIDTH = 320;
-  const uint32_t TILE_HEIGHT = 96;
-  const uint8_t NUM_RESOLUTIONS = 5;
-  const uint32_t EDGE_BLOCK = 8;
+const uint8_t PRECISION = 13;
+const uint32_t WIDTH = 900;
+const uint32_t HEIGHT = 300;
+const uint32_t IMAGE_X0 = 3;
+const uint32_t IMAGE_Y0 = 5;
+const uint32_t TILE_X0 = 1;
+const uint32_t TILE_Y0 = 3;
+const uint32_t TILE_WIDTH = 320;
+const uint32_t TILE_HEIGHT = 96;
+const uint8_t NUM_RESOLUTIONS = 5;
+const uint32_t EDGE_BLOCK = 8;
 
-  const int32_t SAMPLE_MIN = -(1 << (PRECISION - 1));
-  const int32_t SAMPLE_MAX = (1 << (PRECISION - 1)) - 1;
+const int32_t SAMPLE_MIN = -(1 << (PRECISION - 1));
+const int32_t SAMPLE_MAX = (1 << (PRECISION - 1)) - 1;
 
-  void discardLog(const char*, void*) {}
+void discardLog(const char*, void*) {}
 
-  const char* pipelineName = "mercury";
+const char* pipelineName = "mercury";
 
-  void useMercury(bool on)
-  {
+void useMercury(bool on)
+{
 #if defined(_WIN32)
-    _putenv_s("GRK_MERCURY", on ? "1" : "0");
+  _putenv_s("GRK_MERCURY", on ? "1" : "0");
 #else
-    setenv("GRK_MERCURY", on ? "1" : "0", 1);
+  setenv("GRK_MERCURY", on ? "1" : "0", 1);
 #endif
-  }
+}
 
-  // sharp extremes on the left so a reduced decode overshoots the range, varied
-  // values on the right so the lossless round trip has something to reproduce
-  int32_t sourceSample(uint32_t x, uint32_t y)
+// sharp extremes on the left so a reduced decode overshoots the range, varied
+// values on the right so the lossless round trip has something to reproduce
+int32_t sourceSample(uint32_t x, uint32_t y)
+{
+  if(x < WIDTH / 2)
+    return ((x / EDGE_BLOCK) + (y / EDGE_BLOCK)) & 1 ? SAMPLE_MAX : SAMPLE_MIN;
+  uint32_t noise = (x * 2654435761u + y * 40503u) >> 7;
+  return SAMPLE_MIN + (int32_t)(noise % (uint32_t)(SAMPLE_MAX - SAMPLE_MIN + 1));
+}
+
+bool compress(const std::string& path)
+{
+  grk_image_comp params = {};
+  params.dx = 1;
+  params.dy = 1;
+  params.x0 = IMAGE_X0;
+  params.y0 = IMAGE_Y0;
+  params.w = WIDTH;
+  params.h = HEIGHT;
+  params.prec = PRECISION;
+  params.sgnd = true;
+  grk_image* image = grk_image_new(1, &params, GRK_CLRSPC_GRAY, true);
+  if(!image || !image->comps[0].data)
   {
-    if(x < WIDTH / 2)
-      return ((x / EDGE_BLOCK) + (y / EDGE_BLOCK)) & 1 ? SAMPLE_MAX : SAMPLE_MIN;
-    uint32_t noise = (x * 2654435761u + y * 40503u) >> 7;
-    return SAMPLE_MIN + (int32_t)(noise % (uint32_t)(SAMPLE_MAX - SAMPLE_MIN + 1));
+    fprintf(stderr, "%s: could not build the source image\n", pipelineName);
+    return false;
   }
+  image->x0 = IMAGE_X0;
+  image->y0 = IMAGE_Y0;
+  image->x1 = IMAGE_X0 + WIDTH;
+  image->y1 = IMAGE_Y0 + HEIGHT;
 
-  bool compress(const std::string& path)
-  {
-    grk_image_comp params = {};
-    params.dx = 1;
-    params.dy = 1;
-    params.x0 = IMAGE_X0;
-    params.y0 = IMAGE_Y0;
-    params.w = WIDTH;
-    params.h = HEIGHT;
-    params.prec = PRECISION;
-    params.sgnd = true;
-    grk_image* image = grk_image_new(1, &params, GRK_CLRSPC_GRAY, true);
-    if(!image || !image->comps[0].data)
-    {
-      fprintf(stderr, "%s: could not build the source image\n", pipelineName);
-      return false;
-    }
-    image->x0 = IMAGE_X0;
-    image->y0 = IMAGE_Y0;
-    image->x1 = IMAGE_X0 + WIDTH;
-    image->y1 = IMAGE_Y0 + HEIGHT;
+  auto* data = static_cast<int32_t*>(image->comps[0].data);
+  uint32_t stride = image->comps[0].stride;
+  for(uint32_t y = 0; y < HEIGHT; ++y)
+    for(uint32_t x = 0; x < WIDTH; ++x)
+      data[(size_t)y * stride + x] = sourceSample(x, y);
 
-    auto* data = static_cast<int32_t*>(image->comps[0].data);
-    uint32_t stride = image->comps[0].stride;
-    for(uint32_t y = 0; y < HEIGHT; ++y)
-      for(uint32_t x = 0; x < WIDTH; ++x)
-        data[(size_t)y * stride + x] = sourceSample(x, y);
+  grk_cparameters parameters = {};
+  grk_compress_set_default_params(&parameters);
+  parameters.cod_format = GRK_FMT_J2K;
+  parameters.numresolution = NUM_RESOLUTIONS;
+  parameters.tile_size_on = true;
+  parameters.tx0 = TILE_X0;
+  parameters.ty0 = TILE_Y0;
+  parameters.t_width = TILE_WIDTH;
+  parameters.t_height = TILE_HEIGHT;
+  parameters.image_offset_x0 = IMAGE_X0;
+  parameters.image_offset_y0 = IMAGE_Y0;
 
-    grk_cparameters parameters = {};
-    grk_compress_set_default_params(&parameters);
-    parameters.cod_format = GRK_FMT_J2K;
-    parameters.numresolution = NUM_RESOLUTIONS;
-    parameters.tile_size_on = true;
-    parameters.tx0 = TILE_X0;
-    parameters.ty0 = TILE_Y0;
-    parameters.t_width = TILE_WIDTH;
-    parameters.t_height = TILE_HEIGHT;
-    parameters.image_offset_x0 = IMAGE_X0;
-    parameters.image_offset_y0 = IMAGE_Y0;
+  grk_stream_params streamParams = {};
+  snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
 
-    grk_stream_params streamParams = {};
-    snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
-
-    grk_object* codec = grk_compress_init(&streamParams, &parameters, image);
-    bool ok = codec && grk_compress(codec, nullptr) != 0;
-    if(!ok)
-      fprintf(stderr, "%s: compress failed\n", pipelineName);
-    if(codec)
-      grk_object_unref(codec);
-    grk_object_unref(&image->obj);
-    return ok;
-  }
-
-  // hands back the decoded component, or null on failure; caller keeps the codec
-  // alive for as long as it reads the samples
-  const grk_image_comp* decompress(const std::string& path, uint8_t reduce, grk_object*& codec)
-  {
-    grk_decompress_parameters params = {};
-    params.core.reduce = reduce;
-    grk_stream_params streamParams = {};
-    streamParams.is_read_stream = true;
-    snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
-
-    codec = grk_decompress_init(&streamParams, &params);
-    if(!codec)
-    {
-      fprintf(stderr, "%s reduce %u: grk_decompress_init failed\n", pipelineName, reduce);
-      return nullptr;
-    }
-    grk_header_info headerInfo = {};
-    if(!grk_decompress_read_header(codec, &headerInfo))
-    {
-      fprintf(stderr, "%s reduce %u: grk_decompress_read_header failed\n", pipelineName, reduce);
-      return nullptr;
-    }
-    if(!grk_decompress(codec, nullptr))
-    {
-      fprintf(stderr, "%s reduce %u: grk_decompress failed\n", pipelineName, reduce);
-      return nullptr;
-    }
-    grk_image* image = grk_decompress_get_image(codec);
-    if(!image || !image->comps[0].data)
-    {
-      fprintf(stderr, "%s reduce %u: no decoded image\n", pipelineName, reduce);
-      return nullptr;
-    }
-    return image->comps;
-  }
-
-  int32_t sampleAt(const grk_image_comp* comp, uint32_t x, uint32_t y)
-  {
-    size_t index = (size_t)y * comp->stride + x;
-    return comp->data_type == GRK_INT_16 ? static_cast<int16_t*>(comp->data)[index]
-                                         : static_cast<int32_t*>(comp->data)[index];
-  }
-
-  bool roundTripIsExact(const std::string& path)
-  {
-    grk_object* codec = nullptr;
-    auto* comp = decompress(path, 0, codec);
-    bool ok = comp != nullptr;
-    if(ok && (comp->w != WIDTH || comp->h != HEIGHT))
-    {
-      fprintf(stderr, "%s: full decode is %ux%u, expected %ux%u\n", pipelineName, comp->w, comp->h,
-              WIDTH, HEIGHT);
-      ok = false;
-    }
-    // the whole point of this test is the int32 wavelet, so say so out loud if
-    // the precision ever stops steering the decode onto it
-    if(ok && comp->data_type != GRK_INT_32)
-    {
-      fprintf(stderr, "%s: %u bit reversible decoded as data type %d, expected int32\n",
-              pipelineName, PRECISION, (int)comp->data_type);
-      ok = false;
-    }
-    for(uint32_t y = 0; ok && y < HEIGHT; ++y)
-      for(uint32_t x = 0; x < WIDTH; ++x)
-      {
-        int32_t got = sampleAt(comp, x, y);
-        int32_t want = sourceSample(x, y);
-        if(got != want)
-        {
-          fprintf(stderr, "%s: lossless round trip lost sample (%u,%u): got %d, expected %d\n",
-                  pipelineName, x, y, got, want);
-          ok = false;
-          break;
-        }
-      }
+  grk_object* codec = grk_compress_init(&streamParams, &parameters, image);
+  bool ok = codec && grk_compress(codec, nullptr) != 0;
+  if(!ok)
+    fprintf(stderr, "%s: compress failed\n", pipelineName);
+  if(codec)
     grk_object_unref(codec);
-    return ok;
-  }
+  grk_object_unref(&image->obj);
+  return ok;
+}
 
-  bool reducedDecodeIsInRange(const std::string& path, uint8_t reduce)
+// hands back the decoded component, or null on failure; caller keeps the codec
+// alive for as long as it reads the samples
+const grk_image_comp* decompress(const std::string& path, uint8_t reduce, grk_object*& codec)
+{
+  grk_decompress_parameters params = {};
+  params.core.reduce = reduce;
+  grk_stream_params streamParams = {};
+  streamParams.is_read_stream = true;
+  snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
+
+  codec = grk_decompress_init(&streamParams, &params);
+  if(!codec)
   {
-    grk_object* codec = nullptr;
-    auto* comp = decompress(path, reduce, codec);
-    bool ok = comp != nullptr;
-    for(uint32_t y = 0; ok && y < comp->h; ++y)
-      for(uint32_t x = 0; x < comp->w; ++x)
-      {
-        int32_t got = sampleAt(comp, x, y);
-        if(got < SAMPLE_MIN || got > SAMPLE_MAX)
-        {
-          fprintf(stderr, "%s reduce %u sample (%u,%u) = %d is outside [%d, %d]\n", pipelineName,
-                  reduce, x, y, got, SAMPLE_MIN, SAMPLE_MAX);
-          ok = false;
-          break;
-        }
-      }
-    grk_object_unref(codec);
-    return ok;
+    fprintf(stderr, "%s reduce %u: grk_decompress_init failed\n", pipelineName, reduce);
+    return nullptr;
   }
+  grk_header_info headerInfo = {};
+  if(!grk_decompress_read_header(codec, &headerInfo))
+  {
+    fprintf(stderr, "%s reduce %u: grk_decompress_read_header failed\n", pipelineName, reduce);
+    return nullptr;
+  }
+  if(!grk_decompress(codec, nullptr))
+  {
+    fprintf(stderr, "%s reduce %u: grk_decompress failed\n", pipelineName, reduce);
+    return nullptr;
+  }
+  grk_image* image = grk_decompress_get_image(codec);
+  if(!image || !image->comps[0].data)
+  {
+    fprintf(stderr, "%s reduce %u: no decoded image\n", pipelineName, reduce);
+    return nullptr;
+  }
+  return image->comps;
+}
+
+int32_t sampleAt(const grk_image_comp* comp, uint32_t x, uint32_t y)
+{
+  size_t index = (size_t)y * comp->stride + x;
+  return comp->data_type == GRK_INT_16 ? static_cast<int16_t*>(comp->data)[index]
+                                       : static_cast<int32_t*>(comp->data)[index];
+}
+
+bool roundTripIsExact(const std::string& path)
+{
+  grk_object* codec = nullptr;
+  auto* comp = decompress(path, 0, codec);
+  bool ok = comp != nullptr;
+  if(ok && (comp->w != WIDTH || comp->h != HEIGHT))
+  {
+    fprintf(stderr, "%s: full decode is %ux%u, expected %ux%u\n", pipelineName, comp->w, comp->h,
+            WIDTH, HEIGHT);
+    ok = false;
+  }
+  // the whole point of this test is the int32 wavelet, so say so out loud if
+  // the precision ever stops steering the decode onto it
+  if(ok && comp->data_type != GRK_INT_32)
+  {
+    fprintf(stderr, "%s: %u bit reversible decoded as data type %d, expected int32\n", pipelineName,
+            PRECISION, (int)comp->data_type);
+    ok = false;
+  }
+  for(uint32_t y = 0; ok && y < HEIGHT; ++y)
+    for(uint32_t x = 0; x < WIDTH; ++x)
+    {
+      int32_t got = sampleAt(comp, x, y);
+      int32_t want = sourceSample(x, y);
+      if(got != want)
+      {
+        fprintf(stderr, "%s: lossless round trip lost sample (%u,%u): got %d, expected %d\n",
+                pipelineName, x, y, got, want);
+        ok = false;
+        break;
+      }
+    }
+  grk_object_unref(codec);
+  return ok;
+}
+
+bool reducedDecodeIsInRange(const std::string& path, uint8_t reduce)
+{
+  grk_object* codec = nullptr;
+  auto* comp = decompress(path, reduce, codec);
+  bool ok = comp != nullptr;
+  for(uint32_t y = 0; ok && y < comp->h; ++y)
+    for(uint32_t x = 0; x < comp->w; ++x)
+    {
+      int32_t got = sampleAt(comp, x, y);
+      if(got < SAMPLE_MIN || got > SAMPLE_MAX)
+      {
+        fprintf(stderr, "%s reduce %u sample (%u,%u) = %d is outside [%d, %d]\n", pipelineName,
+                reduce, x, y, got, SAMPLE_MIN, SAMPLE_MAX);
+        ok = false;
+        break;
+      }
+    }
+  grk_object_unref(codec);
+  return ok;
+}
 } // namespace
 
 int main(void)

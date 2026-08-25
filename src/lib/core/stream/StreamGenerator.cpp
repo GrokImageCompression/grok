@@ -190,10 +190,10 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auto double_buffer_len = getDoubleBufferLength(streamParams_.double_buffer_len);
   initial_double_buffer_len = std::min(initial_double_buffer_len, (size_t)dataLen);
   double_buffer_len = std::min(double_buffer_len, (size_t)dataLen);
-  auto stream = std::make_unique<BufferedStream>(nullptr, initial_double_buffer_len,
-                                                 double_buffer_len,
-                                                 true // read-only stream
-  );
+  auto stream =
+      std::make_unique<BufferedStream>(nullptr, initial_double_buffer_len, double_buffer_len,
+                                       true // read-only stream
+      );
   auto fetcherOwnedByStream = fetcher.release();
   stream->setUserData(
       fetcherOwnedByStream, [](void* p) { delete static_cast<CurlFetcher*>(p); }, dataLen);

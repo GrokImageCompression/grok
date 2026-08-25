@@ -81,8 +81,12 @@ def sweep_one(bin_dir, work_dir, in_file):
     classic_out = base + ".classic.tif"
     mercury_out = base + ".mercury.tif"
 
-    classic_rc, _, classic_err = run_decode(bin_dir, in_file, classic_out, mercury=False)
-    mercury_rc, note, mercury_log = run_decode(bin_dir, in_file, mercury_out, mercury=True)
+    classic_rc, _, classic_err = run_decode(
+        bin_dir, in_file, classic_out, mercury=False
+    )
+    mercury_rc, note, mercury_log = run_decode(
+        bin_dir, in_file, mercury_out, mercury=True
+    )
 
     def judge():
         if classic_rc != 0 or not os.path.exists(classic_out):
@@ -93,10 +97,16 @@ def sweep_one(bin_dir, work_dir, in_file):
                     return "skip", "no tif output"
                 if TILE_PART_REJECTION in classic_err:
                     return "classic-rejects", ""
-                return "FAIL", f"exit codes diverge: classic {classic_rc} mercury {mercury_rc}"
+                return (
+                    "FAIL",
+                    f"exit codes diverge: classic {classic_rc} mercury {mercury_rc}",
+                )
             return "skip", "classic decode fails"
         if mercury_rc != 0 or not os.path.exists(mercury_out):
-            return "FAIL", f"mercury decode failed (exit {mercury_rc}) where classic succeeded"
+            return (
+                "FAIL",
+                f"mercury decode failed (exit {mercury_rc}) where classic succeeded",
+            )
 
         if reversible:
             if not filecmp.cmp(classic_out, mercury_out, shallow=False):
@@ -112,8 +122,19 @@ def sweep_one(bin_dir, work_dir, in_file):
 
         def compare(base_file, test_file):
             r = subprocess.run(
-                [os.path.join(bin_dir, "compare_images"), "-b", base_file, "-t", test_file,
-                 "-n", str(numcomps), "-p", peaks, "-m", mses],
+                [
+                    os.path.join(bin_dir, "compare_images"),
+                    "-b",
+                    base_file,
+                    "-t",
+                    test_file,
+                    "-n",
+                    str(numcomps),
+                    "-p",
+                    peaks,
+                    "-m",
+                    mses,
+                ],
                 capture_output=True,
                 text=True,
                 timeout=DECODE_TIMEOUT,
@@ -125,14 +146,19 @@ def sweep_one(bin_dir, work_dir, in_file):
             # so blame the harness only when the file fails against itself
             if compare(classic_out, classic_out) != 0:
                 return "unloadable", "compare_images cannot load classic output"
-            return "FAIL", f"differs beyond peak tolerance {IRREVERSIBLE_PEAK_TOLERANCE}"
+            return (
+                "FAIL",
+                f"differs beyond peak tolerance {IRREVERSIBLE_PEAK_TOLERANCE}",
+            )
         return ("bail", "") if note == "bail" else ("ok", "")
 
     status, detail = judge()
     if status == "FAIL":
         with open(base + ".fail.txt", "w") as f:
-            f.write(f"{detail}\n\nclassic (exit {classic_rc}):\n{classic_err}\n"
-                    f"\nmercury (exit {mercury_rc}):\n{mercury_log}\n")
+            f.write(
+                f"{detail}\n\nclassic (exit {classic_rc}):\n{classic_err}\n"
+                f"\nmercury (exit {mercury_rc}):\n{mercury_log}\n"
+            )
     else:
         for f in (classic_out, mercury_out):
             if os.path.exists(f):
@@ -155,7 +181,14 @@ def main():
         print("no corpus files found")
         return 2
 
-    counts = {"ok": 0, "bail": 0, "skip": 0, "classic-rejects": 0, "unloadable": 0, "FAIL": 0}
+    counts = {
+        "ok": 0,
+        "bail": 0,
+        "skip": 0,
+        "classic-rejects": 0,
+        "unloadable": 0,
+        "FAIL": 0,
+    }
     failures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
         futures = {pool.submit(sweep_one, bin_dir, work_dir, f): f for f in files}
@@ -165,9 +198,11 @@ def main():
             if status == "FAIL":
                 failures.append(f"{os.path.basename(futures[fut])}: {detail}")
 
-    print(f"mercury A/B sweep: {counts['ok']} compared ok, {counts['bail']} bailed to classic, "
-          f"{counts['skip']} skipped, {counts['classic-rejects']} rejected by classic, "
-          f"{counts['unloadable']} unloadable outputs, {counts['FAIL']} failed, of {len(files)} files")
+    print(
+        f"mercury A/B sweep: {counts['ok']} compared ok, {counts['bail']} bailed to classic, "
+        f"{counts['skip']} skipped, {counts['classic-rejects']} rejected by classic, "
+        f"{counts['unloadable']} unloadable outputs, {counts['FAIL']} failed, of {len(files)} files"
+    )
     for f in sorted(failures):
         print("  FAIL", f)
     return 1 if counts["FAIL"] else 0
