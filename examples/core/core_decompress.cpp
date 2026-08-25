@@ -307,7 +307,7 @@ bool write(grk_image* image, std::string fileName)
       for(uint16_t c = 0; c < image->numcomps; ++c)
       {
         uint64_t index = (j * width + i);
-        maximum = std::max(maximum, srcPtrs[c][index]);
+        maximum = std::max(maximum, (int32_t)srcPtrs[c][index]);
       }
     }
   }
@@ -482,7 +482,19 @@ static std::pair<grk_object*, bool> decompress(const std::string& filename, bool
     return {c, false};
   if(image && !filename.empty())
   {
-    rc = write<int32_t>(*image, filename);
+    switch((*image)->comps[0].data_type)
+    {
+      case GRK_INT_16:
+        rc = write<int16_t>(*image, filename);
+        break;
+      case GRK_INT_32:
+        rc = write<int32_t>(*image, filename);
+        break;
+      default:
+        fprintf(stderr, "Unsupported component data type %d\n", (int)(*image)->comps[0].data_type);
+        rc = false;
+        break;
+    }
   }
   return {c, rc};
 }
