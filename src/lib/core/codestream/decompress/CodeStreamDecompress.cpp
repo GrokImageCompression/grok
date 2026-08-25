@@ -455,14 +455,15 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   if(pendingTiles.empty())
     return true;
 
-  // Extract LRU-evicted tiles that can be re-decompressed
+  // Extract tiles whose decompressed data was dropped but whose compressed data can be
+  // reached again: LRU evictions, and every tile of a completed decode under a cache
+  // strategy that freed tile_ (and, under GRK_TILE_CACHE_NONE, image_ as well)
   std::set<uint16_t> reDecompressTLM; // from compressed chunk cache
   std::set<uint16_t> reDecompressSeek; // from cached SOT offsets
   for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
   {
     auto cacheEntry = tileCache_->get(*it);
-    if(cacheEntry && cacheEntry->processor()->getImage() && !cacheEntry->processor()->getTile() &&
-       cacheEntry->dirty())
+    if(cacheEntry && !cacheEntry->processor()->getTile() && cacheEntry->dirty())
     {
       if(compressedChunkCache_ && compressedChunkCache_->contains(*it))
       {
@@ -2508,7 +2509,14 @@ bool CodeStreamDecompress::initDefaultTCP()
 
 bool CodeStreamDecompress::setProgressionState(grk_progression_state state)
 {
-  return tileCache_->setProgressionState(state);
+  bool markedDirty = false;
+  if(!tileCache_->setProgressionState(state, markedDirty))
+    return false;
+  // decompress() hands back the previous composite while this is set
+  if(markedDirty)
+    compositeDecompressed_ = false;
+
+  return true;
 }
 grk_progression_state CodeStreamDecompress::getProgressionState(uint16_t tileIndex)
 {

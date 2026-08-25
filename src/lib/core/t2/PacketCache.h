@@ -65,6 +65,15 @@ public:
   void rewind(void) override;
 
   /**
+   * @brief Discards every cached parser.
+   *
+   * A parser holds the packet header it already read, a pointer into the packet buffer it
+   * read it from, and the code blocks that header filled in.  Once the tile is rebuilt those
+   * code blocks are gone, so the parsers have to go with them.
+   */
+  void discardParsers(void);
+
+  /**
    * @brief Generates a PacketParser if it doesn't exist
    * @param tileProcessor @ref TileProcssor
    * @param packetSequenceNumber packet sequence number

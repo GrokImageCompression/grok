@@ -61,6 +61,15 @@ void PacketCache::rewind(void)
   iter_ = parsers_.begin();
 }
 
+void PacketCache::discardParsers(void)
+{
+  for(const auto& p : parsers_)
+    delete p;
+  parsers_.clear();
+  parsers_.push_back(nullptr);
+  iter_ = parsers_.begin();
+}
+
 PacketParser* PacketCache::gen(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber,
                                uint16_t compno, uint8_t resno, uint64_t precinctIndex,
                                uint16_t layno, uint32_t cachedLength)

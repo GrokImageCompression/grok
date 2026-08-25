@@ -278,6 +278,9 @@ bool TileProcessor::reinitForReDecompress()
   if(tile_)
     return true;
 
+  // the parsers cached against the code blocks that are about to be replaced
+  tcp_->packets_->discardParsers();
+
   // Recreate tile structure
   tile_ = new Tile(headerImage_->numcomps);
   // mct_ holds a non-owning Tile*; re-point it at the new tile so the inverse

@@ -313,14 +313,47 @@ bool insideProgressionTile(uint32_t x, uint32_t y)
   return x < TILE_WIDTH && y < TILE_HEIGHT;
 }
 
-// grk_decompress_set_progression_state marks one tile for a richer re-decode.  Whatever the
-// second grk_decompress does with that request, every other tile has to survive it untouched.
-bool runProgressionState(const char* label, const std::string& path, bool mercury)
+// the answer the re-decoded tile has to match: a plain decode of the same file at the layer
+// budget the progression state asked for
+bool decodeFromScratch(const char* label, const std::string& path, uint16_t layers,
+                       uint32_t cacheStrategy, std::vector<int32_t>& samples)
+{
+  useMercury(false);
+
+  grk_decompress_parameters params = {};
+  params.core.layers_to_decompress = layers;
+  params.core.tile_cache_strategy = cacheStrategy;
+  grk_header_info headerInfo = {};
+  grk_object* codec = openCodec(label, path, params, headerInfo);
+  if(!codec)
+    return false;
+
+  bool ok = grk_decompress(codec, nullptr) != 0;
+  if(!ok)
+    fprintf(stderr, "%s: the %u layer reference grk_decompress failed\n", label, layers);
+  else
+  {
+    grk_image* image = grk_decompress_get_image(codec);
+    if(!hasUsableData(label, "the reference grk_decompress", image))
+      ok = false;
+    else
+      samples = capture(image);
+  }
+  grk_object_unref(codec);
+  return ok;
+}
+
+// grk_decompress_set_progression_state marks one tile for a richer re-decode.  The second
+// grk_decompress has to deliver that tile at its new layer budget, and every other tile has to
+// survive untouched.
+bool runProgressionState(const char* label, const std::string& path, bool mercury,
+                         uint32_t cacheStrategy)
 {
   useMercury(mercury);
 
   grk_decompress_parameters params = {};
   params.core.layers_to_decompress = FIRST_PASS_LAYERS;
+  params.core.tile_cache_strategy = cacheStrategy;
   grk_header_info headerInfo = {};
   grk_object* codec = openCodec(label, path, params, headerInfo);
   if(!codec)
@@ -378,31 +411,66 @@ bool runProgressionState(const char* label, const std::string& path, bool mercur
     return false;
   }
 
+  std::vector<int32_t> referenceSamples;
+  if(stateSet)
+  {
+    if(!decodeFromScratch(label, path, NUM_LAYERS, cacheStrategy, referenceSamples))
+    {
+      grk_object_unref(codec);
+      return false;
+    }
+    if(referenceSamples.size() != secondSamples.size())
+    {
+      fprintf(stderr, "%s: the reference decode has %zu samples but the codec has %zu\n", label,
+              referenceSamples.size(), secondSamples.size());
+      grk_object_unref(codec);
+      return false;
+    }
+  }
+
   size_t index = 0;
   size_t changedInsideTile = 0;
-  for(uint16_t c = 0; c < image->numcomps; ++c)
+  for(uint16_t c = 0; c < image->numcomps && ok; ++c)
   {
     const auto& comp = image->comps[c];
-    for(uint32_t y = 0; y < comp.h; ++y)
+    for(uint32_t y = 0; y < comp.h && ok; ++y)
     {
       for(uint32_t x = 0; x < comp.w; ++x, ++index)
       {
-        if(firstSamples[index] == secondSamples[index])
-          continue;
-        if(insideProgressionTile(x, y))
-          changedInsideTile++;
-        else
+        if(!insideProgressionTile(x, y))
         {
+          if(firstSamples[index] == secondSamples[index])
+            continue;
           fprintf(stderr,
                   "%s: component %u sample (%u,%u) outside the requested tile changed from %d "
                   "to %d\n",
                   label, c, x, y, firstSamples[index], secondSamples[index]);
           ok = false;
-          y = comp.h;
+          break;
+        }
+        if(firstSamples[index] != secondSamples[index])
+          changedInsideTile++;
+        if(stateSet && secondSamples[index] != referenceSamples[index])
+        {
+          fprintf(stderr,
+                  "%s: component %u sample (%u,%u) in tile %u is %d, but a %u layer decode "
+                  "gives %d\n",
+                  label, c, x, y, PROGRESSION_TILE_INDEX, secondSamples[index], NUM_LAYERS,
+                  referenceSamples[index]);
+          ok = false;
           break;
         }
       }
     }
+  }
+
+  if(ok && stateSet && changedInsideTile == 0)
+  {
+    fprintf(stderr,
+            "%s: the grk_decompress after the progression state left every sample in "
+            "tile %u unchanged\n",
+            label, PROGRESSION_TILE_INDEX);
+    ok = false;
   }
 
   grk_object_unref(codec);
@@ -428,6 +496,14 @@ int main(void)
     return 1;
   }
 
+  const struct
+  {
+    uint32_t strategy;
+    const char* name;
+  } cacheStrategies[] = {{GRK_TILE_CACHE_NONE, "cache none"},
+                         {GRK_TILE_CACHE_IMAGE, "cache image"},
+                         {GRK_TILE_CACHE_ALL, "cache all"}};
+
   int result = 0;
   const bool mercurySettings[] = {false, true};
   for(bool mercury : mercurySettings)
@@ -437,8 +513,12 @@ int main(void)
       result = 1;
     if(!runTruncatedStream(("truncated stream" + suffix).c_str(), truncatedPath, mercury))
       result = 1;
-    if(!runProgressionState(("progression state" + suffix).c_str(), layeredPath, mercury))
-      result = 1;
+    for(const auto& cache : cacheStrategies)
+    {
+      std::string label = "progression state" + suffix + " " + cache.name;
+      if(!runProgressionState(label.c_str(), layeredPath, mercury, cache.strategy))
+        result = 1;
+    }
   }
 
   remove(wholePath.c_str());

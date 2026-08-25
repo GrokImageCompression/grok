@@ -326,8 +326,14 @@ public:
                        });
   }
 
-  bool setProgressionState(grk_progression_state state)
+  /**
+   * @brief Attach a new layer budget to one cached tile.
+   * @param markedDirty set to true when the budget actually changed, so the caller knows the
+   * tile has to be decompressed again
+   */
+  bool setProgressionState(grk_progression_state state, bool& markedDirty)
   {
+    markedDirty = false;
     if(!state.single_tile)
       return false;
 
@@ -345,6 +351,7 @@ public:
     {
       cached->setDirty(true);
       cached->processor()->getTCP()->layersToDecompress_ = maxlayer;
+      markedDirty = true;
     }
 
     return true;
