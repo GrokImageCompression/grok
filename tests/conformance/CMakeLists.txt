@@ -541,7 +541,7 @@ endforeach()
 
 set(P2_conformance_records
   "ATK_DFS_IRV.j2c|p2_dfs_irv|3|2:2:2|70:70:70"
-  "ATK_DFS_REV.j2c|p2_dfs_atk|3|256:256:256|65:65:65"
+  "ATK_DFS_REV.j2c|p2_dfs_atk|3|2:2:2|0.5:0.5:0.5"
   # Kakadu 8.6.2 streams, baselines are the encoder input for the lossless pair
   # and kdu_expand's own output for the irreversible one
   "atk_rev_haar.j2c|p2_atk_rev_haar|1|0|0"

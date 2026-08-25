@@ -489,6 +489,12 @@ bool TileCodingParams::resolvePart2(void)
     for(uint8_t level = 1; level < tccp->numresolutions_; ++level)
     {
       tccp->splits_[level] = style ? style->split(level) : DecompositionSplit::both;
+      if(tccp->splits_[level] == DecompositionSplit::none)
+      {
+        grklog.error("Component %u DFS marker %u splits neither way at decomposition level %u",
+                     compno, tccp->dfsIndex_, level);
+        return false;
+      }
       tccp->horizontalDepth_[level] = (uint8_t)(tccp->horizontalDepth_[level - 1] +
                                                 (splitsHorizontally(tccp->splits_[level]) ? 1 : 0));
       tccp->verticalDepth_[level] = (uint8_t)(tccp->verticalDepth_[level - 1] +
