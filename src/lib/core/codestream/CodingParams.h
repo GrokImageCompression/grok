@@ -474,7 +474,8 @@ struct CodingParams
 
   bool hasTLM(void) const noexcept;
 
-  void init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
+  // true when the layers or reduce changed
+  bool init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
 
   uint16_t rsiz_; /** Rsiz*/
   uint32_t pcap_; /* Pcap */

@@ -180,7 +180,7 @@ CodingParams::~CodingParams()
   numComments_ = 0;
 }
 
-void CodingParams::init(grk_decompress_parameters* parameters,
+bool CodingParams::init(grk_decompress_parameters* parameters,
                         std::unique_ptr<TileCache>& tileCache)
 {
   assert(parameters);
@@ -194,20 +194,21 @@ void CodingParams::init(grk_decompress_parameters* parameters,
   decompressCallback_ = parameters->decompress_callback;
   decompressCallbackUserData_ = parameters->decompress_callback_user_data;
   auto core = &parameters->core;
+  bool decodeDepthChanged = core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
+                            core->reduce != codingParams_.dec_.reduce_;
+  if(decodeDepthChanged)
+    tileCache->setDirty(true);
   codingParams_.dec_.reduce_ = core->reduce;
   codingParams_.dec_.disableRandomAccessFlags_ = core->disable_random_access_flags;
   codingParams_.dec_.skipAllocateComposite_ = core->skip_allocate_composite;
-  if(core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
-     core->reduce != codingParams_.dec_.reduce_)
-  {
-    tileCache->setDirty(true);
-  }
   codingParams_.dec_.layersToDecompress_ = core->layers_to_decompress;
   if(core->num_comps_to_decode > 0 && core->comps_to_decode)
     compsToDecompress_.assign(core->comps_to_decode,
                               core->comps_to_decode + core->num_comps_to_decode);
   else
     compsToDecompress_.clear();
+
+  return decodeDepthChanged;
 }
 
 bool CodingParams::hasTLM(void) const noexcept

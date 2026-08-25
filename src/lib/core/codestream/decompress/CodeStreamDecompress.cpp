@@ -147,7 +147,8 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
 void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 {
   assert(parameters);
-  cp_.init(parameters, tileCache_);
+  if(cp_.init(parameters, tileCache_))
+    compositeDecompressed_ = false;
   auto core = &parameters->core;
   tileCache_->setStrategy(core->tile_cache_strategy);
   tileCache_->setMaxActiveTiles(core->max_active_tiles);
@@ -449,7 +450,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     if(!cacheEntry)
       return false;
     auto proc = cacheEntry->processor();
-    return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty());
+    return (proc->isBestEffortDecompressed() || proc->getImage()) && !cacheEntry->dirty();
   });
   if(pendingTiles.empty())
     return true;
@@ -490,7 +491,8 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   for(auto& tileIndex : pendingTiles)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    if(!cacheEntry || !cacheEntry->processor()->getImage() || !cacheEntry->processor()->getTile())
+    if(!cacheEntry || !cacheEntry->processor()->getTile() ||
+       !cacheEntry->processor()->getNumProcessedPackets())
     {
       doDifferential = false;
       break;
@@ -2527,6 +2529,9 @@ void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
 bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
+  // the header copy points at the composite's pixels from the previous decode
+  for(uint16_t i = 0; i < scratch->numcomps; i++)
+    scratch->comps[i].data = nullptr;
   scratchDataPending_ = false;
   scratchDataAllocated_ = false;
   scratchBandRowHeights_.clear();

@@ -151,7 +151,7 @@ bool sameSamples(const Decoded& progressive, const Decoded& full, uint16_t layer
   return true;
 }
 
-bool progressiveMatchesFull(const std::string& path)
+bool progressiveMatchesFull(const std::string& path, bool wholeImage)
 {
   Decoded probe;
   if(!decodeFull(path, 1, probe))
@@ -195,13 +195,15 @@ bool progressiveMatchesFull(const std::string& path)
       ok = false;
       break;
     }
-    if(!grk_decompress_tile(codec, 0))
+    bool decoded = wholeImage ? grk_decompress(codec, nullptr) : grk_decompress_tile(codec, 0);
+    if(!decoded)
     {
-      fprintf(stderr, "layers %u: differential grk_decompress_tile failed\n", layers);
+      fprintf(stderr, "layers %u: differential decode failed\n", layers);
       ok = false;
       break;
     }
-    auto image = grk_decompress_get_tile_image(codec, 0, true);
+    auto image = wholeImage ? grk_decompress_get_image(codec)
+                            : grk_decompress_get_tile_image(codec, 0, true);
     Decoded progressive;
     if(!image || !capture(image, progressive))
     {
@@ -239,7 +241,8 @@ int main(int argc, char** argv)
 #endif
 
   grk_initialize(nullptr, 0, nullptr);
-  bool ok = progressiveMatchesFull(argv[1]);
+  // the whole-image route builds a composite, the tile route reads the cached tile
+  bool ok = progressiveMatchesFull(argv[1], true) && progressiveMatchesFull(argv[1], false);
   grk_deinitialize();
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
