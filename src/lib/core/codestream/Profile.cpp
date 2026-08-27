@@ -1148,9 +1148,12 @@ void Profile::setCinemaParams(grk_cparameters* parameters, GrkImage* image)
                 "Maximum 1041666 compressed bytes @ 24fps per component.\n"
                 "As no rate has been given, this limit will be used.");
   }
-  parameters->layer_rate[0] =
+  // the cap is a ceiling: a caller asking for a smaller code stream keeps its ratio
+  double capRate =
       ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec) /
       ((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
+  if(parameters->layer_rate[0] < capRate)
+    parameters->layer_rate[0] = capRate;
 }
 
 bool Profile::isCinemaCompliant(GrkImage* image, uint16_t rsiz)

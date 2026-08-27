@@ -23,6 +23,7 @@
 #include <hwy/highway.h>
 #include <cmath>
 #include <cstdint>
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -89,13 +90,15 @@ namespace HWY_NAMESPACE
     for(uint32_t v = 0; v < lutSize; ++v)
       linLut[v] = rec709_to_linear((float)v * scale);
 
-    // Build DCI gamma LUT at output precision (e.g. 4096 entries for 12-bit)
-    // This fits in L1 cache unlike the old 256KB 16-bit LUT
-    auto gammaLut = std::make_unique<float[]>(lutSize);
-    for(uint32_t v = 0; v < lutSize; ++v)
-      gammaLut[v] = linear_to_dci_gamma((float)v * scale);
+    // the gamma LUT is indexed at the deeper of the two precisions, so an
+    // 8-bit source widened to 12 bits keeps the matrix output's resolution
+    const uint32_t gammaLutMax = (1u << std::max(prec, outPrec)) - 1;
+    const float gammaIndexScale = 1.0f / (float)gammaLutMax;
+    auto gammaLut = std::make_unique<float[]>(gammaLutMax + 1);
+    for(uint32_t v = 0; v <= gammaLutMax; ++v)
+      gammaLut[v] = linear_to_dci_gamma((float)v * gammaIndexScale);
 
-    const float gammaScale = (float)maxVal;
+    const float gammaScale = (float)gammaLutMax;
 
     // Fused single-pass: linearize → matrix → gamma → quantize per pixel
     // This avoids intermediate float buffers and keeps everything in L1
@@ -122,11 +125,11 @@ namespace HWY_NAMESPACE
       float z = M20 * r + M21 * g + M22 * b;
 
       // Gamma via LUT (quantize linear to output precision for indexing)
-      auto quantize = [maxVal, gammaScale](float v) -> uint32_t {
+      auto quantize = [gammaLutMax, gammaScale](float v) -> uint32_t {
         if(v <= 0.0f)
           return 0;
         if(v >= 1.0f)
-          return maxVal;
+          return gammaLutMax;
         return (uint32_t)(v * gammaScale + 0.5f);
       };
 
@@ -175,7 +178,7 @@ bool applyXYZTransform(grk_image* image, uint8_t targetPrec)
   uint32_t w = compR.w;
   uint32_t h = compR.h;
   uint32_t prec = compR.prec;
-  uint32_t outPrec = (targetPrec && targetPrec < prec) ? targetPrec : prec;
+  uint32_t outPrec = targetPrec ? targetPrec : prec;
 
   grklog.info("XYZ transform: %ux%u, %u-bit, strides: R=%u G=%u B=%u, data_type: R=%d G=%d B=%d", w,
               h, prec, compR.stride, compG.stride, compB.stride, (int)compR.data_type,

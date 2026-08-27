@@ -75,6 +75,11 @@ add_executable(grk_rate_control_test GrkRateControlTest.cpp)
 target_link_libraries(grk_rate_control_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_control_test COMMAND grk_rate_control_test)
 
+# synthesizes its own frames, so it needs no GRK_DATA_ROOT
+add_executable(grk_cinema_eight_bit_test GrkCinemaEightBitTest.cpp)
+target_link_libraries(grk_cinema_eight_bit_test ${GROK_CORE_NAME})
+add_test(NAME grk_cinema_eight_bit_test COMMAND grk_cinema_eight_bit_test)
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_int16_eligibility_test GrkInt16EligibilityTest.cpp)
 target_link_libraries(grk_int16_eligibility_test ${GROK_CORE_NAME} spdlog::spdlog)

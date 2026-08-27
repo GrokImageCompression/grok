@@ -415,7 +415,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         // Apply RGB → X'Y'Z' colour transform if requested
         if(initParams.parameters.apply_xyz_transform)
         {
-          if(!grk::applyXYZTransform(image))
+          if(!grk::applyXYZTransform(image, grk::xyzTargetPrecision(initParams.parameters.rsiz)))
           {
             spdlog::error("Failed to apply XYZ colour transform");
             grk_object_unref(&image->obj);
@@ -2161,7 +2161,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     // Apply RGB → X'Y'Z' colour transform if requested
     if(parameters->apply_xyz_transform)
     {
-      if(!grk::applyXYZTransform(image))
+      if(!grk::applyXYZTransform(image, grk::xyzTargetPrecision(parameters->rsiz)))
       {
         spdlog::error("Failed to apply XYZ colour transform");
         goto cleanup;

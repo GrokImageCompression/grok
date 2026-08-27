@@ -39,13 +39,23 @@ namespace grk
  * (with optional LUT acceleration for common precisions).
  *
  * @param image       Image with ≥3 components. Only components 0,1,2 are modified.
- * @param targetPrec  Output precision. 0 keeps the input precision. Values
- *                    below the input precision quantize the transform output
- *                    at the lower precision (e.g. 12 for DCI cinema profiles),
- *                    keeping full input precision through linearization.
- *                    Values above the input precision are ignored.
+ * @param targetPrec  Output precision. 0 keeps the input precision. Any other
+ *                    value is what the output is quantized to, whether the
+ *                    source is deeper or shallower: linearization always runs
+ *                    at the source precision, so a 16-bit source loses nothing
+ *                    before the quantization and an 8-bit one is widened.
  * @return true on success, false if image has <3 components.
  */
 GRK_API bool applyXYZTransform(grk_image* image, uint8_t targetPrec = 0);
+
+/**
+ * Output precision the transform emits for a code stream declaring `rsiz`:
+ * the cinema profiles require 12-bit samples, everything else keeps the
+ * source precision.
+ */
+inline uint8_t xyzTargetPrecision(uint16_t rsiz)
+{
+  return GRK_IS_CINEMA(rsiz) ? 12 : 0;
+}
 
 } // namespace grk

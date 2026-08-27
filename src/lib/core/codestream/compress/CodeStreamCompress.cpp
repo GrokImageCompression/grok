@@ -221,9 +221,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
   if(parameters->apply_xyz_transform)
   {
-    // cinema profiles require 12-bit samples: emit the transform at 12 bits so
-    // deeper sources keep full precision through linearization
-    uint8_t xyzTargetPrec = GRK_IS_CINEMA(parameters->rsiz) ? 12 : 0;
+    // cinema profiles require 12-bit samples, so the transform emits 12 bits
+    // whether the source is 8 or 16
+    uint8_t xyzTargetPrec = xyzTargetPrecision(parameters->rsiz);
     // skip when the caller (e.g. the CLI) already transformed this image
     if(image->color_space != GRK_CLRSPC_CUSTOM_CIE && !applyXYZTransform(image, xyzTargetPrec))
     {
