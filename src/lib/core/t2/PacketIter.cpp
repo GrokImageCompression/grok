@@ -1076,7 +1076,7 @@ bool PacketIter::next_cprl(SparseBuffer*)
     auto comp = comps + compno;
     for(; y < prog.ty1; y += dyActive, dyActive = dy)
     {
-      // no precinct on this row, so scanning x would validate nothing
+      // no precinct starts on this row
       if(!anyPrecinctStartsAtY(compno, (uint16_t)(compno + 1), prog.res_s, prog.res_e))
         continue;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
@@ -1116,7 +1116,7 @@ bool PacketIter::next_pcrl()
 {
   for(; y < prog.ty1; y += dyActive, dyActive = dy)
   {
-    // no precinct on this row, so scanning x would validate nothing
+    // no precinct starts on this row
     if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
       continue;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
@@ -1162,7 +1162,7 @@ bool PacketIter::next_prcl()
 {
   for(; y < prog.ty1; y += dyActive, dyActive = dy)
   {
-    // no precinct on this row, so scanning x would validate nothing
+    // no precinct starts on this row
     if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
       continue;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
@@ -1281,7 +1281,7 @@ bool PacketIter::next_rpcl(SparseBuffer*)
 
     for(; y < prog.ty1; y += dyActive, dyActive = dy)
     {
-      // no precinct on this row, so scanning x would validate nothing
+      // no precinct starts on this row
       if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, resno, (uint8_t)(resno + 1)))
         continue;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
