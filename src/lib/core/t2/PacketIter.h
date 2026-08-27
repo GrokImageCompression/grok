@@ -439,6 +439,10 @@ private:
   bool skippedLeft_ = false;
 
   /**
+   * @brief Tests whether a precinct row of rpInfo starts at the current y (non-OPT path).
+   */
+  bool precinctStartsAtY(const ResPrecinctInfo* rpInfo) const;
+  /**
    * @brief Computes py0grid_ for the current (x,y) position (non-OPT path).
    * @return false if current y is not aligned to a precinct boundary
    */
@@ -470,10 +474,25 @@ private:
   /** @brief Computes precinctIndex from (px0grid_, py0grid_) and precinct grid width. */
   void generatePrecinctIndex(void);
   /**
+   * @brief Selects the precinct info that applies to (componentIndex, resolutionIndex).
+   * @param compressionScratch storage that the compression path initializes in place
+   * @return null when that component and resolution has no valid precinct info
+   */
+  ResPrecinctInfo* precinctInfoFor(uint16_t componentIndex, uint8_t resolutionIndex,
+                                   ResPrecinctInfo* compressionScratch);
+  /**
    * @brief Validates the current precinct and computes grid coordinates.
    * @return true if precinct is valid, false otherwise (skip this packet position)
    */
   bool validatePrecinct(void);
+  /**
+   * @brief Tests whether any component in [componentStart, componentEnd) and resolution in
+   * [resolutionStart, resolutionEnd) has a precinct starting at the current y.
+   *
+   * Reads only y, so it can be called mid-row without disturbing iteration state.
+   */
+  bool anyPrecinctStartsAtY(uint16_t componentStart, uint16_t componentEnd, uint8_t resolutionStart,
+                            uint8_t resolutionEnd);
   /**
    * @brief Computes dx/dy for a single component and merges into the global minimum.
    * @param comp component info

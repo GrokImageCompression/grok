@@ -200,6 +200,19 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_t2_corrupt_packet_bound_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz timeout: an RPCL tile 2.2 billion columns wide with
+# component dy=255 made the packet iterator scan every x on a row that aligns to
+# no precinct. The test must RETURN; the TIMEOUT turns a regression hang into a
+# failure.
+add_executable(grk_packet_iter_row_skip_test GrkPacketIterRowSkipTest.cpp)
+target_link_libraries(grk_packet_iter_row_skip_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_packet_iter_row_skip_test
+    COMMAND grk_packet_iter_row_skip_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6420654795325440)
+  set_tests_properties(grk_packet_iter_row_skip_test PROPERTIES TIMEOUT 60)
+endif()
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring 58368 quality
 # layers made T2 packet parsing create a block per code block in the precinct.
 # The test fails if peak resident memory exceeds 1 GB.

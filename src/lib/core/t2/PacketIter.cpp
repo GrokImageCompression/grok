@@ -324,59 +324,72 @@ bool PacketIter::genPrecinctInfoOPT(void)
   return true;
 }
 /**
+ * Select the precinct info covering one component and resolution.
+ */
+ResPrecinctInfo* PacketIter::precinctInfoFor(uint16_t componentIndex, uint8_t resolutionIndex,
+                                             ResPrecinctInfo* compressionScratch)
+{
+  auto comp = comps + componentIndex;
+  if(resolutionIndex >= comp->numresolutions)
+    return nullptr;
+  auto res = comp->resolutions + resolutionIndex;
+  if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
+    return nullptr;
+
+  if(precinctInfoOPT_)
+  {
+    auto rpInfo = precinctInfoOPT_ + resolutionIndex;
+    return rpInfo->valid ? rpInfo : nullptr;
+  }
+  if(compression_)
+  {
+    compressionScratch->precWidthExp = res->precWidthExp;
+    compressionScratch->precHeightExp = res->precHeightExp;
+    uint8_t levelsDone = (uint8_t)(comp->numresolutions - 1U - resolutionIndex);
+    if(!compressionScratch->init(resolutionIndex, comp->horizontalDepth[levelsDone],
+                                 comp->verticalDepth[levelsDone], packetManager->getTileBounds(),
+                                 comp->dx, comp->dy, !isWholeTile(),
+                                 packetManager->getTileProcessor()->getUnreducedTileWindow()))
+    {
+      return nullptr;
+    }
+    return compressionScratch->valid ? compressionScratch : nullptr;
+  }
+  auto rpInfo = res->precinctInfo;
+  if(!rpInfo || !rpInfo->valid)
+    return nullptr;
+
+  return rpInfo;
+}
+/**
  * Validate that the current (compno, resno, x, y) maps to a real precinct.
  * On success, sets px0grid_ and py0grid_ for use by generatePrecinctIndex().
  */
 bool PacketIter::validatePrecinct(void)
 {
-  auto comp = comps + compno;
-  if(resno >= comp->numresolutions)
-    return false;
-  auto res = comp->resolutions + resno;
-  if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
+  ResPrecinctInfo compressionScratch;
+  auto rpInfo = precinctInfoFor(compno, resno, &compressionScratch);
+  if(!rpInfo)
     return false;
 
-  if(precinctInfoOPT_)
+  return genPrecinctY0Grid(rpInfo) && genPrecinctX0Grid(rpInfo);
+}
+bool PacketIter::anyPrecinctStartsAtY(uint16_t componentStart, uint16_t componentEnd,
+                                      uint8_t resolutionStart, uint8_t resolutionEnd)
+{
+  ResPrecinctInfo compressionScratch;
+  for(uint16_t componentIndex = componentStart; componentIndex < componentEnd; ++componentIndex)
   {
-    auto rpInfo = precinctInfoOPT_ + resno;
-    if(!rpInfo->valid)
-      return false;
-    if(!genPrecinctY0Grid(rpInfo))
-      return false;
-    if(!genPrecinctX0Grid(rpInfo))
-      return false;
-  }
-  else
-  {
-    if(compression_)
+    for(uint8_t resolutionIndex = resolutionStart; resolutionIndex < resolutionEnd;
+        ++resolutionIndex)
     {
-      ResPrecinctInfo rpInfo;
-      rpInfo.precWidthExp = res->precWidthExp;
-      rpInfo.precHeightExp = res->precHeightExp;
-      uint8_t levelsDone = (uint8_t)(comp->numresolutions - 1U - resno);
-      if(!rpInfo.init(resno, comp->horizontalDepth[levelsDone], comp->verticalDepth[levelsDone],
-                      packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
-                      packetManager->getTileProcessor()->getUnreducedTileWindow()))
-      {
-        return false;
-      }
-      if(!genPrecinctY0Grid(&rpInfo))
-        return false;
-      if(!genPrecinctX0Grid(&rpInfo))
-        return false;
-    }
-    else
-    {
-      auto rpInfo = res->precinctInfo;
-      if(!rpInfo)
-        return false;
-      if(!genPrecinctY0Grid(rpInfo))
-        return false;
-      if(!genPrecinctX0Grid(rpInfo))
-        return false;
+      auto rpInfo = precinctInfoFor(componentIndex, resolutionIndex, &compressionScratch);
+      if(rpInfo && precinctStartsAtY(rpInfo))
+        return true;
     }
   }
-  return true;
+
+  return false;
 }
 void PacketIter::generatePrecinctIndex(void)
 {
@@ -791,10 +804,14 @@ bool PacketIter::precInfoCheck(ResPrecinctInfo* rpInfo)
   return (res->precinctGridWidth > 0 && res->precinctGridHeight > 0);
 }
 
+bool PacketIter::precinctStartsAtY(const ResPrecinctInfo* rpInfo) const
+{
+  return (y % rpInfo->precHeightPRJ == 0) ||
+         ((y == packetManager->getTileBounds().y0) && rpInfo->resOffsetY0PRJ);
+}
 bool PacketIter::genPrecinctY0Grid(ResPrecinctInfo* rpInfo)
 {
-  if(!((y % rpInfo->precHeightPRJ == 0) ||
-       ((y == packetManager->getTileBounds().y0) && rpInfo->resOffsetY0PRJ)))
+  if(!precinctStartsAtY(rpInfo))
     return false;
 
   py0grid_ =
@@ -1059,6 +1076,9 @@ bool PacketIter::next_cprl(SparseBuffer*)
     auto comp = comps + compno;
     for(; y < prog.ty1; y += dyActive, dyActive = dy)
     {
+      // no precinct on this row, so scanning x would validate nothing
+      if(!anyPrecinctStartsAtY(compno, (uint16_t)(compno + 1), prog.res_s, prog.res_e))
+        continue;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
       {
         for(; resno < prog.res_e; resno++)
@@ -1096,6 +1116,9 @@ bool PacketIter::next_pcrl()
 {
   for(; y < prog.ty1; y += dyActive, dyActive = dy)
   {
+    // no precinct on this row, so scanning x would validate nothing
+    if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
+      continue;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
     {
       // windowed decode:
@@ -1139,6 +1162,9 @@ bool PacketIter::next_prcl()
 {
   for(; y < prog.ty1; y += dyActive, dyActive = dy)
   {
+    // no precinct on this row, so scanning x would validate nothing
+    if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
+      continue;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
     {
       for(; resno < prog.res_e; resno++)
@@ -1255,6 +1281,9 @@ bool PacketIter::next_rpcl(SparseBuffer*)
 
     for(; y < prog.ty1; y += dyActive, dyActive = dy)
     {
+      // no precinct on this row, so scanning x would validate nothing
+      if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, resno, (uint8_t)(resno + 1)))
+        continue;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
       {
         // calculate x
