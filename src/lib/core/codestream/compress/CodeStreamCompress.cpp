@@ -446,7 +446,11 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   else
   {
     /* Create default comment for code stream */
-    auto comment = std::string("Created by Grok version ") + grk_version();
+    // fixed width keeps the main header length the same across versions
+    constexpr size_t versionFieldWidth = 16;
+    auto version = std::string(grk_version());
+    version.resize(std::max(version.size(), versionFieldWidth), ' ');
+    auto comment = std::string("Created by Grok version ") + version;
     auto comment_len = comment.size();
     cp_.comment_[0] = new char[comment_len];
     memcpy(cp_.comment_[0], comment.c_str(), comment_len);
