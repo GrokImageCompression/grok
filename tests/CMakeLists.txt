@@ -251,6 +251,7 @@ if(GRK_DATA_ROOT)
   add_test(NAME grk_wavelet_53_overflow_test
     COMMAND grk_wavelet_53_overflow_test
             ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6413516559679488)
+  set_tests_properties(grk_wavelet_53_overflow_test PROPERTIES TIMEOUT 60)
 endif()
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT

@@ -193,9 +193,10 @@ private:
                                         const uint32_t strideH, int32_t* dest,
                                         const uint32_t strideDest);
 
-  void v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
-            Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
-            DcShiftParam dcShift);
+  GRK_NO_SANITIZE_OVERFLOW void v_53(const dwt_scratch<int32_t>* scratch,
+                                     Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
+                                     Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
+                                     DcShiftParam dcShift);
 
   void v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin, uint32_t wMax,
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,

@@ -211,3 +211,53 @@ jobs:
           ctest --test-dir build-alpine --output-on-failure
         '
 
+  # oss-fuzz enables -fsanitize=signed-integer-overflow explicitly, and only
+  # clang 19+ fires it in the -fwrapv wavelet files.
+  ubsan-wavelet-overflow:
+    runs-on: ubuntu-latest
+    env:
+      SANITIZE_FLAGS: -fsanitize=signed-integer-overflow -fno-sanitize-recover=all
+      CLANG_VERSION: 19
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: dependencies
+      run: |
+        wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- ${{ env.CLANG_VERSION }}
+        git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
+
+    - name: verify overflow check fires under -fwrapv
+      run: |
+        echo 'int main(void){volatile int a=2000000000;volatile int b=a+a;(void)b;return 0;}' > overflow_probe.c
+        clang-$CLANG_VERSION $SANITIZE_FLAGS -fwrapv -O1 overflow_probe.c -o overflow_probe
+        if ./overflow_probe; then
+          echo "clang did not flag the overflow under -fwrapv, need clang 19+"
+          exit 1
+        fi
+
+    - name: configure cmake
+      run: |
+        cmake -S . -B build-ubsan \
+          -DCMAKE_C_COMPILER=clang-$CLANG_VERSION \
+          -DCMAKE_CXX_COMPILER=clang++-$CLANG_VERSION \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTING=ON \
+          -DGRK_DATA_ROOT=$DATA_ROOT \
+          -DGRK_ENABLE_LIBCURL=OFF \
+          -DGRK_BUILD_JPEG=OFF \
+          -DGRK_BUILD_LIBPNG=OFF \
+          -DGRK_BUILD_LIBTIFF=OFF \
+          -DGRK_BUILD_LCMS2=OFF \
+          -DCMAKE_C_FLAGS="$SANITIZE_FLAGS" \
+          -DCMAKE_CXX_FLAGS="$SANITIZE_FLAGS" \
+          -DCMAKE_EXE_LINKER_FLAGS="$SANITIZE_FLAGS" \
+          -DCMAKE_SHARED_LINKER_FLAGS="$SANITIZE_FLAGS"
+
+    - name: build
+      run: cmake --build build-ubsan -j"$(nproc)" --target grk_wavelet_53_overflow_test
+
+    - name: test
+      run: ctest --test-dir build-ubsan -R grk_wavelet_53_overflow_test --output-on-failure
+

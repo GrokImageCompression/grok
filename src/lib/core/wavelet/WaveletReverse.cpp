@@ -1166,9 +1166,11 @@ GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::v_p1_53(int32_t* scratch, const ui
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
 /** Number of columns that we can process in parallel in the vertical pass */
-void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
-                          Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest,
-                          uint32_t nb_cols, DcShiftParam dcShift)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch,
+                                                   Buffer2dSimple<int32_t> winL,
+                                                   Buffer2dSimple<int32_t> winH,
+                                                   Buffer2dSimple<int32_t> winDest,
+                                                   uint32_t nb_cols, DcShiftParam dcShift)
 {
   const uint32_t height = scratch->sn + scratch->dn;
   assert(height != 0);
