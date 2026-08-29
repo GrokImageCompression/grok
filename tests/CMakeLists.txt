@@ -244,6 +244,15 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_mercury_plan_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz signed overflow in load_h_p0_53.
+add_executable(grk_wavelet_53_overflow_test GrkWavelet53OverflowTest.cpp)
+target_link_libraries(grk_wavelet_53_overflow_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_wavelet_53_overflow_test
+    COMMAND grk_wavelet_53_overflow_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6413516559679488)
+endif()
+
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)

@@ -872,8 +872,9 @@ WaveletReverse::~WaveletReverse(void)
 
 /* Performs lifting in one single iteration. Saves memory */
 /* accesses and explicit interleaving. */
-void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                                  const int32_t* bandH, int32_t* dest)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width,
+                                                           const int32_t* bandL,
+                                                           const int32_t* bandH, int32_t* dest)
 {
   assert(width > 1);
 
@@ -910,8 +911,9 @@ void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width, const 
 
 /* Performs lifting in one single iteration. Saves memory
    accesses and explicit interleaving. */
-void WaveletReverse::load_h_p1_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                                  const int32_t* bandH, int32_t* dest)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::load_h_p1_53(int32_t* scratch, const uint32_t width,
+                                                           const int32_t* bandL,
+                                                           const int32_t* bandH, int32_t* dest)
 {
   assert(width > 2);
   int32_t d1c = bandH[1];
@@ -948,8 +950,9 @@ void WaveletReverse::load_h_p1_53(int32_t* scratch, const uint32_t width, const 
 /* Inverse 5-3 wavelet transform in 1-D for one row. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-void WaveletReverse::load_h_53(const dwt_scratch<int32_t>* scratch, int32_t* bandL, int32_t* bandH,
-                               int32_t* dest)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::load_h_53(const dwt_scratch<int32_t>* scratch,
+                                                        int32_t* bandL, int32_t* bandH,
+                                                        int32_t* dest)
 {
   const uint32_t width = scratch->sn + scratch->dn;
   assert(width != 0);
@@ -1063,9 +1066,10 @@ void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
 
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on even coordinate */
-void WaveletReverse::v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
-                             const uint32_t strideL, int32_t* bandH, const uint32_t strideH,
-                             int32_t* dest, const uint32_t strideDest)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::v_p0_53(int32_t* scratch, const uint32_t height,
+                                                      int32_t* bandL, const uint32_t strideL,
+                                                      int32_t* bandH, const uint32_t strideH,
+                                                      int32_t* dest, const uint32_t strideDest)
 {
   assert(height > 1);
 
@@ -1111,9 +1115,10 @@ void WaveletReverse::v_p0_53(int32_t* scratch, const uint32_t height, int32_t* b
 }
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
-void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
-                             const uint32_t strideL, int32_t* bandH, const uint32_t strideH,
-                             int32_t* dest, const uint32_t strideDest)
+GRK_NO_SANITIZE_OVERFLOW void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height,
+                                                      int32_t* bandL, const uint32_t strideL,
+                                                      int32_t* bandH, const uint32_t strideH,
+                                                      int32_t* dest, const uint32_t strideDest)
 {
   assert(height > 2);
 

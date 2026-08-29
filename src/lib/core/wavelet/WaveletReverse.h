@@ -166,11 +166,13 @@ private:
                      uint32_t numLow, uint32_t height, uint32_t parity, uint32_t numColumns);
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
-  void load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                    const int32_t* bandH, int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_p0_53(int32_t* scratch, const uint32_t width,
+                                             const int32_t* bandL, const int32_t* bandH,
+                                             int32_t* dest);
 
-  void load_h_p1_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                    const int32_t* bandH, int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_p1_53(int32_t* scratch, const uint32_t width,
+                                             const int32_t* bandL, const int32_t* bandH,
+                                             int32_t* dest);
 
   void h_53(uint8_t res, TileComponentWindow<int32_t>* scratch, uint32_t resHeight);
 
@@ -178,14 +180,18 @@ private:
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
                   Buffer2dSimple<int32_t> winDest);
 
-  void load_h_53(const dwt_scratch<int32_t>* scratch, int32_t* bandL, int32_t* bandH,
-                 int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_53(const dwt_scratch<int32_t>* scratch, int32_t* bandL,
+                                          int32_t* bandH, int32_t* dest);
 
-  void v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL, const uint32_t strideL,
-               int32_t* bandH, const uint32_t strideH, int32_t* dest, const uint32_t strideDest);
+  GRK_NO_SANITIZE_OVERFLOW void v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
+                                        const uint32_t strideL, int32_t* bandH,
+                                        const uint32_t strideH, int32_t* dest,
+                                        const uint32_t strideDest);
 
-  void v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL, const uint32_t strideL,
-               int32_t* bandH, const uint32_t strideH, int32_t* dest, const uint32_t strideDest);
+  GRK_NO_SANITIZE_OVERFLOW void v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
+                                        const uint32_t strideL, int32_t* bandH,
+                                        const uint32_t strideH, int32_t* dest,
+                                        const uint32_t strideDest);
 
   void v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
             Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
