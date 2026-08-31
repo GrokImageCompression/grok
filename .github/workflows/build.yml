@@ -260,3 +260,26 @@ jobs:
     - name: test
       run: ctest --test-dir build-ubsan -R grk_wavelet_53_overflow_test --output-on-failure
 
+  lto-ctor-isa:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: configure cmake
+      run: |
+        cmake -S . -B build-lto \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTING=OFF \
+          -DGRK_BUILD_CODEC=OFF \
+          -DGRK_ENABLE_LIBCURL=OFF \
+          -DCMAKE_C_FLAGS="-flto=auto -ffat-lto-objects" \
+          -DCMAKE_CXX_FLAGS="-flto=auto -ffat-lto-objects"
+
+    - name: build
+      run: cmake --build build-lto -j"$(nproc)"
+
+    - name: check static constructors for AVX
+      run: python3 scripts/check_static_ctor_isa.py build-lto/bin/libgrokj2k.so
+

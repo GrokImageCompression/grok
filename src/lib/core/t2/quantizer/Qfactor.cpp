@@ -15,6 +15,7 @@
  *
  */
 
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -62,10 +63,10 @@ namespace
   // inverse ICT column norms, rounded as the reference encoder stores them
   const double ictGains[3] = {1.7321, 1.8051, 1.5734};
 
-  const std::vector<double> synthesisLow97 = {
+  constexpr std::array<double, 7> synthesisLow97 = {
       -0.091271763114250, -0.057543526228500, 0.591271763114250, 1.115087052457000,
       0.5912717631142500, -0.05754352622850,  -0.091271763114250};
-  const std::vector<double> synthesisHigh97 = {
+  constexpr std::array<double, 9> synthesisHigh97 = {
       0.053497514821622,  0.033728236885750, -0.156446533057980,
       -0.533728236885750, 1.205898036472720, -0.533728236885750,
       -0.156446533057980, 0.033728236885750, 0.053497514821622};
@@ -127,8 +128,8 @@ namespace
     if(numDecompositions == 0)
       return {1.0};
     std::vector<double> gains;
-    auto low = synthesisLow97;
-    auto high = synthesisHigh97;
+    std::vector<double> low(synthesisLow97.begin(), synthesisLow97.end());
+    std::vector<double> high(synthesisHigh97.begin(), synthesisHigh97.end());
     double lowGain = 0.0;
     for(uint8_t level = 0; level < numDecompositions; ++level)
     {

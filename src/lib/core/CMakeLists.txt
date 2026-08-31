@@ -206,16 +206,17 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
         PROPERTIES COMPILE_FLAGS "/arch:AVX512")
     else()
+      # -fno-lto: gcc LTO merges static constructors across translation units
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp
-        PROPERTIES COMPILE_FLAGS "-mssse3 -w")
+        PROPERTIES COMPILE_FLAGS "-mssse3 -fno-lto -w")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
-        PROPERTIES COMPILE_FLAGS "-mavx2 -w")
+        PROPERTIES COMPILE_FLAGS "-mavx2 -fno-lto -w")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
-        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd -w")
+        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd -fno-lto -w")
     endif()
   endif()
 endif()
