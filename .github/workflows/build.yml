@@ -212,11 +212,13 @@ jobs:
         '
 
   # oss-fuzz enables -fsanitize=signed-integer-overflow explicitly, and only
-  # clang 19+ fires it in the -fwrapv wavelet files.
+  # clang 19+ fires it in the -fwrapv wavelet files. vptr checks the type-erased
+  # TileComponentWindow downcasts on the int16 region decode paths.
   ubsan-wavelet-overflow:
     runs-on: ubuntu-latest
     env:
       SANITIZE_FLAGS: -fsanitize=signed-integer-overflow -fno-sanitize-recover=all
+      CXX_SANITIZE_FLAGS: -fsanitize=signed-integer-overflow,vptr -fno-sanitize-recover=all
       CLANG_VERSION: 19
     steps:
     - uses: actions/checkout@v4
@@ -250,15 +252,15 @@ jobs:
           -DGRK_BUILD_LIBPNG=OFF \
           -DGRK_BUILD_LIBTIFF=OFF \
           -DCMAKE_C_FLAGS="$SANITIZE_FLAGS" \
-          -DCMAKE_CXX_FLAGS="$SANITIZE_FLAGS" \
+          -DCMAKE_CXX_FLAGS="$CXX_SANITIZE_FLAGS" \
           -DCMAKE_EXE_LINKER_FLAGS="$SANITIZE_FLAGS" \
           -DCMAKE_SHARED_LINKER_FLAGS="$SANITIZE_FLAGS"
 
     - name: build
-      run: cmake --build build-ubsan -j"$(nproc)" --target grk_wavelet_53_overflow_test
+      run: cmake --build build-ubsan -j"$(nproc)" --target grk_wavelet_53_overflow_test grk_region_decompress_int16_test grk_region_decompress_97_int16_test
 
     - name: test
-      run: ctest --test-dir build-ubsan -R grk_wavelet_53_overflow_test --output-on-failure
+      run: ctest --test-dir build-ubsan -R 'grk_wavelet_53_overflow_test|grk_region_decompress_int16_test|grk_region_decompress_97_int16_test' --output-on-failure
 
   lto-ctor-isa:
     runs-on: ubuntu-latest

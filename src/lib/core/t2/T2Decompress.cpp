@@ -172,13 +172,12 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   if(!skip && !tilec->isWholeTileDecoding())
   {
     skip = true;
-    auto tilecBuffer = tilec->getWindow();
     for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
     {
       auto band = res->band + bandIndex;
       if(band->empty())
         continue;
-      auto paddedBandWindow = tilecBuffer->getBandWindowPadded(resno, band->orientation_);
+      auto paddedBandWindow = tilec->getBandWindowPadded(resno, band->orientation_);
       auto prec =
           band->generateBandPrecinctBounds(precinctIndex, res->bandPrecinctPartition_,
                                            res->bandPrecinctExpn_, res->precinctGrid_.width());
