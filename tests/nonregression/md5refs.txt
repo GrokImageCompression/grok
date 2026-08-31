@@ -323,7 +323,7 @@ d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
 37366cab2dd625c110447fe11428e393  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_1.pgx
 15ab12e61c6bef16428610a7e59da046  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_2.pgx
 930d6d3721e030d831aad79ffe999b6f  b1_mono_4k.tif
-103598a749e8af3879eaba73ceb3d3db  issue432.jp2_0.pgx
+f9b950f307edd931912d8dbb3320169e  issue432.jp2_0.pgx
 fa68b667b34f78806a239cd2b8713c6a  tnsot_zero_missing_eoc.tif
 2a8b8e908c706984a50eb9d05b252e4a  clusterfuzz-29249-uninitialized-mem_0.pgx
 379c448e10b131a1a4ce6313879c3a75  ybr-cat.jp2_0.pgx

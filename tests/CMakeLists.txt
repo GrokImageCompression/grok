@@ -370,6 +370,11 @@ target_link_libraries(grk_region_decompress_ht_test ${GROK_CORE_NAME} spdlog::sp
 add_test(NAME grk_region_decompress_ht_test COMMAND grk_region_decompress_ht_test)
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_reduced_decompress_97_int16_test GrkReducedDecompress97Int16Test.cpp)
+target_link_libraries(grk_reduced_decompress_97_int16_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_reduced_decompress_97_int16_test COMMAND grk_reduced_decompress_97_int16_test)
+
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_window_change_decompress_test GrkWindowChangeDecompressTest.cpp)
 target_link_libraries(grk_window_change_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_window_change_decompress_test COMMAND grk_window_change_decompress_test)

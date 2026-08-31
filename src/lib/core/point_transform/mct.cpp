@@ -20,6 +20,7 @@
 #include "hwy_arm_disable_targets.h"
 
 #include "TFSingleton.h"
+#include "WaveletCommon.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -158,8 +159,9 @@ namespace HWY_NAMESPACE
   /**
    * Apply dc shift for irreversible decompressed image (16-bit path)
    * (assumes mono with no MCT)
-   * NarrowScaleFilter16 has already dequantized T1 output to int16,
-   * so only integer shift + clamp is needed (same op as DecompressDcShiftRev16).
+   * NarrowScaleFilter16 dequantized T1 output into the Q-format. This pass only
+   * runs when the wavelet was skipped, so the qShift fractional bits are still in
+   * the samples and come out here before the shift and clamp.
    */
   class DecompressDcShiftIrrev16
   {
@@ -173,6 +175,13 @@ namespace HWY_NAMESPACE
       const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
       auto chan0 =
           info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestSimple().buf_;
+      // one reduced resolution of samples
+      auto qShift = info.tile->comps_[info.compno].qShift();
+      if(qShift)
+      {
+        for(auto j = index; j < index + chunkSize; ++j)
+          chan0[j] = rshift_even_16(chan0[j], qShift);
+      }
       const HWY_FULL(int16_t) di16;
       auto vshift = Set(di16, (int16_t)shiftInfo[0]._shift);
       auto vmin = Set(di16, (int16_t)shiftInfo[0]._min);
