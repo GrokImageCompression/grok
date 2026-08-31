@@ -736,8 +736,9 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
         }
       }
     }
+    // the HT coder emits rows 8-aligned, not packed at the block width
     if(canvas)
-      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
+      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, stride);
   }
 }
 
