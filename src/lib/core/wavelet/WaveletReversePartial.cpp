@@ -20,7 +20,8 @@
 
 #include "TFSingleton.h"
 #include "grk_restrict.h"
-#include "simd.h"
+#include "hwy_arm_disable_targets.h"
+#include <hwy/highway.h>
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -142,30 +143,114 @@ public:
   }
 };
 
-#ifdef __SSE2__
-// floor((a + b + 2) / 4) for signed int16 lanes. the direct sum can overflow int16, so
-// this goes through the unsigned average instruction, which carries a 17-bit intermediate.
+// static (baseline-target) highway: the strips below are fixed at one 128-bit
+// vector by VERT_PASS_WIDTH, so there is nothing for dynamic dispatch to widen
+namespace hn = hwy::HWY_NAMESPACE;
+
+// floor((a + b + 2) / 4) for signed int16 lanes, mirrors update_avg_16_53 in
+// WaveletReverse.cpp. the direct sum can overflow int16, so this goes through
+// the unsigned average instruction, which carries a 17-bit intermediate.
 // identity: floor((a + b + 2) / 4) == (floor((a + b) / 2) + 1) >> 1
-static inline __m128i update_avg_epi16_53(__m128i a, __m128i b)
+template<class D, class V>
+static HWY_INLINE V update_avg_16_53(D di, V a, V b)
 {
-  const __m128i signBit = _mm_set1_epi16((short)0x8000);
-  const __m128i maxUnsigned = _mm_set1_epi16((short)0x7FFF);
+  const hn::RebindToUnsigned<D> du;
+  const auto u_sign = hn::Set(du, (uint16_t)0x8000u);
+  const auto u_max = hn::Set(du, (uint16_t)0x7FFFu);
   // flip the sign bit to reach the unsigned domain, and bias b down by one so the
-  // rounding +1 in _mm_avg_epu16 cancels
-  auto unsignedA = _mm_xor_si128(a, signBit);
-  auto biasedB = _mm_add_epi16(b, maxUnsigned);
-  auto average = _mm_avg_epu16(unsignedA, biasedB);
-  return _mm_srai_epi16(_mm_sub_epi16(average, maxUnsigned), 1);
+  // rounding +1 in AverageRound cancels
+  auto a_u = hn::BitCast(du, a) ^ u_sign;
+  auto b_biased = hn::BitCast(du, b) + u_max;
+  auto avg = hn::AverageRound(a_u, b_biased);
+  auto step = hn::BitCast(di, avg - u_max);
+  return hn::ShiftRight<1>(step);
 }
 
-// floor((a + b) / 2) for signed int16 lanes, avoiding the overflow in a + b.
+// floor((a + b) / 2) for signed int16 lanes, mirrors predict_avg_16_53 in
+// WaveletReverse.cpp, avoiding the overflow in a + b.
 // identity: (a + b) >> 1 == (a >> 1) + (b >> 1) + ((a & b) & 1)
-static inline __m128i predict_avg_epi16_53(__m128i a, __m128i b)
+template<class D, class V>
+static HWY_INLINE V predict_avg_16_53(D di, V a, V b)
 {
-  auto carry = _mm_and_si128(_mm_and_si128(a, b), _mm_set1_epi16(1));
-  return _mm_add_epi16(_mm_add_epi16(_mm_srai_epi16(a, 1), _mm_srai_epi16(b, 1)), carry);
+  return hn::ShiftRight<1>(a) + hn::ShiftRight<1>(b) +
+         hn::And(hn::And(a, b), hn::Set(di, (int16_t)1));
 }
-#endif
+
+// vertical 5/3 update step (low pass) over the middle rows, no bound checking:
+// two rows per iteration across one VERT_PASS_WIDTH strip of columns.
+// returns the first unprocessed row
+template<typename ST, uint32_t VERT_PASS_WIDTH>
+static int64_t hwy_partial_v_update_53(ST* buf, const int64_t i_start, const int64_t i_max)
+{
+  if(i_start + 1 >= i_max)
+    return i_start;
+  const HWY_CAPPED(ST, VERT_PASS_WIDTH) d;
+  [[maybe_unused]] const auto two = hn::Set(d, (ST)2);
+  int64_t i = i_start;
+  for(size_t off = 0; off < VERT_PASS_WIDTH; off += hn::Lanes(d))
+  {
+    i = i_start;
+    auto Dm1 = hn::Load(d, buf + ((i << 1) - 1) * VERT_PASS_WIDTH + off);
+    for(; i + 1 < i_max; i += 2)
+    {
+      auto S = hn::Load(d, buf + (i << 1) * VERT_PASS_WIDTH + off);
+      auto D = hn::Load(d, buf + ((i << 1) + 1) * VERT_PASS_WIDTH + off);
+      auto S1 = hn::Load(d, buf + ((i << 1) + 2) * VERT_PASS_WIDTH + off);
+      auto D1 = hn::Load(d, buf + ((i << 1) + 3) * VERT_PASS_WIDTH + off);
+      if constexpr(std::is_same_v<ST, int16_t>)
+      {
+        S = S - update_avg_16_53(d, Dm1, D);
+        S1 = S1 - update_avg_16_53(d, D, D1);
+      }
+      else
+      {
+        S = S - hn::ShiftRight<2>(Dm1 + D + two);
+        S1 = S1 - hn::ShiftRight<2>(D + D1 + two);
+      }
+      hn::Store(S, d, buf + (i << 1) * VERT_PASS_WIDTH + off);
+      hn::Store(S1, d, buf + ((i + 1) << 1) * VERT_PASS_WIDTH + off);
+      Dm1 = D1;
+    }
+  }
+  return i;
+}
+
+// vertical 5/3 predict step (high pass) over the middle rows, same contract as
+// hwy_partial_v_update_53
+template<typename ST, uint32_t VERT_PASS_WIDTH>
+static int64_t hwy_partial_v_predict_53(ST* buf, const int64_t i_start, const int64_t i_max)
+{
+  if(i_start + 1 >= i_max)
+    return i_start;
+  const HWY_CAPPED(ST, VERT_PASS_WIDTH) d;
+  int64_t i = i_start;
+  for(size_t off = 0; off < VERT_PASS_WIDTH; off += hn::Lanes(d))
+  {
+    i = i_start;
+    auto S = hn::Load(d, buf + (i << 1) * VERT_PASS_WIDTH + off);
+    for(; i + 1 < i_max; i += 2)
+    {
+      auto D = hn::Load(d, buf + (1 + (i << 1)) * VERT_PASS_WIDTH + off);
+      auto S1 = hn::Load(d, buf + ((i + 1) << 1) * VERT_PASS_WIDTH + off);
+      auto D1 = hn::Load(d, buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH + off);
+      auto S2 = hn::Load(d, buf + ((i + 2) << 1) * VERT_PASS_WIDTH + off);
+      if constexpr(std::is_same_v<ST, int16_t>)
+      {
+        D = D + predict_avg_16_53(d, S, S1);
+        D1 = D1 + predict_avg_16_53(d, S1, S2);
+      }
+      else
+      {
+        D = D + hn::ShiftRight<1>(S + S1);
+        D1 = D1 + hn::ShiftRight<1>(S1 + S2);
+      }
+      hn::Store(D, d, buf + (1 + (i << 1)) * VERT_PASS_WIDTH + off);
+      hn::Store(D1, d, buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH + off);
+      S = S2;
+    }
+  }
+  return i;
+}
 
 // 5/3 inverse lifting steps below compute sums of two samples before an
 // arithmetic right shift. With int32_t samples, JPEG 2000-compliant inputs
@@ -173,7 +258,7 @@ static inline __m128i predict_avg_epi16_53(__m128i a, __m128i b)
 // intermediate sum past INT32_MAX/MIN and trip UBSan. Widening the sum to
 // int64_t before the shift keeps the arithmetic-shift semantics intact
 // without changing output for in-range inputs. The SIMD paths use
-// _mm_add_epi32 which wraps silently and is unaffected.
+// wrapping vector adds and are unaffected.
 template<typename ST, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class Partial53 : public PartialInterleaver<ST, CT, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
@@ -356,34 +441,7 @@ public:
           i++;
           if(i_max > dn_p)
             i_max = dn_p;
-#ifdef __SSE2__
-          if(i + 1 < i_max)
-          {
-            [[maybe_unused]] const __m128i two = _mm_set1_epi32(2);
-            auto Dm1 = _mm_load_si128((__m128i*)(buf + ((i << 1) - 1) * VERT_PASS_WIDTH));
-            for(; i + 1 < i_max; i += 2)
-            {
-              /* No bound checking */
-              auto S = _mm_load_si128((__m128i*)(buf + (i << 1) * VERT_PASS_WIDTH));
-              auto D = _mm_load_si128((__m128i*)(buf + ((i << 1) + 1) * VERT_PASS_WIDTH));
-              auto S1 = _mm_load_si128((__m128i*)(buf + ((i << 1) + 2) * VERT_PASS_WIDTH));
-              auto D1 = _mm_load_si128((__m128i*)(buf + ((i << 1) + 3) * VERT_PASS_WIDTH));
-              if constexpr(std::is_same_v<ST, int16_t>)
-              {
-                S = _mm_sub_epi16(S, update_avg_epi16_53(Dm1, D));
-                S1 = _mm_sub_epi16(S1, update_avg_epi16_53(D, D1));
-              }
-              else
-              {
-                S = _mm_sub_epi32(S, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
-                S1 = _mm_sub_epi32(S1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
-              }
-              _mm_store_si128((__m128i*)(buf + (i << 1) * VERT_PASS_WIDTH), S);
-              _mm_store_si128((__m128i*)(buf + ((i + 1) << 1) * VERT_PASS_WIDTH), S1);
-              Dm1 = D1;
-            }
-          }
-#endif
+          i = hwy_partial_v_update_53<ST, VERT_PASS_WIDTH>(buf, i, i_max);
           for(; i < i_max; i++)
           {
             /* No bound checking */
@@ -408,33 +466,7 @@ public:
         {
           if(i_max >= sn_p)
             i_max = sn_p - 1;
-#ifdef __SSE2__
-          if(i + 1 < i_max)
-          {
-            auto S = _mm_load_si128((__m128i*)(buf + (i << 1) * VERT_PASS_WIDTH));
-            for(; i + 1 < i_max; i += 2)
-            {
-              /* No bound checking */
-              auto D = _mm_load_si128((__m128i*)(buf + (1 + (i << 1)) * VERT_PASS_WIDTH));
-              auto S1 = _mm_load_si128((__m128i*)(buf + ((i + 1) << 1) * VERT_PASS_WIDTH));
-              auto D1 = _mm_load_si128((__m128i*)(buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH));
-              auto S2 = _mm_load_si128((__m128i*)(buf + ((i + 2) << 1) * VERT_PASS_WIDTH));
-              if constexpr(std::is_same_v<ST, int16_t>)
-              {
-                D = _mm_add_epi16(D, predict_avg_epi16_53(S, S1));
-                D1 = _mm_add_epi16(D1, predict_avg_epi16_53(S1, S2));
-              }
-              else
-              {
-                D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
-                D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
-              }
-              _mm_store_si128((__m128i*)(buf + (1 + (i << 1)) * VERT_PASS_WIDTH), D);
-              _mm_store_si128((__m128i*)(buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH), D1);
-              S = S2;
-            }
-          }
-#endif
+          i = hwy_partial_v_predict_53<ST, VERT_PASS_WIDTH>(buf, i, i_max);
           for(; i < i_max; i++)
           {
             /* No bound checking */
@@ -870,7 +902,7 @@ bool WaveletReverse::decompressPartial(void)
   {
     if(tilec_->is16BitDwt())
     {
-      // one __m128i holds 8 int16 columns
+      // one 128-bit vector holds 8 int16 columns
       constexpr uint32_t VERT_PASS_WIDTH = 8;
       return partial_tile<
           int16_t, int16_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
