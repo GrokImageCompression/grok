@@ -253,11 +253,10 @@ namespace
 // and friends compare it). grk_get_data_type is the BIBO-headroom rule
 // createDecompressTileComponentWindows feeds into the final image type — it
 // handles 9/7 int16 at prec<=9, unlike activateScratch's reversible-only logic.
-// A region decode reaches int16 only when every component is reversible 5/3,
-// matching the classic partial path. Per grok's uniform-type rule, one
-// under-headroom component forces every component to int32.
-static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage* img,
-                                    bool regionDecode)
+// A region decode takes the same rule as a whole decode, matching the classic
+// partial path. Per grok's uniform-type rule, one under-headroom component
+// forces every component to int32.
+static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage* img)
 {
   // MCT applies (int16 headroom loses a bit) only for a 3+ component RCT/ICT
   // image whose first three components share dimensions — and then only to
@@ -267,8 +266,6 @@ static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage*
   {
     bool isMctComp = mctImage && c <= 2;
     uint8_t qmfbid = tcp->tccps_[c].qmfbid_;
-    if(regionDecode && qmfbid != 1)
-      return GRK_INT_32;
     if(grk_get_data_type(false, img->comps[c].prec, isMctComp, qmfbid) != GRK_INT_16)
       return GRK_INT_32;
   }
@@ -634,7 +631,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       MFP_BAIL("decompress_num_comps != numcomps");
     }
     // Match grok's whole-image sample type (see composite branch below).
-    grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img, !cs.region_.empty());
+    grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
     bool is16 = outType == GRK_INT_16;
     auto scratch = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
         new GrkImage(), RefCountedDeleter<GrkImage>());
@@ -685,7 +682,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
   // Match grok's whole-image sample type so the API-visible comp->data_type
   // (and thus writers / grk_image consumers) is identical to the classic path.
-  grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img, !cs.region_.empty());
+  grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
   bool is16 = outType == GRK_INT_16;
 
   // Allocate planes (int16 or int32 per outType) and stream rows into them.

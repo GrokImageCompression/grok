@@ -1054,16 +1054,13 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
   // uniform type across its components, and the composite buffer is allocated from the same
   // decision.
   bool can16Bit = cp_->codingParams_.dec_.use16BitDwt_;
-  bool allReversible = cp_->codingParams_.dec_.allComponentsReversible_;
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
     if(imageComp->dx == 0 || imageComp->dy == 0)
       return false;
     auto tileComp = tile_->comps_ + compno;
-    // region/partial decode has an int16 path only for the reversible 5/3 filter, and the
-    // whole decode shares one sample type, so every component has to be reversible
-    if(can16Bit && (tileComp->isWholeTileDecoding() || allReversible))
+    if(can16Bit)
       tileComp->setUse16BitDwt(true);
   }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)

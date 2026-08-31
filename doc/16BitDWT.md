@@ -14,25 +14,26 @@ improving cache utilization and throughput for eligible images.
 The 16-bit path is selected at runtime in `TileProcessor::decompressInit()`
 (TileProcessor.cpp) when all of the following hold:
 
-1. **Reversible wavelet** (`qmfbid == 1`), or irreversible 9/7 under whole-tile decoding
-2. **Precision + headroom ≤ 16 bits**:
-   - MCT components (inverse RCT): `prec + 5 ≤ 16` → max precision 11 bits
-   - Non-MCT components (DC shift only): `prec + 4 ≤ 16` → max precision 12 bits
+1. **Precision + headroom ≤ 16 bits**, per `grk_get_data_type`:
+   - Reversible 5/3, MCT components (inverse RCT): `prec + 5 ≤ 16` → max precision 11 bits
+   - Reversible 5/3, non-MCT components: `prec + 4 ≤ 16` → max precision 12 bits
+   - Irreversible 9/7: `prec + 8 ≤ 16` → max precision 8 bits
 
-A region (partial) decode reaches the 16-bit path only when every component of
-the decode is reversible, since the partial 9/7 synthesis has no int16 variant
-and all components of a decode share one sample type. The mercury fast path
-applies the same rule to its region decodes, so both pipelines return the same
-sample type.
+A region (partial) decode qualifies on the same terms as a whole-tile decode,
+under either filter, and the mercury fast path applies the same rule, so both
+pipelines return the same sample type. All components of a decode share one
+sample type, so one ineligible component forces every component to int32.
 
 ### Data Flow
 
 ```
 Tier-1 decode (int32)
   → NarrowShiftFilter (int32 → int16, in PostDecodeFilters.h)
-  → 16-bit DWT synthesis (WaveletReverse.cpp), or
-    16-bit partial synthesis over an int16 SparseCanvas (WaveletReversePartial.cpp)
-  → DC shift (fused into final store or the partial final read, or via mct.cpp for MCT)
+  → 16-bit DWT synthesis (WaveletReverse.cpp / WaveletReverse97_16.cpp), or
+    16-bit partial synthesis over an int16 SparseCanvas (WaveletReversePartial.cpp,
+    9/7 lifting via hwy_step_16_97)
+  → Q-format downshift + DC shift (fused into the final store or the partial
+    final read, or via mct.cpp for MCT)
   → MCT inverse RCT (mct.cpp DecompressRev16 / DecompressDcShiftRev16)
   → composite to output image (GrkImage.h compositePlanar with int16→int32 widening)
 ```
@@ -43,7 +44,7 @@ Tier-1 decode (int32)
 |------|------|
 | `TileProcessor.cpp` | 16-bit eligibility decision |
 | `WaveletReverse.cpp` | All DWT kernels (int32 and int16, scalar and HWY SIMD) |
-| `WaveletReversePartial.cpp` | Region-decode synthesis over a sparse canvas, int32 and int16 5/3 |
+| `WaveletReversePartial.cpp` | Region-decode synthesis over a sparse canvas: 5/3 int32 and int16, 9/7 float and int16 |
 | `WaveletReverse.h` | 16-bit entry point declarations |
 | `PostDecodeFilters.h` | `NarrowShiftFilter` — int32→int16 narrowing after T1 decode |
 | `mct.cpp` | `DecompressRev16` / `DecompressDcShiftRev16` — int16 MCT+DC shift |

@@ -258,8 +258,11 @@
  *  This path is selected at runtime when ALL of the following hold:
  *
  *    1. Irreversible wavelet (qmfbid == 0)
- *    2. Whole-tile decoding (no region-of-interest partial decode)
- *    3. Image precision ≤ 8 bits (grk_get_data_type: prec + 8 ≤ 16)
+ *    2. Image precision ≤ 8 bits (grk_get_data_type: prec + 8 ≤ 16)
+ *
+ *  A region decode qualifies on the same terms: hwy_step_16_97 runs these
+ *  lifting steps over the partial framework's window and reproduces the
+ *  whole-tile output sample for sample.
  *
  *  The limit is where the fractional margin collapses: at prec 10 the
  *  Q-format is left with 3 fractional bits, and the accumulated rounding
@@ -515,7 +518,7 @@ namespace HWY_NAMESPACE
    */
   static inline int16_t sat_add(int16_t a, int16_t b)
   {
-    return (int16_t)std::clamp((int32_t)a + (int32_t)b, -32768, 32767);
+    return sat_add_16(a, b);
   }
   static inline int16_t sat_sub(int16_t a, int16_t b)
   {
@@ -531,10 +534,7 @@ namespace HWY_NAMESPACE
    */
   static inline int16_t rshift_even(int16_t x, int shift)
   {
-    if(shift <= 0)
-      return x;
-    int16_t bias = (int16_t)((1 << (shift - 1)) - 1 + ((x >> shift) & 1));
-    return (int16_t)(sat_add(x, bias) >> shift);
+    return rshift_even_16(x, shift);
   }
   template<class D, class V>
   static HWY_INLINE V vrshift_even(D d, V x, int shift)
@@ -1145,6 +1145,144 @@ namespace HWY_NAMESPACE
     }
   }
 
+  /**************************************************************************
+   *  Windowed 16-bit 9/7 Synthesis (region decode)
+   *
+   *  Same four lifting steps and same Q1.15 arithmetic as hwy_v_synth_16_97,
+   *  run over the partial framework's interleaved scratch instead of a whole
+   *  line.  One buffer element is vec8s::NUM_ELTS int16 lanes, one lane per
+   *  row of a horizontal strip (or per column of a vertical one), and
+   *  consecutive elements are consecutive positions of the output line.
+   *
+   *  The window geometry is the float path's (WaveletReverse97.cpp
+   *  makeParams97 / hwy_step_97_lift): band_0/band_1 bound the targets,
+   *  lenMax marks where the line's last sample loses its partner and the
+   *  neighbour mirrors.  Inside the window the neighbours are real samples
+   *  the sparse canvas supplied, so the mirror only fires at a true line end
+   *  and the output matches the whole-tile kernel sample for sample.  The
+   *  targets in the FILTER_WIDTH padding are computed with whatever sits
+   *  beside them and are discarded by the caller's write-back.
+   **************************************************************************/
+  struct Window16Params97
+  {
+    int16_t* data;
+    int16_t* dataPrev;
+    uint32_t len;
+    uint32_t lenMax;
+  };
+
+  static Window16Params97 make_window_16_97(int16_t* memL, int16_t* memH, uint32_t sn, uint32_t dn,
+                                            uint32_t parity, Line32 win_l, Line32 win_h,
+                                            bool isBandL, bool scaleOnly)
+  {
+    constexpr int64_t lanes = (int64_t)vec8s::NUM_ELTS;
+    const int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+    const int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+    const int64_t parityOffset = isBandL ? parity : !parity;
+    int64_t lenMax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOffset)
+                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOffset);
+    if(lenMax < 0)
+      lenMax = 0;
+    assert(lenMax >= band_0);
+    lenMax -= band_0;
+    assert(band_1 >= band_0);
+
+    Window16Params97 rc = {};
+    rc.data = (isBandL ? memL : memH) + (parityOffset + band_0 - win_l.x0) * lanes;
+    rc.len = (uint32_t)(band_1 - band_0);
+    if(!scaleOnly)
+    {
+      rc.data += lanes;
+      rc.dataPrev = parityOffset ? rc.data - 2 * lanes : rc.data;
+      rc.lenMax = (uint32_t)lenMax;
+    }
+    return rc;
+  }
+
+  // undo the analysis gain: x * K for the low band, x * (2/K) for the high band
+  template<class D, class V>
+  static void window_scale_16_97(D d, const Window16Params97& p, V frac)
+  {
+    constexpr size_t lanes = vec8s::NUM_ELTS;
+    for(size_t lane = 0; lane < lanes; lane += Lanes(d))
+    {
+      int16_t* pos = p.data + lane;
+      for(uint32_t i = 0; i < p.len; ++i, pos += 2 * lanes)
+      {
+        auto v = LoadU(d, pos);
+        StoreU(SaturatedAdd(v, MulFixedPoint15(v, frac)), d, pos);
+      }
+    }
+  }
+
+  // one lifting step: target at pos[-1 element], neighbours at pos[-2] and pos[0]
+  template<class D, class Op>
+  static void window_lift_16_97(D d, const Window16Params97& p, Op op)
+  {
+    constexpr size_t lanes = vec8s::NUM_ELTS;
+    const uint32_t imax = (std::min<uint32_t>)(p.len, p.lenMax);
+    for(size_t lane = 0; lane < lanes; lane += Lanes(d))
+    {
+      int16_t* pos = p.data + lane;
+      auto prev = LoadU(d, p.dataPrev + lane);
+      for(uint32_t i = 0; i < imax; ++i, pos += 2 * lanes)
+      {
+        auto target = LoadU(d, pos - lanes);
+        auto next = LoadU(d, pos);
+        StoreU(op(target, prev, next), d, pos - lanes);
+        prev = next;
+      }
+      if(p.lenMax < p.len)
+      {
+        // last sample of the line: its partner is off the end, so the neighbour mirrors
+        assert(p.lenMax + 1 == p.len);
+        auto target = LoadU(d, pos - lanes);
+        auto mirrored = LoadU(d, pos - 2 * lanes);
+        StoreU(op(target, mirrored, mirrored), d, pos - lanes);
+      }
+    }
+  }
+
+  static void hwy_step_16_97(int16_t* memL, int16_t* memH, uint32_t sn, uint32_t dn,
+                             uint32_t parity, Line32 win_l, Line32 win_h)
+  {
+    // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
+      return;
+
+    const HWY_CAPPED(int16_t, vec8s::NUM_ELTS) d;
+    const auto vc3 = Set(d, synth_coeff_3);
+    const auto vc2 = Set(d, synth_coeff_2);
+    const auto vc1 = Set(d, synth_coeff_1);
+    const auto vc0_frac = Set(d, synth_coeff_0_frac);
+
+    auto window = [&](bool isBandL, bool scaleOnly) {
+      return make_window_16_97(memL, memH, sn, dn, parity, win_l, win_h, isBandL, scaleOnly);
+    };
+
+    window_scale_16_97(d, window(true, true), Set(d, scale_K_frac));
+    window_scale_16_97(d, window(false, true), Set(d, scale_invK_frac));
+
+    // step 3 (delta): S -= delta * (D[n-1] + D[n])
+    window_lift_16_97(d, window(true, false), [&](auto target, auto prev, auto next) {
+      return SaturatedSub(target, MulFixedPoint15(SaturatedAdd(prev, next), vc3));
+    });
+    // step 2 (gamma): D -= gamma * (S[n] + S[n+1])
+    window_lift_16_97(d, window(false, false), [&](auto target, auto prev, auto next) {
+      return SaturatedSub(target, MulFixedPoint15(SaturatedAdd(prev, next), vc2));
+    });
+    // step 1 (beta): multiply-first with the x8/>>3 precision boost
+    window_lift_16_97(d, window(true, false), [&](auto target, auto prev, auto next) {
+      auto products = MulFixedPoint15(prev, vc1) + MulFixedPoint15(next, vc1);
+      return SaturatedAdd(target, vrshift_even(d, products, 3));
+    });
+    // step 0 (alpha): additive decomposition, |alpha| > 1
+    window_lift_16_97(d, window(false, false), [&](auto target, auto prev, auto next) {
+      auto sum = SaturatedAdd(prev, next);
+      return SaturatedAdd(SaturatedAdd(target, sum), MulFixedPoint15(sum, vc0_frac));
+    });
+  }
+
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -1156,6 +1294,14 @@ namespace grk
 HWY_EXPORT(GetHWY_PLL_COLS_16_97);
 HWY_EXPORT(hwy_v_synth_16_97);
 HWY_EXPORT(hwy_h_synth_16_97);
+HWY_EXPORT(hwy_step_16_97);
+
+void WaveletReverse::step_16_97(dwt_scratch<vec8s>* GRK_RESTRICT scratch)
+{
+  HWY_DYNAMIC_DISPATCH(hwy_step_16_97)
+  ((int16_t*)scratch->memL, (int16_t*)scratch->memH, scratch->sn, scratch->dn, scratch->parity,
+   scratch->win_l, scratch->win_h);
+}
 
 uint32_t get_PLL_COLS_16_97(void)
 {

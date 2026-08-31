@@ -321,11 +321,12 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     }
     uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
     // MCT components clamp after the inverse colour transform, never in the wavelet.
-    // a Part 2 level may end without a vertical pass. the partial wavelet fuses the
-    // shift only for reversible 5/3.
+    // a Part 2 level may end without a vertical pass. the float 9/7 canvas holds float
+    // bits the fused shift would corrupt, so that one stays standalone.
     bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
+    bool partialCanFuse = tccp->qmfbid_ == 1 || tilec->is16BitDwt();
     bool fuseDcShift = numRes > 1 && !tccp->usesPart2Transform() && !isMctComp &&
-                       (tileProcessor->getTCP()->wholeTileDecompress_ || tccp->qmfbid_ == 1);
+                       (tileProcessor->getTCP()->wholeTileDecompress_ || partialCanFuse);
     if(numRes > 0)
     {
       if(waveletReverse_[compno])

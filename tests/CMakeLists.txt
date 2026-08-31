@@ -360,6 +360,11 @@ target_link_libraries(grk_region_decompress_int16_test ${GROK_CORE_NAME} spdlog:
 add_test(NAME grk_region_decompress_int16_test COMMAND grk_region_decompress_int16_test)
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_region_decompress_97_int16_test GrkRegionDecompress97Int16Test.cpp)
+target_link_libraries(grk_region_decompress_97_int16_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_region_decompress_97_int16_test COMMAND grk_region_decompress_97_int16_test)
+
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_region_decompress_ht_test GrkRegionDecompressHTTest.cpp)
 target_link_libraries(grk_region_decompress_ht_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_region_decompress_ht_test COMMAND grk_region_decompress_ht_test)

@@ -541,6 +541,20 @@ public:
   }
 };
 
+template<typename T, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
+class Partial97_16 : public PartialInterleaver<T, CT, FILTER_WIDTH, VERT_PASS_WIDTH>
+{
+public:
+  void h(dwt_scratch<T>* dwt)
+  {
+    WaveletReverse::step_16_97(dwt);
+  }
+  void v(dwt_scratch<T>* dwt)
+  {
+    WaveletReverse::step_16_97(dwt);
+  }
+};
+
 template<typename CT, uint32_t FILTER_WIDTH>
 struct PartialBandInfo
 {
@@ -650,7 +664,9 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
   // imageComponentFlow == nullptr ==> no blocks were decompressed for this component
   if(!imageComponentFlow)
     return true;
-  // dc level shift fused into the final read, replacing the standalone pass
+  // synthesis sink, replacing the standalone dc shift pass: the int16 9/7 lifts in
+  // Q-format, so its fractional bits round back out here first, matching
+  // hwy_v_synth_16_97. qShift is 0 for every other partial instantiation.
   auto apply_dc_shift = [this, synthesisWindow, simpleBuf]() {
     if(!dcShift_.enabled)
       return;
@@ -658,11 +674,17 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
     const int64_t shift = dcShift_.shift;
     const int64_t lowest = dcShift_.min;
     const int64_t highest = dcShift_.max;
+    const int qShift = tilec_->qShift();
     for(uint32_t y = 0; y < synthesisWindow.height(); ++y)
     {
       auto row = simpleBuf.buf_ + (size_t)y * simpleBuf.stride_;
       for(uint32_t x = 0; x < synthesisWindow.width(); ++x)
-        row[x] = (CT)std::clamp((int64_t)row[x] + shift, lowest, highest);
+      {
+        auto value = row[x];
+        if constexpr(std::is_same_v<CT, int16_t>)
+          value = rshift_even_16(value, qShift);
+        row[x] = (CT)std::clamp((int64_t)value + shift, lowest, highest);
+      }
     }
   };
   if(numres_ == 1U)
@@ -864,6 +886,13 @@ bool WaveletReverse::decompressPartial(void)
   else
   {
     constexpr uint32_t VERT_PASS_WIDTH = 1;
+    if(tilec_->is16BitDwt())
+    {
+      return partial_tile<
+          vec8s, int16_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
+          Partial97_16<vec8s, int16_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+          tilec_->getRegionWindow16(), partialTasks16_97_);
+    }
     return partial_tile<vec4f, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
                         Partial97<vec4f, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
         tilec_->getRegionWindow(), partialTasks97_);

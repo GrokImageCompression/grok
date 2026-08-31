@@ -2548,32 +2548,29 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   // out of the coding params, so a tile can never decode into a sample type the composite
   // buffer was not allocated for.
   bool allEligible = true;
-  bool allReversible = true;
   bool hasMct = defaultTcp_->mct_ == 1 && headerImage_->numcomps >= 3 &&
                 headerImage_->componentsEqual(3, false);
   for(uint16_t i = 0; i < headerImage_->numcomps; i++)
   {
     auto tccp = defaultTcp_->tccps_ + i;
     bool isMctComp = hasMct && (i <= 2);
-    if(tccp->qmfbid_ != 1)
-      allReversible = false;
     if(grk_get_data_type(false, headerImage_->comps[i].prec, isMctComp, tccp->qmfbid_) !=
            GRK_INT_16 ||
        tccp->usesPart2Transform())
+    {
       allEligible = false;
+      break;
+    }
   }
   cp_.codingParams_.dec_.use16BitDwt_ = allEligible;
-  cp_.codingParams_.dec_.allComponentsReversible_ = allReversible;
 
   // Decide the composite sample type from the same inputs TileProcessor uses, and set it
   // explicitly on every component. copyHeaderTo above may have carried a stale int16 type
   // from the mercury fast path (it marks multiTileComposite_ int16, then can bail leaving the
   // type mutated), so setting int32 here when in doubt is what keeps the composite type from
-  // disagreeing with a tile that decodes int32. a region decode reaches int16 only through the
-  // reversible partial wavelet, matching TileProcessor's
-  // `can16Bit && (isWholeTileDecoding() || allComponentsReversible_)`.
-  bool useInt16Composite =
-      allEligible && scratch->has_multiple_tiles && (region_.empty() || allReversible);
+  // disagreeing with a tile that decodes int32. a region decode takes the same type rule as a
+  // whole decode, matching TileProcessor's `can16Bit`.
+  bool useInt16Composite = allEligible && scratch->has_multiple_tiles;
   for(uint16_t i = 0; i < scratch->numcomps; i++)
     scratch->comps[i].data_type = useInt16Composite ? GRK_INT_16 : GRK_INT_32;
 

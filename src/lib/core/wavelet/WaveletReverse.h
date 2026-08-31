@@ -138,6 +138,7 @@ public:
   bool decompress(void);
 
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
+  static void step_16_97(dwt_scratch<vec8s>* GRK_RESTRICT dwt);
 
 private:
   WaveletPoolData* poolData_ = nullptr;
@@ -338,6 +339,9 @@ private:
 
   // partial 9/7
   std::vector<PartialTaskInfo<vec4f, dwt_scratch<vec4f>>*> partialTasks97_;
+
+  // partial 16-bit 9/7
+  std::vector<PartialTaskInfo<vec8s, dwt_scratch<vec8s>>*> partialTasks16_97_;
   ///////////////////////////////////////////////////////////////////////////////////////////////
 };
 

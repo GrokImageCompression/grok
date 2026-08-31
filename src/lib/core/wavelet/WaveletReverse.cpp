@@ -870,6 +870,8 @@ WaveletReverse::~WaveletReverse(void)
     delete t;
   for(const auto& t : partialTasks97_)
     delete t;
+  for(const auto& t : partialTasks16_97_)
+    delete t;
 }
 
 /* Performs lifting in one single iteration. Saves memory */

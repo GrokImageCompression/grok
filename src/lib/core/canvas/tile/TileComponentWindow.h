@@ -529,11 +529,19 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
   {
     if(regionWindow)
     {
-      // int16 with a region canvas is only reachable for reversible 5/3
-      assert(block->qmfbid == 1);
       if(!empty)
       {
-        if(block->roishift)
+        if(block->qmfbid == 0)
+        {
+          // irreversible 9/7: dequantize into the Q-format and narrow
+          if(block->roishift)
+            narrowBlockInPlace<t1::NarrowRoiScaleFilter16>(srcData, cblk->width(), cblk->width(),
+                                                           cblk->height(), block);
+          else
+            narrowBlockInPlace<t1::NarrowScaleFilter16>(srcData, cblk->width(), cblk->width(),
+                                                        cblk->height(), block);
+        }
+        else if(block->roishift)
           narrowBlockInPlace<t1::NarrowRoiShiftFilter>(srcData, cblk->width(), cblk->width(),
                                                        cblk->height(), block);
         else
@@ -637,11 +645,19 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
   {
     if(regionWindow)
     {
-      // int16 with a region canvas is only reachable for reversible 5/3
-      assert(block->qmfbid == 1);
       if(!empty)
       {
-        if(block->roishift)
+        if(block->qmfbid == 0)
+        {
+          // irreversible 9/7: dequantize into the Q-format and narrow
+          if(block->roishift)
+            narrowBlockInPlace<t1::ojph::NarrowRoiScaleOJPHFilter16>(srcData, stride, cblk->width(),
+                                                                     cblk->height(), block);
+          else
+            narrowBlockInPlace<t1::ojph::NarrowScaleOJPHFilter16>(srcData, stride, cblk->width(),
+                                                                  cblk->height(), block);
+        }
+        else if(block->roishift)
           narrowBlockInPlace<t1::ojph::NarrowRoiShiftOJPHFilter>(srcData, stride, cblk->width(),
                                                                  cblk->height(), block);
         else

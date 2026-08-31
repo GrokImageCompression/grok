@@ -346,8 +346,8 @@ bool runConfig(const Config& config)
     {
       ok = sameImage(config, classic, mercury,
                      config.irreversible ? IRREVERSIBLE_PEAK_TOLERANCE : 0);
-      // prec 8 reversible is int16-eligible even for a window, on both pipelines
-      if(ok && !config.irreversible && classic.comps[0].dataType != GRK_INT_16)
+      // prec 8 is int16-eligible under either filter, even for a window, on both pipelines
+      if(ok && classic.comps[0].dataType != GRK_INT_16)
       {
         fprintf(stderr, "%s: expected int16 output, got data type %d\n", config.name,
                 (int)classic.comps[0].dataType);
