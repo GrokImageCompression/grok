@@ -305,6 +305,12 @@ def main():
 
     mismatches = parse_mismatches(log_path)
     if not mismatches:
+        log_text = strip_ansi(log_path.read_text(errors="replace"))
+        if not re.search(r"Testing:\s+NR-DEC-.+-decode-md5", log_text):
+            sys.exit(
+                "No md5 tests in log. The last ctest run skipped them, "
+                "run the full suite first."
+            )
         print("No md5 mismatches found in log.")
         return
 
