@@ -1018,6 +1018,10 @@ bool PacketIter::isWholeTile(void)
 
 bool PacketIter::next(SparseBuffer* compressedPackets)
 {
+  // spatial next_* still walks the tile when lay_e is 0
+  if(prog.lay_s >= prog.lay_e || prog.res_s >= prog.res_e || prog.comp_s >= prog.comp_e)
+    return false;
+
   // OPT path: per-resolution precinct info avoids degenerate spatial
   // iteration for tiles with large dimensions or many resolution levels.
   if(precinctInfoOPT_)
