@@ -80,6 +80,7 @@ struct Component
   uint32_t h = 0;
   uint8_t prec = 0;
   bool sgnd = false;
+  grk_data_type dataType = GRK_INT_32;
   std::vector<int32_t> samples;
 };
 
@@ -137,6 +138,7 @@ bool capture(grk_image* image, Decoded& out)
     dst.h = src.h;
     dst.prec = src.prec;
     dst.sgnd = src.sgnd;
+    dst.dataType = src.data_type;
     dst.samples.resize((size_t)src.w * src.h);
     for(uint32_t y = 0; y < src.h; ++y)
       for(uint32_t x = 0; x < src.w; ++x)
@@ -299,6 +301,12 @@ bool sameImage(const Config& config, const Decoded& classic, const Decoded& merc
               config.name, c, a.w, a.h, a.prec, b.w, b.h, b.prec);
       return false;
     }
+    if(a.dataType != b.dataType)
+    {
+      fprintf(stderr, "%s: component %u data type mismatch: classic %d vs mercury %d\n",
+              config.name, c, (int)a.dataType, (int)b.dataType);
+      return false;
+    }
     for(size_t i = 0; i < a.samples.size(); ++i)
     {
       int32_t diff = a.samples[i] - b.samples[i];
@@ -335,8 +343,17 @@ bool runConfig(const Config& config)
               "captured log:\n%s\n",
               config.name, MERCURY_SUCCESS_MARKER, log.c_str());
     else
+    {
       ok = sameImage(config, classic, mercury,
                      config.irreversible ? IRREVERSIBLE_PEAK_TOLERANCE : 0);
+      // prec 8 reversible is int16-eligible even for a window, on both pipelines
+      if(ok && !config.irreversible && classic.comps[0].dataType != GRK_INT_16)
+      {
+        fprintf(stderr, "%s: expected int16 output, got data type %d\n", config.name,
+                (int)classic.comps[0].dataType);
+        ok = false;
+      }
+    }
   }
   remove(path.c_str());
   return ok;

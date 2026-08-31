@@ -37,11 +37,18 @@
 
 namespace grk
 {
-template<typename T>
-class ISparseCanvas
+// untyped handle for owning a canvas without naming its sample type
+class ISparseCanvasBase
 {
 public:
-  virtual ~ISparseCanvas() = default;
+  virtual ~ISparseCanvasBase() = default;
+};
+
+template<typename T>
+class ISparseCanvas : public ISparseCanvasBase
+{
+public:
+  ~ISparseCanvas() override = default;
   /**
    * Read window of data into dest buffer.
    */

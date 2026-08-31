@@ -326,12 +326,15 @@ private:
     uint32_t indexMax_;
   };
 
-  template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
-  bool partial_tile(ISparseCanvas<int32_t>* sa,
+  template<typename ST, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
+  bool partial_tile(ISparseCanvas<CT>* sa,
                     std::vector<PartialTaskInfo<ST, dwt_scratch<ST>>*>& tasks);
 
   // partial 5/3
   std::vector<PartialTaskInfo<int32_t, dwt_scratch<int32_t>>*> partialTasks53_;
+
+  // partial 16-bit 5/3
+  std::vector<PartialTaskInfo<int16_t, dwt_scratch<int16_t>>*> partialTasks16_53_;
 
   // partial 9/7
   std::vector<PartialTaskInfo<vec4f, dwt_scratch<vec4f>>*> partialTasks97_;

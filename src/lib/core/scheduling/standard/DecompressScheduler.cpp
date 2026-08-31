@@ -320,6 +320,12 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       graph(compno);
     }
     uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
+    // MCT components clamp after the inverse colour transform, never in the wavelet.
+    // a Part 2 level may end without a vertical pass. the partial wavelet fuses the
+    // shift only for reversible 5/3.
+    bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
+    bool fuseDcShift = numRes > 1 && !tccp->usesPart2Transform() && !isMctComp &&
+                       (tileProcessor->getTCP()->wholeTileDecompress_ || tccp->qmfbid_ == 1);
     if(numRes > 0)
     {
       if(waveletReverse_[compno])
@@ -340,36 +346,25 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         maxDim = std::max({maxDim, win.width(), win.height()});
       }
 
-      // compute DC shift for fusion into wavelet last level
-      // DC shift fusion only works for whole tile decompress (decompressPartial doesn't support it)
-      bool wholeDecompress = tileProcessor->getTCP()->wholeTileDecompress_;
+      // compute DC shift for the wavelet to fuse
       DcShiftParam dcShift;
-      // a Part 2 level may end without a vertical pass, so the shift stays standalone
-      bool fuseDcShift = numRes > 1 && wholeDecompress && !tccp->usesPart2Transform();
       if(fuseDcShift)
       {
-        bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
-        // For MCT components: don't fuse DC shift into wavelet.
-        // Wavelet fusion applies clamp before inverse color transform,
-        // but correct behavior requires clamp after MCT.
-        if(!isMctComp)
+        auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
+        dcShift.shift = tccp->dcLevelShift_;
+        if(img_comp->sgnd)
         {
-          auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
-          dcShift.shift = tccp->dcLevelShift_;
-          if(img_comp->sgnd)
-          {
-            dcShift.min = -(1 << (img_comp->prec - 1));
-            dcShift.max = (1 << (img_comp->prec - 1)) - 1;
-          }
-          else
-          {
-            dcShift.min = 0;
-            dcShift.max = (1 << img_comp->prec) - 1;
-          }
-          // a zero shift still needs the clamp, the standalone pass below is
-          // skipped whenever the wavelet is trusted with it
-          dcShift.enabled = true;
+          dcShift.min = -(1 << (img_comp->prec - 1));
+          dcShift.max = (1 << (img_comp->prec - 1)) - 1;
         }
+        else
+        {
+          dcShift.min = 0;
+          dcShift.max = (1 << img_comp->prec) - 1;
+        }
+        // a zero shift still needs the clamp, the standalone pass below is
+        // skipped whenever the wavelet is trusted with it
+        dcShift.enabled = true;
       }
 
       const TransformKernel* kernel = nullptr;
@@ -399,9 +394,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         if(!tileProcessor->needsMctDecompress(compno) || tcp->mct_ == 2)
         {
           // standalone DC shift when wavelet didn't fuse it
-          bool waveletFusedDc = numRes > 1 && tileProcessor->getTCP()->wholeTileDecompress_ &&
-                                !(tcp->tccps_ + compno)->usesPart2Transform();
-          if(!waveletFusedDc)
+          if(!fuseDcShift)
           {
             auto dcPostProc = imageComponentFlow->getPrePostProc(*this);
             imageComponentFlow->getFinalFlowT1()->precede(*dcPostProc);

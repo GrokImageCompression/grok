@@ -14,19 +14,25 @@ improving cache utilization and throughput for eligible images.
 The 16-bit path is selected at runtime in `TileProcessor::decompressInit()`
 (TileProcessor.cpp) when all of the following hold:
 
-1. **Reversible wavelet** (`qmfbid == 1`)
-2. **Whole-tile decoding** (no region-of-interest partial decode)
-3. **Precision + headroom ≤ 16 bits**:
+1. **Reversible wavelet** (`qmfbid == 1`), or irreversible 9/7 under whole-tile decoding
+2. **Precision + headroom ≤ 16 bits**:
    - MCT components (inverse RCT): `prec + 5 ≤ 16` → max precision 11 bits
    - Non-MCT components (DC shift only): `prec + 4 ≤ 16` → max precision 12 bits
+
+A region (partial) decode reaches the 16-bit path only when every component of
+the decode is reversible, since the partial 9/7 synthesis has no int16 variant
+and all components of a decode share one sample type. The mercury fast path
+applies the same rule to its region decodes, so both pipelines return the same
+sample type.
 
 ### Data Flow
 
 ```
 Tier-1 decode (int32)
   → NarrowShiftFilter (int32 → int16, in PostDecodeFilters.h)
-  → 16-bit DWT synthesis (WaveletReverse.cpp)
-  → DC shift (fused into final store, or via mct.cpp for MCT)
+  → 16-bit DWT synthesis (WaveletReverse.cpp), or
+    16-bit partial synthesis over an int16 SparseCanvas (WaveletReversePartial.cpp)
+  → DC shift (fused into final store or the partial final read, or via mct.cpp for MCT)
   → MCT inverse RCT (mct.cpp DecompressRev16 / DecompressDcShiftRev16)
   → composite to output image (GrkImage.h compositePlanar with int16→int32 widening)
 ```
@@ -37,6 +43,7 @@ Tier-1 decode (int32)
 |------|------|
 | `TileProcessor.cpp` | 16-bit eligibility decision |
 | `WaveletReverse.cpp` | All DWT kernels (int32 and int16, scalar and HWY SIMD) |
+| `WaveletReversePartial.cpp` | Region-decode synthesis over a sparse canvas, int32 and int16 5/3 |
 | `WaveletReverse.h` | 16-bit entry point declarations |
 | `PostDecodeFilters.h` | `NarrowShiftFilter` — int32→int16 narrowing after T1 decode |
 | `mct.cpp` | `DecompressRev16` / `DecompressDcShiftRev16` — int16 MCT+DC shift |
@@ -200,6 +207,13 @@ Computes `floor((a + b) / 2)` without overflow using bit decomposition.
 Each term is individually safe:
 - `a >> 1` and `b >> 1` are half the original range
 - `(a & b) & 1` is 0 or 1 (the "carry" from the lost LSBs)
+
+### Solution 3: The Partial Path
+
+The partial (region-decode) vertical pass in `WaveletReversePartial.cpp` writes
+the same two identities against raw SSE2 intrinsics, in
+`update_avg_epi16_53()` and `predict_avg_epi16_53()`, so its SIMD rows and its
+scalar rows produce the same samples.
 
 ### Why Scalar Code Doesn't Need This
 

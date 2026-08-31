@@ -417,6 +417,9 @@ struct DecodingParams
   // decided in CodeStreamDecompress::activateScratch and read back by TileProcessor, so the
   // tiles and the composite buffer can never pick different sample types
   bool use16BitDwt_;
+  // every component of the decode uses the reversible 5/3 filter, which is what lets a region
+  // decode take the int16 path. same producer/consumer split as use16BitDwt_
+  bool allComponentsReversible_;
 };
 
 struct TLMMarker;

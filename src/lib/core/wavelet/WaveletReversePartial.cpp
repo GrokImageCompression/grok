@@ -65,36 +65,28 @@ namespace grk
  **************************************************************************************
  *
  *
- * 5/3 operates on elements of type int32_t while 9/7 operates on elements of type vec4f
+ * ST is the lifting element type, CT the sparse canvas sample type:
+ * 5/3 lifts on int32_t or int16_t over a canvas of the same type, 9/7 lifts on
+ * vec4f over an int32_t canvas.
  *
  * Horizontal pass
  *
  * Each thread processes a strip running the length of the window, with height
- *   5/3
- *   Height : sizeof(T)/sizeof(int32_t)
- *
- *   9/7
- *   Height : sizeof(T)/sizeof(int32_t)
+ *   sizeof(ST)/sizeof(CT)
  *
  * Vertical pass
  *
  * Each thread processes a strip running the height of the window, with width
- *
- *  5/3
- *  Width :  4
- *
- *  9/7
- *  Width :  4
+ * VERT_PASS_WIDTH
  *
  ****************************************************************************/
-template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
+template<typename ST, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class PartialInterleaver
 {
 public:
-  bool interleave_h(dwt_scratch<ST>* dwt, ISparseCanvas<int32_t>* sa, uint32_t y_offset,
-                    uint32_t height)
+  bool interleave_h(dwt_scratch<ST>* dwt, ISparseCanvas<CT>* sa, uint32_t y_offset, uint32_t height)
   {
-    const uint32_t stripHeight = (uint32_t)(sizeof(ST) / sizeof(int32_t));
+    const uint32_t stripHeight = (uint32_t)(sizeof(ST) / sizeof(CT));
     for(uint32_t y = 0; y < height; y++)
     {
       // read one row of L band
@@ -104,7 +96,7 @@ public:
                             Rect32(dwt->win_l.x0, y_offset + y,
                                    std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
                                    y_offset + y + 1),
-                            (int32_t*)dwt->memL + y, 2 * stripHeight, 0);
+                            (CT*)dwt->memL + y, 2 * stripHeight, 0);
         if(!ret)
           return false;
       }
@@ -116,7 +108,7 @@ public:
                      Rect32(dwt->sn + dwt->win_h.x0, y_offset + y,
                             dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
                             y_offset + y + 1),
-                     (int32_t*)dwt->memH + y, 2 * stripHeight, 0);
+                     (CT*)dwt->memH + y, 2 * stripHeight, 0);
         if(!ret)
           return false;
       }
@@ -124,10 +116,10 @@ public:
 
     return true;
   }
-  bool interleave_v(dwt_scratch<ST>* GRK_RESTRICT dwt, ISparseCanvas<int32_t>* sa,
-                    uint32_t x_offset, uint32_t xWidth)
+  bool interleave_v(dwt_scratch<ST>* GRK_RESTRICT dwt, ISparseCanvas<CT>* sa, uint32_t x_offset,
+                    uint32_t xWidth)
   {
-    const uint32_t stripWidth = (sizeof(ST) / sizeof(int32_t)) * VERT_PASS_WIDTH;
+    const uint32_t stripWidth = (sizeof(ST) / sizeof(CT)) * VERT_PASS_WIDTH;
     // read one vertical strip (of width xWidth <= stripWidth) of L band
     bool ret = false;
     if(dwt->sn)
@@ -135,7 +127,7 @@ public:
       ret = sa->read(dwt->resno,
                      Rect32(x_offset, dwt->win_l.x0, x_offset + xWidth,
                             std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
-                     (int32_t*)dwt->memL, 1, 2 * stripWidth);
+                     (CT*)dwt->memL, 1, 2 * stripWidth);
     }
     // read one vertical strip (of width x_num_elements <= stripWidth) of H band
     if(dwt->dn)
@@ -143,12 +135,37 @@ public:
       ret = sa->read(dwt->resno,
                      Rect32(x_offset, dwt->sn + dwt->win_h.x0, x_offset + xWidth,
                             dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
-                     (int32_t*)dwt->memH, 1, 2 * stripWidth);
+                     (CT*)dwt->memH, 1, 2 * stripWidth);
     }
 
     return ret;
   }
 };
+
+#ifdef __SSE2__
+// floor((a + b + 2) / 4) for signed int16 lanes. the direct sum can overflow int16, so
+// this goes through the unsigned average instruction, which carries a 17-bit intermediate.
+// identity: floor((a + b + 2) / 4) == (floor((a + b) / 2) + 1) >> 1
+static inline __m128i update_avg_epi16_53(__m128i a, __m128i b)
+{
+  const __m128i signBit = _mm_set1_epi16((short)0x8000);
+  const __m128i maxUnsigned = _mm_set1_epi16((short)0x7FFF);
+  // flip the sign bit to reach the unsigned domain, and bias b down by one so the
+  // rounding +1 in _mm_avg_epu16 cancels
+  auto unsignedA = _mm_xor_si128(a, signBit);
+  auto biasedB = _mm_add_epi16(b, maxUnsigned);
+  auto average = _mm_avg_epu16(unsignedA, biasedB);
+  return _mm_srai_epi16(_mm_sub_epi16(average, maxUnsigned), 1);
+}
+
+// floor((a + b) / 2) for signed int16 lanes, avoiding the overflow in a + b.
+// identity: (a + b) >> 1 == (a >> 1) + (b >> 1) + ((a & b) & 1)
+static inline __m128i predict_avg_epi16_53(__m128i a, __m128i b)
+{
+  auto carry = _mm_and_si128(_mm_and_si128(a, b), _mm_set1_epi16(1));
+  return _mm_add_epi16(_mm_add_epi16(_mm_srai_epi16(a, 1), _mm_srai_epi16(b, 1)), carry);
+}
+#endif
 
 // 5/3 inverse lifting steps below compute sums of two samples before an
 // arithmetic right shift. With int32_t samples, JPEG 2000-compliant inputs
@@ -157,8 +174,8 @@ public:
 // int64_t before the shift keeps the arithmetic-shift semantics intact
 // without changing output for in-range inputs. The SIMD paths use
 // _mm_add_epi32 which wraps silently and is unaffected.
-template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
-class Partial53 : public PartialInterleaver<ST, FILTER_WIDTH, VERT_PASS_WIDTH>
+template<typename ST, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
+class Partial53 : public PartialInterleaver<ST, CT, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
 public:
   GRK_NO_SANITIZE_OVERFLOW void h(dwt_scratch<ST>* dwt)
@@ -342,7 +359,7 @@ public:
 #ifdef __SSE2__
           if(i + 1 < i_max)
           {
-            const __m128i two = _mm_set1_epi32(2);
+            [[maybe_unused]] const __m128i two = _mm_set1_epi32(2);
             auto Dm1 = _mm_load_si128((__m128i*)(buf + ((i << 1) - 1) * VERT_PASS_WIDTH));
             for(; i + 1 < i_max; i += 2)
             {
@@ -351,8 +368,16 @@ public:
               auto D = _mm_load_si128((__m128i*)(buf + ((i << 1) + 1) * VERT_PASS_WIDTH));
               auto S1 = _mm_load_si128((__m128i*)(buf + ((i << 1) + 2) * VERT_PASS_WIDTH));
               auto D1 = _mm_load_si128((__m128i*)(buf + ((i << 1) + 3) * VERT_PASS_WIDTH));
-              S = _mm_sub_epi32(S, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
-              S1 = _mm_sub_epi32(S1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
+              if constexpr(std::is_same_v<ST, int16_t>)
+              {
+                S = _mm_sub_epi16(S, update_avg_epi16_53(Dm1, D));
+                S1 = _mm_sub_epi16(S1, update_avg_epi16_53(D, D1));
+              }
+              else
+              {
+                S = _mm_sub_epi32(S, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
+                S1 = _mm_sub_epi32(S1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
+              }
               _mm_store_si128((__m128i*)(buf + (i << 1) * VERT_PASS_WIDTH), S);
               _mm_store_si128((__m128i*)(buf + ((i + 1) << 1) * VERT_PASS_WIDTH), S1);
               Dm1 = D1;
@@ -394,8 +419,16 @@ public:
               auto S1 = _mm_load_si128((__m128i*)(buf + ((i + 1) << 1) * VERT_PASS_WIDTH));
               auto D1 = _mm_load_si128((__m128i*)(buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH));
               auto S2 = _mm_load_si128((__m128i*)(buf + ((i + 2) << 1) * VERT_PASS_WIDTH));
-              D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
-              D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
+              if constexpr(std::is_same_v<ST, int16_t>)
+              {
+                D = _mm_add_epi16(D, predict_avg_epi16_53(S, S1));
+                D1 = _mm_add_epi16(D1, predict_avg_epi16_53(S1, S2));
+              }
+              else
+              {
+                D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
+                D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
+              }
               _mm_store_si128((__m128i*)(buf + (1 + (i << 1)) * VERT_PASS_WIDTH), D);
               _mm_store_si128((__m128i*)(buf + (1 + ((i + 1) << 1)) * VERT_PASS_WIDTH), D1);
               S = S2;
@@ -494,8 +527,8 @@ private:
 #endif
 };
 
-template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
-class Partial97 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
+template<typename T, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
+class Partial97 : public PartialInterleaver<T, CT, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
 public:
   void h(dwt_scratch<T>* dwt)
@@ -508,7 +541,7 @@ public:
   }
 };
 
-template<uint32_t FILTER_WIDTH>
+template<typename CT, uint32_t FILTER_WIDTH>
 struct PartialBandInfo
 {
   // 1. set up windows for horizontal and vertical passes
@@ -517,8 +550,8 @@ struct PartialBandInfo
   Rect32 splitWindowREL_[SPLIT_NUM_ORIENTATIONS];
   Rect32 resWindowREL_;
 
-  bool alloc(ISparseCanvas<int32_t>* sa, uint8_t resno, Resolution* fullRes,
-             TileComponentWindow<int32_t>* tileWindow)
+  bool alloc(ISparseCanvas<CT>* sa, uint8_t resno, Resolution* fullRes,
+             TileComponentWindow<CT>* tileWindow)
   {
     bandWindowREL_[t1::BAND_ORIENT_LL] =
         tileWindow->getBandWindowBufferPaddedREL(resno, t1::BAND_ORIENT_LL);
@@ -571,47 +604,39 @@ struct PartialBandInfo
 /**
  * ************************************************************************************
  *
- * 5/3 operates on elements of type int32_t while 9/7 operates on elements of type vec4f
+ * ST is the lifting element type, CT the sparse canvas sample type
  *
  * Horizontal pass
  *
- * Each thread processes a strip running the length of the window, of the following dimensions:
- *
- *   5/3
- *   Height : 1
- *
- *   9/7
- *   Height : 4
+ * Each thread processes a strip running the length of the window, with height
+ * sizeof(ST)/sizeof(CT): 1 for 5/3, 4 for 9/7
  *
  * Vertical pass
  *
- *  5/3
- *  Width :  4
- *
- *  9/7
- *  Height : 1
+ * Each thread processes a strip of width VERT_PASS_WIDTH: 4 for int32 5/3,
+ * 8 for int16 5/3, 1 for 9/7
  *
  ****************************************************************************
  *
  * FILTER_WIDTH value matches the maximum left/right extension given in tables
  * F.2 and F.3 of the standard
  */
-template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
+template<typename T, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
 
-bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
+bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
                                   std::vector<PartialTaskInfo<T, dwt_scratch<T>>*>& tasks)
 {
   uint8_t numresolutions = tilec_->num_resolutions_;
-  auto buf = tilec_->getWindow();
+  auto buf = tilec_->typedWindow<CT>();
   auto simpleBuf = buf->getResWindowBufferHighestSimple();
   auto fullRes = tilec_->resolutions_;
   auto fullResTopLevel = tilec_->resolutions_ + numres_ - 1;
   if(!fullResTopLevel->width() || !fullResTopLevel->height())
     return true;
 
-  const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(int32_t);
-  const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) *
-                       sizeof(T) / sizeof(int32_t);
+  const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(CT);
+  const uint32_t pad =
+      FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) * HORIZ_PASS_HEIGHT;
   // reduce window
   auto synthesisWindow = unreducedWindow_.scaleDownCeilPow2(numresolutions - numres_);
   assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
@@ -625,11 +650,27 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
   // imageComponentFlow == nullptr ==> no blocks were decompressed for this component
   if(!imageComponentFlow)
     return true;
+  // dc level shift fused into the final read, replacing the standalone pass
+  auto apply_dc_shift = [this, synthesisWindow, simpleBuf]() {
+    if(!dcShift_.enabled)
+      return;
+    // the add can overflow int32 on fuzzer streams
+    const int64_t shift = dcShift_.shift;
+    const int64_t lowest = dcShift_.min;
+    const int64_t highest = dcShift_.max;
+    for(uint32_t y = 0; y < synthesisWindow.height(); ++y)
+    {
+      auto row = simpleBuf.buf_ + (size_t)y * simpleBuf.stride_;
+      for(uint32_t x = 0; x < synthesisWindow.width(); ++x)
+        row[x] = (CT)std::clamp((int64_t)row[x] + shift, lowest, highest);
+    }
+  };
   if(numres_ == 1U)
   {
-    auto final_read = [sa, synthesisWindow, simpleBuf]() {
+    auto final_read = [sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
       // final read into tile buffer
       bool ret = sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+      apply_dc_shift();
 
       return ret;
     };
@@ -637,17 +678,18 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
 
     return true;
   }
-  auto final_read = [this, sa, synthesisWindow, simpleBuf]() {
+  auto final_read = [this, sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
     // final read into tile buffer
     bool ret = sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+    apply_dc_shift();
 
     return ret;
   };
   // pre-allocate all blocks
-  std::vector<PartialBandInfo<FILTER_WIDTH>> resBandInfo;
+  std::vector<PartialBandInfo<CT, FILTER_WIDTH>> resBandInfo;
   for(uint8_t resno = 1; resno < numres_; resno++)
   {
-    PartialBandInfo<FILTER_WIDTH> bandInfo;
+    PartialBandInfo<CT, FILTER_WIDTH> bandInfo;
     if(!bandInfo.alloc(sa, resno, fullRes + resno - 1, buf))
       return false;
     resBandInfo.push_back(bandInfo);
@@ -664,7 +706,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
     horiz.parity = fullRes->x0 & 1;
     vert.dn = fullRes->height() - vert.sn;
     vert.parity = fullRes->y0 & 1;
-    PartialBandInfo<FILTER_WIDTH>& bandInfo = resBandInfo[resno - 1];
+    PartialBandInfo<CT, FILTER_WIDTH>& bandInfo = resBandInfo[resno - 1];
 
     auto executor_h = [resno, sa, bandInfo,
                        &decompressor](PartialTaskInfo<T, dwt_scratch<T>>* taskInfo) {
@@ -687,8 +729,8 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
         if(!sa->write(
                resno,
                Rect32(bandInfo.resWindowREL_.x0, yPos, bandInfo.resWindowREL_.x1, yPos + height),
-               (int32_t*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowREL_.x0 -
-                          2 * (int64_t)taskInfo->data.win_l.x0),
+               (CT*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowREL_.x0 -
+                     2 * (int64_t)taskInfo->data.win_l.x0),
                HORIZ_PASS_HEIGHT, 1))
         {
           return false;
@@ -721,10 +763,10 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
                       Rect32(xPos, bandInfo.resWindowREL_.y0, xPos + width,
                              bandInfo.resWindowREL_.y0 + taskInfo->data.win_l.length() +
                                  taskInfo->data.win_h.length()),
-                      (int32_t*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowREL_.y0 -
-                                                       2 * (int64_t)taskInfo->data.win_l.x0) *
-                                                          VERT_PASS_WIDTH),
-                      1, VERT_PASS_WIDTH * (sizeof(T) / sizeof(int32_t))))
+                      (CT*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowREL_.y0 -
+                                                  2 * (int64_t)taskInfo->data.win_l.x0) *
+                                                     VERT_PASS_WIDTH),
+                      1, VERT_PASS_WIDTH * HORIZ_PASS_HEIGHT))
         {
           grklog.error("Sparse array write failure");
           return false;
@@ -768,8 +810,8 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
         resFlow->waveletHoriz_->nextTask().work([taskInfo, executor_h] { executor_h(taskInfo); });
       }
     }
-    dataLength = (bandInfo.resWindowREL_.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH *
-                 sizeof(T) / sizeof(int32_t);
+    dataLength =
+        (bandInfo.resWindowREL_.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * HORIZ_PASS_HEIGHT;
     vert.win_l = bandInfo.bandWindowREL_[t1::BAND_ORIENT_LL].dimY();
     vert.win_h = bandInfo.bandWindowREL_[t1::BAND_ORIENT_LH].dimY();
     vert.resno = resno;
@@ -804,16 +846,26 @@ bool WaveletReverse::decompressPartial(void)
 {
   if(qmfbid_ == 1)
   {
+    if(tilec_->is16BitDwt())
+    {
+      // one __m128i holds 8 int16 columns
+      constexpr uint32_t VERT_PASS_WIDTH = 8;
+      return partial_tile<
+          int16_t, int16_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
+          Partial53<int16_t, int16_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+          tilec_->getRegionWindow16(), partialTasks16_53_);
+    }
     constexpr uint32_t VERT_PASS_WIDTH = 4;
-    return partial_tile<int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
-                        Partial53<int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+    return partial_tile<
+        int32_t, int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
+        Partial53<int32_t, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
         tilec_->getRegionWindow(), partialTasks53_);
   }
   else
   {
     constexpr uint32_t VERT_PASS_WIDTH = 1;
-    return partial_tile<vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
-                        Partial97<vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+    return partial_tile<vec4f, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
+                        Partial97<vec4f, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
         tilec_->getRegionWindow(), partialTasks97_);
   }
 }

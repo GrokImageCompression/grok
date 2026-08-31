@@ -83,6 +83,13 @@ struct TileComponent : public Rect32
    */
   bool allocRegionWindow(uint32_t numres, bool truncatedTile)
   {
+    return use16BitDwt_ ? allocRegionWindowTyped<int16_t>(numres, truncatedTile)
+                        : allocRegionWindowTyped<int32_t>(numres, truncatedTile);
+  }
+
+  template<typename T>
+  bool allocRegionWindowTyped(uint32_t numres, bool truncatedTile)
+  {
     Rect32 temp(0, 0, 0, 0);
     bool first = true;
 
@@ -145,7 +152,7 @@ struct TileComponent : public Rect32
     // 2. create (padded) sparse canvas, in buffer space,
     const uint32_t blockSizeExp = 6;
     temp.grow_IN_PLACE(8);
-    auto regionWindow = new SparseCanvas<int32_t, blockSizeExp, blockSizeExp>(temp);
+    auto regionWindow = new SparseCanvas<T, blockSizeExp, blockSizeExp>(temp);
 
     // 3. allocate sparse blocks
     for(uint8_t resno = 0; resno < numres; ++resno)
@@ -410,13 +417,20 @@ struct TileComponent : public Rect32
     return wholeTileDecompress_;
   }
   /**
-   * @brief Gets return window
-   *
-   * @return ISparseCanvas*
+   * @brief Gets typed region window (static_cast from type-erased pointer)
    */
-  ISparseCanvas<int32_t>* getRegionWindow()
+  template<typename T>
+  ISparseCanvas<T>* typedRegionWindow() const
   {
-    return regionWindow_;
+    return static_cast<ISparseCanvas<T>*>(regionWindow_);
+  }
+  ISparseCanvas<int32_t>* getRegionWindow() const
+  {
+    return typedRegionWindow<int32_t>();
+  }
+  ISparseCanvas<int16_t>* getRegionWindow16() const
+  {
+    return typedRegionWindow<int16_t>();
   }
   /**
    * @brief Post processes code block via virtual dispatch on window
@@ -469,10 +483,10 @@ struct TileComponent : public Rect32
 
 private:
   /**
-   * @brief @ISparseCanvas for region window
+   * @brief @ISparseCanvas for region window (type-erased, sample type matches window_)
    *
    */
-  ISparseCanvas<int32_t>* regionWindow_;
+  ISparseCanvasBase* regionWindow_;
   /**
    * @brief true if whole tile will be decompressed
    *

@@ -866,6 +866,8 @@ WaveletReverse::~WaveletReverse(void)
 {
   for(const auto& t : partialTasks53_)
     delete t;
+  for(const auto& t : partialTasks16_53_)
+    delete t;
   for(const auto& t : partialTasks97_)
     delete t;
 }

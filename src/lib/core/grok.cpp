@@ -440,9 +440,9 @@ grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_
   //   precision, which is what keeps the accumulated rounding inside the T.803
   //   conformance tolerances.  So prec + 8 <= 16  =>  prec <= 8 uses int16; at
   //   9 bits the fractional margin drops to 4 bits and the deviation from float
-  //   doubles, so 9-bit and up (incl. DCI) decode in 32-bit float — exact, and
-  //   consistent with the int32 region/partial-decode path.  See doc/16BitDWT.md
-  //   and WaveletReverse97_16.cpp.
+  //   doubles, so 9-bit and up (incl. DCI) decode in 32-bit float — exact.  A 9/7
+  //   region decode always stays on the float path, which has no int16 variant.
+  //   See doc/16BitDWT.md and WaveletReverse97_16.cpp.
   int recommended;
   if(qmfbid == 1) // reversible 5/3
   {

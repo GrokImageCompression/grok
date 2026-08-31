@@ -79,10 +79,11 @@ struct ITileComponentWindow
 
   // Post-process: T1 always outputs int32_t.
   // int32 window writes int32 to band buffers; int16 window narrows to int16.
+  // the region canvas sample type always equals the window sample type
   virtual void postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
-                                ISparseCanvas<int32_t>* regionWindow) = 0;
+                                ISparseCanvasBase* regionWindow) = 0;
   virtual void postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride,
-                                  ISparseCanvas<int32_t>* regionWindow) = 0;
+                                  ISparseCanvasBase* regionWindow) = 0;
 };
 
 template<class T>
@@ -475,9 +476,9 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
     return (uint64_t)win->getStride() * win->height();
   }
   void postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
-                        ISparseCanvas<int32_t>* regionWindow) override;
+                        ISparseCanvasBase* regionWindow) override;
   void postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride,
-                          ISparseCanvas<int32_t>* regionWindow) override;
+                          ISparseCanvasBase* regionWindow) override;
 
 private:
   const Buf2dAligned* getCodeBlockDestWindowREL(uint8_t resno,
@@ -502,9 +503,20 @@ private:
 
 // ---------- postProcessBlock / postProcessBlockHT out-of-class definitions ----------
 
+// writing over srcData is safe: the int16 write index always trails the int32 read index
+template<typename F>
+void narrowBlockInPlace(int32_t* srcData, uint32_t srcStride, uint32_t width, uint32_t height,
+                        t1::DecompressBlockExec* block)
+{
+  F filter(block);
+  auto dest = (int16_t*)srcData;
+  for(uint32_t j = 0; j < height; ++j)
+    filter.copy(dest + (size_t)j * width, srcData + (size_t)j * srcStride, width);
+}
+
 template<typename T>
 void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
-                                              ISparseCanvas<int32_t>* regionWindow)
+                                              ISparseCanvasBase* regionWindow)
 {
   auto cblk = block->cblk;
   bool empty = cblk->dataChunksEmpty();
@@ -515,10 +527,28 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
 
   if constexpr(std::is_same_v<T, int16_t>)
   {
+    if(regionWindow)
+    {
+      // int16 with a region canvas is only reachable for reversible 5/3
+      assert(block->qmfbid == 1);
+      if(!empty)
+      {
+        if(block->roishift)
+          narrowBlockInPlace<t1::NarrowRoiShiftFilter>(srcData, cblk->width(), cblk->width(),
+                                                       cblk->height(), block);
+        else
+          narrowBlockInPlace<t1::NarrowShiftFilter>(srcData, cblk->width(), cblk->width(),
+                                                    cblk->height(), block);
+      }
+      static_cast<ISparseCanvas<int16_t>*>(regionWindow)
+          ->write(block->resno, blockBounds, empty ? nullptr : (int16_t*)srcData, 1,
+                  blockBounds.width());
+      return;
+    }
     // 16-bit narrowing path: int32 T1 output -> int16 band buffers
     auto src = Buffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(),
                                                    (uint16_t)cblk->width(), cblk->height());
-    if(!empty && !regionWindow)
+    if(!empty)
     {
       src.setRect(blockBounds);
       if(block->qmfbid == 0)
@@ -546,6 +576,7 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
   else
   {
     // Standard int32 path
+    auto canvas = static_cast<ISparseCanvas<T>*>(regionWindow);
     auto src = Buffer2d<T, AllocatorAligned>(srcData, false, cblk->width(), (uint16_t)cblk->width(),
                                              cblk->height());
     if(!empty)
@@ -586,16 +617,14 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
         }
       }
     }
-    if(regionWindow)
-      regionWindow->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
-                          blockBounds.width());
+    if(canvas)
+      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
   }
 }
 
 template<typename T>
 void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block,
-                                                uint16_t stride,
-                                                ISparseCanvas<int32_t>* regionWindow)
+                                                uint16_t stride, ISparseCanvasBase* regionWindow)
 {
   auto cblk = block->cblk;
   bool empty = cblk->dataChunksEmpty();
@@ -606,10 +635,28 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
 
   if constexpr(std::is_same_v<T, int16_t>)
   {
+    if(regionWindow)
+    {
+      // int16 with a region canvas is only reachable for reversible 5/3
+      assert(block->qmfbid == 1);
+      if(!empty)
+      {
+        if(block->roishift)
+          narrowBlockInPlace<t1::ojph::NarrowRoiShiftOJPHFilter>(srcData, stride, cblk->width(),
+                                                                 cblk->height(), block);
+        else
+          narrowBlockInPlace<t1::ojph::NarrowShiftOJPHFilter>(srcData, stride, cblk->width(),
+                                                              cblk->height(), block);
+      }
+      static_cast<ISparseCanvas<int16_t>*>(regionWindow)
+          ->write(block->resno, blockBounds, empty ? nullptr : (int16_t*)srcData, 1,
+                  blockBounds.width());
+      return;
+    }
     // 16-bit narrowing path: int32 T1 output -> int16 band buffers
     auto src =
         Buffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
-    if(!empty && !regionWindow)
+    if(!empty)
     {
       src.setRect(blockBounds);
       if(block->qmfbid == 0)
@@ -641,6 +688,7 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
   else
   {
     // Standard int32 path
+    auto canvas = static_cast<ISparseCanvas<T>*>(regionWindow);
     auto src = Buffer2d<T, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
     if(!empty)
     {
@@ -688,9 +736,8 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
         }
       }
     }
-    if(regionWindow)
-      regionWindow->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
-                          blockBounds.width());
+    if(canvas)
+      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
   }
 }
 
