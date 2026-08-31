@@ -111,18 +111,20 @@ def source_file_from_output(output_name: str) -> str:
     return m.group(1) if m else output_name
 
 
-def verify_lossy(mismatches, data_dirs, canonical_md5refs=None):
+def verify_lossy(mismatches, data_dirs, canonical_md5refs=None, existing_md5refs=None):
     """Check that every mismatched file comes from a lossy source.
 
     *data_dirs* is a list of directories to search for source J2K/JP2 files.
     *canonical_md5refs* is a dict {filename: md5} from the canonical md5refs.txt;
     if the new md5 matches the canonical one, we treat it as safe even for lossless
     sources (it's just populating a new platform file).
+    *existing_md5refs* is a dict {filename: md5} from the file being updated. A
+    lossless output absent from both dicts is a new baseline, not a regression.
 
-    Returns (lossy_files, lossless_files, unknown_files) — each a list of
-    (source_name, output_name) tuples.
+    Returns (lossy_files, lossless_files, unknown_files, new_lossless_files),
+    each a list of (source_name, output_name) tuples.
     """
-    lossy, lossless, unknown = [], [], []
+    lossy, lossless, unknown, new_lossless = [], [], [], []
     checked = {}
     for md5, output_name, source_hint in mismatches:
         # Use the source filename extracted from the test name if available,
@@ -147,11 +149,15 @@ def verify_lossy(mismatches, data_dirs, canonical_md5refs=None):
             # a new platform file — not a real mismatch.
             if canonical_md5refs and canonical_md5refs.get(output_name) == md5:
                 lossy.append(entry)  # treat as OK
+            elif (not existing_md5refs or output_name not in existing_md5refs) and (
+                not canonical_md5refs or output_name not in canonical_md5refs
+            ):
+                new_lossless.append(entry)
             else:
                 lossless.append(entry)
         else:
             unknown.append(entry)
-    return lossy, lossless, unknown
+    return lossy, lossless, unknown, new_lossless
 
 
 def load_md5refs(path):
@@ -336,10 +342,17 @@ def main():
             canonical = (
                 load_md5refs(SCRIPT_DIR / "md5refs.txt") if args.platform else {}
             )
-            lossy, lossless, unknown = verify_lossy(mismatches, data_dirs, canonical)
+            existing = load_md5refs(md5refs_path)
+            lossy, lossless, unknown, new_lossless = verify_lossy(
+                mismatches, data_dirs, canonical, existing
+            )
             if lossy:
                 print(f"\n  Lossy (9/7) mismatches — expected, OK: {len(lossy)}")
                 for src, out in lossy:
+                    print(f"    {src} -> {out}")
+            if new_lossless:
+                print(f"\n  New lossless baselines, no existing entry, OK: {len(new_lossless)}")
+                for src, out in new_lossless:
                     print(f"    {src} -> {out}")
             if unknown:
                 print(f"\n  Could not determine transform for: {len(unknown)}")
