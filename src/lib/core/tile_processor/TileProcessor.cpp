@@ -1207,6 +1207,16 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
       else
       {
         scratch->transferDataFrom(tile_);
+        // callers expect zero-filled data for components with no code blocks
+        for(uint16_t compno = 0; compno < scratch->numcomps; ++compno)
+        {
+          auto comp = scratch->comps + compno;
+          if(!comp->data && comp->w && comp->h && !GrkImage::allocData(comp, true))
+          {
+            success_ = false;
+            break;
+          }
+        }
       }
       deallocBuffers();
     }
@@ -1382,37 +1392,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
     // GPU plugin T2-only: skip T1/DWT when GPU handles T1 decode
     if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
       return;
-    for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
-    {
-      // skip allocation for components not selected for decoding
-      if(!shouldDecodeComponent(compno))
-        continue;
-
-      auto tilec = tile_->comps_ + compno;
-
-      if(!tcp_->wholeTileDecompress_)
-      {
-        try
-        {
-          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead());
-        }
-        catch([[maybe_unused]] const std::runtime_error& ex)
-        {
-          continue;
-        }
-        catch([[maybe_unused]] const std::bad_alloc& baex)
-        {
-          success_ = false;
-          return;
-        }
-      }
-      if(!tilec->allocWindow())
-      {
-        grklog.error("Not enough memory for tile data");
-        success_ = false;
-        return;
-      }
-    }
+    // scheduleT1 allocates window buffers per component with code blocks
     if(!scheduler_->scheduleT1(this))
       success_ = false;
   };

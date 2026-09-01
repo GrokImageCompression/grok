@@ -1346,8 +1346,20 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
     // complete tile
     auto tileIndex = tileProcessor->getIndex();
     if(cp_.decompressCallback_)
+    {
+      // the callback expects zero-filled data for components with no code blocks
+      if(tileImage)
+      {
+        for(uint16_t compno = 0; compno < tileImage->numcomps; ++compno)
+        {
+          auto comp = tileImage->comps + compno;
+          if(!comp->data && comp->w && comp->h)
+            GrkImage::allocData(comp, true);
+        }
+      }
       cp_.decompressCallback_(this, tileIndex, tileImage, cp_.codingParams_.dec_.reduce_,
                               cp_.decompressCallbackUserData_);
+    }
 
     if(tileCompletion_)
       tileCompletion_->complete(tileIndex);

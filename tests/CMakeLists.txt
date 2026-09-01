@@ -101,6 +101,14 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/crash-ea90940e12a27e75c1a9aaa7c39079c43576f175)
 endif()
 
+add_executable(grk_truncated_components_memory_test GrkTruncatedComponentsMemoryTest.cpp)
+target_link_libraries(grk_truncated_components_memory_test ${GROK_CORE_NAME})
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_truncated_components_memory_test
+    COMMAND grk_truncated_components_memory_test
+            ${GRK_DATA_ROOT}/input/nonregression/oom-dd67eec3c81d56b3dec670a93acfe50fe88d03c6)
+endif()
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util

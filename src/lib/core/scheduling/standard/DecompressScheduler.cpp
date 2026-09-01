@@ -247,6 +247,30 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     }
     else
     {
+      // a truncated stream can declare hundreds of components with no code blocks
+      if(!wholeTileDecoding)
+      {
+        try
+        {
+          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead());
+        }
+        catch([[maybe_unused]] const std::runtime_error& ex)
+        {
+          for(auto& block : componentBlocks)
+            block.release();
+          componentBlocks.clear();
+          continue;
+        }
+        catch([[maybe_unused]] const std::bad_alloc& baex)
+        {
+          return false;
+        }
+      }
+      if(!tilec->allocWindow())
+      {
+        grklog.error("Not enough memory for tile data");
+        return false;
+      }
       // 2. prepare for decompression
       if(compno < 3)
         mctCompHasBlocks++;
