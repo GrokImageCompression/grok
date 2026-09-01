@@ -78,17 +78,16 @@ struct TileComponent : public Rect32
    * @brief Allocates a region window
    *
    * @param numres number of resolutions
-   * @param truncatedTile true if tile was truncated
    * @return true if successful
    */
-  bool allocRegionWindow(uint32_t numres, bool truncatedTile)
+  bool allocRegionWindow(uint32_t numres)
   {
-    return use16BitDwt_ ? allocRegionWindowTyped<int16_t>(numres, truncatedTile)
-                        : allocRegionWindowTyped<int32_t>(numres, truncatedTile);
+    return use16BitDwt_ ? allocRegionWindowTyped<int16_t>(numres)
+                        : allocRegionWindowTyped<int32_t>(numres);
   }
 
   template<typename T>
-  bool allocRegionWindowTyped(uint32_t numres, bool truncatedTile)
+  bool allocRegionWindowTyped(uint32_t numres)
   {
     Rect32 temp(0, 0, 0, 0);
     bool first = true;
@@ -193,8 +192,9 @@ struct TileComponent : public Rect32
                 y += prev_res->height();
               }
 
+              // the wavelet reads windows of code blocks whose decode failed
               if(!regionWindow->alloc(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
-                                      truncatedTile))
+                                      true))
               {
                 delete regionWindow;
                 throw std::runtime_error("unable to allocate sparse array");

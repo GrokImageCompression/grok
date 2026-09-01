@@ -258,7 +258,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         imageComponentFlow_[compno]->setRegionDecompression();
 
       // 3. decompress
-      success_ = true;
       resno = 0;
     }
     for(auto& rblocks : componentBlocks)
@@ -267,40 +266,31 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
       for(auto& block : rblocks.blocks_)
       {
-        auto blockFunc = [this, activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll,
-                          finalLayer] {
-          if(!success_)
+        auto blockFunc = [activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll, finalLayer] {
+          block->finalLayer_ = finalLayer;
+          t1::ICoder* coder = nullptr;
+          if(block->needsCachedCoder())
+          {
+            // make a new coder for this block
+            coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
+                                                tileProcessor->getTileCacheStrategy());
+          }
+          else if(!cacheAll)
+          {
+            // get coder from pool
+            auto threadnum = TFSingleton::get().this_worker_id();
+            coder =
+                activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_).get();
+          }
+          try
+          {
+            // a failed block reads as zero downstream
+            block->open(coder);
+          }
+          catch(const std::runtime_error& rerr)
           {
             block.reset();
-          }
-          else
-          {
-            block->finalLayer_ = finalLayer;
-            t1::ICoder* coder = nullptr;
-            if(block->needsCachedCoder())
-            {
-              // make a new coder for this block
-              coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
-                                                  tileProcessor->getTileCacheStrategy());
-            }
-            else if(!cacheAll)
-            {
-              // get coder from pool
-              auto threadnum = TFSingleton::get().this_worker_id();
-              coder = activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
-                          .get();
-            }
-            try
-            {
-              if(!block->open(coder))
-                success_ = false;
-            }
-            catch(const std::runtime_error& rerr)
-            {
-              block.reset();
-              grklog.error(rerr.what());
-              success_ = false;
-            }
+            grklog.error(rerr.what());
           }
         };
         resFlow->blocks_->nextTask().work(blockFunc);
@@ -308,8 +298,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       resno++;
     }
     tilec->currentPacketProgressionState_ = tilec->nextPacketProgressionState_;
-    if(!success_)
-      return false;
 
     auto imageFlow = getImageComponentFlow(compno);
     if(imageFlow)

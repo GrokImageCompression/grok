@@ -93,6 +93,14 @@ target_include_directories(grk_sycc_rounding_test PRIVATE
 target_link_libraries(grk_sycc_rounding_test ${GROK_CORE_NAME})
 add_test(NAME grk_sycc_rounding_test COMMAND grk_sycc_rounding_test)
 
+add_executable(grk_corrupt_stream_determinism_test GrkCorruptStreamDeterminismTest.cpp)
+target_link_libraries(grk_corrupt_stream_determinism_test ${GROK_CORE_NAME})
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_corrupt_stream_determinism_test
+    COMMAND grk_corrupt_stream_determinism_test
+            ${GRK_DATA_ROOT}/input/nonregression/crash-ea90940e12a27e75c1a9aaa7c39079c43576f175)
+endif()
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util

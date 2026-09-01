@@ -1394,8 +1394,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       {
         try
         {
-          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
-                                   truncated_);
+          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead());
         }
         catch([[maybe_unused]] const std::runtime_error& ex)
         {
