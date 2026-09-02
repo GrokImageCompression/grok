@@ -96,7 +96,7 @@ endif()
 add_compile_options(
   $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:-fno-omit-frame-pointer>)
 add_link_options(
-  $<$<CONFIG:RelWithDebInfo>:LINKER:--build-id>)
+  $<$<AND:$<CONFIG:RelWithDebInfo>,$<NOT:$<PLATFORM_ID:Darwin>>>:LINKER:--build-id>)
 
 
 # Path to additional CMake modules
