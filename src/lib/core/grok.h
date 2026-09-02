@@ -812,7 +812,11 @@ typedef struct _grk_decompress_params
 
 /**
  * @brief Grok Data types
- * Used to specify the actual data type of Grok image components
+ * Used to specify the actual data type of Grok image components.
+ *
+ * Compression input must be GRK_INT_32 (int32_t samples). grk_compress_init()
+ * rejects any other type. GRK_INT_16 is a decompression output type when the
+ * 16-bit DWT path is used. GRK_INT_8, GRK_FLOAT and GRK_DOUBLE are unused.
  *
  */
 typedef enum _grk_data_type
@@ -851,7 +855,7 @@ typedef struct _grk_image_comp
   GRK_CHANNEL_ASSOC association; /* channel association */
   uint16_t crg_x; /* component registration x coordinate */
   uint16_t crg_y; /* component registration y coordinate */
-  grk_data_type data_type;
+  grk_data_type data_type; /* GRK_INT_32 required for compress input */
   void* data; /* component data */
   bool owns_data; /* true if data is owned by component */
 } grk_image_comp;
@@ -911,6 +915,7 @@ typedef struct _grk_image_meta
  *      - comps[i].x0/y0 + (w,h) = the component's full extent, equal to
  *                                 the image bounds (scaled by dx/dy for
  *                                 subsampled components).
+ *      - comps[i].data_type     = GRK_INT_32. Other types are rejected.
  *      Both frames agree.
  *
  * 2. Full-image decompression output (from @ref grk_decompress_get_image):
@@ -936,7 +941,9 @@ typedef struct _grk_image_meta
  *     // origin in canvas coords:    (c.x0, c.y0)
  *     // valid data rectangle:       width c.w, height c.h
  *     // row pitch in samples:       c.stride
- *     // pixel at canvas (X, Y):     c.data[(Y - c.y0) * c.stride + (X - c.x0)]
+ *     // pixel at canvas (X, Y):     ((T*)c.data)[(Y - c.y0) * c.stride + (X - c.x0)]
+ *     // T is int32_t for compress input (GRK_INT_32). Decompress output is
+ *     // int16_t when data_type is GRK_INT_16, otherwise int32_t.
  */
 typedef struct _grk_image
 {
@@ -1320,9 +1327,12 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
  * Each entry in @p cmptparms specifies width, height, bit-depth, signedness,
  * and sub-sampling factors for one component.
  *
- * When @p alloc_data is true, a contiguous int32_t data block is allocated
- * for every component; when false, the component data pointers are NULL and
- * the caller must supply them before passing the image to grk_compress_init().
+ * When @p alloc_data is true, a contiguous buffer is allocated for every
+ * component (int32_t unless @p cmptparms[].data_type is GRK_INT_16).
+ * Compression input must be GRK_INT_32: leave data_type at its default
+ * (zero) or set it explicitly. When @p alloc_data is false, the component
+ * data pointers are NULL and the caller must supply int32_t buffers before
+ * passing the image to grk_compress_init().
  *
  * The returned image is reference-counted.  Release with grk_object_unref().
  *
@@ -1331,18 +1341,19 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
  *                   (see @ref grk_image_comp)
  * @param clrspc     image colour space (e.g. GRK_CLRSPC_SRGB, GRK_CLRSPC_GRAY
  *                   — see @ref GRK_COLOR_SPACE)
- * @param alloc_data if true, allocate int32_t data buffers for all components
+ * @param alloc_data if true, allocate data buffers for all components
  * @return pointer to newly allocated @ref grk_image, or NULL on failure
  */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
                                               GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 /**
- * @brief Determine the data type used by Grok for image component data.
+ * @brief Determine the data type used by Grok for wavelet coefficients.
  *
- * Returns the data type (GRK_INT_32 or GRK_INT_16) that Grok will use
- * for storing image component data during compression or decompression,
- * assuming standard conditions (whole-tile decoding, num_resolutions > 1).
+ * Returns the type (GRK_INT_32 or GRK_INT_16) of the internal 16-bit DWT
+ * path, and of decompress output under standard conditions (whole-tile
+ * decoding, num_resolutions > 1). Compression input is always GRK_INT_32;
+ * do not use this return value as the source image's data_type.
  *
  * @param compress  true for compression, false for decompression
  * @param prec      image component precision in bits
@@ -1902,8 +1913,10 @@ GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
  * layers, etc.) are taken from @p parameters — call
  * grk_compress_set_default_params() first to populate defaults.
  *
- * The @p image must remain valid until grk_compress() completes. The
- * returned codec object must be released with grk_object_unref().
+ * Each component of @p image must have data_type GRK_INT_32 (int32_t
+ * samples). Any other type is rejected. The image must remain valid
+ * until grk_compress() completes. The returned codec object must be
+ * released with grk_object_unref().
  *
  * @param stream_params  output stream description (see @ref grk_stream_params)
  * @param parameters     compression settings (see @ref grk_cparameters)
@@ -1932,6 +1945,8 @@ GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* t
 /**
  * @brief Compresses an additional frame into a multi-frame container (MJ2).
  * For single-image formats (JP2, J2K) this returns 0 (unsupported).
+ * @p image must have data_type GRK_INT_32 on every component, same as
+ * grk_compress_init().
  * @param codec compression codec (see @ref grk_object)
  * @param image Input image for this frame (see @ref grk_image)
  * @param tile	plugin tile (see @ref grk_plugin_tile)

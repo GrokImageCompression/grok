@@ -32,6 +32,7 @@ Benchmark results (16 threads, GDAL release build, Fedora 42):
 - ICC color profiles, XML/IPTC/XMP/EXIF metadata
 - Monochrome, sRGB, palette, YCC, extended YCC, CIELab, CMYK
 - 1–16 bit precision
+- Compression input is always `GRK_INT_32` (`int32_t` samples). `GRK_INT_16` is decompress output only.
 - JPEG/PNG/BMP/TIFF/RAW/PNM/PAM I/O
 - Linux (x86-64/AArch64), Windows, macOS, WebAssembly
 

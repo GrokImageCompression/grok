@@ -215,6 +215,11 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       grklog.error("Invalid component precision of 0 found while setting up JP2 compressor");
       return false;
     }
+    if(comp->data_type != GRK_INT_32)
+    {
+      grklog.error("Compressor requires GRK_INT_32 component data, got %d", (int)comp->data_type);
+      return false;
+    }
   }
   if(parameters->apply_icc)
     image->applyICC<int32_t>();
