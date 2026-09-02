@@ -445,6 +445,11 @@ add_executable(grk_degenerate_97_test GrkDegenerate97Test.cpp)
 target_link_libraries(grk_degenerate_97_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_degenerate_97_test COMMAND grk_degenerate_97_test)
 
+# synthesizes its own images, so it needs no GRK_DATA_ROOT
+add_executable(grk_irreversible_lifting_test GrkIrreversibleLiftingTest.cpp)
+target_link_libraries(grk_irreversible_lifting_test ${GROK_CORE_NAME})
+add_test(NAME grk_irreversible_lifting_test COMMAND grk_irreversible_lifting_test)
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_ht_band_bit_planes_test GrkHTBandBitPlanesTest.cpp)
 target_link_libraries(grk_ht_band_bit_planes_test ${GROK_CORE_NAME} spdlog::spdlog)

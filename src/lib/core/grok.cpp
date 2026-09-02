@@ -451,10 +451,8 @@ grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_
   }
   else // irreversible 9/7
   {
-    // The forward ICT operates on float buffers, so MCT components cannot use the
-    // int16 path on compress; the inverse ICT (DecompressIrrevFloat16) supports
-    // int16, so decompress has no such restriction.
-    if(compress && is_mct)
+    // the fixed point forward 9/7 rounds at every lifting step
+    if(compress)
       return GRK_INT_32;
     recommended = (int)prec + 8;
   }
