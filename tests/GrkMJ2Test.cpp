@@ -16,6 +16,7 @@
  */
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -468,6 +469,66 @@ static int testMJ2SingleFrame(const std::string& tmpDir)
   return 0;
 }
 
+// regression for an OSS-Fuzz null write: mdhd before any tkhd dereferenced a null track
+static void appendBox(std::vector<uint8_t>& out, const char* type,
+                      const std::vector<uint8_t>& payload)
+{
+  uint32_t length = static_cast<uint32_t>(8 + payload.size());
+  for(int shift = 24; shift >= 0; shift -= 8)
+    out.push_back(static_cast<uint8_t>(length >> shift));
+  out.insert(out.end(), type, type + 4);
+  out.insert(out.end(), payload.begin(), payload.end());
+}
+
+static int testMJ2TrackBoxBeforeTkhd(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: MJ2 track box before tkhd ===");
+
+  static constexpr size_t kMdhdPayloadSize = 24;
+  std::vector<uint8_t> stream;
+  appendBox(stream, "jP  ", {0x0d, 0x0a, 0x87, 0x0a});
+  std::vector<uint8_t> ftyp;
+  for(const char* brand : {"mj2 ", "\0\0\0\0", "mj2 "})
+    ftyp.insert(ftyp.end(), brand, brand + 4);
+  appendBox(stream, "ftyp", ftyp);
+  appendBox(stream, "mdhd", std::vector<uint8_t>(kMdhdPayloadSize, 0));
+
+  std::string mj2Path = tmpDir + "/mdhd_before_tkhd.mj2";
+  {
+    FILE* file = fopen(mj2Path.c_str(), "wb");
+    if(!file || fwrite(stream.data(), 1, stream.size(), file) != stream.size())
+    {
+      spdlog::error("Failed to write {}", mj2Path);
+      if(file)
+        fclose(file);
+      return 1;
+    }
+    fclose(file);
+  }
+
+  grk_stream_params streamParams{};
+  safe_strcpy(streamParams.file, mj2Path.c_str());
+  grk_decompress_parameters dparams{};
+  auto* codec = grk_decompress_init(&streamParams, &dparams);
+  if(!codec)
+  {
+    spdlog::error("Failed to init decompressor for mdhd-before-tkhd stream");
+    return 1;
+  }
+
+  grk_header_info headerInfo{};
+  bool headerRead = grk_decompress_read_header(codec, &headerInfo);
+  grk_object_unref(codec);
+  if(headerRead)
+  {
+    spdlog::error("mdhd before tkhd: header read should fail");
+    return 1;
+  }
+
+  spdlog::info("MJ2 track box before tkhd: PASSED");
+  return 0;
+}
+
 //==============================================================================
 // Entry point
 //==============================================================================
@@ -482,6 +543,7 @@ int GrkMJ2Test::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
   failures += testMJ2GrayRoundTrip(tmpDir.string());
   failures += testMJ2RGBRoundTrip(tmpDir.string());
   failures += testMJ2SingleFrame(tmpDir.string());
+  failures += testMJ2TrackBoxBeforeTkhd(tmpDir.string());
 
   // Clean up temp files
   std::filesystem::remove_all(tmpDir);

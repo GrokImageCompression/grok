@@ -63,34 +63,46 @@ namespace grk
 FileFormatMJ2Decompress::FileFormatMJ2Decompress(IStream* stream)
     : FileFormatMJ2(stream), decompressParams_{}, decompressParamsSet_(false)
 {
+  // only tkhd allocates current_track_
+  using TrackBoxReader = bool (FileFormatMJ2Decompress::*)(uint8_t*, uint32_t);
+  auto inTrack = [this](TrackBoxReader read) -> BOX_FUNC {
+    return [this, read](uint8_t* data, uint32_t len) {
+      if(!current_track_)
+      {
+        grklog.error("MJ2: track box before tkhd");
+        return false;
+      }
+      return (this->*read)(data, len);
+    };
+  };
   std::unordered_map<uint32_t, BOX_FUNC> handlers = {
       {MJ2_MOOV, nullptr},
       {MJ2_MVHD, [this](uint8_t* data, uint32_t len) { return read_mvhd(data, len); }},
       {MJ2_TRAK, nullptr},
       {MJ2_TKHD, [this](uint8_t* data, uint32_t len) { return read_tkhd(data, len); }},
       {MJ2_MDIA, nullptr},
-      {MJ2_MDHD, [this](uint8_t* data, uint32_t len) { return read_mdhd(data, len); }},
+      {MJ2_MDHD, inTrack(&FileFormatMJ2Decompress::read_mdhd)},
       {MJ2_MINF, nullptr},
       {MJ2_DINF, nullptr},
       {MJ2_STBL, nullptr},
-      {MJ2_HDLR, [this](uint8_t* data, uint32_t len) { return read_hdlr(data, len); }},
-      {MJ2_VMHD, [this](uint8_t* data, uint32_t len) { return read_vmhd(data, len); }},
-      {MJ2_DREF, [this](uint8_t* data, uint32_t len) { return read_dref(data, len); }},
-      {MJ2_STSD, [this](uint8_t* data, uint32_t len) { return read_stsd(data, len); }},
-      {MJ2_STTS, [this](uint8_t* data, uint32_t len) { return read_stts(data, len); }},
-      {MJ2_STSC, [this](uint8_t* data, uint32_t len) { return read_stsc(data, len); }},
-      {MJ2_STSZ, [this](uint8_t* data, uint32_t len) { return read_stsz(data, len); }},
-      {MJ2_STCO, [this](uint8_t* data, uint32_t len) { return read_stco(data, len); }},
+      {MJ2_HDLR, inTrack(&FileFormatMJ2Decompress::read_hdlr)},
+      {MJ2_VMHD, inTrack(&FileFormatMJ2Decompress::read_vmhd)},
+      {MJ2_DREF, inTrack(&FileFormatMJ2Decompress::read_dref)},
+      {MJ2_STSD, inTrack(&FileFormatMJ2Decompress::read_stsd)},
+      {MJ2_STTS, inTrack(&FileFormatMJ2Decompress::read_stts)},
+      {MJ2_STSC, inTrack(&FileFormatMJ2Decompress::read_stsc)},
+      {MJ2_STSZ, inTrack(&FileFormatMJ2Decompress::read_stsz)},
+      {MJ2_STCO, inTrack(&FileFormatMJ2Decompress::read_stco)},
       {MJ2_MDAT, [this](uint8_t* data, uint32_t len) { return read_mdat(data, len); }}
 
   };
   header.insert(handlers.begin(), handlers.end());
 
-  handlers = {{MJ2_FIEL, [this](uint8_t* data, uint32_t len) { return read_fiel(data, len); }},
-              {MJ2_JP2P, [this](uint8_t* data, uint32_t len) { return read_jp2p(data, len); }},
-              {MJ2_JP2X, [this](uint8_t* data, uint32_t len) { return read_jp2x(data, len); }},
-              {MJ2_JSUB, [this](uint8_t* data, uint32_t len) { return read_jsub(data, len); }},
-              {MJ2_ORFO, [this](uint8_t* data, uint32_t len) { return read_orfo(data, len); }}};
+  handlers = {{MJ2_FIEL, inTrack(&FileFormatMJ2Decompress::read_fiel)},
+              {MJ2_JP2P, inTrack(&FileFormatMJ2Decompress::read_jp2p)},
+              {MJ2_JP2X, inTrack(&FileFormatMJ2Decompress::read_jp2x)},
+              {MJ2_JSUB, inTrack(&FileFormatMJ2Decompress::read_jsub)},
+              {MJ2_ORFO, inTrack(&FileFormatMJ2Decompress::read_orfo)}};
   img_header.insert(handlers.begin(), handlers.end());
 
   headerImage_ = new GrkImage();
@@ -333,12 +345,6 @@ bool FileFormatMJ2Decompress::read_vmhd(uint8_t* headerData, uint32_t headerSize
 
 bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 {
-  // a dref/url box can appear with no preceding tkhd, leaving current_track_ null
-  if(!current_track_)
-  {
-    grklog.error("MJ2: url box outside of a track");
-    return false;
-  }
   // version+flags is a 4-byte fullbox header; guard the subtraction so a short
   // box does not underflow headerSize into a huge value and over-read below.
   if(headerSize < 4)
@@ -365,12 +371,6 @@ bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 
 bool FileFormatMJ2Decompress::read_urn(uint8_t* headerData, uint32_t headerSize)
 {
-  // a dref/urn box can appear with no preceding tkhd, leaving current_track_ null
-  if(!current_track_)
-  {
-    grklog.error("MJ2: urn box outside of a track");
-    return false;
-  }
   // version+flags is a 4-byte fullbox header; guard the subtraction so a short
   // box does not underflow headerSize into a huge value and over-read below.
   if(headerSize < 4)
