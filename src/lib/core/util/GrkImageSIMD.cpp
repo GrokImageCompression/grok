@@ -52,7 +52,7 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m = hn::FirstN(di, w - i);
-        auto v = hn::MaskedLoad(m, di, row + i);
+        auto v = hn::LoadN(di, row + i, w - i);
         hn::BlendedStore(Clamp(v, vMin, vMax), m, di, row + i);
       }
     }
@@ -78,7 +78,7 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m = hn::FirstN(di, w - i);
-        auto v = hn::MaskedLoad(m, di, row + i);
+        auto v = hn::LoadN(di, row + i, w - i);
         hn::BlendedStore(Mul(v, vScale), m, di, row + i);
       }
     }
@@ -106,7 +106,7 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m_i = hn::FirstN(di, w - i);
-        auto v = ConvertTo(df, hn::MaskedLoad(m_i, di, row + i));
+        auto v = ConvertTo(df, hn::LoadN(di, row + i, w - i));
         hn::BlendedStore(ConvertTo(di, Div(v, vScale)), m_i, di, row + i);
       }
     }

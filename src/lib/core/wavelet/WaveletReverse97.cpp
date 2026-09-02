@@ -590,21 +590,20 @@ namespace HWY_NAMESPACE
     if(j < resWidth)
     {
       uint32_t remaining = resWidth - j;
-      const auto m = hn::FirstN(df, remaining);
 
       {
         auto bi = scratchMem + parity * L;
         auto band = srcL + win_l.x0 * strideL;
         for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
         {
-          Store(Mul(hn::MaskedLoad(m, df, band), scaleL), df, bi);
+          Store(Mul(hn::LoadN(df, band, remaining), scaleL), df, bi);
           band += strideL;
         }
         bi = scratchMem + (1 - parity) * L;
         band = srcH + win_h.x0 * strideH;
         for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
         {
-          Store(Mul(hn::MaskedLoad(m, df, band), scaleH), df, bi);
+          Store(Mul(hn::LoadN(df, band, remaining), scaleH), df, bi);
           band += strideH;
         }
       }
