@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <filesystem>
 #include <mutex>
+#include <atomic>
 
 #include "grk_fseek.h"
 #include "TFSingleton.h"
@@ -43,6 +44,7 @@
 #include "minpf_plugin_manager.h"
 #include "plugin_interface.h"
 #include "plugin_gpup_bridge.h"
+#include "plugin_accelerate.h"
 #include "TileWindow.h"
 #include "GrkObjectWrapper.h"
 #include "ChronoTimer.h"
@@ -1169,6 +1171,10 @@ static const char* plugin_batch_decode_method_name = "plugin_batch_decompress";
 static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decompress";
 
 bool pluginLoaded = false;
+static bool pluginInitialized = false;
+static bool pluginEnabled = true;
+static std::atomic<uint64_t> pluginAcceleratedFrames{0};
+static std::mutex pluginFrameMutex_;
 bool grk_plugin_load(grk_plugin_load_info info)
 {
   // form plugin name
@@ -1178,10 +1184,12 @@ bool grk_plugin_load(grk_plugin_load_info info)
 #endif
   pluginName += std::string(GROK_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
 
-  // Try explicit plugin path first
-  if(info.pluginPath)
+  // Try explicit plugin path first, then the directory GRK_PLUGIN_PATH names
+  const char* pluginDir =
+      (info.pluginPath && info.pluginPath[0]) ? info.pluginPath : std::getenv("GRK_PLUGIN_PATH");
+  if(pluginDir)
   {
-    auto pluginPath = std::string(info.pluginPath) +
+    auto pluginPath = std::string(pluginDir) +
                       static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
     Logger::logger_.info("[plugin] Attempting to load plugin from '%s'", pluginPath.c_str());
     int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
@@ -1246,7 +1254,78 @@ void grk_plugin_cleanup(void)
 {
   minpf_cleanup_plugin_manager();
   pluginLoaded = false;
+  pluginInitialized = false;
 }
+GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled)
+{
+  pluginEnabled = enabled;
+}
+GRK_API uint64_t GRK_CALLCONV grk_plugin_accelerated_frames(void)
+{
+  return pluginAcceleratedFrames.load();
+}
+namespace grk
+{
+bool pluginAccelerates(void)
+{
+  return pluginLoaded && pluginInitialized && pluginEnabled;
+}
+std::mutex& pluginFrameMutex(void)
+{
+  return pluginFrameMutex_;
+}
+void pluginCountAcceleratedFrame(void)
+{
+  pluginAcceleratedFrames.fetch_add(1);
+}
+static const char* gpup_encode_mem_method_name = "gpup_encode_mem";
+static const char* gpup_tile_free_method_name = "gpup_tile_free";
+typedef int32_t (*GPUP_ENCODE_MEM)(gpup_compress_params* compress_parameters, gpup_image* image,
+                                   gpup_tile** out_tile);
+typedef void (*GPUP_TILE_FREE)(gpup_tile* tile);
+
+int32_t pluginEncodeImage(const grk_cparameters* parameters, grk_image* image,
+                          grk_plugin_tile** tile, void** rawTile)
+{
+  *tile = nullptr;
+  *rawTile = nullptr;
+  auto mgr = minpf_get_plugin_manager();
+  if(!pluginLoaded || !mgr || mgr->num_libraries == 0)
+    return 1;
+  auto encode =
+      (GPUP_ENCODE_MEM)minpf_get_symbol(mgr->dynamic_libraries[0], gpup_encode_mem_method_name);
+  if(!encode)
+  {
+    Logger::logger_.warn("[plugin] Plugin missing '%s' symbol, compressing on the CPU",
+                         gpup_encode_mem_method_name);
+    return 1;
+  }
+  gpup_compress_params gpupParameters;
+  grk_to_gpup_compress_params(parameters, &gpupParameters);
+  auto gpupImage = grk_to_gpup_image(image);
+  gpup_tile* gpupTile = nullptr;
+  int32_t rc = encode(&gpupParameters, gpupImage, &gpupTile);
+  gpup_image_free_shell(gpupImage);
+  if(rc != 0)
+    return rc < 0 ? -1 : 1;
+  *tile = gpup_tile_to_grk(gpupTile);
+  *rawTile = gpupTile;
+  return 0;
+}
+void pluginReleaseEncodedTile(grk_plugin_tile* tile, void* rawTile)
+{
+  grk_plugin_tile_free_wrapper(tile);
+  if(!rawTile)
+    return;
+  auto mgr = minpf_get_plugin_manager();
+  if(!mgr || mgr->num_libraries == 0)
+    return;
+  auto freeTile =
+      (GPUP_TILE_FREE)minpf_get_symbol(mgr->dynamic_libraries[0], gpup_tile_free_method_name);
+  if(freeTile)
+    freeTile((gpup_tile*)rawTile);
+}
+} // namespace grk
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
 {
   if(!pluginLoaded)
@@ -1268,6 +1347,7 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
       if(!result)
         Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, license='%s')",
                              initInfo.device_id, initInfo.license ? initInfo.license : "");
+      pluginInitialized = result;
       return result;
     }
     Logger::logger_.info("[plugin] Plugin missing '%s' symbol", plugin_init_method_name);

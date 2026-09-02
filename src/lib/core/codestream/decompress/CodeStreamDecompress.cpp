@@ -21,6 +21,7 @@
 #include <optional>
 
 #include "TFSingleton.h"
+#include "plugin_accelerate.h"
 #include "grk_fseek.h"
 #include "geometry.h"
 #include "grk_exceptions.h"
@@ -192,6 +193,83 @@ void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* 
 
 // Multi Tile //////////////////////////////////////////////////////////
 
+// the plugin's callback carries no user pointer of ours
+static thread_local CodeStreamDecompress* pluginDecompressCurrent = nullptr;
+
+bool CodeStreamDecompress::pluginDecompressEligible(void)
+{
+  auto& dec = cp_.codingParams_.dec_;
+  bool windowed = cp_.dw_x0 != 0 || cp_.dw_y0 != 0 || cp_.dw_x1 != 0 || cp_.dw_y1 != 0;
+  return headerRead_ && !headerError_ && dec.reduce_ == 0 && dec.layersToDecompress_ == 0 &&
+         !windowed && !ioBandCallback_ && cp_.t_grid_width_ == 1 && cp_.t_grid_height_ == 1;
+}
+int32_t CodeStreamDecompress::pluginDecompress(void)
+{
+  // no input file: the plugin asks this codec for the header and the packets
+  grk_decompress_parameters parameters = {};
+  pluginDecompressCurrent = this;
+  int32_t rc = grk_plugin_decompress(&parameters, pluginDecompressCallback);
+  pluginDecompressCurrent = nullptr;
+  if(rc == 0 || rc == 1)
+    return rc;
+  return -1;
+}
+int32_t CodeStreamDecompress::pluginDecompressCallback(grk_plugin_decompress_callback_info* info)
+{
+  auto self = pluginDecompressCurrent;
+  if(!self || !info)
+    return -1;
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+    return 0;
+  if(info->decompress_flags & GRK_DECODE_HEADER)
+  {
+    if(!self->readHeader(&info->header_info) || !info->init_decompressors_func)
+      return -1;
+    info->image = self->multiTileComposite_.get();
+    return info->init_decompressors_func(&info->header_info, info->image);
+  }
+  if(info->decompress_flags & GRK_DECODE_T2)
+  {
+    if(!info->tile)
+      return -1;
+    info->tile->decompress_flags = info->decompress_flags;
+    return self->decompress(info->tile) ? 0 : -1;
+  }
+  if(info->decompress_flags & GRK_DECODE_POST_T1)
+    return self->pluginStoreDecodedImage(info->image) ? 0 : -1;
+  return -1;
+}
+// the plugin's sample buffers go away when the callback returns
+bool CodeStreamDecompress::pluginStoreDecodedImage(const grk_image* decoded)
+{
+  auto composite = multiTileComposite_.get();
+  if(!decoded || !decoded->comps || decoded->numcomps != composite->numcomps)
+    return false;
+  for(uint16_t compno = 0; compno < composite->numcomps; ++compno)
+  {
+    auto dest = composite->comps + compno;
+    auto src = decoded->comps + compno;
+    if(!src->data || src->w != dest->w || src->h != dest->h)
+      return false;
+    dest->data_type = GRK_INT_32;
+    if(!GrkImage::allocData(dest))
+      return false;
+    size_t srcStride = src->stride ? src->stride : src->w;
+    for(uint32_t y = 0; y < dest->h; ++y)
+      memcpy((int32_t*)dest->data + (size_t)y * dest->stride,
+             (const int32_t*)src->data + y * srcStride, (size_t)dest->w * sizeof(int32_t));
+  }
+  if(composite->decompress_prec == 0)
+  {
+    composite->decompress_prec = composite->comps[0].prec;
+    composite->decompress_width = composite->comps[0].w;
+    composite->decompress_height = composite->comps[0].h;
+    composite->decompress_num_comps = composite->numcomps;
+    composite->decompress_colour_space = composite->color_space;
+  }
+  return true;
+}
+
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
   // Pin the global executor so a concurrent grk_initialize resize or
@@ -200,6 +278,27 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+
+  if(!tile && !compositeDecompressed_ && pluginAccelerates() && pluginDecompressEligible())
+  {
+    int32_t rc;
+    {
+      std::lock_guard<std::mutex> guard(pluginFrameMutex());
+      rc = pluginDecompress();
+    }
+    if(rc == 0)
+    {
+      compositeDecompressed_ = true;
+      pluginCountAcceleratedFrame();
+      return success_;
+    }
+    if(rc < 0)
+    {
+      grklog.error("The accelerator plugin failed to decompress the code stream");
+      success_ = false;
+      return false;
+    }
+  }
 
   current_plugin_tile = tile;
 

@@ -18,6 +18,7 @@
 #include <optional>
 
 #include "TFSingleton.h"
+#include "plugin_accelerate.h"
 
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
@@ -252,6 +253,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       }
     }
   }
+
+  // the plugin gets the image after the colour transform and precision cut above
+  if(pluginAccelerates())
+    pluginParameters_ = std::make_unique<grk_cparameters>(*parameters);
 
   // create private sanitized copy of image
   headerImage_ = new GrkImage();
@@ -788,6 +793,36 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
   // Route all scheduling/wavelet work onto this codec's own executor while
   // compressing (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+
+  // with a plugin on the device has done shift, colour transform, wavelet and T1
+  struct PluginTileRelease
+  {
+    grk_plugin_tile* tile = nullptr;
+    void* raw = nullptr;
+    ~PluginTileRelease()
+    {
+      pluginReleaseEncodedTile(tile, raw);
+    }
+  } pluginTile;
+  if(!tile && pluginParameters_ && pluginAccelerates())
+  {
+    int32_t rc;
+    {
+      std::lock_guard<std::mutex> guard(pluginFrameMutex());
+      rc = pluginEncodeImage(pluginParameters_.get(), headerImage_, &pluginTile.tile,
+                             &pluginTile.raw);
+    }
+    if(rc < 0)
+    {
+      grklog.error("The accelerator plugin failed to compress the image");
+      return 0;
+    }
+    if(rc == 0)
+    {
+      tile = pluginTile.tile;
+      pluginCountAcceleratedFrame();
+    }
+  }
 
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)

@@ -85,6 +85,16 @@ add_executable(grk_cinema_eight_bit_test GrkCinemaEightBitTest.cpp)
 target_link_libraries(grk_cinema_eight_bit_test ${GROK_CORE_NAME})
 add_test(NAME grk_cinema_eight_bit_test COMMAND grk_cinema_eight_bit_test)
 
+# the accelerator plugin under grk_compress and grk_decompress on memory buffers;
+# needs the plugin library and a device, so only with the loader built
+if(GRK_BUILD_PLUGIN_LOADER)
+  add_executable(grk_plugin_memory_test GrkPluginMemoryTest.cpp)
+  target_link_libraries(grk_plugin_memory_test ${GROK_CORE_NAME})
+  add_test(NAME grk_plugin_memory_test COMMAND grk_plugin_memory_test)
+  set_tests_properties(grk_plugin_memory_test PROPERTIES
+    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+endif()
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_int16_eligibility_test GrkInt16EligibilityTest.cpp)
 target_link_libraries(grk_int16_eligibility_test ${GROK_CORE_NAME} spdlog::spdlog)

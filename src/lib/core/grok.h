@@ -71,6 +71,11 @@ extern "C" {
  *   forces the CPU codec for the whole process — useful for `make test` and
  *   any context that wants to bypass the GPU/accelerator plugin without
  *   changing call sites. Read once on first grk_initialize() call.
+ *
+ * GRK_PLUGIN_PATH
+ *   Directory holding the accelerator plugin library. Read by grk_plugin_load()
+ *   when the caller passes no plugin path, ahead of the working directory and
+ *   the executable's directory.
  */
 
 /**
@@ -2385,6 +2390,26 @@ typedef struct _grk_plugin_init_info
  *         false on invalid license, device unavailable, or no plugin loaded
  */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
+
+/**
+ * @brief Switches the initialised plugin in or out of grk_compress() and grk_decompress().
+ *
+ * Once grk_plugin_init() has succeeded, every grk_compress() and grk_decompress()
+ * whose parameters the plugin handles runs its T1 stage on the accelerator, with
+ * the host doing the header, rate allocation and packet work on the stream the
+ * codec was created with, memory buffer or file alike. Parameters the plugin does
+ * not handle (a reduced or windowed decode, tiling, a code block style, an
+ * unsupported precision) run on the CPU as before. A device failure fails the
+ * call. The plugin is on as soon as grk_plugin_init() succeeds.
+ *
+ * @param enabled  false sends every frame to the CPU while keeping the plugin loaded
+ */
+GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled);
+
+/**
+ * @brief Number of grk_compress() and grk_decompress() calls the plugin has run so far.
+ */
+GRK_API uint64_t GRK_CALLCONV grk_plugin_accelerated_frames(void);
 
 /**
  * @struct grk_plugin_compress_user_callback_info

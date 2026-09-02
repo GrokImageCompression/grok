@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <memory>
+
 namespace grk
 {
 
@@ -34,6 +36,8 @@ public:
   uint64_t compress(grk_plugin_tile* tile) override;
 
 private:
+  // the parameters the plugin compresses with, copied at init
+  std::unique_ptr<grk_cparameters> pluginParameters_;
   bool init_header_writing(void);
   bool end(void);
   bool writeTilePart(ITileProcessorCompress* tileProcessor);

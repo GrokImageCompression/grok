@@ -108,6 +108,12 @@ public:
 
   bool readHeader(grk_header_info* header_info) override;
 
+  // the device runs T1, the host still reads the header and parses the packets
+  bool pluginDecompressEligible(void);
+  int32_t pluginDecompress(void);
+  bool pluginStoreDecodedImage(const grk_image* decoded);
+  static int32_t pluginDecompressCallback(grk_plugin_decompress_callback_info* info);
+
   /**
    * @brief Checks if header needs to be read
    * @return true if header needs to be read
