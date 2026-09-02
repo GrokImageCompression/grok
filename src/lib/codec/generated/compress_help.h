@@ -116,6 +116,10 @@ Example of a raw `512x512` unsigned image with `4:2:0` sub-sampling
 
 Apply ICC profile before compression, if present.
 
+`--write-metadata [flags]`
+
+Select the metadata written to JP2 UUID boxes. The flags are `1` for EXIF, `2` for IPTC, `4` for XMP and `8` for none. Add the values to select more than one type. The default `0` writes all three types. The none flag overrides the type flags. GeoTIFF metadata is always written.
+
 `-A, --rate--control-algorithm [0|1]`
 
 Select algorithm used for rate control.
@@ -276,12 +280,12 @@ Warning: This option does not implement the usual ROI (Region of Interest). It s
 
 `-d, --image-offset [x offset,y offset]`
 
-Offset of the image origin. The division in tile could be modified as the anchor point for tiling will be different than the image origin. Keep in mind that the offset of the image can not be higher than the tile dimension if the tile option is used. The two values are respectively for `X` and `Y` axis offset. Default: no offset.
+)HELPTEXT"
+    R"HELPTEXT(Offset of the image origin. The division in tile could be modified as the anchor point for tiling will be different than the image origin. Keep in mind that the offset of the image can not be higher than the tile dimension if the tile option is used. The two values are respectively for `X` and `Y` axis offset. Default: no offset.
 
 `-T, --tile-offset [x offset,y offset]`
 
-)HELPTEXT"
-    R"HELPTEXT(Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
+Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
 
 `-Y, -MCT [0|1|2]`
 

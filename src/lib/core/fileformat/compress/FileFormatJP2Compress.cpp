@@ -832,14 +832,23 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
   // transfer buffer to uuid
   if(inputImage_->meta)
   {
-    if(inputImage_->meta->iptc_len && inputImage_->meta->iptc_buf)
+    const uint32_t metadataFlags = parameters->metadata_write_flags;
+    auto writesMetadata = [metadataFlags](uint32_t typeFlag) {
+      if(metadataFlags & GRK_METADATA_WRITE_NONE)
+        return false;
+      return metadataFlags == GRK_METADATA_WRITE_ALL || (metadataFlags & typeFlag) != 0;
+    };
+    if(writesMetadata(GRK_METADATA_WRITE_IPTC) && inputImage_->meta->iptc_len &&
+       inputImage_->meta->iptc_buf)
       uuids[numUuids++] =
           UUIDBox(IPTC_UUID, inputImage_->meta->iptc_buf, inputImage_->meta->iptc_len);
 
-    if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
+    if(writesMetadata(GRK_METADATA_WRITE_XMP) && inputImage_->meta->xmp_len &&
+       inputImage_->meta->xmp_buf)
       uuids[numUuids++] = UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len);
 
-    if(inputImage_->meta->exif_len && inputImage_->meta->exif_buf)
+    if(writesMetadata(GRK_METADATA_WRITE_EXIF) && inputImage_->meta->exif_len &&
+       inputImage_->meta->exif_buf)
       uuids[numUuids++] =
           UUIDBox(EXIF_UUID, inputImage_->meta->exif_buf, inputImage_->meta->exif_len);
 

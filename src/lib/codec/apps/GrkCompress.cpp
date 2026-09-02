@@ -974,6 +974,9 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
   auto progressiveRCOpt =
       app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
+  app.add_option("--write-metadata", parameters->metadata_write_flags,
+                 "JP2 metadata: 1=EXIF, 2=IPTC, 4=XMP, 8=none, 0=all")
+      ->default_val(0);
 
   bool xyzTransform;
   auto xyzOpt = app.add_flag("--xyz", xyzTransform,

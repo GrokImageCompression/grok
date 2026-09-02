@@ -301,6 +301,21 @@ typedef enum _GRK_RATE_CONTROL_ALGORITHM
 } GRK_RATE_CONTROL_ALGORITHM;
 
 /**
+ * @brief Metadata types written to JP2 UUID boxes during compression.
+ *
+ * Combine these values in @ref grk_cparameters::metadata_write_flags. Zero
+ * writes every type. GRK_METADATA_WRITE_NONE overrides the type flags.
+ */
+typedef enum _GRK_METADATA_WRITE_FLAG
+{
+  GRK_METADATA_WRITE_ALL = 0,
+  GRK_METADATA_WRITE_EXIF = 1U << 0,
+  GRK_METADATA_WRITE_IPTC = 1U << 1,
+  GRK_METADATA_WRITE_XMP = 1U << 2,
+  GRK_METADATA_WRITE_NONE = 1U << 3
+} GRK_METADATA_WRITE_FLAG;
+
+/**
  * @brief All Grok supported file formats
  */
 typedef enum _GRK_SUPPORTED_FILE_FMT
@@ -1828,6 +1843,7 @@ typedef struct _grk_cparameters
   uint16_t rreq_standard_features[8]; /* standard features for rreq box */
   uint8_t num_rreq_standard_features; /* number of standard features */
   bool geoboxes_after_jp2c; /* write metadata boxes (UUID, asoc, XML) after codestream */
+  uint32_t metadata_write_flags; /* GRK_METADATA_WRITE_FLAG values, 0 writes all */
 
   /**
    * Enable progressive rate control during T1 encoding.

@@ -47,7 +47,8 @@ namespace grk
 
 // Compress a 16x16 gray JP2 with optional metadata, then decompress and verify round-trip.
 // Returns 0 on success, 1 on failure.
-static bool compressWithMeta(const std::string& path, grk_image_meta* meta)
+static bool compressWithMeta(const std::string& path, grk_image_meta* meta,
+                             uint32_t metadataWriteFlags = GRK_METADATA_WRITE_ALL)
 {
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
@@ -55,6 +56,7 @@ static bool compressWithMeta(const std::string& path, grk_image_meta* meta)
   cparams.irreversible = false;
   cparams.numlayers = 1;
   cparams.layer_rate[0] = 0;
+  cparams.metadata_write_flags = metadataWriteFlags;
 
   grk_image_comp comp{};
   comp.dx = 1;
@@ -701,6 +703,12 @@ static int testCombinedMetadata(const std::string& tmpDir)
   memcpy(meta->iptc_buf, iptcData, strlen(iptcData));
   meta->iptc_len = strlen(iptcData);
 
+  // EXIF
+  const char* exifData = "EXIF-TEST-DATA";
+  meta->exif_buf = new uint8_t[strlen(exifData)];
+  memcpy(meta->exif_buf, exifData, strlen(exifData));
+  meta->exif_len = strlen(exifData);
+
   std::string path = tmpDir + "/combined_test.jp2";
   if(!compressWithMeta(path, meta))
   {
@@ -752,10 +760,112 @@ static int testCombinedMetadata(const std::string& tmpDir)
     ok = false;
   }
 
+  // Verify EXIF
+  if(!image->meta || !image->meta->exif_buf || image->meta->exif_len != strlen(exifData) ||
+     memcmp(image->meta->exif_buf, exifData, strlen(exifData)) != 0)
+  {
+    spdlog::error("Combined: EXIF mismatch");
+    ok = false;
+  }
+
   if(ok)
     spdlog::info("Combined metadata: PASSED");
 
   grk_object_unref(codec);
+  grk_object_unref(&meta->obj);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
+// Test 6b: metadata_write_flags selects which UUID boxes are written
+//==============================================================================
+
+static void setMetaBuffer(uint8_t*& buf, size_t& len, const char* data)
+{
+  len = strlen(data);
+  buf = new uint8_t[len];
+  memcpy(buf, data, len);
+}
+
+static bool metaBufferEquals(const uint8_t* buf, size_t len, const char* data)
+{
+  return buf && len == strlen(data) && memcmp(buf, data, len) == 0;
+}
+
+static bool checkMetadataSelection(const std::string& path, grk_image_meta* meta,
+                                   uint32_t metadataWriteFlags, bool expectExif, bool expectIptc,
+                                   bool expectXmp, const char* exifData, const char* iptcData,
+                                   const char* xmpData, const char* geotiffData)
+{
+  if(!compressWithMeta(path, meta, metadataWriteFlags))
+    return false;
+
+  grk_header_info header{};
+  grk_image* image = nullptr;
+  grk_object* codec = nullptr;
+  if(!decompressAndReadHeader(path, &header, &image, &codec))
+    return false;
+
+  bool ok = image->meta != nullptr;
+  if(ok)
+  {
+    bool exifOk = expectExif
+                      ? metaBufferEquals(image->meta->exif_buf, image->meta->exif_len, exifData)
+                      : image->meta->exif_buf == nullptr;
+    bool iptcOk = expectIptc
+                      ? metaBufferEquals(image->meta->iptc_buf, image->meta->iptc_len, iptcData)
+                      : image->meta->iptc_buf == nullptr;
+    bool xmpOk = expectXmp ? metaBufferEquals(image->meta->xmp_buf, image->meta->xmp_len, xmpData)
+                           : image->meta->xmp_buf == nullptr;
+    bool geotiffOk =
+        metaBufferEquals(image->meta->geotiff_buf, image->meta->geotiff_len, geotiffData);
+    ok = exifOk && iptcOk && xmpOk && geotiffOk;
+  }
+  if(!ok)
+    spdlog::error("Metadata selection: flags {} wrote the wrong set of UUID boxes",
+                  metadataWriteFlags);
+
+  grk_object_unref(codec);
+  return ok;
+}
+
+static int testMetadataSelection(const std::string& tmpDir)
+{
+  auto* meta = grk_image_meta_new();
+  const char* exifData = "EXIF-SELECTION";
+  const char* iptcData = "IPTC-SELECTION";
+  const char* xmpData = "XMP-SELECTION";
+  const char* geotiffData = "GEOTIFF-ALWAYS-WRITTEN";
+  setMetaBuffer(meta->exif_buf, meta->exif_len, exifData);
+  setMetaBuffer(meta->iptc_buf, meta->iptc_len, iptcData);
+  setMetaBuffer(meta->xmp_buf, meta->xmp_len, xmpData);
+  setMetaBuffer(meta->geotiff_buf, meta->geotiff_len, geotiffData);
+
+  struct Case
+  {
+    const char* name;
+    uint32_t flags;
+    bool exif, iptc, xmp;
+  };
+  const Case cases[] = {
+      {"all", GRK_METADATA_WRITE_ALL, true, true, true},
+      {"exif", GRK_METADATA_WRITE_EXIF, true, false, false},
+      {"iptc_xmp", GRK_METADATA_WRITE_IPTC | GRK_METADATA_WRITE_XMP, false, true, true},
+      {"none", GRK_METADATA_WRITE_NONE, false, false, false},
+      {"none_overrides", GRK_METADATA_WRITE_NONE | GRK_METADATA_WRITE_EXIF, false, false, false},
+  };
+
+  bool ok = true;
+  for(const auto& c : cases)
+  {
+    std::string path = tmpDir + "/metadata_selection_" + c.name + ".jp2";
+    if(!checkMetadataSelection(path, meta, c.flags, c.exif, c.iptc, c.xmp, exifData, iptcData,
+                               xmpData, geotiffData))
+      ok = false;
+  }
+  if(ok)
+    spdlog::info("Metadata selection: PASSED");
+
   grk_object_unref(&meta->obj);
   return ok ? 0 : 1;
 }
@@ -2441,6 +2551,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testIPRFlagInIHDR(tmpDir.string());
   failures += testXmlBoxPlacement(tmpDir.string());
   failures += testCombinedMetadata(tmpDir.string());
+  failures += testMetadataSelection(tmpDir.string());
   failures += testAsocBoxes(tmpDir.string());
   failures += testTranscode(tmpDir.string());
   failures += testTranscodeWithTLM(tmpDir.string());

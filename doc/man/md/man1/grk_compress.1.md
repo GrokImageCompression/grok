@@ -128,6 +128,10 @@ Example of a raw `512x512` unsigned image with `4:2:0` sub-sampling
 
 Apply ICC profile before compression, if present.
 
+`--write-metadata [flags]`
+
+Select the metadata written to JP2 UUID boxes. The flags are `1` for EXIF, `2` for IPTC, `4` for XMP and `8` for none. Add the values to select more than one type. The default `0` writes all three types. The none flag overrides the type flags. GeoTIFF metadata is always written.
+
 `-A, --rate--control-algorithm [0|1]`
 
 Select algorithm used for rate control.
