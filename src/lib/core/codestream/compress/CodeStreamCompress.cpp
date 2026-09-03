@@ -692,6 +692,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
           }
         }
       }
+      // the plugin copied the parameters before mct could be cleared here
+      if(pluginParameters_)
+        pluginParameters_->mct = tcp->mct_;
       for(uint16_t i = 0; i < image->numcomps; i++)
       {
         auto tccp = tcp->tccps_ + i;
