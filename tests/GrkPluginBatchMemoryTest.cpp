@@ -501,16 +501,9 @@ constexpr uint32_t kYuvWidth = 512;
 constexpr uint32_t kYuvHeight = 288;
 constexpr uint32_t kYuvNumFrames = 48;
 // The reference goes through the 16 bit RGB path and the planes through the YUV
-// one. A cinema encode caps the rate, so a single code difference in one rgb16
-// sample moves the pass truncation of the code block it lands in and shows up as
-// tens of codes there. The two paths agree exactly on most frames, which is what
-// the identical code stream count reports.
-// TODO: the per sample bound this check is meant to carry is still owed. It
-// needs the kernel's rgb16 and the scalar reference to agree at every sample,
-// and the plugin's own encode is not yet reproducible run to run either: the
-// same reference frames encoded twice come back with 39 of 48 code streams
-// identical.
-constexpr double kYuvPeakSignalToNoise = 60.0;
+// one, so the kernel's rgb16 has to match the scalar reference at every sample.
+// The check asserts every frame's two code streams are identical byte for byte
+// and that both decode to the same samples.
 // the planes carry a row pitch wider than the picture, so a submit that ignored
 // the stride would read the wrong samples
 constexpr uint32_t kYuvLumaStridePadding = 13;
@@ -928,6 +921,82 @@ bool runYuvBatch(const YuvSource& source, Collector& collector, double* seconds)
   return ended;
 }
 
+// the frames the determinism check runs twice: the 8 bit 4:2:0 pictures turned
+// into 16 bit RGB, which is what the reference batch encodes
+const YuvSource kDeterminismSource = {
+    "planar 8 bit 4:2:0, limited range, BT.709", GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false, 8};
+
+// reports the frame identities whose two code streams differ, and how
+size_t countIdenticalStreams(const Collector& first, const Collector& second, const char* what)
+{
+  size_t identical = 0;
+  for(const auto& entry : first.codestreams)
+  {
+    auto found = second.codestreams.find(entry.first);
+    if(found == second.codestreams.end())
+    {
+      fail("a frame arrived in only one of the two batches");
+      continue;
+    }
+    if(entry.second == found->second)
+    {
+      ++identical;
+      continue;
+    }
+    size_t offset = 0;
+    size_t shortest = std::min(entry.second.size(), found->second.size());
+    while(offset < shortest && entry.second[offset] == found->second[offset])
+      ++offset;
+    std::printf("  %s frame %u: %zu and %zu bytes, first difference at %zu\n", what,
+                (unsigned)(entry.first - 1), entry.second.size(), found->second.size(), offset);
+  }
+  return identical;
+}
+
+// the same frames through the same batch shape twice in one process: an encode
+// that is reproducible hands back the same bytes
+void checkDeterminism()
+{
+  std::printf("determinism, same frames encoded twice\n");
+
+  grk_cparameters losslessParams;
+  baseParameters(losslessParams);
+  losslessParams.irreversible = false;
+  Collector losslessFirst;
+  Collector losslessSecond;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(losslessParams, {kPrecision, 0, kPrecision}, losslessFirst, &seconds,
+               &xyzOnDevice) ||
+     !runBatch(losslessParams, {kPrecision, 0, kPrecision}, losslessSecond, &seconds, &xyzOnDevice))
+  {
+    fail("determinism lossless batch");
+    return;
+  }
+  checkCollector(losslessFirst, "determinism lossless first batch delivery");
+  checkCollector(losslessSecond, "determinism lossless second batch delivery");
+  auto losslessIdentical = countIdenticalStreams(losslessFirst, losslessSecond, "lossless");
+  std::printf("  lossless: %zu of %u code streams identical\n", losslessIdentical, kNumFrames);
+  if(losslessIdentical != kNumFrames)
+    fail("a lossless batch encoded twice does not give the same code streams");
+
+  Collector cinemaFirst;
+  Collector cinemaSecond;
+  if(!runReferenceBatch(kDeterminismSource, cinemaFirst) ||
+     !runReferenceBatch(kDeterminismSource, cinemaSecond))
+  {
+    fail("determinism cinema batch");
+    return;
+  }
+  checkCollector(cinemaFirst, "determinism cinema first batch delivery");
+  checkCollector(cinemaSecond, "determinism cinema second batch delivery");
+  auto cinemaIdentical = countIdenticalStreams(cinemaFirst, cinemaSecond, "cinema");
+  std::printf("  rate controlled: %zu of %u code streams identical\n", cinemaIdentical,
+              kYuvNumFrames);
+  if(cinemaIdentical != kYuvNumFrames)
+    fail("a rate controlled batch encoded twice does not give the same code streams");
+}
+
 void checkYuvSource(const YuvSource& source)
 {
   std::printf("%s, %ux%u, %u frames\n", source.name, kYuvWidth, kYuvHeight, kYuvNumFrames);
@@ -951,11 +1020,9 @@ void checkYuvSource(const YuvSource& source)
 
   int32_t worst = 0;
   size_t identicalStreams = 0;
-  double totalDifference = 0;
-  double totalSquaredDifference = 0;
-  size_t sampleCount = 0;
   for(const auto& entry : devices.codestreams)
   {
+    auto frameIndex = (uint32_t)(entry.first - 1);
     auto found = reference.codestreams.find(entry.first);
     if(found == reference.codestreams.end())
     {
@@ -964,40 +1031,30 @@ void checkYuvSource(const YuvSource& source)
     }
     if(entry.second == found->second)
       ++identicalStreams;
+    else
+      std::printf("  frame %u: %zu bytes against the reference's %zu\n", frameIndex,
+                  entry.second.size(), found->second.size());
     auto decodedYuv = decodeOnCpu(entry.second);
     auto decodedReference = decodeOnCpu(found->second);
-    if(decodedYuv.size() != decodedReference.size() || decodedYuv.empty())
+    if(decodedYuv.empty() || decodedReference.empty())
     {
       fail("a yuv frame did not decode");
       continue;
     }
-    for(size_t plane = 0; plane < decodedYuv.size(); ++plane)
+    int32_t difference = 0;
+    if(!planesEqual(decodedYuv, decodedReference, 0, &difference))
     {
-      if(decodedYuv[plane].size() != decodedReference[plane].size())
-      {
-        fail("a yuv frame decoded to a different shape than its reference");
-        break;
-      }
-      for(size_t i = 0; i < decodedYuv[plane].size(); ++i)
-      {
-        int32_t difference = std::abs(decodedYuv[plane][i] - decodedReference[plane][i]);
-        if(difference > worst)
-          worst = difference;
-        totalDifference += difference;
-        totalSquaredDifference += (double)difference * difference;
-        ++sampleCount;
-      }
+      std::printf("  frame %u: device and scalar reference differ by %d codes\n", frameIndex,
+                  difference);
+      fail("a yuv frame strays from the scalar reference");
     }
+    if(difference > worst)
+      worst = difference;
   }
-  double mean = sampleCount ? totalDifference / (double)sampleCount : 0.0;
-  double meanSquared = sampleCount ? totalSquaredDifference / (double)sampleCount : 0.0;
-  double peakSignalToNoise =
-      meanSquared > 0.0 ? 10.0 * std::log10((double)kMaxSample * kMaxSample / meanSquared) : 1e9;
-  std::printf("  %zu of %zu code streams identical, max difference %d codes, mean %.5f, "
-              "%.1f dB\n",
-              identicalStreams, devices.codestreams.size(), worst, mean, peakSignalToNoise);
-  if(peakSignalToNoise < kYuvPeakSignalToNoise)
-    fail("a yuv frame strays from the scalar reference");
+  std::printf("  %zu of %zu code streams identical, max difference %d codes\n", identicalStreams,
+              devices.codestreams.size(), worst);
+  if(identicalStreams != devices.codestreams.size())
+    fail("a yuv frame's code stream differs from the scalar reference's");
 }
 
 // ---------------------------------------------------------------------------
@@ -1251,6 +1308,7 @@ int main()
   checkCinemaSource16();
   checkYuvProbe();
   checkYuvUnsupportedDepth();
+  checkDeterminism();
   static const YuvSource yuvSources[] = {
       {"planar 8 bit 4:2:0, limited range, BT.709", GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false,
        8},
