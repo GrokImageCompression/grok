@@ -6,6 +6,7 @@
 // Needs the plugin library and a device: GRK_PLUGIN_PATH names the directory
 // holding libgrokj2k_plugin.
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -37,6 +38,12 @@ constexpr int32_t kLossyTolerance = 8;
 // a lossy 12 bit encode held against the transformed source: the device's 9/7
 // pipeline lands within 10 codes, the CPU encoder within 5
 constexpr int32_t kCinemaEncodeTolerance = 16;
+constexpr uint32_t kSyccWidth = 256;
+constexpr uint32_t kSyccHeight = 144;
+constexpr uint8_t kSyccPrecision = 16;
+// under this the device and the CPU did not encode the same picture, an mct
+// mismatch leaves two device components flat and lands near 20 dB
+constexpr double kSyccPeakFloor = 50.0;
 
 void fail(const char* what)
 {
@@ -83,11 +90,12 @@ grk_image* patternFrame(uint32_t width, uint32_t height, uint8_t precision = kPr
 }
 
 // picture-like content: gradients with a few edges, what a real frame costs
-grk_image* smoothFrame(uint32_t width, uint32_t height)
+grk_image* smoothFrame(uint32_t width, uint32_t height, uint8_t precision = kPrecision)
 {
-  auto image = patternFrame(width, height);
+  auto image = patternFrame(width, height, precision);
   if(!image)
     return image;
+  const int32_t maxSample = (1 << precision) - 1;
   for(uint16_t compno = 0; compno < image->numcomps; ++compno)
   {
     auto comp = image->comps + compno;
@@ -96,10 +104,10 @@ grk_image* smoothFrame(uint32_t width, uint32_t height)
     {
       for(uint32_t x = 0; x < comp->w; ++x)
       {
-        int32_t gradient = (int32_t)(((uint64_t)x * kMaxSample) / width);
-        int32_t band = ((y / 64) % 2) ? kMaxSample / 4 : 0;
-        int32_t tint = compno * (kMaxSample / 8);
-        data[x] = std::min(kMaxSample, (gradient + band + tint) / 2 + (int32_t)(y % 7));
+        int32_t gradient = (int32_t)(((uint64_t)x * maxSample) / width);
+        int32_t band = ((y / 64) % 2) ? maxSample / 4 : 0;
+        int32_t tint = compno * (maxSample / 8);
+        data[x] = std::min(maxSample, (gradient + band + tint) / 2 + (int32_t)(y % 7));
       }
       data += comp->stride;
     }
@@ -206,6 +214,26 @@ bool samplesEqual(const grk_image* source, const std::vector<std::vector<int32_t
       }
   }
   return *maxDifference <= tolerance;
+}
+
+// one plane against another, kMaxSample as the peak, 1e9 when they are identical
+double peakSignalToNoise(const std::vector<int32_t>& reference, const std::vector<int32_t>& other,
+                         int32_t* maxDifference)
+{
+  *maxDifference = 0;
+  if(reference.empty() || reference.size() != other.size())
+    return 0.0;
+  double squared = 0;
+  for(size_t i = 0; i < reference.size(); ++i)
+  {
+    double difference = (double)other[i] - reference[i];
+    squared += difference * difference;
+    *maxDifference = std::max(*maxDifference, (int32_t)std::abs(difference));
+  }
+  double meanSquared = squared / (double)reference.size();
+  if(meanSquared == 0)
+    return 1e9;
+  return 10.0 * std::log10((double)kMaxSample * kMaxSample / meanSquared);
 }
 
 double millisecondsSince(std::chrono::steady_clock::time_point start)
@@ -405,6 +433,78 @@ void checkCinema()
   grk_object_unref(&cpuSource->obj);
   grk_object_unref(&expected->obj);
 }
+// a 16 bit frame labelled sYCC with the XYZ transform off: the plugin has to
+// keep the colour transform grok settles on, or its components drift apart from
+// the CPU's
+void checkSyccCinema()
+{
+  std::printf("cinema sYCC 16 bit, apply_xyz_transform false\n");
+  grk_cparameters params;
+  baseParameters(params);
+  params.rsiz = GRK_PROFILE_CINEMA_2K;
+  params.framerate = 24;
+  params.irreversible = true;
+  params.apply_xyz_transform = false;
+  params.allocation_by_rate_distortion = true;
+  params.layer_rate[0] = kCinemaRatio;
+  params.write_tlm = true;
+
+  auto syccFrame = [&]() {
+    auto image = smoothFrame(kSyccWidth, kSyccHeight, kSyccPrecision);
+    if(image)
+      image->color_space = GRK_CLRSPC_SYCC;
+    return image;
+  };
+  auto cpuSource = syccFrame();
+  auto gpuSource = syccFrame();
+  if(!cpuSource || !gpuSource)
+  {
+    fail("sYCC frame allocation");
+    return;
+  }
+  std::vector<uint8_t> cpuStream((size_t)kSyccWidth * kSyccHeight * kNumComps * 4);
+  std::vector<uint8_t> gpuStream(cpuStream.size());
+
+  grk_plugin_set_enabled(false);
+  uint64_t cpuLength = compress(cpuSource, params, cpuStream);
+  if(cpuLength == 0)
+    fail("sYCC CPU compress");
+
+  grk_plugin_set_enabled(true);
+  uint64_t before = grk_plugin_accelerated_frames();
+  auto start = std::chrono::steady_clock::now();
+  uint64_t gpuLength = compress(gpuSource, params, gpuStream);
+  std::printf("cinema sYCC plugin compress: %.1f ms, %llu bytes (CPU %llu bytes)\n",
+              millisecondsSince(start), (unsigned long long)gpuLength,
+              (unsigned long long)cpuLength);
+  if(gpuLength == 0)
+    fail("sYCC plugin compress");
+  if(grk_plugin_accelerated_frames() != before + 1)
+    fail("sYCC plugin compress was not counted as accelerated");
+
+  grk_plugin_set_enabled(false);
+  auto cpuDecoded = decode(cpuStream, cpuLength);
+  auto gpuDecoded = decode(gpuStream, gpuLength);
+  grk_plugin_set_enabled(true);
+  if(cpuDecoded.size() != kNumComps || gpuDecoded.size() != kNumComps)
+  {
+    fail("sYCC decode");
+  }
+  else
+  {
+    for(uint16_t compno = 0; compno < kNumComps; ++compno)
+    {
+      int32_t maxDifference = 0;
+      double peak = peakSignalToNoise(cpuDecoded[compno], gpuDecoded[compno], &maxDifference);
+      std::printf("cinema sYCC comp %u: device against host %.1f dB, max difference %d codes\n",
+                  compno, peak, maxDifference);
+      if(peak <= kSyccPeakFloor)
+        fail("sYCC plugin encode strays from the CPU encode");
+    }
+  }
+  grk_object_unref(&cpuSource->obj);
+  grk_object_unref(&gpuSource->obj);
+}
 } // namespace
 
 int main()
@@ -429,6 +529,7 @@ int main()
   checkLossless(1, 8);
   checkLossless(0, 8);
   checkCinema();
+  checkSyccCinema();
   grk_deinitialize();
   if(g_failures)
   {
