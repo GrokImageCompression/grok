@@ -40,6 +40,8 @@ constexpr int32_t kCinemaEncodeTolerance = 16;
 // device and host colour transform held against each other through the same
 // encoder: only the transform's own rounding separates them
 constexpr int32_t kTransformTolerance = 2;
+// the device inverse wavelet and the CPU's land within a code of each other
+constexpr int32_t kDeviceDecodeTolerance = 2;
 
 void fail(const char* what)
 {
@@ -997,6 +999,49 @@ void checkDeterminism()
     fail("a rate controlled batch encoded twice does not give the same code streams");
 }
 
+// grk_decompress consults the plugin flag, so this one runs on the device
+std::vector<std::vector<int32_t>> decodeOnDevice(const std::vector<uint8_t>& stream)
+{
+  grk_plugin_set_enabled(true);
+  auto planes = decodeOnCpu(stream);
+  grk_plugin_set_enabled(false);
+  return planes;
+}
+
+// a batch replaces the image the plugin's decoder was built against, so a
+// device decompress on either side of a batch has to keep working
+void checkDecompressBetweenBatches()
+{
+  std::printf("device decompress on both sides of a batch\n");
+  int32_t worst = 0;
+  for(int round = 0; round < 2; ++round)
+  {
+    Collector collector;
+    if(!runReferenceBatch(kDeterminismSource, collector))
+    {
+      fail("decompress between batches: batch");
+      return;
+    }
+    checkCollector(collector, "decompress between batches delivery");
+    if(collector.codestreams.empty())
+      return;
+    const auto& stream = collector.codestreams.begin()->second;
+    auto onDevice = decodeOnDevice(stream);
+    auto onHost = decodeOnCpu(stream);
+    int32_t difference = 0;
+    if(!planesEqual(onDevice, onHost, kDeviceDecodeTolerance, &difference))
+    {
+      std::printf("  round %d: device and host decode differ by %d codes\n", round, difference);
+      fail("a device decompress around a batch strays from the host decode");
+    }
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("  two batches, a device decompress after each, max difference %d codes from the "
+              "host decode\n",
+              worst);
+}
+
 void checkYuvSource(const YuvSource& source)
 {
   std::printf("%s, %ux%u, %u frames\n", source.name, kYuvWidth, kYuvHeight, kYuvNumFrames);
@@ -1309,6 +1354,7 @@ int main()
   checkYuvProbe();
   checkYuvUnsupportedDepth();
   checkDeterminism();
+  checkDecompressBetweenBatches();
   static const YuvSource yuvSources[] = {
       {"planar 8 bit 4:2:0, limited range, BT.709", GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false,
        8},
