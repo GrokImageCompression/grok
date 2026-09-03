@@ -1362,6 +1362,56 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
 GRK_PLUGIN_COMPRESS_USER_CALLBACK userEncodeCallback = 0;
 static grk_cparameters* s_originalCompressParams = nullptr;
 
+static const uint16_t maxWrappedComponents = 16;
+
+/* the wrapper tree is deep, so keep it and re-point it when the batch pool
+   hands back the same gpup_tile with new data */
+static grk_plugin_tile* wrapPluginTile(gpup_tile* tile)
+{
+  static thread_local grk_plugin_tile* cachedWrapper = nullptr;
+  static thread_local const gpup_tile* cachedSource = nullptr;
+  if(tile != cachedSource)
+  {
+    grk_plugin_tile_free_wrapper(cachedWrapper);
+    cachedWrapper = gpup_tile_to_grk(tile);
+    cachedSource = tile;
+  }
+  else if(tile && cachedWrapper)
+  {
+    gpup_tile_update_grk(cachedWrapper, tile);
+  }
+  return cachedWrapper;
+}
+
+/* shallow wrapper: image and comps are the caller's storage, sample data is shared */
+static void wrapPluginImage(const gpup_image* source, grk_image* image, grk_image_comp* comps)
+{
+  memset(image, 0, sizeof(*image));
+  memset(comps, 0, sizeof(grk_image_comp) * maxWrappedComponents);
+  image->x0 = source->x0;
+  image->y0 = source->y0;
+  image->x1 = source->x1;
+  image->y1 = source->y1;
+  image->numcomps = source->numcomps;
+  image->color_space = (GRK_COLOR_SPACE)source->color_space;
+  uint16_t numComponents =
+      source->numcomps > maxWrappedComponents ? maxWrappedComponents : source->numcomps;
+  for(uint16_t c = 0; c < numComponents; ++c)
+  {
+    comps[c].x0 = source->comps[c].x0;
+    comps[c].y0 = source->comps[c].y0;
+    comps[c].w = source->comps[c].w;
+    comps[c].stride = source->comps[c].stride;
+    comps[c].h = source->comps[c].h;
+    comps[c].dx = source->comps[c].dx;
+    comps[c].dy = source->comps[c].dy;
+    comps[c].prec = source->comps[c].prec;
+    comps[c].sgnd = source->comps[c].sgnd;
+    comps[c].data = source->comps[c].data;
+  }
+  image->comps = comps;
+}
+
 /* bridge: receives gpup_ callback info from plugin, translates to grk_ for host callback */
 uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
 {
@@ -1375,55 +1425,15 @@ uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
   grk_info.output_file_name_is_relative = info->outputFileNameIsRelative;
   grk_info.output_file_name = info->output_file_name;
   grk_info.compressor_parameters = s_originalCompressParams;
-  // Cache the tile wrapper to avoid repeated deep alloc/free.
-  // In batch mode, the same gpup_tile pointer may be reused with new data,
-  // so always update the wrapper's shared data pointers.
-  static thread_local grk_plugin_tile* s_cachedEncodeTileWrapper = nullptr;
-  static thread_local const gpup_tile* s_cachedEncodeTileSrc = nullptr;
-  if(info->tile != s_cachedEncodeTileSrc)
-  {
-    grk_plugin_tile_free_wrapper(s_cachedEncodeTileWrapper);
-    s_cachedEncodeTileWrapper = gpup_tile_to_grk(info->tile);
-    s_cachedEncodeTileSrc = info->tile;
-  }
-  else if(info->tile && s_cachedEncodeTileWrapper)
-  {
-    // Same tile pointer reused (batch pool) — update data pointers in-place
-    gpup_tile_update_grk(s_cachedEncodeTileWrapper, info->tile);
-  }
-  grk_info.tile = s_cachedEncodeTileWrapper;
-
+  grk_info.tile = wrapPluginTile(info->tile);
   grk_info.error_code = info->error_code;
   gpup_to_grk_stream_params(&info->stream_params, &grk_info.stream_params);
 
-  // image: create shallow wrapper around gpup_image
   grk_image grk_img;
-  grk_image_comp grk_comps_buf[16];
-  memset(&grk_img, 0, sizeof(grk_img));
+  grk_image_comp grk_comps_buf[maxWrappedComponents];
   if(info->image)
   {
-    grk_img.x0 = info->image->x0;
-    grk_img.y0 = info->image->y0;
-    grk_img.x1 = info->image->x1;
-    grk_img.y1 = info->image->y1;
-    grk_img.numcomps = info->image->numcomps;
-    grk_img.color_space = (GRK_COLOR_SPACE)info->image->color_space;
-    uint16_t nc = info->image->numcomps > 16 ? 16 : info->image->numcomps;
-    memset(grk_comps_buf, 0, sizeof(grk_comps_buf));
-    for(uint16_t c = 0; c < nc; ++c)
-    {
-      grk_comps_buf[c].x0 = info->image->comps[c].x0;
-      grk_comps_buf[c].y0 = info->image->comps[c].y0;
-      grk_comps_buf[c].w = info->image->comps[c].w;
-      grk_comps_buf[c].stride = info->image->comps[c].stride;
-      grk_comps_buf[c].h = info->image->comps[c].h;
-      grk_comps_buf[c].dx = info->image->comps[c].dx;
-      grk_comps_buf[c].dy = info->image->comps[c].dy;
-      grk_comps_buf[c].prec = info->image->comps[c].prec;
-      grk_comps_buf[c].sgnd = info->image->comps[c].sgnd;
-      grk_comps_buf[c].data = info->image->comps[c].data;
-    }
-    grk_img.comps = grk_comps_buf;
+    wrapPluginImage(info->image, &grk_img, grk_comps_buf);
     grk_info.image = &grk_img;
   }
 
@@ -1504,6 +1514,321 @@ void grk_plugin_stop_batch_compress(void)
     if(func)
       func();
   }
+}
+
+/*******************
+ In-memory batch compress
+ ********************/
+
+static const char* gpup_batch_memory_begin_method_name = "gpup_batch_memory_begin";
+static const char* gpup_batch_memory_submit_method_name = "gpup_batch_memory_submit";
+static const char* gpup_batch_memory_submit_planes_method_name =
+    "gpup_batch_memory_submit_planes";
+static const char* gpup_batch_memory_end_method_name = "gpup_batch_memory_end";
+typedef int32_t (*GPUP_BATCH_MEMORY_BEGIN)(gpup_batch_memory_info* info);
+typedef bool (*GPUP_BATCH_MEMORY_SUBMIT)(const uint8_t* packed, void* host_data);
+typedef bool (*GPUP_BATCH_MEMORY_SUBMIT_PLANES)(const uint8_t* const planes[3],
+                                                const size_t stride_bytes[3], void* host_data);
+typedef bool (*GPUP_BATCH_MEMORY_END)(void);
+
+namespace
+{
+struct BatchMemoryState
+{
+  bool running = false;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint16_t numcomps = 0;
+  uint8_t prec = 0;
+  uint8_t sourcePrec = 0;
+  bool applyXYZ = false;
+  // the plugin's preprocess kernel runs the colour transform, so submit leaves the
+  // frame alone and packs it at sourcePrec
+  bool xyzOnDevice = false;
+  GRK_SOURCE_FORMAT sourceFormat = GRK_SOURCE_PLANAR_RGB;
+  uint16_t rsiz = 0;
+  // T2 parameters: the colour transform already ran on the submitted frame
+  grk_cparameters t2Parameters = {};
+  GRK_PLUGIN_BATCH_FRAME_CALLBACK callback = nullptr;
+  void* user = nullptr;
+};
+BatchMemoryState batchMemory;
+
+// the bound grk_compress uses for a compressed frame
+size_t codestreamBound(const BatchMemoryState& state)
+{
+  return ((size_t)state.width * state.height * state.numcomps * ((state.prec + 7U) / 8U) * 3U) / 2U;
+}
+
+gpup_source_format toGpupSourceFormat(GRK_SOURCE_FORMAT format)
+{
+  switch(format)
+  {
+    case GRK_SOURCE_YUV420P:
+      return GPUP_SOURCE_YUV420P;
+    case GRK_SOURCE_YUV422P:
+      return GPUP_SOURCE_YUV422P;
+    case GRK_SOURCE_RGB48LE:
+      return GPUP_SOURCE_RGB48LE;
+    default:
+      return GPUP_SOURCE_PLANAR_RGB;
+  }
+}
+
+gpup_yuv_matrix toGpupYuvMatrix(GRK_YUV_MATRIX matrix)
+{
+  switch(matrix)
+  {
+    case GRK_YUV_BT601:
+      return GPUP_YUV_BT601;
+    case GRK_YUV_BT2020:
+      return GPUP_YUV_BT2020;
+    default:
+      return GPUP_YUV_BT709;
+  }
+}
+
+void* batchMemorySymbol(const char* name)
+{
+  auto mgr = minpf_get_plugin_manager();
+  if(!pluginLoaded || !pluginInitialized || !mgr || mgr->num_libraries == 0)
+    return nullptr;
+  auto symbol = minpf_get_symbol(mgr->dynamic_libraries[0], name);
+  if(!symbol)
+    Logger::logger_.warn("[plugin] Plugin missing '%s' symbol", name);
+  return symbol;
+}
+} // namespace
+
+/* runs T2 on one frame's code blocks, on whichever plugin thread finished it */
+static uint64_t batchMemoryEncodeCallback(gpup_compress_callback_info* info)
+{
+  if(!batchMemory.callback)
+    return 0;
+  // callbacks run concurrently, so each thread compresses into its own buffer
+  static thread_local std::vector<uint8_t> codestream;
+  auto bound = codestreamBound(batchMemory);
+  if(codestream.size() < bound)
+    codestream.resize(bound);
+
+  uint64_t length = 0;
+  if(info->image && info->tile)
+  {
+    grk_image headerImage;
+    grk_image_comp headerComponents[maxWrappedComponents];
+    wrapPluginImage(info->image, &headerImage, headerComponents);
+    grk_stream_params stream = {};
+    stream.buf = codestream.data();
+    stream.buf_len = codestream.size();
+    grk_cparameters parameters = batchMemory.t2Parameters;
+    auto codec = grk_compress_init(&stream, &parameters, &headerImage);
+    if(codec)
+      length = grk_compress(codec, wrapPluginTile(info->tile));
+    grk_object_unref(codec);
+  }
+  batchMemory.callback(batchMemory.user, info->host_data, codestream.data(), length);
+
+  return length;
+}
+
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_memory_begin(grk_plugin_batch_memory_info info)
+{
+  if(batchMemory.running)
+    return -1;
+  if(!info.compress_parameters || !info.callback || !info.width || !info.height || !info.numcomps ||
+     !info.prec)
+    return -1;
+  auto begin = (GPUP_BATCH_MEMORY_BEGIN)batchMemorySymbol(gpup_batch_memory_begin_method_name);
+  if(!begin)
+    return 1;
+  if(info.source_format != GRK_SOURCE_PLANAR_RGB &&
+     !batchMemorySymbol(gpup_batch_memory_submit_planes_method_name))
+    return 1;
+
+  gpup_compress_params gpupParameters;
+  grk_to_gpup_compress_params(info.compress_parameters, &gpupParameters);
+  if(gpupParameters.mct == 255)
+    gpupParameters.mct = info.numcomps >= 3 ? 1 : 0;
+
+  batchMemory.width = info.width;
+  batchMemory.height = info.height;
+  batchMemory.numcomps = info.numcomps;
+  batchMemory.prec = info.prec;
+  batchMemory.sourcePrec = info.source_prec ? info.source_prec : info.prec;
+  batchMemory.applyXYZ = info.compress_parameters->apply_xyz_transform;
+  batchMemory.xyzOnDevice = false;
+  batchMemory.rsiz = info.compress_parameters->rsiz;
+  batchMemory.t2Parameters = *info.compress_parameters;
+  batchMemory.t2Parameters.apply_xyz_transform = false;
+  batchMemory.t2Parameters.mct = gpupParameters.mct;
+  batchMemory.callback = info.callback;
+  batchMemory.user = info.user;
+  batchMemory.sourceFormat = info.source_format;
+
+  gpup_batch_memory_info gpupInfo;
+  gpupInfo.compress_parameters = &gpupParameters;
+  gpupInfo.width = info.width;
+  gpupInfo.height = info.height;
+  gpupInfo.numcomps = info.numcomps;
+  gpupInfo.source_prec = batchMemory.sourcePrec;
+  gpupInfo.prec = info.prec;
+  gpupInfo.callback = batchMemoryEncodeCallback;
+  gpupInfo.xyz_on_device = false;
+  gpupInfo.source_format = toGpupSourceFormat(info.source_format);
+  gpupInfo.yuv_matrix = toGpupYuvMatrix(info.yuv_matrix);
+  gpupInfo.yuv_full_range = info.yuv_full_range;
+  int32_t rc = begin(&gpupInfo);
+  batchMemory.running = (rc == 0);
+  batchMemory.xyzOnDevice = batchMemory.running && gpupInfo.xyz_on_device;
+  if(info.xyz_on_device)
+    *info.xyz_on_device = batchMemory.xyzOnDevice;
+
+  return rc;
+}
+
+namespace
+{
+// the planar YUV shape the batch declared, exactly: grok hands the planes over
+// without touching a sample, so anything else is a different picture
+bool planarYuvPlanes(const grk_image* frame, const uint8_t* planes[3], size_t strideBytes[3])
+{
+  bool chromaIsHalfHeight = batchMemory.sourceFormat == GRK_SOURCE_YUV420P;
+  size_t containerBytes = batchMemory.sourcePrec > 8 ? 2 : 1;
+  auto expectedType = containerBytes == 2 ? GRK_INT_16 : GRK_INT_8;
+  if(frame->numcomps != 3)
+    return false;
+  for(uint16_t c = 0; c < 3; ++c)
+  {
+    auto comp = frame->comps + c;
+    bool isChroma = c > 0;
+    uint32_t expectedWidth = isChroma ? (batchMemory.width + 1) / 2 : batchMemory.width;
+    uint32_t expectedHeight = (isChroma && chromaIsHalfHeight) ? (batchMemory.height + 1) / 2
+                                                               : batchMemory.height;
+    uint8_t expectedSubsamplingX = isChroma ? 2 : 1;
+    uint8_t expectedSubsamplingY = (isChroma && chromaIsHalfHeight) ? 2 : 1;
+    if(!comp->data || comp->data_type != expectedType || comp->w != expectedWidth ||
+       comp->h != expectedHeight || comp->stride < comp->w || comp->dx != expectedSubsamplingX ||
+       comp->dy != expectedSubsamplingY || comp->prec != batchMemory.sourcePrec || comp->sgnd)
+      return false;
+    planes[c] = (const uint8_t*)comp->data;
+    strideBytes[c] = (size_t)comp->stride * containerBytes;
+  }
+
+  return true;
+}
+
+// one interleaved 16 bit buffer, the layout the packed submit builds by hand
+bool interleaved16Buffer(const grk_image* frame, const uint8_t* planes[3], size_t strideBytes[3])
+{
+  if(frame->numcomps != 3)
+    return false;
+  for(uint16_t c = 0; c < 3; ++c)
+  {
+    auto comp = frame->comps + c;
+    if(comp->data_type != GRK_INT_16 || comp->w != batchMemory.width ||
+       comp->h != batchMemory.height || comp->dx != 1 || comp->dy != 1 ||
+       comp->prec != batchMemory.sourcePrec || comp->sgnd)
+      return false;
+  }
+  auto first = frame->comps;
+  if(!first->data || first->stride < (size_t)batchMemory.width * 3)
+    return false;
+  planes[0] = (const uint8_t*)first->data;
+  strideBytes[0] = (size_t)first->stride * sizeof(uint16_t);
+
+  return true;
+}
+} // namespace
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_submit(grk_image* frame, void* frame_user)
+{
+  if(!batchMemory.running || !frame || !frame->comps)
+    return false;
+  if(batchMemory.sourceFormat != GRK_SOURCE_PLANAR_RGB)
+  {
+    const uint8_t* planes[3] = {};
+    size_t strideBytes[3] = {};
+    bool described = batchMemory.sourceFormat == GRK_SOURCE_RGB48LE
+                         ? interleaved16Buffer(frame, planes, strideBytes)
+                         : planarYuvPlanes(frame, planes, strideBytes);
+    if(!described)
+      return false;
+    auto submitPlanes = (GPUP_BATCH_MEMORY_SUBMIT_PLANES)batchMemorySymbol(
+        gpup_batch_memory_submit_planes_method_name);
+    if(!submitPlanes)
+      return false;
+
+    return submitPlanes(planes, strideBytes, frame_user);
+  }
+  if(frame->numcomps != batchMemory.numcomps)
+    return false;
+  for(uint16_t c = 0; c < frame->numcomps; ++c)
+  {
+    auto comp = frame->comps + c;
+    if(comp->w != batchMemory.width || comp->h != batchMemory.height || !comp->data ||
+       comp->data_type != GRK_INT_32)
+      return false;
+  }
+  auto submit = (GPUP_BATCH_MEMORY_SUBMIT)batchMemorySymbol(gpup_batch_memory_submit_method_name);
+  if(!submit)
+    return false;
+  if(batchMemory.xyzOnDevice)
+  {
+    // the kernel reads the source at its declared depth, so anything else is a
+    // different transform
+    for(uint16_t c = 0; c < frame->numcomps; ++c)
+    {
+      if(frame->comps[c].prec != batchMemory.sourcePrec)
+        return false;
+    }
+  }
+  else if(batchMemory.applyXYZ && !applyXYZTransform(frame, xyzTargetPrecision(batchMemory.rsiz)))
+  {
+    return false;
+  }
+
+  // pixel interleaved, little endian 16 bit, the packing the plugin reads.
+  // The buffer is per thread and kept between frames: submit may be called from
+  // several threads and the plugin copies before it returns.
+  static thread_local std::vector<uint8_t> packed;
+  size_t packedSize =
+      (size_t)batchMemory.width * batchMemory.height * batchMemory.numcomps * sizeof(uint16_t);
+  if(packed.size() != packedSize)
+    packed.resize(packedSize);
+  const size_t pixelStride = (size_t)batchMemory.numcomps * sizeof(uint16_t);
+  for(uint16_t c = 0; c < frame->numcomps; ++c)
+  {
+    auto comp = frame->comps + c;
+    uint8_t packedPrec = batchMemory.xyzOnDevice ? batchMemory.sourcePrec : batchMemory.prec;
+    uint8_t shift = comp->prec > packedPrec ? (uint8_t)(comp->prec - packedPrec) : 0;
+    auto data = (const int32_t*)comp->data;
+    auto out = packed.data() + c * sizeof(uint16_t);
+    for(uint32_t y = 0; y < batchMemory.height; ++y)
+    {
+      auto row = data + (size_t)y * comp->stride;
+      for(uint32_t x = 0; x < batchMemory.width; ++x)
+      {
+        auto sample = (uint32_t)(row[x] >> shift);
+        out[0] = (uint8_t)(sample & 0xFF);
+        out[1] = (uint8_t)((sample >> 8) & 0xFF);
+        out += pixelStride;
+      }
+    }
+  }
+
+  return submit(packed.data(), frame_user);
+}
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void)
+{
+  if(!batchMemory.running)
+    return false;
+  batchMemory.running = false;
+  auto end = (GPUP_BATCH_MEMORY_END)batchMemorySymbol(gpup_batch_memory_end_method_name);
+  if(!end)
+    return false;
+
+  return end();
 }
 
 /*******************

@@ -471,7 +471,25 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
       /* Threshold for Marcela Index */
       // start by including everything in this layer
       uint32_t goodthresh = upperBound;
-      runMakeLayerFeasible(layno, (uint16_t)goodthresh, true, nullptr);
+      // a search that stopped at its floor never had a binding budget, and the
+      // feasible set still leaves out a block's last passes when the hull rejects
+      // them, so take every pass when they all fit
+      bool tookEveryPass = false;
+      if(!cp_->codingParams_.enc_.allocationByFixedQuality_ && goodthresh <= min_slope)
+      {
+        std::vector<uint8_t> passesBefore(numBlocks);
+        for(size_t i = 0; i < numBlocks; ++i)
+          passesBefore[i] = flatCodeblocks[i]->getNumPassesInPreviousLayers();
+        makeLayerFinal(layno);
+        tookEveryPass = t2.compressPacketsSimulate(
+            tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
+            newTilePartProgressionPosition_, packetLengthCache_->getMarkers(), false, false);
+        if(!tookEveryPass)
+          for(size_t i = 0; i < numBlocks; ++i)
+            flatCodeblocks[i]->setNumPassesInPreviousLayers(passesBefore[i]);
+      }
+      if(!tookEveryPass)
+        runMakeLayerFeasible(layno, (uint16_t)goodthresh, true, nullptr);
       if(cp_->codingParams_.enc_.allocationByFixedQuality_)
       {
         cumulativeDistortion[layno] =

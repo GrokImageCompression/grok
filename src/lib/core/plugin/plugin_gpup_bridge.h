@@ -78,6 +78,7 @@ inline void grk_to_gpup_compress_params(const grk_cparameters* src, gpup_compres
   dst->repeats = src->repeats;
   dst->verbose = false;
   dst->sharedMemoryInterface = src->shared_memory_interface;
+  dst->apply_xyz_transform = src->apply_xyz_transform;
 }
 
 /* ── grk_decompress_parameters → gpup_decompress_params ─────── */
@@ -335,10 +336,19 @@ inline void gpup_tile_update_grk(grk_plugin_tile* dst, gpup_tile* src)
             if(!dkb || !skb)
               continue;
             dkb->context_stream = skb->contextStream;
+            dkb->num_pix = skb->numPix;
             dkb->compressed_data = skb->compressedData;
             dkb->compressed_data_length = skb->compressedDataLength;
             dkb->num_bit_planes = skb->numBitPlanes;
             dkb->num_passes = (uint8_t)skb->numPasses;
+            // T2 writes the packet lengths from the passes, and each frame has its own
+            for(size_t ps = 0; ps < skb->numPasses && ps < GRK_MAX_PASSES; ++ps)
+            {
+              dkb->passes[ps].distortion_decrease = skb->passes[ps].distortionDecrease;
+              dkb->passes[ps].rate = skb->passes[ps].rate;
+              dkb->passes[ps].length = skb->passes[ps].length;
+            }
+            dkb->sorted_index = skb->sortedIndex;
           }
         }
       }

@@ -105,6 +105,7 @@ typedef enum
   GPUP_FMT_PNG,
   GPUP_FMT_RAWL,
   GPUP_FMT_JPG,
+  GPUP_FMT_YUV,
   GPUP_FMT_MJ2
 } gpup_file_fmt;
 
@@ -121,6 +122,25 @@ typedef enum
   GPUP_RATE_CONTROL_BISECT,
   GPUP_RATE_CONTROL_PCRD_OPT
 } gpup_rate_control;
+
+/* layout of the frames an in-memory batch is fed */
+typedef enum
+{
+  GPUP_SOURCE_PLANAR_RGB = 0,
+  GPUP_SOURCE_YUV420P = 1,
+  GPUP_SOURCE_YUV422P = 2,
+  /* interleaved 16 bit little endian RGB, already the layout the host packs the
+     planar source into, so it reaches the device with one copy per row */
+  GPUP_SOURCE_RGB48LE = 3
+} gpup_source_format;
+
+/* the matrix that turns a YUV source into RGB */
+typedef enum
+{
+  GPUP_YUV_BT601 = 0,
+  GPUP_YUV_BT709 = 1,
+  GPUP_YUV_BT2020 = 2
+} gpup_yuv_matrix;
 
 /* ── Decode phase flags ──────────────────────────────────────── */
 
@@ -346,6 +366,7 @@ typedef struct _gpup_compress_params
   uint32_t repeats;
   bool verbose;
   bool sharedMemoryInterface;
+  bool apply_xyz_transform;
 } gpup_compress_params;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -428,6 +449,29 @@ typedef struct _gpup_compress_batch_info
   GPUP_COMPRESS_USER_CALLBACK callback;
 } gpup_compress_batch_info;
 
+/* one frame shape for a whole in-memory batch: every submitted frame is
+   width x height x numcomps samples of prec bits */
+typedef struct _gpup_batch_memory_info
+{
+  gpup_compress_params* compress_parameters;
+  uint32_t width;
+  uint32_t height;
+  uint32_t numcomps;
+  /* bits per sample the caller submits */
+  uint32_t source_prec;
+  /* bits per sample the code stream carries */
+  uint32_t prec;
+  GPUP_COMPRESS_USER_CALLBACK callback;
+  /* written by gpup_batch_memory_begin: true when the preprocess kernel runs the
+     RGB to X'Y'Z' transform, so the caller submits untransformed source_prec samples */
+  bool xyz_on_device;
+  /* how the caller lays out a frame. A YUV format arrives through
+     gpup_batch_memory_submit_planes and is upsampled and converted on the device */
+  gpup_source_format source_format;
+  gpup_yuv_matrix yuv_matrix;
+  bool yuv_full_range;
+} gpup_batch_memory_info;
+
 typedef struct _gpup_decompress_callback_info
 {
   size_t deviceId;
@@ -492,7 +536,7 @@ inline gpup_image* gpup_image_new(uint16_t numcmpts, gpup_image_comp* cmptparms,
         size_t dataSize = (size_t)stride * cmptparms[i].h * sizeof(int32_t);
         dataSize = ((dataSize + GPUP_BUFFER_ALIGNMENT - 1) / GPUP_BUFFER_ALIGNMENT) *
                    GPUP_BUFFER_ALIGNMENT;
-        img->comps[i].data = (int32_t*)::aligned_alloc(GPUP_BUFFER_ALIGNMENT, dataSize);
+        img->comps[i].data = (int32_t*)std::aligned_alloc(GPUP_BUFFER_ALIGNMENT, dataSize);
         if(img->comps[i].data)
           memset(img->comps[i].data, 0, dataSize);
         img->comps[i].stride = stride;

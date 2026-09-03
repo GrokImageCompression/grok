@@ -93,6 +93,12 @@ if(GRK_BUILD_PLUGIN_LOADER)
   add_test(NAME grk_plugin_memory_test COMMAND grk_plugin_memory_test)
   set_tests_properties(grk_plugin_memory_test PROPERTIES
     ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
+  add_executable(grk_plugin_batch_memory_test GrkPluginBatchMemoryTest.cpp)
+  target_link_libraries(grk_plugin_batch_memory_test ${GROK_CORE_NAME})
+  add_test(NAME grk_plugin_batch_memory_test COMMAND grk_plugin_batch_memory_test)
+  set_tests_properties(grk_plugin_batch_memory_test PROPERTIES
+    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 endif()
 
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
@@ -459,6 +465,10 @@ add_test(NAME grk_degenerate_97_test COMMAND grk_degenerate_97_test)
 add_executable(grk_irreversible_lifting_test GrkIrreversibleLiftingTest.cpp)
 target_link_libraries(grk_irreversible_lifting_test ${GROK_CORE_NAME})
 add_test(NAME grk_irreversible_lifting_test COMMAND grk_irreversible_lifting_test)
+
+add_executable(grk_rate_allocation_test GrkRateAllocationTest.cpp)
+target_link_libraries(grk_rate_allocation_test ${GROK_CORE_NAME})
+add_test(NAME grk_rate_allocation_test COMMAND grk_rate_allocation_test)
 
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_ht_band_bit_planes_test GrkHTBandBitPlanesTest.cpp)

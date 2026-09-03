@@ -2494,6 +2494,159 @@ GRK_API void GRK_CALLCONV grk_plugin_wait_for_batch_complete(void);
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 
 /**
+ * @brief Called with the code stream of one frame of an in-memory plugin batch.
+ *
+ * @param user        the user pointer passed to grk_plugin_batch_memory_begin()
+ * @param frame       the frame_user pointer passed to grk_plugin_batch_memory_submit()
+ * @param codestream  the compressed frame, owned by grok until this returns
+ * @param length      compressed byte count, 0 when this frame failed
+ */
+typedef void (*GRK_PLUGIN_BATCH_FRAME_CALLBACK)(void* user, void* frame, const uint8_t* codestream,
+                                                size_t length);
+
+/**
+ * @enum GRK_SOURCE_FORMAT
+ * @brief How the frames of an in-memory plugin batch are laid out.
+ *
+ * GRK_SOURCE_PLANAR_RGB is the planar GRK_INT_32 frame grk_compress() takes.
+ * The two YUV formats are planar Y, Cb and Cr at the source precision, taken
+ * straight from a video decoder: grok hands the three planes to the plugin,
+ * which upsamples the chroma and converts to RGB on the device.
+ * GRK_SOURCE_RGB48LE is one interleaved 16-bit buffer.
+ */
+typedef enum _GRK_SOURCE_FORMAT
+{
+  GRK_SOURCE_PLANAR_RGB = 0, /* planar RGB, one int32_t per sample */
+  GRK_SOURCE_YUV420P = 1, /* planar YUV, chroma halved in both directions */
+  GRK_SOURCE_YUV422P = 2, /* planar YUV, chroma halved horizontally */
+  GRK_SOURCE_RGB48LE = 3 /* interleaved 16-bit little endian RGB */
+} GRK_SOURCE_FORMAT;
+
+/**
+ * @enum GRK_YUV_MATRIX
+ * @brief The matrix that turns a YUV source into RGB.
+ */
+typedef enum _GRK_YUV_MATRIX
+{
+  GRK_YUV_BT601 = 0, /* Rec. ITU-R BT.601 */
+  GRK_YUV_BT709 = 1, /* Rec. ITU-R BT.709 */
+  GRK_YUV_BT2020 = 2 /* Rec. ITU-R BT.2020 non constant luminance */
+} GRK_YUV_MATRIX;
+
+/**
+ * @brief Frame shape and callback for an in-memory plugin batch.
+ *
+ * A zero initialised struct describes a planar RGB batch at @p prec, which is
+ * what the batch took before the YUV formats existed.
+ */
+typedef struct grk_plugin_batch_memory_info
+{
+  grk_cparameters* compress_parameters; /* compress parameters */
+  uint32_t width; /* frame width */
+  uint32_t height; /* frame height */
+  uint16_t numcomps; /* components per frame */
+  uint8_t prec; /* bits per sample the code stream carries */
+  uint8_t source_prec; /* bits per sample of the submitted frames, 0 means prec */
+  GRK_PLUGIN_BATCH_FRAME_CALLBACK callback; /* per frame callback */
+  void* user; /* handed back to the callback */
+  bool* xyz_on_device; /* optional, set true when the device runs the colour transform */
+  GRK_SOURCE_FORMAT source_format; /* how a submitted frame is laid out */
+  GRK_YUV_MATRIX yuv_matrix; /* YUV source only: the matrix to RGB */
+  bool yuv_full_range; /* YUV source only: full range rather than studio range */
+} grk_plugin_batch_memory_info;
+
+/**
+ * @brief Starts a batch that compresses frames already held in memory.
+ *
+ * Every frame in the batch has the shape given here. Frames go in through
+ * grk_plugin_batch_memory_submit() and come back through @p info.callback,
+ * which runs on the plugin's threads and may run concurrently with itself.
+ * grk_plugin_batch_memory_end() drains the batch.
+ *
+ * Requires grk_plugin_init() to have succeeded. While the batch runs, an
+ * ordinary grk_compress() call compresses on the CPU.
+ *
+ * When compress_parameters->apply_xyz_transform is set, the device runs the
+ * Rec.709 RGB to DCI X'Y'Z' transform as part of its preprocess kernel for a
+ * three component 16-bit source encoded at 12 bits, and the host transform
+ * handles every other case. @p info.xyz_on_device, when given, says which one
+ * this batch got, and grk_plugin_batch_memory_submit() takes frames at
+ * @p info.source_prec either way.
+ *
+ * For a YUV @p info.source_format the device does the whole colour pipeline:
+ * chroma upsampling, YUV to RGB, then the X'Y'Z' transform when
+ * apply_xyz_transform is set. @p info.numcomps is 3, @p info.source_prec is 8
+ * or 10 and @p info.prec is 12. The chroma siting is the MPEG-2 and H.264
+ * default: chroma sample i is co-sited with luma column 2i, so an even luma
+ * column takes chroma i and an odd one the average of i and i+1, clamped at the
+ * right edge. For 4:2:0 chroma row j sits between luma rows 2j and 2j+1, so an
+ * even luma row takes three quarters of row j and a quarter of row j-1 and an
+ * odd luma row three quarters of row j and a quarter of row j+1, clamped at the
+ * bottom. 4:2:2 has no vertical interpolation. @p info.yuv_matrix picks the
+ * matrix and @p info.yuv_full_range says whether the samples fill the range:
+ * studio range puts luma black at 16 and white at 235 scaled to the source
+ * precision, full range spreads luma over the whole 0 to 2^source_prec - 1.
+ *
+ * A plugin that cannot take the frame shape makes this return 1, so a caller
+ * can find out whether a YUV format is taken with a begin and an end and no
+ * frame in between, before it starts its decoder.
+ *
+ * @param info  frame shape, compression parameters and callback
+ *              (see @ref grk_plugin_batch_memory_info)
+ * @return 0 when the batch is running, 1 when the plugin does not handle these
+ *         parameters (the caller compresses on the CPU), -1 on a device failure
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_memory_begin(grk_plugin_batch_memory_info info);
+
+/**
+ * @brief Submits one frame to a running in-memory batch.
+ *
+ * For GRK_SOURCE_PLANAR_RGB the frame must be planar GRK_INT_32 with the
+ * numcomps and dimensions the begin call declared.
+ *
+ * When the device runs the colour transform, every component must carry the
+ * source_prec the begin call declared and the frame reaches the device
+ * untouched. Otherwise apply_xyz_transform runs the transform on @p frame in
+ * place, the way grk_compress() consumes an image, and samples deeper than the
+ * batch precision are shifted down.
+ *
+ * For a YUV source_format, comps[0] is the luma plane, W by H with dx and dy 1.
+ * comps[1] and comps[2] are Cb and Cr with dx 2, dy 2 for 4:2:0 and dy 1 for
+ * 4:2:2, w (W+1)/2 and h (H+1)/2 for 4:2:0 or H for 4:2:2. Every component
+ * carries the batch's source_prec, data_type GRK_INT_8 at 8 bits and
+ * GRK_INT_16 at 10 bits, where a 16-bit container holds 0 to 1023 little
+ * endian, and stride is the row pitch in samples. grok checks that shape and
+ * hands the three plane pointers and their byte strides to the plugin without
+ * copying or converting a sample.
+ *
+ * For GRK_SOURCE_RGB48LE the frame is one interleaved buffer, the layout a
+ * chunky 16-bit TIFF row and ffmpeg's rgb48le output already have. Every
+ * component is W by H with dx and dy 1 and prec the batch's source_prec, 8 to
+ * 16 bits right justified in a 16-bit container, and data_type GRK_INT_16.
+ * comps[0].data points at the buffer and comps[0].stride is the row pitch in
+ * 16-bit samples, so 3 * W for an unpadded row. comps[1] and comps[2] carry the
+ * same w, h, dx, dy and prec and a null data pointer, which grok ignores. The
+ * device sees the same samples the planar path packs for it, so every plugin
+ * that takes GRK_SOURCE_PLANAR_RGB takes this one too, X'Y'Z' on or off.
+ *
+ * Blocks while the pipeline is full. The frame is copied before this returns,
+ * a YUV source's three planes included, so the caller may free or reuse them
+ * as soon as it comes back.
+ *
+ * @param frame       the frame to compress
+ * @param frame_user  handed to the callback as its @p frame argument
+ * @return true when the frame is queued
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_submit(grk_image* frame, void* frame_user);
+
+/**
+ * @brief Drains and shuts down the in-memory batch.
+ *
+ * Every submitted frame has reached the callback by the time this returns.
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void);
+
+/**
  * @brief Plugin init decompressors
  */
 typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info* header_info, grk_image* image);
