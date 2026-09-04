@@ -188,7 +188,11 @@ void CodeStreamDecompress::postReadHeader(void)
   // set up tile completion based on tile and image bounds
   if(headerRead_)
   {
-    setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));
+    if(!setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1)))
+    {
+      headerError_ = true;
+      return;
+    }
     // Refresh decompress_width/height/etc. now that region bounds are applied.
     // Without this, formats that write headers before decompress() see stale
     // full-image dimensions instead of the (possibly reduced) region dimensions.
@@ -310,7 +314,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
 
   postReadHeader();
 
-  return true;
+  return !headerError_;
 }
 GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {

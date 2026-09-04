@@ -279,37 +279,27 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
 
     uint32_t comp_x1 = ceildiv<uint32_t>(x1, comp->dx);
     comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
-    if(comp_x1 <= c.x0)
-    {
-      grklog.error("subsampleAndReduce: component %u: x1 (%u) is <= x0 (%u). Subsampled and "
-                   "reduced image is invalid",
-                   compno, comp_x1, c.x0);
-      return false;
-    }
-    uint32_t w = (uint32_t)(comp_x1 - c.x0);
-    assert(w);
     uint32_t comp_y1 = ceildiv<uint32_t>(y1, comp->dy);
     comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
-    if(comp_y1 <= comp->y0)
-    {
-      grklog.error("subsampleAndReduce: component %u: y1 (%u) is <= y0 (%u).  Subsampled and "
-                   "reduced image is invalid",
-                   compno, comp_y1, comp->y0);
-      return false;
-    }
-    uint32_t h = (uint32_t)(comp_y1 - c.y0);
-    assert(h);
+    // empty subsampled component: keep windowing the rest
+    uint32_t w = (comp_x1 > c.x0) ? (uint32_t)(comp_x1 - c.x0) : 0;
+    uint32_t h = (comp_y1 > c.y0) ? (uint32_t)(comp_y1 - c.y0) : 0;
     bool needsAlloc = (comp->w != w || comp->h != h);
     comp->x0 = c.x0;
     comp->y0 = c.y0;
     comp->w = w;
     comp->h = h;
+    if(w == 0 || h == 0)
+    {
+      single_component_data_free(comp);
+      continue;
+    }
     if(comp->data)
     {
       if(needsAlloc)
         allocData(comp);
       else
-        memset(comp->data, 0, comp->stride * comp->h * sizeOfDataType(comp->data_type));
+        memset(comp->data, 0, (size_t)comp->stride * comp->h * sizeOfDataType(comp->data_type));
     }
   }
 

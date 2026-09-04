@@ -304,6 +304,15 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_wavelet_53_overflow_test PROPERTIES TIMEOUT 60)
 endif()
 
+# OSS-Fuzz OOM: empty subsampled component left a SIZ-width alloc
+add_executable(grk_image_alloc_oom_test GrkImageAllocOomTest.cpp)
+target_link_libraries(grk_image_alloc_oom_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(grk_image_alloc_oom_test psapi)
+endif()
+add_test(NAME grk_image_alloc_oom_test COMMAND grk_image_alloc_oom_test)
+set_tests_properties(grk_image_alloc_oom_test PROPERTIES TIMEOUT 60)
+
 # OSS-Fuzz MSan: uninitialized partial 5/3 wavelet
 add_executable(grk_sparse_canvas_test GrkSparseCanvasTest.cpp)
 target_link_libraries(grk_sparse_canvas_test ${GROK_CORE_NAME} spdlog::spdlog)
