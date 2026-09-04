@@ -426,7 +426,6 @@ grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_4.j2k.png -
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_5.j2k.png -L 9 -d 4,4,7,7 -r 1
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_6.j2k.png -L 9 -d 4,4,5,5 -r 1
 
-# see Grok issue #59 for details on why grk_decompress should error out in the test below
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_8_6.j2k.png -L 9 -d 9,9,12,12 -r 2
 
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9.j2k.png -L 9 -t 0
@@ -438,8 +437,7 @@ grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10.j2k.png -L
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_1.j2k.png -L 9 -t 5 -r 2
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_2.j2k.png -L 9 -t 9 -r 2
 
-# see Grok issue #59 for details on why grk_decompress should error out in the test below
-!grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -L 9 -t 15 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -L 9 -t 15 -r 2
 
 grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_11.j2k.png -L 9 -r 4
 
