@@ -266,9 +266,10 @@ def main():
         help=(
             "Write to md5refs-NAME.txt instead of md5refs.txt. "
             "Use the platform key matching the CI matrix: ubuntu-static, "
-            "macos-dynamic, macos-static, windows-dynamic, windows-static. "
-            "ubuntu-dynamic is canonical (md5refs.txt) and needs no platform key. "
-            "Example: --platform macos-static"
+            "macos-dynamic, macos-static, windows-dynamic, windows-static, "
+            "or ubuntu-dynamic-debug for a Debug build. "
+            "ubuntu-dynamic Release is canonical (md5refs.txt) and needs no "
+            "platform key. Example: --platform macos-static"
         ),
     )
     parser.add_argument(

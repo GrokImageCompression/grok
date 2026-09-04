@@ -36,11 +36,11 @@
 # REFFILE:      Path to the canonical md5refs.txt file
 # OUTFILENAME:  The name of the generated file to check
 # PLATFORM_KEY: (optional) Platform key string (e.g. "ubuntu-dynamic",
-#               "macos-static") used to select a platform-specific
-#               md5refs-<PLATFORM_KEY>.txt that overrides REFFILE when it exists.
-#               This lets each OS ⨉ linkage combination carry its own checksums
-#               for floating-point-sensitive codecs (e.g. 9/7 wavelet) without
-#               requiring separate branches.
+#               "macos-static", "ubuntu-dynamic-debug") used to select a
+#               platform-specific md5refs-<PLATFORM_KEY>.txt that overrides
+#               REFFILE when it exists. This lets each OS ⨉ linkage ⨉ build
+#               type combination carry its own checksums for floating-point
+#               sensitive codecs (e.g. 9/7 wavelet) without separate branches.
 
 # Resolve the active reference file: prefer platform-specific override.
 # Platform-specific files only contain entries that *differ* from canonical;
@@ -87,6 +87,20 @@ string(REGEX REPLACE "\\.[^.]*$" "" _outfilename_stem "${_outfilename_name}")
 string(REGEX MATCH "\\.[^.]*$" _outfilename_ext "${_outfilename_name}")
 
 file(GLOB globfiles "Temporary/${_outfilename_stem}*${_outfilename_ext}")
+
+# Reject prefix matches such as Bretagne2_ht_lossy.
+string(REGEX REPLACE "([][+.*()^$?|\\])" "\\\\\\1" _stem_re "${_outfilename_stem}")
+string(REGEX REPLACE "([][+.*()^$?|\\])" "\\\\\\1" _ext_re "${_outfilename_ext}")
+set(_ownfiles "")
+foreach(_path ${globfiles})
+  get_filename_component(_name ${_path} NAME)
+  if(_name STREQUAL _outfilename_name)
+    list(APPEND _ownfiles ${_path})
+  elseif(_name MATCHES "^${_stem_re}_[0-9]+${_ext_re}$")
+    list(APPEND _ownfiles ${_path})
+  endif()
+endforeach()
+set(globfiles ${_ownfiles})
 
 # Check if no files are found
 if(NOT globfiles)

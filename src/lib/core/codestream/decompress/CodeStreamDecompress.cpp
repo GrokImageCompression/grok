@@ -2648,9 +2648,9 @@ void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
 bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
-  // the header copy points at the composite's pixels from the previous decode
+  // Drop aliased pixels and their stride.
   for(uint16_t i = 0; i < scratch->numcomps; i++)
-    scratch->comps[i].data = nullptr;
+    GrkImage::setDataToNull(scratch->comps + i);
   scratchDataPending_ = false;
   scratchDataAllocated_ = false;
   scratchBandRowHeights_.clear();

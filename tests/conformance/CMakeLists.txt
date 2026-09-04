@@ -6,7 +6,8 @@ set(BASELINE_NR ${GRK_DATA_ROOT}/baseline/nonregression)
 set(INPUT_CONF ${GRK_DATA_ROOT}/input/conformance)
 
 # the baselines come from gcc on x86 with fused multiply-add in the 9/7 kernels.
-# clang on arm64 fuses other steps and msvc none, so a few samples land one off
+# clang on arm64 fuses other steps, msvc none, and Debug gcc does not fuse,
+# so a few samples land one off
 set(macos_fma_tolerance_files p0_04.j2k p0_06.j2k p1_02.j2k p1_04.j2k p1_05.j2k file2.jp2 zoo2.jp2)
 set(windows_fma_tolerance_files p0_04.j2k p0_06.j2k p1_02.j2k p1_04.j2k p1_05.j2k zoo2.jp2)
 set(fma_peak_tolerance 1)
@@ -14,9 +15,12 @@ set(fma_mse_tolerance 0.001)
 
 function(compare2base_mode out_var filename num_components)
   set(tolerated FALSE)
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" _compare2base_cfg)
   if(APPLE AND filename IN_LIST macos_fma_tolerance_files)
     set(tolerated TRUE)
   elseif(WIN32 AND filename IN_LIST windows_fma_tolerance_files)
+    set(tolerated TRUE)
+  elseif(_compare2base_cfg STREQUAL "DEBUG" AND filename IN_LIST macos_fma_tolerance_files)
     set(tolerated TRUE)
   endif()
   if(tolerated)

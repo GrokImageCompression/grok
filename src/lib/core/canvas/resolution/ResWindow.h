@@ -88,6 +88,12 @@ private:
     Rect32 resWindowPadded;
     for(uint8_t orient = 0; orient < ((resno) > 0 ? t1::BAND_NUM_ORIENTATIONS : 1); orient++)
     {
+      // DFS can omit HL, LH or HH.
+      if(resno > 0 && orient != t1::BAND_ORIENT_LL && !ResSimple::hasBand(split, orient))
+      {
+        bandWindowsBoundsPadded_.push_back(Rect32());
+        continue;
+      }
       // todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
       auto bandWindow =
           getPaddedBandWindow(numDecompsX, numDecompsY, split, orient, tileCompWindowUnreduced,
