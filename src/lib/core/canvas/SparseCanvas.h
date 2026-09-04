@@ -69,6 +69,8 @@ public:
   }
   bool alloc(Rect32 win, bool zeroOutBuffer)
   {
+    // clip DWT pad that sticks past the canvas
+    win = win.clip(bounds);
     if(!SparseCanvas::isWindowValid(win))
       return true;
     uint32_t blockWinHeight = 0;
@@ -116,22 +118,19 @@ private:
     return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 || win.y0 >= bounds.y1 ||
              win.y1 <= win.y0 || win.y1 > bounds.y1);
   }
-  bool readWrite(uint8_t resno, Rect32 win, T* buf, const uint32_t spacingX,
+  bool readWrite([[maybe_unused]] uint8_t resno, Rect32 win, T* buf, const uint32_t spacingX,
                  const uint32_t spacingY, bool isReadOperation)
   {
     if(!win.valid())
       return false;
     assert(!isReadOperation || buf);
 
-    if(!isWindowValid(win))
-    {
-      grklog.warn("Sparse canvas @ res %u, attempt to read/write invalid window (%u,%u,%u,%u) "
-                  "for bounds (%u,%u,%u,%u).",
-                  resno, win.x0, win.y0, win.x1, win.y1, bounds.x0, bounds.y0, bounds.x1,
-                  bounds.y1);
-      return false;
-    }
-    assert(spacingY != 0 || win.height() == 1);
+    // dest offsets stay relative to the unclipped window
+    const Rect32 destWin = win;
+    win = win.clip(bounds);
+    if(win.empty())
+      return true;
+    assert(spacingY != 0 || destWin.height() == 1);
     assert((spacingY <= 1 && spacingX >= 1) || (spacingY >= 1 && spacingX == 1));
 
     uint32_t gridY = win.y0 >> LBH;
@@ -148,28 +147,29 @@ private:
         blockWinWidth = (x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
         uint32_t blockOffsetX = blockWidth - blockWinWidth;
         blockWinWidth = (std::min<uint32_t>)(blockWinWidth, win.x1 - x);
-        if(!grid.contains(gridX, gridY))
-        {
-          grklog.warn("sparse canvas @ resno %u, Attempt to access a block (%u,%u) outside "
-                      "block grid bounds",
-                      resno, gridX, gridY);
-          return false;
-        }
-        auto srcBlock = getBlock(gridX, gridY);
+        auto srcBlock = grid.contains(gridX, gridY) ? getBlock(gridX, gridY) : nullptr;
         if(!srcBlock)
         {
-          grklog.warn("sparse canvas @ resno %u, %s op: missing block (%u,%u,%u,%u) for %s "
-                      "(%u,%u,%u,%u). Skipping.",
-                      resno, isReadOperation ? "read" : "write", bounds.x0 + gridX * blockWidth,
-                      bounds.y0 + gridY * blockHeight, bounds.x0 + (gridX + 1) * blockWidth,
-                      bounds.y0 + (gridY + 1) * blockHeight, isReadOperation ? "read" : "write",
-                      win.x0, win.y0, win.x1, win.y1);
+          if(isReadOperation && buf)
+          {
+            auto dest = buf + (y - destWin.y0) * spacingY + (x - destWin.x0) * spacingX;
+            for(uint32_t blockY = 0; blockY < blockWinHeight; blockY++)
+            {
+              uint64_t destInd = 0;
+              for(uint32_t blockX = 0; blockX < blockWinWidth; blockX++)
+              {
+                dest[destInd] = 0;
+                destInd += spacingX;
+              }
+              dest += spacingY;
+            }
+          }
           continue;
         }
         if(isReadOperation)
         {
           auto src = srcBlock->data + ((uint64_t)blockOffsetY << LBW) + blockOffsetX;
-          auto dest = buf + (y - win.y0) * spacingY + (x - win.x0) * spacingX;
+          auto dest = buf + (y - destWin.y0) * spacingY + (x - destWin.x0) * spacingX;
           for(uint32_t blockY = 0; blockY < blockWinHeight; blockY++)
           {
             uint64_t destInd = 0;
@@ -193,7 +193,7 @@ private:
         {
           const T* src = nullptr;
           if(buf)
-            src = buf + (y - win.y0) * spacingY + (x - win.x0) * spacingX;
+            src = buf + (y - destWin.y0) * spacingY + (x - destWin.x0) * spacingX;
           auto dest = srcBlock->data + ((uint64_t)blockOffsetY << LBW) + blockOffsetX;
           for(uint32_t blockY = 0; blockY < blockWinHeight; blockY++)
           {

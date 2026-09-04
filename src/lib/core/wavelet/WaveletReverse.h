@@ -71,7 +71,7 @@ struct dwt_scratch
   {
     if(!allocatedMem)
       return;
-    memset(allocatedMem, 0, lenBytes_);
+    memset(static_cast<void*>(allocatedMem), 0, lenBytes_);
   }
   void release(void)
   {

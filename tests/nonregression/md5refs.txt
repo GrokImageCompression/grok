@@ -393,7 +393,7 @@ dc8be2f974313a44a3213627b848186b  ESP_011261_1960_RGB.NOMAP_TRUNC.jp2.tif
 09a66b61dde5bbfc81b181f0fc97a896  page_tlm.tif
 09a66b61dde5bbfc81b181f0fc97a896  page.tif
 
-7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_0.pgx
+dc0d62be9ef0870171403e5649cda543  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_0.pgx
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_1.pgx
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_2.pgx
 

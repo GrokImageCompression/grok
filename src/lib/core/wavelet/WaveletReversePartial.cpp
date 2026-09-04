@@ -860,6 +860,8 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
           delete taskInfo;
           return false;
         }
+        // zeros for taps interleave may miss
+        taskInfo->data.clear();
         tasks.push_back(taskInfo);
         resFlow->waveletHoriz_->nextTask().work([taskInfo, executor_h] { executor_h(taskInfo); });
       }
@@ -887,6 +889,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
         delete taskInfo;
         return false;
       }
+      taskInfo->data.clear();
       tasks.push_back(taskInfo);
       resFlow->waveletVert_->nextTask().work([taskInfo, executor_v] { executor_v(taskInfo); });
     }
@@ -904,15 +907,15 @@ bool WaveletReverse::decompressPartial(void)
     {
       // one 128-bit vector holds 8 int16 columns
       constexpr uint32_t VERT_PASS_WIDTH = 8;
-      return partial_tile<
-          int16_t, int16_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
-          Partial53<int16_t, int16_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+      constexpr uint32_t FILTER_PAD_53 = getFilterPad<uint32_t>(true);
+      return partial_tile<int16_t, int16_t, FILTER_PAD_53, VERT_PASS_WIDTH,
+                          Partial53<int16_t, int16_t, FILTER_PAD_53, VERT_PASS_WIDTH>>(
           tilec_->getRegionWindow16(), partialTasks16_53_);
     }
     constexpr uint32_t VERT_PASS_WIDTH = 4;
-    return partial_tile<
-        int32_t, int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
-        Partial53<int32_t, int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
+    constexpr uint32_t FILTER_PAD_53 = getFilterPad<uint32_t>(true);
+    return partial_tile<int32_t, int32_t, FILTER_PAD_53, VERT_PASS_WIDTH,
+                        Partial53<int32_t, int32_t, FILTER_PAD_53, VERT_PASS_WIDTH>>(
         tilec_->getRegionWindow(), partialTasks53_);
   }
   else
