@@ -180,45 +180,47 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         auto paddedBandWindow = tilec->getBandWindowPadded(resno, band->orientation_);
         for(auto precinct : band->precincts_)
         {
-          if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
-            continue;
-          for(uint32_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
+          auto scheduleBlock = [&](uint32_t cblkno) {
+            auto cblk = precinct->getDecompressBlock(cblkno);
+            auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
+            block->x = cblk->x0();
+            block->y = cblk->y0();
+            bool htBlock = tcp->isHT() && !cblk->isPart1Block();
+            block->postProcessor_ =
+                htBlock ? t1::DecompressBlockPostProcessor<int32_t>(
+                              [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                      uint16_t stride) {
+                                tilec->postProcessBlockHT(srcData, block, stride);
+                              })
+                        : t1::DecompressBlockPostProcessor<int32_t>(
+                              [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                      [[maybe_unused]] uint16_t stride) {
+                                tilec->postProcessBlock(srcData, block);
+                              });
+            block->bandIndex = bandIndex;
+            block->bandNumbps = band->maxBitPlanes_;
+            block->bandOrientation = band->orientation_;
+            block->cblk = cblk;
+            block->cblk_sty = tccp->cblkStyle_;
+            block->qmfbid = tccp->qmfbid_;
+            block->qShift = tilec->qShift();
+            block->resno = resno;
+            block->roishift = tccp->roishift_;
+            block->stepsize = band->stepsize_;
+            block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+            if(htBlock)
+              block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
+            block->R_b = prec_ + gain_b[band->orientation_];
+            resBlocks.blocks_.push_back(block);
+          };
+          if(wholeTileDecoding)
           {
-            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-            if(wholeTileDecoding || paddedBandWindow->nonEmptyIntersection(&cblkBounds))
-            {
-              auto cblk = precinct->getDecompressBlock(cblkno);
-              auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
-              block->x = cblk->x0();
-              block->y = cblk->y0();
-              bool htBlock = tcp->isHT() && !cblk->isPart1Block();
-              block->postProcessor_ =
-                  htBlock ? t1::DecompressBlockPostProcessor<int32_t>(
-                                [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                        uint16_t stride) {
-                                  tilec->postProcessBlockHT(srcData, block, stride);
-                                })
-                          : t1::DecompressBlockPostProcessor<int32_t>(
-                                [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                        [[maybe_unused]] uint16_t stride) {
-                                  tilec->postProcessBlock(srcData, block);
-                                });
-              block->bandIndex = bandIndex;
-              block->bandNumbps = band->maxBitPlanes_;
-              block->bandOrientation = band->orientation_;
-              block->cblk = cblk;
-              block->cblk_sty = tccp->cblkStyle_;
-              block->qmfbid = tccp->qmfbid_;
-              block->qShift = tilec->qShift();
-              block->resno = resno;
-              block->roishift = tccp->roishift_;
-              block->stepsize = band->stepsize_;
-              block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
-              if(htBlock)
-                block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
-              block->R_b = prec_ + gain_b[band->orientation_];
-              resBlocks.blocks_.push_back(block);
-            }
+            for(uint32_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
+              scheduleBlock(cblkno);
+          }
+          else
+          {
+            precinct->forEachCodeBlockIn(paddedBandWindow, scheduleBlock);
           }
         }
       }

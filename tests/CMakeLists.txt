@@ -263,6 +263,16 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_packet_iter_empty_poc_test PROPERTIES TIMEOUT 60)
 endif()
 
+# OSS-Fuzz timeout: block scheduler walked every code block of a 2^15 precinct for a 1024x1024 window
+add_executable(grk_block_schedule_window_test GrkBlockScheduleWindowTest.cpp)
+target_link_libraries(grk_block_schedule_window_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_block_schedule_window_test
+    COMMAND grk_block_schedule_window_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5391744544604160)
+  set_tests_properties(grk_block_schedule_window_test PROPERTIES TIMEOUT 60)
+endif()
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring 58368 quality
 # layers made T2 packet parsing create a block per code block in the precinct.
 # The test fails if peak resident memory exceeds 1 GB.

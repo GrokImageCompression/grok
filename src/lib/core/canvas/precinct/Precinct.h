@@ -130,6 +130,20 @@ struct Precinct : public Rect32_16
    */
   Rect32_16 getCblkGrid(void);
 
+  template<typename Visit>
+  void forEachCodeBlockIn(const Rect32* window, Visit visit)
+  {
+    auto grid = getCblkGrid();
+    auto windowGrid = window->scaleDownPow2(getCblkExpn()).clip(grid);
+    for(auto gridY = windowGrid.y0; gridY < windowGrid.y1; ++gridY)
+    {
+      auto cblkno =
+          (uint32_t)((windowGrid.x0 - grid.x0()) + (uint64_t)(gridY - grid.y0()) * grid.width());
+      for(auto gridX = windowGrid.x0; gridX < windowGrid.x1; ++gridX)
+        visit(cblkno++);
+    }
+  }
+
 protected:
   uint16_t numLayers_;
 

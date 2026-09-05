@@ -104,46 +104,34 @@ struct TileComponent : public Rect32
         {
           if(precinct->empty())
             continue;
-          auto cblk_grid = precinct->getCblkGrid();
-          auto cblk_expn = precinct->getCblkExpn();
-          auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
-          auto w = cblk_grid.width();
-          for(auto j = roi_grid.y0; j < roi_grid.y1; ++j)
-          {
-            uint32_t cblkno =
-                (uint32_t)((roi_grid.x0 - cblk_grid.x0()) + (uint64_t)(j - cblk_grid.y0()) * w);
-            for(auto i = roi_grid.x0; i < roi_grid.x1; ++i)
-            {
-              auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
+          precinct->forEachCodeBlockIn(roi, [&](uint32_t cblkno) {
+            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
-              // transform from canvas coordinates
-              // to buffer coordinates (relative to associated resolution origin)
-              uint32_t x = cblkBounds.x0() - band->x0;
-              uint32_t y = cblkBounds.y0() - band->y0;
-              if(band->orientation_ & 1)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                x += prev_res->width();
-              }
-              if(band->orientation_ & 2)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                y += prev_res->height();
-              }
-              // add to union of code block bounds
-              if(first)
-              {
-                temp = Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
-                first = false;
-              }
-              else
-              {
-                temp =
-                    temp.rectUnion(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
-              }
-              cblkno++;
+            // transform from canvas coordinates
+            // to buffer coordinates (relative to associated resolution origin)
+            uint32_t x = cblkBounds.x0() - band->x0;
+            uint32_t y = cblkBounds.y0() - band->y0;
+            if(band->orientation_ & 1)
+            {
+              auto prev_res = resolutions_ + resno - 1;
+              x += prev_res->width();
             }
-          }
+            if(band->orientation_ & 2)
+            {
+              auto prev_res = resolutions_ + resno - 1;
+              y += prev_res->height();
+            }
+            // add to union of code block bounds
+            if(first)
+            {
+              temp = Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
+              first = false;
+            }
+            else
+            {
+              temp = temp.rectUnion(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
+            }
+          });
         }
       }
     }
@@ -165,43 +153,32 @@ struct TileComponent : public Rect32
         {
           if(precinct->empty())
             continue;
-          auto cblk_grid = precinct->getCblkGrid();
-          auto cblk_expn = precinct->getCblkExpn();
-          auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
-          auto w = cblk_grid.width();
-          for(auto gridY = roi_grid.y0; gridY < roi_grid.y1; ++gridY)
-          {
-            uint32_t cblkno =
-                (uint32_t)((roi_grid.x0 - cblk_grid.x0()) + (uint64_t)(gridY - cblk_grid.y0()) * w);
-            for(auto gridX = roi_grid.x0; gridX < roi_grid.x1; ++gridX)
+          precinct->forEachCodeBlockIn(roi, [&](uint32_t cblkno) {
+            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
+
+            // transform from canvas coordinates
+            // to buffer coordinates (relative to associated resolution origin)
+            uint32_t x = cblkBounds.x0() - band->x0;
+            uint32_t y = cblkBounds.y0() - band->y0;
+            if(band->orientation_ & 1)
             {
-              auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-
-              // transform from canvas coordinates
-              // to buffer coordinates (relative to associated resolution origin)
-              uint32_t x = cblkBounds.x0() - band->x0;
-              uint32_t y = cblkBounds.y0() - band->y0;
-              if(band->orientation_ & 1)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                x += prev_res->width();
-              }
-              if(band->orientation_ & 2)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                y += prev_res->height();
-              }
-
-              // the wavelet reads windows of code blocks whose decode failed
-              if(!regionWindow->alloc(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
-                                      true))
-              {
-                delete regionWindow;
-                throw std::runtime_error("unable to allocate sparse array");
-              }
-              cblkno++;
+              auto prev_res = resolutions_ + resno - 1;
+              x += prev_res->width();
             }
-          }
+            if(band->orientation_ & 2)
+            {
+              auto prev_res = resolutions_ + resno - 1;
+              y += prev_res->height();
+            }
+
+            // the wavelet reads windows of code blocks whose decode failed
+            if(!regionWindow->alloc(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
+                                    true))
+            {
+              delete regionWindow;
+              throw std::runtime_error("unable to allocate sparse array");
+            }
+          });
         }
       }
     }
