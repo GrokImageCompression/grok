@@ -1522,8 +1522,7 @@ void grk_plugin_stop_batch_compress(void)
 
 static const char* gpup_batch_memory_begin_method_name = "gpup_batch_memory_begin";
 static const char* gpup_batch_memory_submit_method_name = "gpup_batch_memory_submit";
-static const char* gpup_batch_memory_submit_planes_method_name =
-    "gpup_batch_memory_submit_planes";
+static const char* gpup_batch_memory_submit_planes_method_name = "gpup_batch_memory_submit_planes";
 static const char* gpup_batch_memory_end_method_name = "gpup_batch_memory_end";
 typedef int32_t (*GPUP_BATCH_MEMORY_BEGIN)(gpup_batch_memory_info* info);
 typedef bool (*GPUP_BATCH_MEMORY_SUBMIT)(const uint8_t* packed, void* host_data);
@@ -1702,8 +1701,8 @@ bool planarYuvPlanes(const grk_image* frame, const uint8_t* planes[3], size_t st
     auto comp = frame->comps + c;
     bool isChroma = c > 0;
     uint32_t expectedWidth = isChroma ? (batchMemory.width + 1) / 2 : batchMemory.width;
-    uint32_t expectedHeight = (isChroma && chromaIsHalfHeight) ? (batchMemory.height + 1) / 2
-                                                               : batchMemory.height;
+    uint32_t expectedHeight =
+        (isChroma && chromaIsHalfHeight) ? (batchMemory.height + 1) / 2 : batchMemory.height;
     uint8_t expectedSubsamplingX = isChroma ? 2 : 1;
     uint8_t expectedSubsamplingY = (isChroma && chromaIsHalfHeight) ? 2 : 1;
     if(!comp->data || comp->data_type != expectedType || comp->w != expectedWidth ||

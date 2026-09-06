@@ -602,8 +602,7 @@ YuvPlanes makeYuvPlanes(const YuvSource& source, uint32_t frameIndex)
 {
   YuvPlanes planes;
   planes.chromaWidth = (kYuvWidth + 1) / 2;
-  planes.chromaHeight =
-      source.format == GRK_SOURCE_YUV420P ? (kYuvHeight + 1) / 2 : kYuvHeight;
+  planes.chromaHeight = source.format == GRK_SOURCE_YUV420P ? (kYuvHeight + 1) / 2 : kYuvHeight;
   planes.lumaStride = kYuvWidth + kYuvLumaStridePadding;
   planes.chromaStride = planes.chromaWidth + kYuvChromaStridePadding;
   planes.luma.assign((size_t)planes.lumaStride * kYuvHeight, 0);
@@ -619,8 +618,7 @@ YuvPlanes makeYuvPlanes(const YuvSource& source, uint32_t frameIndex)
   {
     for(uint32_t x = 0; x < kYuvWidth; ++x)
     {
-      int32_t gradient =
-          lumaLow + (int32_t)((uint64_t)x * (lumaHigh - lumaLow) / (kYuvWidth - 1));
+      int32_t gradient = lumaLow + (int32_t)((uint64_t)x * (lumaHigh - lumaLow) / (kYuvWidth - 1));
       int32_t band = ((y / 32) % 2) ? (lumaHigh - lumaLow) / 8 : 0;
       int32_t jitter = (int32_t)(pseudoRandom(x * 7919u + y * 104729u + frameIndex * 15485863u) %
                                  (uint32_t)(24 * scale));
@@ -635,10 +633,10 @@ YuvPlanes makeYuvPlanes(const YuvSource& source, uint32_t frameIndex)
     {
       // Cb runs down the picture and Cr across it, so swapping the two planes
       // cannot pass
-      int32_t blueGradient = chromaLow + (int32_t)((uint64_t)y * (chromaHigh - chromaLow) /
-                                                   (planes.chromaHeight - 1));
-      int32_t redGradient = chromaLow + (int32_t)((uint64_t)x * (chromaHigh - chromaLow) /
-                                                  (planes.chromaWidth - 1));
+      int32_t blueGradient =
+          chromaLow + (int32_t)((uint64_t)y * (chromaHigh - chromaLow) / (planes.chromaHeight - 1));
+      int32_t redGradient =
+          chromaLow + (int32_t)((uint64_t)x * (chromaHigh - chromaLow) / (planes.chromaWidth - 1));
       int32_t blueJitter =
           (int32_t)(pseudoRandom(x * 2654435761u + y * 40503u + frameIndex * 6700417u) %
                     (uint32_t)(16 * scale));
@@ -781,8 +779,7 @@ YuvFrameBuffers toFrameBuffers(const YuvPlanes& planes, uint8_t sourcePrec)
   return buffers;
 }
 
-grk_image* yuvFrameImage(const YuvPlanes& planes, const YuvSource& source,
-                         YuvFrameBuffers& buffers)
+grk_image* yuvFrameImage(const YuvPlanes& planes, const YuvSource& source, YuvFrameBuffers& buffers)
 {
   auto components = std::make_unique<grk_image_comp[]>(kNumComps);
   for(uint32_t i = 0; i < kNumComps; ++i)
@@ -1162,8 +1159,8 @@ void checkRgb48(bool applyXyz)
 {
   const uint32_t frameCount = 8;
   uint8_t framePrec = applyXyz ? kSourcePrecision16 : kPrecision;
-  std::printf("interleaved 16 bit RGB, xyz %s, %ux%u, %u frames\n", applyXyz ? "on" : "off",
-              kWidth, kHeight, frameCount);
+  std::printf("interleaved 16 bit RGB, xyz %s, %ux%u, %u frames\n", applyXyz ? "on" : "off", kWidth,
+              kHeight, frameCount);
   grk_cparameters params;
   cinemaParameters(params);
   params.apply_xyz_transform = applyXyz;
@@ -1355,13 +1352,12 @@ int main()
   checkYuvUnsupportedDepth();
   checkDeterminism();
   checkDecompressBetweenBatches();
-  static const YuvSource yuvSources[] = {
-      {"planar 8 bit 4:2:0, limited range, BT.709", GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false,
-       8},
-      {"planar 10 bit 4:2:2, limited range, BT.709", GRK_SOURCE_YUV422P, GRK_YUV_BT709, true,
-       false, 10},
-      {"planar 8 bit 4:2:0, limited range, BT.601 left unset", GRK_SOURCE_YUV420P, GRK_YUV_BT601,
-       false, false, 8}};
+  static const YuvSource yuvSources[] = {{"planar 8 bit 4:2:0, limited range, BT.709",
+                                          GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false, 8},
+                                         {"planar 10 bit 4:2:2, limited range, BT.709",
+                                          GRK_SOURCE_YUV422P, GRK_YUV_BT709, true, false, 10},
+                                         {"planar 8 bit 4:2:0, limited range, BT.601 left unset",
+                                          GRK_SOURCE_YUV420P, GRK_YUV_BT601, false, false, 8}};
   for(const auto& source : yuvSources)
     checkYuvSource(source);
   checkRgb48(true);

@@ -111,7 +111,7 @@ int main()
   int failures = 0;
   const uint64_t rawBytes = (uint64_t)kWidth * kHeight * 3 * 12 / 8;
   const GRK_RATE_CONTROL_ALGORITHM algorithms[] = {GRK_RATE_CONTROL_BISECT,
-                                                    GRK_RATE_CONTROL_PCRD_OPT};
+                                                   GRK_RATE_CONTROL_PCRD_OPT};
   const char* names[] = {"bisect", "pcrd"};
   // the pattern compresses to under a tenth of its raw size, so all of these fit
   const double ratios[] = {1.0, 1.5, 3.0};
@@ -126,7 +126,8 @@ int main()
                   (unsigned long long)(rawBytes / ratio), differences);
       if(differences != 0)
       {
-        std::fprintf(stderr, "FAIL: %s at %.1f:1 lost samples under a budget the whole stream fits\n",
+        std::fprintf(stderr,
+                     "FAIL: %s at %.1f:1 lost samples under a budget the whole stream fits\n",
                      names[a], ratio);
         ++failures;
       }
