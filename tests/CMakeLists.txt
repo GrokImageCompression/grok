@@ -334,6 +334,11 @@ add_executable(grk_short_tile_round_trip_test GrkShortTileRoundTripTest.cpp)
 target_link_libraries(grk_short_tile_round_trip_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_short_tile_round_trip_test COMMAND grk_short_tile_round_trip_test)
 
+# window with no sample of a subsampled component across several tiles
+add_executable(grk_empty_component_multi_tile_test GrkEmptyComponentMultiTileTest.cpp)
+target_link_libraries(grk_empty_component_multi_tile_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_empty_component_multi_tile_test COMMAND grk_empty_component_multi_tile_test)
+
 add_executable(grk_truncated_stream_test GrkTruncatedStreamTest.cpp)
 target_link_libraries(grk_truncated_stream_test ${GROK_CORE_NAME} spdlog::spdlog)
 if(GRK_DATA_ROOT)
@@ -560,7 +565,7 @@ if(GRK_DATA_ROOT)
   # a window with no samples in one component reaches the pgx writer with null data
   add_test(NAME grk_pgx_empty_component_test
     COMMAND grk_decompress
-            -i ${GRK_DATA_ROOT}/input/nonregression/empty-subsampled-component-window.j2k
+            -i ${GRK_DATA_ROOT}/input/nonregression/empty-subsampled-component-window
             -o ${CMAKE_CURRENT_BINARY_DIR}/empty_component.pgx -d 0,0,1024,1024)
   set_tests_properties(grk_pgx_empty_component_test PROPERTIES
     PASS_REGULAR_EXPRESSION "has no data")

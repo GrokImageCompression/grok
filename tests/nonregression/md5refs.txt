@@ -153,7 +153,6 @@ c6c33248912ba3212f54fd5162fad9e9  p1_04_17_t63_r2.j2k.png
 347c048fe22475c51ed95f4b94816517  p1_04_19_t12_r1.j2k.png
 3d613bb2cf3c43856010b2dfcb967683  p1_06_10_1.j2k.png
 eaf876d44b8ed619b06c675e45959bb9  p1_06_10_2.j2k.png
-47392dd79dc6c9416ac5fc91c66b32ae  p1_06_10_3.j2k.png
 9921c3b6e062fe9f5f095da10d958fd5  p1_06_10.j2k.png
 9921c3b6e062fe9f5f095da10d958fd5  p1_06_11.j2k.png
 0a3a9b88282708d4356e47f98843423d  p1_06_1.j2k.png
@@ -416,7 +415,6 @@ e77d80cefb39f0ab194a3863bb94820f  issue208.jp2_3.pgx
 b012209037c84dc5c6c69cc1df060316  issue363-4740.jp2_0.pgx
 ef3c15d181f0e2fb7d6f7fd5d0ec0036  issue363-4792.jp2_0.pgx
 c204192d3dd015ddf4abb8511d5aac05  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4848395914379264_0.pgx
-47392dd79dc6c9416ac5fc91c66b32ae  p1_06_8_6.j2k.png
 67cbdc79667fceec71f427ee2eed3719  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5119623367557120_0.pgx
 1e84f5f12b3ecf297028330649fe30d8  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5119623367557120_1.pgx
 a4484fb65aee85247fc7bf8b19507253  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5119623367557120_2.pgx

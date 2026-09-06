@@ -262,6 +262,7 @@ bool GrkImage::needsConversionToRGB(void) const
 
 bool GrkImage::subsampleAndReduce(uint8_t reduce)
 {
+  uint16_t emptyComponents = 0;
   for(uint16_t compno = 0; compno < numcomps; ++compno)
   {
     auto comp = comps + compno;
@@ -281,16 +282,20 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
     comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
     uint32_t comp_y1 = ceildiv<uint32_t>(y1, comp->dy);
     comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
-    // empty in this window: leave prior size
+    // subsampled component with no samples in the window keeps a zero size
     uint32_t w = (comp_x1 > c.x0) ? (uint32_t)(comp_x1 - c.x0) : 0;
     uint32_t h = (comp_y1 > c.y0) ? (uint32_t)(comp_y1 - c.y0) : 0;
-    if(w == 0 || h == 0)
-      continue;
     bool needsAlloc = (comp->w != w || comp->h != h);
     comp->x0 = c.x0;
     comp->y0 = c.y0;
     comp->w = w;
     comp->h = h;
+    if(w == 0 || h == 0)
+    {
+      single_component_data_free(comp);
+      emptyComponents++;
+      continue;
+    }
     if(comp->data)
     {
       if(needsAlloc)
@@ -298,6 +303,12 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
       else
         memset(comp->data, 0, (size_t)comp->stride * comp->h * sizeOfDataType(comp->data_type));
     }
+  }
+  if(numcomps && emptyComponents == numcomps)
+  {
+    grklog.error("Decompress window (%u,%u,%u,%u) has no samples at reduction %u", x0, y0, x1, y1,
+                 reduce);
+    return false;
   }
 
   return true;
@@ -905,12 +916,9 @@ bool GrkImage::allocCompositeData(void)
   for(uint16_t i = 0; i < numcomps; i++)
   {
     auto destComp = comps + i;
+    // subsampled component with no samples in the window
     if(destComp->w == 0 || destComp->h == 0)
-    {
-      grklog.error("Output component %u has invalid dimensions %u x %u", i, destComp->w,
-                   destComp->h);
-      return false;
-    }
+      continue;
     if(!destComp->data || !destComp->owns_data)
     {
       if(!GrkImage::allocData(destComp, true))

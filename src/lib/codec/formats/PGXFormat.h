@@ -229,6 +229,8 @@ bool PGXFormat<T>::writeImage(void)
   for(uint16_t compno = 0; compno < image_->numcomps; compno++)
   {
     auto comp = &image_->comps[compno];
+    if(comp->w == 0 || comp->h == 0)
+      continue;
     int nbytes = 0;
     if(fileName_.size() < 4)
     {
