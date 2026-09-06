@@ -126,6 +126,31 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevelX, uint8_t decompLe
 
   return true;
 }
+uint64_t ResPrecinctInfo::precinctsToWindow(uint64_t precinctIndex) const
+{
+  if(precinctIndex >= numPrecincts_)
+    return 0;
+  uint64_t width = tileBoundsPrecGrid.width();
+  uint64_t row = precinctIndex / width;
+  uint64_t column = precinctIndex % width;
+  uint64_t windowX0 = winPrecGrid.x0 - tileBoundsPrecGrid.x0;
+  uint64_t windowX1 = winPrecGrid.x1 - tileBoundsPrecGrid.x0;
+  uint64_t windowY0 = winPrecGrid.y0 - tileBoundsPrecGrid.y0;
+  uint64_t windowY1 = winPrecGrid.y1 - tileBoundsPrecGrid.y0;
+  if(row >= windowY1 || windowX0 >= windowX1)
+    return numPrecincts_ - precinctIndex;
+  if(row < windowY0)
+    return (windowY0 - row) * width - column + windowX0;
+  if(column < windowX0)
+    return windowX0 - column;
+  if(column >= windowX1)
+  {
+    if(row + 1 >= windowY1)
+      return numPrecincts_ - precinctIndex;
+    return width - column + windowX0;
+  }
+  return 0;
+}
 void ResPrecinctInfo::print(void)
 {
   grklog.info("\n");
@@ -991,11 +1016,12 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pocIndex, TileCodingPar
             auto inf = precinctInfoOPT_ + resno;
             inf->innerPrecincts_ = (uint64_t)prog.comp_e * prog.lay_e;
             auto compLayer = inf->innerPrecincts_;
-            inf->winPrecinctsLeft_ = inf->winPrecGrid.x0 * compLayer;
+            inf->winPrecinctsLeft_ =
+                (uint64_t)(inf->winPrecGrid.x0 - inf->tileBoundsPrecGrid.x0) * compLayer;
             inf->winPrecinctsRight_ =
                 (uint64_t)(inf->tileBoundsPrecGrid.x1 - inf->winPrecGrid.x1) * compLayer;
-            inf->winPrecinctsTop_ =
-                (uint64_t)inf->winPrecGrid.y0 * inf->tileBoundsPrecGrid.width() * compLayer;
+            inf->winPrecinctsTop_ = (uint64_t)(inf->winPrecGrid.y0 - inf->tileBoundsPrecGrid.y0) *
+                                    inf->tileBoundsPrecGrid.width() * compLayer;
             inf->winPrecinctsBottom_ =
                 (uint64_t)(inf->tileBoundsPrecGrid.y1 - inf->winPrecGrid.y1) *
                 inf->tileBoundsPrecGrid.width() * compLayer;
@@ -1029,9 +1055,9 @@ bool PacketIter::next(SparseBuffer* compressedPackets)
     switch(prog.progression)
     {
       case GRK_LRCP:
-        return next_lrcpOPT();
+        return next_lrcpOPT(compressedPackets);
       case GRK_RLCP:
-        return next_rlcpOPT();
+        return next_rlcpOPT(compressedPackets);
       case GRK_PCRL:
         return next_pcrlOPT();
       case GRK_RPCL:
@@ -1333,8 +1359,9 @@ bool PacketIter::skipPackets(SparseBuffer* compressedPackets, uint64_t numPacket
 
   return true;
 }
-bool PacketIter::next_lrcpOPT()
+bool PacketIter::next_lrcpOPT(SparseBuffer* compressedPackets)
 {
+  bool skipOutsideWindow = compressedPackets && !isWholeTile();
   for(; layno < prog.lay_e; layno++)
   {
     for(; resno < prog.res_e; resno++)
@@ -1344,10 +1371,24 @@ bool PacketIter::next_lrcpOPT()
         continue;
 
       auto prec_e = precInfo->numPrecincts_;
+      // resolutions dropped by reduce are interleaved with the kept ones
+      if(compressedPackets && resno >= maxNumDecompositionResolutions)
+      {
+        if(!skipPackets(compressedPackets, prec_e * (uint64_t)(prog.comp_e - prog.comp_s)))
+          return false;
+        continue;
+      }
       for(; compno < prog.comp_e; compno++)
       {
         if(incrementInner)
           precinctIndex++;
+        if(skipOutsideWindow)
+        {
+          auto skipped = precInfo->precinctsToWindow(precinctIndex);
+          if(skipped && !skipPackets(compressedPackets, skipped))
+            return false;
+          precinctIndex += skipped;
+        }
         if(precinctIndex < prec_e)
         {
           incrementInner = true;
@@ -1363,8 +1404,9 @@ bool PacketIter::next_lrcpOPT()
 
   return false;
 }
-bool PacketIter::next_rlcpOPT()
+bool PacketIter::next_rlcpOPT(SparseBuffer* compressedPackets)
 {
+  bool skipOutsideWindow = compressedPackets && !isWholeTile();
   for(; resno < prog.res_e; resno++)
   {
     auto precInfo = precinctInfoOPT_ + resno;
@@ -1378,6 +1420,13 @@ bool PacketIter::next_rlcpOPT()
       {
         if(incrementInner)
           precinctIndex++;
+        if(skipOutsideWindow)
+        {
+          auto skipped = precInfo->precinctsToWindow(precinctIndex);
+          if(skipped && !skipPackets(compressedPackets, skipped))
+            return false;
+          precinctIndex += skipped;
+        }
         if(precinctIndex < prec_e)
         {
           incrementInner = true;

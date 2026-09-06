@@ -153,6 +153,8 @@ struct ResPrecinctInfo
 
   /** true if init() completed successfully */
   bool valid;
+
+  uint64_t precinctsToWindow(uint64_t precinctIndex) const;
 };
 
 /**
@@ -525,13 +527,13 @@ private:
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_lrcp();
-  bool next_lrcpOPT();
+  bool next_lrcpOPT(SparseBuffer* compressedPackets);
   /**
    Get next packet in resolution-layer-component-precinct order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_rlcp();
-  bool next_rlcpOPT();
+  bool next_rlcpOPT(SparseBuffer* compressedPackets);
   /**
    Get next packet in resolution-precinct-component-layer order.
    @return returns false if pi pointed to the final packet, otherwise true

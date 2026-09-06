@@ -352,6 +352,11 @@ add_executable(grk_empty_component_multi_tile_test GrkEmptyComponentMultiTileTes
 target_link_libraries(grk_empty_component_multi_tile_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_empty_component_multi_tile_test COMMAND grk_empty_component_multi_tile_test)
 
+# window decodes with PLT skipping against the full decode, every progression order
+add_executable(grk_plt_window_skip_test GrkPltWindowSkipTest.cpp)
+target_link_libraries(grk_plt_window_skip_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_plt_window_skip_test COMMAND grk_plt_window_skip_test)
+
 add_executable(grk_truncated_stream_test GrkTruncatedStreamTest.cpp)
 target_link_libraries(grk_truncated_stream_test ${GROK_CORE_NAME} spdlog::spdlog)
 if(GRK_DATA_ROOT)
