@@ -85,7 +85,7 @@ struct PluginDecodeCallbackInfo
         decod_format(format), cod_format(GPUP_FMT_UNK), codec(nullptr),
         decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
         tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr),
-        format_private(nullptr)
+        format_private(nullptr), codestream(nullptr), codestreamLength(0), frameUser(nullptr)
 
   {
     memset(&header_info, 0, sizeof(header_info));
@@ -108,6 +108,10 @@ struct PluginDecodeCallbackInfo
   uint32_t decompress_flags;
   void* user_data;
   void* format_private;
+  // an in-memory batch frame: the code stream to read instead of inputFile
+  const uint8_t* codestream;
+  size_t codestreamLength;
+  void* frameUser;
 };
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);
@@ -122,5 +126,10 @@ typedef int32_t (*PLUGIN_INIT_BATCH_DECODE)(const char* input_dir, const char* o
 typedef int32_t (*PLUGIN_BATCH_DECODE)(void);
 
 typedef void (*PLUGIN_STOP_BATCH_DECODE)(void);
+
+typedef int32_t (*PLUGIN_BATCH_DECODE_MEMORY_BEGIN)(gpup_batch_decompress_memory_info* info,
+                                                    PLUGIN_DECODE_USER_CALLBACK userCallback);
+
+typedef bool (*PLUGIN_BATCH_DECODE_MEMORY_END)(void);
 
 } // namespace grk

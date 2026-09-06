@@ -8,9 +8,11 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <thread>
 #include <algorithm>
 #include <vector>
 #include "grok.h"
@@ -42,6 +44,10 @@ constexpr int32_t kCinemaEncodeTolerance = 16;
 constexpr int32_t kTransformTolerance = 2;
 // the device inverse wavelet and the CPU's land within a code of each other
 constexpr int32_t kDeviceDecodeTolerance = 2;
+// the same wavelet difference through the sRGB curve, which stretches it near black
+constexpr int kSrgb8ByteTolerance = 8;
+constexpr double kSrgb8ShareOverOneCode = 0.1;
+constexpr double kSrgb8PullWait = 60.0;
 
 void fail(const char* what)
 {
@@ -1039,6 +1045,403 @@ void checkDecompressBetweenBatches()
               worst);
 }
 
+// the frames an in-memory decompress batch handed back, keyed by frame identity
+struct DecodedCollector
+{
+  std::mutex mutex;
+  std::map<size_t, std::vector<std::vector<int32_t>>> frames;
+  int failed = 0;
+  int duplicates = 0;
+};
+
+void collectDecoded(void* user, void* frame, const grk_image* image)
+{
+  auto collector = (DecodedCollector*)user;
+  std::lock_guard<std::mutex> lock(collector->mutex);
+  if(!image)
+  {
+    ++collector->failed;
+    return;
+  }
+  auto frameId = (size_t)frame;
+  if(collector->frames.count(frameId))
+    ++collector->duplicates;
+  std::vector<std::vector<int32_t>> planes;
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    std::vector<int32_t> plane((size_t)comp->w * comp->h);
+    auto data = (const int32_t*)comp->data;
+    for(uint32_t y = 0; y < comp->h; ++y)
+      std::copy(data + (size_t)y * comp->stride, data + (size_t)y * comp->stride + comp->w,
+                plane.begin() + (size_t)y * comp->w);
+    planes.push_back(std::move(plane));
+  }
+  collector->frames[frameId] = std::move(planes);
+}
+
+// kNumFrames cinema frames compressed on the CPU, keyed like a batch's collector
+bool compressOnCpu(grk_cparameters& params, Collector& encoded)
+{
+  grk_plugin_set_enabled(false);
+  for(uint32_t i = 0; i < kNumFrames; ++i)
+  {
+    auto frame = patternFrame(i, kPrecision);
+    if(!frame)
+      return false;
+    std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 2);
+    grk_cparameters frameParams = params;
+    grk_stream_params streamParams = {};
+    streamParams.buf = stream.data();
+    streamParams.buf_len = stream.size();
+    uint64_t length = 0;
+    auto codec = grk_compress_init(&streamParams, &frameParams, frame);
+    if(codec)
+      length = grk_compress(codec, nullptr);
+    grk_object_unref(codec);
+    grk_object_unref(&frame->obj);
+    if(!length)
+      return false;
+    stream.resize(length);
+    encoded.codestreams[(size_t)(i + 1)] = std::move(stream);
+  }
+  return true;
+}
+
+// the interleaved 8 bit rows an srgb8 batch hands back, keyed by frame identity
+struct Rgb8Collector
+{
+  std::mutex mutex;
+  std::map<size_t, std::vector<uint8_t>> frames;
+  int failed = 0;
+  int wrongShape = 0;
+};
+
+// what the batch's workers pull from: the code streams in order, the truncated one last
+struct PullSource
+{
+  std::mutex mutex;
+  std::vector<std::pair<size_t, const std::vector<uint8_t>*>> frames;
+  size_t next = 0;
+  size_t truncatedId = 0;
+  DecodedCollector* decoded = nullptr;
+  Rgb8Collector* rgb8 = nullptr;
+};
+
+// both callbacks get the same user pointer, the source
+void collectPulledFrame(void* user, void* frame, const grk_image* image)
+{
+  collectDecoded(((PullSource*)user)->decoded, frame, image);
+}
+
+void collectPulledRgb8(void* user, void* frame, const grk_image* image)
+{
+  auto collector = ((PullSource*)user)->rgb8;
+  std::lock_guard<std::mutex> lock(collector->mutex);
+  if(!image)
+  {
+    ++collector->failed;
+    return;
+  }
+  bool shaped = image->numcomps == kNumComps && image->comps[0].data && !image->comps[1].data &&
+                !image->comps[2].data;
+  for(uint16_t compno = 0; shaped && compno < kNumComps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    shaped = comp->w == kWidth && comp->h == kHeight && comp->prec == 8;
+  }
+  if(!shaped)
+  {
+    ++collector->wrongShape;
+    return;
+  }
+  const size_t rowBytes = (size_t)kWidth * kNumComps;
+  auto bytes = (const uint8_t*)image->comps[0].data;
+  std::vector<uint8_t> frameBytes(rowBytes * kHeight);
+  for(uint32_t y = 0; y < kHeight; ++y)
+    std::copy(bytes + (size_t)y * image->comps[0].stride,
+              bytes + (size_t)y * image->comps[0].stride + rowBytes,
+              frameBytes.begin() + (size_t)y * rowBytes);
+  collector->frames[(size_t)frame] = std::move(frameBytes);
+}
+
+// postkit's XyzToSrgb: 12 bit DCI X'Y'Z' to 8 bit sRGB through two 4096 entry curves
+struct XyzToSrgb
+{
+  XyzToSrgb()
+  {
+    for(int code = 0; code <= kMaxSample; ++code)
+    {
+      linear[code] = std::pow((float)code / 4095.0f, 2.6f);
+      float u = (float)code / 4095.0f;
+      float s = u <= 0.0031308f ? 12.92f * u : 1.055f * std::pow(u, 1.0f / 2.4f) - 0.055f;
+      encoded[code] = (uint8_t)(s * 255.0f + 0.5f);
+    }
+  }
+  uint8_t channel(float value) const
+  {
+    float clamped = std::min(std::max(value, 0.0f), 1.0f);
+    return encoded[(unsigned int)(clamped * 4095.0f)];
+  }
+  void pixel(int32_t xCode, int32_t yCode, int32_t zCode, uint8_t* out) const
+  {
+    float x = linear[xCode];
+    float y = linear[yCode];
+    float z = linear[zCode];
+    out[0] = channel(kM[0] * x + kM[1] * y + kM[2] * z);
+    out[1] = channel(kM[3] * x + kM[4] * y + kM[5] * z);
+    out[2] = channel(kM[6] * x + kM[7] * y + kM[8] * z);
+  }
+  static constexpr float kDciCoefficient = 52.37f / 48.0f;
+  static constexpr float kM[9] = {
+      3.240454f * kDciCoefficient,  -1.537139f * kDciCoefficient, -0.498531f * kDciCoefficient,
+      -0.969266f * kDciCoefficient, 1.876011f * kDciCoefficient,  0.041556f * kDciCoefficient,
+      0.055643f * kDciCoefficient,  -0.204026f * kDciCoefficient, 1.057225f * kDciCoefficient};
+  float linear[kMaxSample + 1];
+  uint8_t encoded[kMaxSample + 1];
+};
+constexpr float XyzToSrgb::kM[9];
+
+// the same planes the device transforms, run through the host reference
+std::vector<uint8_t> srgb8Reference(const XyzToSrgb& transform,
+                                    const std::vector<std::vector<int32_t>>& planes)
+{
+  std::vector<uint8_t> rgb;
+  if(planes.size() != kNumComps)
+    return rgb;
+  rgb.resize(planes[0].size() * kNumComps);
+  for(size_t i = 0; i < planes[0].size(); ++i)
+    transform.pixel(planes[0][i], planes[1][i], planes[2][i], rgb.data() + i * kNumComps);
+  return rgb;
+}
+
+bool pullNextFrame(void* user, const uint8_t** codestream, size_t* length, void** frameUser)
+{
+  auto source = (PullSource*)user;
+  std::lock_guard<std::mutex> lock(source->mutex);
+  if(source->next >= source->frames.size())
+    return false;
+  const auto& entry = source->frames[source->next++];
+  *codestream = entry.second->data();
+  *length = entry.first == source->truncatedId ? entry.second->size() / 8 : entry.second->size();
+  *frameUser = (void*)entry.first;
+  return true;
+}
+
+// the code streams of a cinema batch decoded through the in-memory decompress
+// batch, each held against the host decode of the same stream
+void checkBatchDecompress()
+{
+  std::printf("in-memory decompress batch, cinema 2K, %u frames\n", kNumFrames);
+  grk_cparameters params;
+  cinemaParameters(params);
+  Collector encoded;
+  if(!compressOnCpu(params, encoded))
+  {
+    fail("decompress batch: source frames");
+    return;
+  }
+  checkCollector(encoded, "decompress batch source delivery");
+  if(encoded.codestreams.size() != kNumFrames)
+    return;
+  const auto& shapeStream = encoded.codestreams.begin()->second;
+
+  DecodedCollector decoded;
+  PullSource source;
+  source.decoded = &decoded;
+  for(const auto& entry : encoded.codestreams)
+    source.frames.emplace_back(entry.first, &entry.second);
+  // a stream cut short still gets its callback, so the caller never waits on it
+  source.truncatedId = kNumFrames + 1;
+  source.frames.emplace_back(source.truncatedId, &shapeStream);
+
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledFrame;
+  info.user = &source;
+  grk_plugin_set_enabled(true);
+  // the pull answers nothing here, so a begin and an end is how a caller probes a shape
+  source.next = source.frames.size();
+  int32_t rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("decompress batch: begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("decompress batch: end with no frame");
+
+  source.next = 0;
+  auto start = std::chrono::steady_clock::now();
+  rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  second grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("decompress batch: second begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  // an ordinary decompress during the batch runs on the CPU
+  uint64_t routed = grk_plugin_accelerated_frames();
+  auto duringBatch = decodeOnCpu(shapeStream);
+  if(duringBatch.empty())
+    fail("decompress batch: grk_decompress during the batch failed");
+  if(grk_plugin_accelerated_frames() != routed)
+    fail("decompress batch: grk_decompress during the batch went to the device");
+  // a player shows frames as they come: once the pull runs dry, only the tiles
+  // enqueued ahead of the frames can hold frames back, the rest arrive without a drain
+  const auto deliveryWait = std::chrono::seconds(5);
+  size_t arrivedBeforeEnd = 0;
+  while(secondsSince(start) < deliveryWait.count())
+  {
+    {
+      std::lock_guard<std::mutex> lock(decoded.mutex);
+      arrivedBeforeEnd = decoded.frames.size() + decoded.failed;
+    }
+    if(arrivedBeforeEnd >= kNumFrames / 2)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  double secondsBeforeEnd = secondsSince(start);
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("grk_plugin_batch_decompress_memory_end");
+  double seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  std::printf("decompress batch: %u of %u frames arrived in %.2f s before the drain, %.2f s and "
+              "%.1f frames per second with it\n",
+              (unsigned)arrivedBeforeEnd, kNumFrames, secondsBeforeEnd, seconds,
+              kNumFrames / seconds);
+  if(arrivedBeforeEnd < kNumFrames / 2)
+    fail("a decompress batch holds frames back until it is drained");
+
+  if(decoded.duplicates)
+  {
+    std::printf("  %d frame identity(s) arrived twice\n", decoded.duplicates);
+    fail("decompress batch delivery");
+  }
+  size_t truncatedArrived = decoded.frames.count(source.truncatedId) ? 1 : 0;
+  if(decoded.frames.size() - truncatedArrived != kNumFrames || decoded.failed + truncatedArrived != 1)
+  {
+    std::printf("  %u frames arrived, %d failed\n", (unsigned)decoded.frames.size(), decoded.failed);
+    fail("decompress batch delivery");
+  }
+  int32_t worst = 0;
+  for(const auto& entry : decoded.frames)
+  {
+    if(entry.first == source.truncatedId)
+      continue;
+    auto onHost = decodeOnCpu(encoded.codestreams[entry.first]);
+    int32_t difference = 0;
+    if(!planesEqual(entry.second, onHost, kDeviceDecodeTolerance, &difference))
+    {
+      std::printf("  frame %u: device and host decode differ by %d codes\n",
+                  (unsigned)(entry.first - 1), difference);
+      fail("a decompress batch frame strays from the host decode");
+    }
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("decompress batch: all %u frames within %d codes of the host decode\n", kNumFrames,
+              worst);
+
+  // the same code streams again, this time transformed and packed on the device
+  Rgb8Collector rgb8;
+  PullSource rgb8Source;
+  rgb8Source.rgb8 = &rgb8;
+  for(const auto& entry : encoded.codestreams)
+    rgb8Source.frames.emplace_back(entry.first, &entry.second);
+
+  grk_plugin_batch_decompress_memory_info srgb8Info = {};
+  srgb8Info.codestream = shapeStream.data();
+  srgb8Info.codestream_length = shapeStream.size();
+  srgb8Info.pull = pullNextFrame;
+  srgb8Info.callback = collectPulledRgb8;
+  srgb8Info.user = &rgb8Source;
+  srgb8Info.srgb8_output = true;
+  bool onDevice = false;
+  srgb8Info.srgb8_on_device = &onDevice;
+  grk_plugin_set_enabled(true);
+  start = std::chrono::steady_clock::now();
+  rc = grk_plugin_batch_decompress_memory_begin(srgb8Info);
+  if(rc != 0)
+  {
+    std::printf("  srgb8 grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("srgb8 batch: begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  // end makes every pull return false, so the workers need their chance at the streams first
+  while(secondsSince(start) < kSrgb8PullWait)
+  {
+    bool pulledEverything = false;
+    {
+      std::lock_guard<std::mutex> lock(rgb8Source.mutex);
+      pulledEverything = rgb8Source.next >= rgb8Source.frames.size();
+    }
+    if(pulledEverything)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("srgb8 batch: end");
+  double srgb8Seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  if(!onDevice)
+  {
+    fail("srgb8 batch: the device declined the transform");
+    return;
+  }
+  std::printf("srgb8 batch: %u frames on device in %.2f s, %.1f frames per second\n", kNumFrames,
+              srgb8Seconds, kNumFrames / srgb8Seconds);
+  if(rgb8.frames.size() != kNumFrames || rgb8.failed || rgb8.wrongShape)
+  {
+    std::printf("  %u frames arrived, %d failed, %d of the wrong shape\n",
+                (unsigned)rgb8.frames.size(), rgb8.failed, rgb8.wrongShape);
+    fail("srgb8 batch delivery");
+    return;
+  }
+
+  XyzToSrgb transform;
+  const size_t frameSamples = (size_t)kWidth * kHeight * kNumComps;
+  int worstByte = 0;
+  size_t overOneCode = 0;
+  size_t compared = 0;
+  for(const auto& entry : rgb8.frames)
+  {
+    auto reference = srgb8Reference(transform, decodeOnCpu(encoded.codestreams[entry.first]));
+    if(reference.size() != frameSamples || entry.second.size() != frameSamples)
+    {
+      fail("srgb8 batch: frame size");
+      return;
+    }
+    for(size_t i = 0; i < frameSamples; ++i)
+    {
+      int difference = std::abs((int)entry.second[i] - (int)reference[i]);
+      if(difference > worstByte)
+      {
+        worstByte = difference;
+        std::printf("  frame %u sample %u: device %d, reference %d\n",
+                    (unsigned)(entry.first - 1), (unsigned)i, (int)entry.second[i],
+                    (int)reference[i]);
+      }
+      if(difference > 1)
+        ++overOneCode;
+    }
+    compared += frameSamples;
+  }
+  double shareOverOneCode = 100.0 * (double)overOneCode / (double)compared;
+  std::printf("srgb8 batch: worst byte difference %d, %.4f%% of samples over one code\n", worstByte,
+              shareOverOneCode);
+  if(worstByte > kSrgb8ByteTolerance)
+    fail("an srgb8 frame strays from the host transform");
+  if(shareOverOneCode > kSrgb8ShareOverOneCode)
+    fail("too many srgb8 samples stray from the host transform by more than one code");
+}
+
 void checkYuvSource(const YuvSource& source)
 {
   std::printf("%s, %ux%u, %u frames\n", source.name, kYuvWidth, kYuvHeight, kYuvNumFrames);
@@ -1337,6 +1740,9 @@ int main()
   }
   grk_plugin_init_info init = {};
   init.device_id = 0;
+  // a plugin built with licence checking wants these, unset is the auth-off build
+  init.license = std::getenv("GRK_PLUGIN_LICENSE");
+  init.server = std::getenv("GRK_PLUGIN_SERVER");
   if(!grk_plugin_init(init))
   {
     std::fprintf(stderr, "the plugin refused device 0\n");
@@ -1345,6 +1751,8 @@ int main()
   // every check decodes on the CPU. The batch API does not consult this flag,
   // so it only steers grk_decompress.
   grk_plugin_set_enabled(false);
+  // first, before any batch has loaded a kernel: a player opens this cold
+  checkBatchDecompress();
   checkLossless();
   checkCinema();
   checkCinemaSource16();

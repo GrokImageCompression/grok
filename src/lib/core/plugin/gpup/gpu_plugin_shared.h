@@ -472,6 +472,28 @@ typedef struct _gpup_batch_memory_info
   bool yuv_full_range;
 } gpup_batch_memory_info;
 
+/* the batch's workers ask the host for the next code stream, the way the disk batch
+   takes the next file: false ends the worker, and the bytes stay the host's until
+   that frame's result callback returns */
+typedef bool (*GPUP_BATCH_DECOMPRESS_PULL)(void* user, const uint8_t** codestream, size_t* length,
+                                           void** frame_user);
+
+/* one code stream shape for a whole in-memory decode batch: the host reads the
+   header of a representative code stream and hands it over */
+typedef struct _gpup_batch_decompress_memory_info
+{
+  gpup_decompress_params* decompress_parameters;
+  gpup_header_info header_info;
+  gpup_image* image;
+  GPUP_BATCH_DECOMPRESS_PULL pull;
+  void* pull_user;
+  /* asks for 8 bit sRGB frames: the device runs the DCI X'Y'Z' to sRGB transform and
+     packs interleaved RGB, which the frame callback's comps[0] then carries */
+  bool srgb8_output;
+  /* written by begin: true when the device does that for this batch's shape */
+  bool srgb8_on_device;
+} gpup_batch_decompress_memory_info;
+
 typedef struct _gpup_decompress_callback_info
 {
   size_t deviceId;

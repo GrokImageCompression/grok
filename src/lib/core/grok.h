@@ -2647,6 +2647,93 @@ GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_submit(grk_image* frame, void*
 GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void);
 
 /**
+ * @brief Called with one decoded frame of an in-memory plugin decompress batch.
+ *
+ * @param user   the user pointer passed to grk_plugin_batch_decompress_memory_begin()
+ * @param frame  the frame_user pointer the pull callback gave for this frame
+ * @param image  the decoded frame: planar GRK_INT_32 samples at the code stream's
+ *               precision, comps[i].stride the row pitch in samples, owned by the
+ *               plugin until this returns. NULL when this frame failed, which
+ *               includes a frame whose shape differs from the one the batch began with.
+ */
+typedef void (*GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK)(void* user, void* frame,
+                                                           const grk_image* image);
+
+/**
+ * @brief Asked by the batch's worker threads for the next code stream to decode.
+ *
+ * The workers pull frames the way the disk batch takes the next file, several
+ * threads at once, so this runs concurrently with itself and blocks when the
+ * caller has nothing ready. The bytes it hands over stay the caller's until the
+ * frame callback for @p frame_user returns; nothing is copied.
+ *
+ * @param user        the user pointer passed to grk_plugin_batch_decompress_memory_begin()
+ * @param codestream  set to the frame's code stream
+ * @param length      set to its byte count
+ * @param frame_user  handed to the frame callback as its @p frame argument
+ * @return true with a frame, false to end the calling worker: every pull returns
+ *         false once grk_plugin_batch_decompress_memory_end() has been called
+ */
+typedef bool (*GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK)(void* user, const uint8_t** codestream,
+                                                          size_t* length, void** frame_user);
+
+/**
+ * @brief One code stream's shape and the callbacks for an in-memory decompress batch.
+ */
+typedef struct grk_plugin_batch_decompress_memory_info
+{
+  const uint8_t* codestream; /* a code stream with the shape every frame in the batch has */
+  size_t codestream_length; /* its byte count */
+  GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK pull; /* hands the workers their next frame */
+  GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK callback; /* per frame result */
+  void* user; /* handed back to both callbacks */
+  bool srgb8_output; /* ask for 8 bit sRGB frames instead of the code stream's planes */
+  bool* srgb8_on_device; /* optional, set true when the device runs that transform */
+} grk_plugin_batch_decompress_memory_info;
+
+/**
+ * @brief Starts a batch that decompresses code streams pulled from memory.
+ *
+ * grok reads the header of @p info.codestream and the plugin builds its decode
+ * pipeline for that shape, the disk batch's pipeline fed by @p info.pull instead
+ * of a directory: every frame pulled has to be a single tile code stream of the
+ * same size, precision, component count and coding parameters, at full
+ * resolution. Frames come back through @p info.callback, which runs on the
+ * plugin's threads, may run concurrently with itself, and returns frames in no
+ * particular order. The pipeline enqueues one cluster of tiles ahead of the
+ * frames, so a pull that blocks holds up to that many finished frames back until
+ * it returns. grk_plugin_batch_decompress_memory_end() drains the batch.
+ *
+ * With @p info.srgb8_output set, a batch of three component unsigned 12 bit
+ * frames comes back as 8 bit sRGB: the device runs the DCI X'Y'Z' to sRGB
+ * display transform (SMPTE 428-1 2.6 gamma, 52.37 over 48 scale, the D65 XYZ to
+ * sRGB matrix, the sRGB curve) and packs interleaved RGB. The frame callback's
+ * image then has three components of prec 8 and comps[0].data holds the whole
+ * interleaved buffer, comps[0].stride its row pitch in bytes, comps[1] and
+ * comps[2] a null data pointer. @p info.srgb8_on_device, when given, says
+ * whether this batch got that; a shape the device cannot transform comes back
+ * as planes as usual.
+ *
+ * Requires grk_plugin_init() to have succeeded. While the batch runs, an ordinary
+ * grk_decompress() call decompresses on the CPU.
+ *
+ * @param info  the shape code stream and the callbacks
+ *              (see @ref grk_plugin_batch_decompress_memory_info)
+ * @return 0 when the batch is running, 1 when the plugin does not handle this
+ *         code stream (the caller decompresses on the CPU), -1 on a device failure
+ */
+GRK_API int32_t GRK_CALLCONV
+    grk_plugin_batch_decompress_memory_begin(grk_plugin_batch_decompress_memory_info info);
+
+/**
+ * @brief Drains and shuts down the in-memory decompress batch.
+ *
+ * The caller's pull has to return false from here on. Every frame it handed
+ * out has reached the frame callback by the time this returns.
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_decompress_memory_end(void);
+
+/**
  * @brief Plugin init decompressors
  */
 typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info* header_info, grk_image* image);
@@ -2677,6 +2764,10 @@ typedef struct _grk_plugin_decompress_callback_info
   uint32_t full_image_y0; /* full image y0 */
   void* user_data; /* user data */
   void* format_private; /* format-specific private data */
+  const uint8_t*
+      codestream; /* in-memory batch frame: the code stream to read instead of input_file_name */
+  size_t codestream_length; /* its byte count */
+  void* frame_user; /* in-memory batch frame: the submit call's frame_user */
 } grk_plugin_decompress_callback_info;
 
 /**

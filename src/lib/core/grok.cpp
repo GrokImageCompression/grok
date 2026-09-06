@@ -1899,7 +1899,15 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
     }
     s_cachedTileSrc = info->tile;
   }
+  else if(s_cachedTileWrapper && info->tile && (info->decompress_flags & GPUP_DECODE_T2))
+  {
+    // a batch frees each tile and the next one often lands at the same address
+    gpup_tile_update_grk(s_cachedTileWrapper, info->tile);
+  }
   grokInfo.tile = s_cachedTileWrapper;
+  grokInfo.codestream = info->codestream;
+  grokInfo.codestream_length = info->codestreamLength;
+  grokInfo.frame_user = info->frameUser;
 
   grokInfo.decompress_flags = info->decompress_flags;
   grokInfo.user_data =
@@ -1985,11 +1993,174 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
   return rc;
 }
 
+/*******************
+ In-memory batch decompress
+ ********************/
+
+static const char* plugin_batch_decode_memory_begin_method_name =
+    "plugin_batch_decompress_memory_begin";
+static const char* plugin_batch_decode_memory_end_method_name =
+    "plugin_batch_decompress_memory_end";
+
+namespace
+{
+struct BatchDecompressMemoryState
+{
+  std::atomic_bool running{false};
+  // T2 runs on a codec per frame, each on its own inline executor
+  grk_decompress_parameters parameters = {};
+  GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK pull = nullptr;
+  GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK callback = nullptr;
+  void* user = nullptr;
+};
+BatchDecompressMemoryState batchDecompress;
+
+// the plugin's workers ask here, the caller answers
+bool batchDecompressMemoryPull(void*, const uint8_t** codestream, size_t* length, void** frameUser)
+{
+  if(!batchDecompress.running || !batchDecompress.pull)
+    return false;
+  return batchDecompress.pull(batchDecompress.user, codestream, length, frameUser);
+}
+
+// runs on the plugin's threads, concurrently with itself, one codec per frame
+int32_t batchDecompressMemoryCallback(grk_plugin_decompress_callback_info* info)
+{
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+  {
+    grk_object_unref(info->codec);
+    info->codec = nullptr;
+    info->image = nullptr;
+    return 0;
+  }
+  if(info->decompress_flags & GRK_DECODE_HEADER)
+  {
+    if(!info->codestream || !info->codestream_length || !info->init_decompressors_func)
+      return -1;
+    grk_stream_params stream = {};
+    stream.buf = const_cast<uint8_t*>(info->codestream);
+    stream.buf_len = info->codestream_length;
+    info->codec = grk_decompress_init(&stream, &batchDecompress.parameters);
+    if(!info->codec || !grk_decompress_read_header(info->codec, &info->header_info))
+      return -1;
+    info->image = grk_decompress_get_image(info->codec);
+    return info->init_decompressors_func(&info->header_info, info->image);
+  }
+  if(info->decompress_flags & GRK_DECODE_T2)
+  {
+    if(!info->codec || !info->tile)
+      return -1;
+    info->tile->decompress_flags = info->decompress_flags;
+    bool parsed = grk_decompress(info->codec, info->tile);
+    // the packets are in the plugin's buffer, nothing reads the code stream again
+    grk_object_unref(info->codec);
+    info->codec = nullptr;
+    return parsed ? 0 : -1;
+  }
+  if(info->decompress_flags & GRK_DECODE_POST_T1)
+  {
+    if(batchDecompress.callback)
+      batchDecompress.callback(batchDecompress.user, info->frame_user, info->image);
+    info->image = nullptr;
+    return 0;
+  }
+  return -1;
+}
+} // namespace
+
+GRK_API int32_t GRK_CALLCONV
+    grk_plugin_batch_decompress_memory_begin(grk_plugin_batch_decompress_memory_info info)
+{
+  if(batchDecompress.running || batchMemory.running)
+    return -1;
+  if(!info.codestream || !info.codestream_length || !info.callback || !info.pull)
+    return -1;
+  if(!pluginAccelerates())
+    return 1;
+  auto begin = (PLUGIN_BATCH_DECODE_MEMORY_BEGIN)batchMemorySymbol(
+      plugin_batch_decode_memory_begin_method_name);
+  if(!begin || !batchMemorySymbol(plugin_batch_decode_memory_end_method_name))
+    return 1;
+
+  batchDecompress.parameters = {};
+  batchDecompress.parameters.num_threads = 1;
+  grk_stream_params stream = {};
+  stream.buf = const_cast<uint8_t*>(info.codestream);
+  stream.buf_len = info.codestream_length;
+  auto codec = grk_decompress_init(&stream, &batchDecompress.parameters);
+  grk_header_info header = {};
+  if(!codec || !grk_decompress_read_header(codec, &header))
+  {
+    grk_object_unref(codec);
+    return -1;
+  }
+  auto image = grk_decompress_get_image(codec);
+  // the plugin decodes one tile at full resolution, the same rule the per call path applies
+  if(!image || header.t_grid_width != 1 || header.t_grid_height != 1)
+  {
+    grk_object_unref(codec);
+    return 1;
+  }
+
+  gpup_decompress_params gpupParameters;
+  grk_to_gpup_decompress_params(&batchDecompress.parameters, &gpupParameters);
+  gpup_batch_decompress_memory_info gpupInfo = {};
+  gpupInfo.decompress_parameters = &gpupParameters;
+  grk_to_gpup_header_info(&header, &gpupInfo.header_info);
+  gpupInfo.image = grk_to_gpup_image(image);
+  gpupInfo.pull = batchDecompressMemoryPull;
+  gpupInfo.pull_user = nullptr;
+  gpupInfo.srgb8_output = info.srgb8_output;
+  gpupInfo.srgb8_on_device = false;
+  batchDecompress.pull = info.pull;
+  batchDecompress.callback = info.callback;
+  batchDecompress.user = info.user;
+  decodeCallback = batchDecompressMemoryCallback;
+  s_originalDecompressParams = &batchDecompress.parameters;
+  // the plugin's workers start pulling inside begin
+  batchDecompress.running = true;
+  int32_t rc = begin(&gpupInfo, grk_plugin_internal_decode_callback);
+  gpup_image_free_shell(gpupInfo.image);
+  grk_object_unref(codec);
+  if(info.srgb8_on_device)
+    *info.srgb8_on_device = rc == 0 && gpupInfo.srgb8_on_device;
+  if(rc != 0)
+  {
+    batchDecompress.running = false;
+    decodeCallback = nullptr;
+    s_originalDecompressParams = nullptr;
+    batchDecompress.pull = nullptr;
+    batchDecompress.callback = nullptr;
+  }
+
+  return rc;
+}
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_decompress_memory_end(void)
+{
+  if(!batchDecompress.running)
+    return false;
+  auto end =
+      (PLUGIN_BATCH_DECODE_MEMORY_END)batchMemorySymbol(plugin_batch_decode_memory_end_method_name);
+  // the workers' pulls return false from here on
+  batchDecompress.running = false;
+  bool drained = end && end();
+  decodeCallback = nullptr;
+  s_originalDecompressParams = nullptr;
+  batchDecompress.pull = nullptr;
+  batchDecompress.callback = nullptr;
+
+  return drained;
+}
+
 int32_t grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
                               grk_plugin_decompress_callback callback)
 {
   if(!pluginLoaded)
     return -1;
+  // the batch owns the callback state, this frame decompresses on the CPU
+  if(batchDecompress.running)
+    return 1;
   decodeCallback = callback;
   s_originalDecompressParams = decompress_parameters;
   auto mgr = minpf_get_plugin_manager();
@@ -2010,7 +2181,7 @@ int32_t grk_plugin_init_batch_decompress(const char* input_dir, const char* outp
                                          grk_decompress_parameters* decompress_parameters,
                                          grk_plugin_decompress_callback callback)
 {
-  if(!pluginLoaded)
+  if(!pluginLoaded || batchDecompress.running)
     return -1;
   decodeCallback = callback;
   s_originalDecompressParams = decompress_parameters;

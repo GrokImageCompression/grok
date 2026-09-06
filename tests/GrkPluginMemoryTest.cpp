@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <algorithm>
 #include <vector>
@@ -519,6 +520,9 @@ int main()
   }
   grk_plugin_init_info init = {};
   init.device_id = 0;
+  // a plugin built with licence checking wants these, unset is the auth-off build
+  init.license = std::getenv("GRK_PLUGIN_LICENSE");
+  init.server = std::getenv("GRK_PLUGIN_SERVER");
   if(!grk_plugin_init(init))
   {
     std::fprintf(stderr, "the plugin refused device 0\n");
