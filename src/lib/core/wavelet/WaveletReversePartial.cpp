@@ -93,8 +93,7 @@ public:
       // read one row of L band
       if(dwt->sn)
       {
-        bool ret = sa->read(dwt->resno,
-                            Rect32(dwt->win_l.x0, y_offset + y,
+        bool ret = sa->read(Rect32(dwt->win_l.x0, y_offset + y,
                                    std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
                                    y_offset + y + 1),
                             (CT*)dwt->memL + y, 2 * stripHeight, 0);
@@ -105,8 +104,7 @@ public:
       if(dwt->dn)
       {
         bool ret =
-            sa->read(dwt->resno,
-                     Rect32(dwt->sn + dwt->win_h.x0, y_offset + y,
+            sa->read(Rect32(dwt->sn + dwt->win_h.x0, y_offset + y,
                             dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
                             y_offset + y + 1),
                      (CT*)dwt->memH + y, 2 * stripHeight, 0);
@@ -125,16 +123,14 @@ public:
     bool ret = false;
     if(dwt->sn)
     {
-      ret = sa->read(dwt->resno,
-                     Rect32(x_offset, dwt->win_l.x0, x_offset + xWidth,
+      ret = sa->read(Rect32(x_offset, dwt->win_l.x0, x_offset + xWidth,
                             std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
                      (CT*)dwt->memL, 1, 2 * stripWidth);
     }
     // read one vertical strip (of width x_num_elements <= stripWidth) of H band
     if(dwt->dn)
     {
-      ret = sa->read(dwt->resno,
-                     Rect32(x_offset, dwt->sn + dwt->win_h.x0, x_offset + xWidth,
+      ret = sa->read(Rect32(x_offset, dwt->sn + dwt->win_h.x0, x_offset + xWidth,
                             dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
                      (CT*)dwt->memH, 1, 2 * stripWidth);
     }
@@ -723,7 +719,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
   {
     auto final_read = [sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
       // final read into tile buffer
-      bool ret = sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+      bool ret = sa->read(synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
       apply_dc_shift();
 
       return ret;
@@ -734,7 +730,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
   }
   auto final_read = [this, sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
     // final read into tile buffer
-    bool ret = sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+    bool ret = sa->read(synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
     apply_dc_shift();
 
     return ret;
@@ -781,7 +777,6 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
                               ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
         decompressor.h(&taskInfo->data);
         if(!sa->write(
-               resno,
                Rect32(bandInfo.resWindowREL_.x0, yPos, bandInfo.resWindowREL_.x1, yPos + height),
                (CT*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowREL_.x0 -
                      2 * (int64_t)taskInfo->data.win_l.x0),
@@ -813,8 +808,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
             ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0) * VERT_PASS_WIDTH;
         decompressor.v(&taskInfo->data);
         // write to buffer for final res
-        if(!sa->write(resno,
-                      Rect32(xPos, bandInfo.resWindowREL_.y0, xPos + width,
+        if(!sa->write(Rect32(xPos, bandInfo.resWindowREL_.y0, xPos + width,
                              bandInfo.resWindowREL_.y0 + taskInfo->data.win_l.length() +
                                  taskInfo->data.win_h.length()),
                       (CT*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowREL_.y0 -

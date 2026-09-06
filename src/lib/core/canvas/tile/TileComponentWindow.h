@@ -549,8 +549,7 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
                                                     cblk->height(), block);
       }
       static_cast<ISparseCanvas<int16_t>*>(regionWindow)
-          ->write(block->resno, blockBounds, empty ? nullptr : (int16_t*)srcData, 1,
-                  blockBounds.width());
+          ->write(blockBounds, empty ? nullptr : (int16_t*)srcData, 1, blockBounds.width());
       return;
     }
     // 16-bit narrowing path: int32 T1 output -> int16 band buffers
@@ -626,7 +625,7 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
       }
     }
     if(canvas)
-      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
+      canvas->write(blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
   }
 }
 
@@ -665,8 +664,7 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
                                                               cblk->height(), block);
       }
       static_cast<ISparseCanvas<int16_t>*>(regionWindow)
-          ->write(block->resno, blockBounds, empty ? nullptr : (int16_t*)srcData, 1,
-                  blockBounds.width());
+          ->write(blockBounds, empty ? nullptr : (int16_t*)srcData, 1, blockBounds.width());
       return;
     }
     // 16-bit narrowing path: int32 T1 output -> int16 band buffers
@@ -754,7 +752,7 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
     }
     // the HT coder emits rows 8-aligned, not packed at the block width
     if(canvas)
-      canvas->write(block->resno, blockBounds, empty ? nullptr : srcData, 1, stride);
+      canvas->write(blockBounds, empty ? nullptr : srcData, 1, stride);
   }
 }
 

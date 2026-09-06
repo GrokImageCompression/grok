@@ -52,12 +52,12 @@ public:
   /**
    * Read window of data into dest buffer.
    */
-  virtual bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
+  virtual bool read(Rect32 window, T* dest, const uint32_t destChunkY,
                     const uint32_t destChunkX) = 0;
   /**
    * Write window of data from src buffer
    */
-  virtual bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
+  virtual bool write(Rect32 window, const T* src, const uint32_t srcChunkY,
                      const uint32_t srcChunkX) = 0;
 
   virtual bool alloc(Rect32 window, bool zeroOutBuffer) = 0;

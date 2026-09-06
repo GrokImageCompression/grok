@@ -57,15 +57,13 @@ public:
     for(auto& pair : blocks)
       delete pair.second;
   }
-  bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
-            const uint32_t destChunkX)
+  bool read(Rect32 window, T* dest, const uint32_t destChunkY, const uint32_t destChunkX)
   {
-    return readWrite(resno, window, dest, destChunkY, destChunkX, true);
+    return readWrite(window, dest, destChunkY, destChunkX, true);
   }
-  bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
-             const uint32_t srcChunkX)
+  bool write(Rect32 window, const T* src, const uint32_t srcChunkY, const uint32_t srcChunkX)
   {
-    return readWrite(resno, window, (T*)src, srcChunkY, srcChunkX, false);
+    return readWrite(window, (T*)src, srcChunkY, srcChunkX, false);
   }
   bool alloc(Rect32 win, bool zeroOutBuffer)
   {
@@ -118,8 +116,8 @@ private:
     return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 || win.y0 >= bounds.y1 ||
              win.y1 <= win.y0 || win.y1 > bounds.y1);
   }
-  bool readWrite([[maybe_unused]] uint8_t resno, Rect32 win, T* buf, const uint32_t spacingX,
-                 const uint32_t spacingY, bool isReadOperation)
+  bool readWrite(Rect32 win, T* buf, const uint32_t spacingX, const uint32_t spacingY,
+                 bool isReadOperation)
   {
     if(!win.valid())
       return false;
@@ -175,13 +173,6 @@ private:
             uint64_t destInd = 0;
             for(uint32_t blockX = 0; blockX < blockWinWidth; blockX++)
             {
-#ifdef GRK_DEBUG_VALGRIND
-              size_t val = grk_memcheck<int32_t>(src + blockX, 1);
-              if(val != grk_mem_ok)
-                grklog.error("sparse canvas @resno %u, read block(%u,%u) : "
-                             "uninitialized at location (%u,%u)",
-                             resno, gridX, gridY, x + blockX, y_);
-#endif
               dest[destInd] = src[blockX];
               destInd += spacingX;
             }
@@ -200,17 +191,6 @@ private:
             uint64_t srcInd = 0;
             for(uint32_t blockX = 0; blockX < blockWinWidth; blockX++)
             {
-#ifdef GRK_DEBUG_VALGRIND
-              if(src)
-              {
-                Point32 pt((uint32_t)(x + blockX), y_);
-                size_t val = grk_memcheck<int32_t>(src + srcInd, 1);
-                if(val != grk_mem_ok)
-                  grklog.error("sparse canvas @ resno %u,  write block(%u,%u): "
-                               "uninitialized at location (%u,%u)",
-                               resno, gridX, gridY, x + blockX, y_);
-              }
-#endif
               dest[blockX] = src ? src[srcInd] : 0;
               srcInd += spacingX;
             }
