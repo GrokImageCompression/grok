@@ -792,7 +792,8 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this compress is in flight.
-  auto pinnedExec = TFSingleton::acquire();
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // compressing (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);

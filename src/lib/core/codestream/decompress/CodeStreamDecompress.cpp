@@ -274,7 +274,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this decode is in flight.
-  auto pinnedExec = TFSingleton::acquire();
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
@@ -1133,7 +1134,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this decode is in flight.
-  auto pinnedExec = TFSingleton::acquire();
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);

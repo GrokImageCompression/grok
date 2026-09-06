@@ -59,7 +59,8 @@ impl Builder {
     }
 
     /// Spawn `workers` (≥ 1) threads and return the running runtime.
-    /// Nothing executes until a node is notified.
+    /// Nothing executes until a node is notified. With one worker no thread
+    /// is spawned: `await_stillness` runs the passes on the calling thread.
     pub fn dress(self, workers: usize) -> Runtime {
         assert!(workers >= 1, "weft runtime needs at least one worker");
         let inner = Arc::new(Inner {
@@ -79,6 +80,12 @@ impl Builder {
             failed: AtomicBool::new(false),
             failure: Mutex::new(None),
         });
+        if workers == 1 {
+            return Runtime {
+                inner,
+                threads: Vec::new(),
+            };
+        }
         let threads = (0..workers)
             .map(|i| {
                 let inner = Arc::clone(&inner);
@@ -185,13 +192,35 @@ impl Inner {
                     q = self.work_cv.wait(q).unwrap();
                 }
             };
-            // a panicking node never decrements `outstanding`, so the counter
-            // is dead after this. fail() is what releases await_stillness.
-            if let Err(payload) =
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.ply_node(id, 0)))
-            {
-                self.fail(format!("node {} panicked: {}", id.0, panic_text(&*payload)));
+            self.treadle(id);
+        }
+    }
+
+    /// Drain the queue on the calling thread. Only valid with no workers,
+    /// where nothing else can pop the queue or run a pass.
+    fn treadle_inline(&self) {
+        loop {
+            let id = {
+                let mut q = self.queue.lock().unwrap();
+                if self.shutdown.load(Ordering::Relaxed) {
+                    return;
+                }
+                q.pop_front()
+            };
+            match id {
+                Some(id) => self.treadle(id),
+                None => return,
             }
+        }
+    }
+
+    fn treadle(&self, id: NodeId) {
+        // a panicking node never decrements `outstanding`, so the counter
+        // is dead after this. fail() is what releases await_stillness.
+        if let Err(payload) =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.ply_node(id, 0)))
+        {
+            self.fail(format!("node {} panicked: {}", id.0, panic_text(&*payload)));
         }
     }
 
@@ -254,13 +283,21 @@ impl Runtime {
     /// the work kicked off so far is then complete.
     /// A node failure ends the wait early, with its message.
     pub fn await_stillness(&self) -> Result<(), String> {
-        let mut q = self.inner.queue.lock().unwrap();
-        while self.inner.outstanding.load(Ordering::Acquire) != 0
-            && !self.inner.failed.load(Ordering::Acquire)
-        {
-            q = self.inner.done_cv.wait(q).unwrap();
+        if self.threads.is_empty() {
+            self.inner.treadle_inline();
+            if self.inner.outstanding.load(Ordering::Acquire) != 0
+                && !self.inner.failed.load(Ordering::Acquire)
+            {
+                return Err("weft inline: passes outstanding with an empty queue".to_string());
+            }
+        } else {
+            let mut q = self.inner.queue.lock().unwrap();
+            while self.inner.outstanding.load(Ordering::Acquire) != 0
+                && !self.inner.failed.load(Ordering::Acquire)
+            {
+                q = self.inner.done_cv.wait(q).unwrap();
+            }
         }
-        drop(q);
         if self.inner.failed.load(Ordering::Acquire) {
             let msg = self.inner.failure.lock().unwrap().clone();
             return Err(msg.unwrap_or_else(|| "weft node failed".to_string()));
@@ -279,5 +316,68 @@ impl Drop for Runtime {
         for t in self.threads.drain(..) {
             let _ = t.join();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::AtomicUsize;
+
+    struct Counter {
+        passes: Arc<AtomicUsize>,
+        ran_on: Arc<Mutex<Vec<std::thread::ThreadId>>>,
+        next: Option<NodeId>,
+    }
+
+    impl Node for Counter {
+        fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
+            self.passes.fetch_add(1, Ordering::Relaxed);
+            self.ran_on.lock().unwrap().push(std::thread::current().id());
+            if let Some(next) = self.next.take() {
+                ctx.tug(next);
+            }
+        }
+    }
+
+    #[test]
+    fn one_worker_runs_on_the_calling_thread() {
+        let passes = Arc::new(AtomicUsize::new(0));
+        let ran_on = Arc::new(Mutex::new(Vec::new()));
+        let mut b = Builder::warp();
+        let first = b.mount(Box::new(Counter {
+            passes: Arc::clone(&passes),
+            ran_on: Arc::clone(&ran_on),
+            next: Some(NodeId::heddle(1)),
+        }));
+        b.mount(Box::new(Counter {
+            passes: Arc::clone(&passes),
+            ran_on: Arc::clone(&ran_on),
+            next: None,
+        }));
+        let rt = b.dress(1);
+        assert!(rt.threads.is_empty(), "dress(1) spawned a thread");
+        rt.tug(first);
+        rt.await_stillness().unwrap();
+        assert_eq!(passes.load(Ordering::Relaxed), 2);
+        let caller = std::thread::current().id();
+        assert!(ran_on.lock().unwrap().iter().all(|id| *id == caller));
+        assert_eq!(rt.inner.outstanding.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn one_worker_reports_a_panicking_node() {
+        struct Boom;
+        impl Node for Boom {
+            fn shuttle(&mut self, _ctx: &mut Ctx<'_>) {
+                panic!("loose thread");
+            }
+        }
+        let mut b = Builder::warp();
+        let id = b.mount(Box::new(Boom));
+        let rt = b.dress(1);
+        rt.tug(id);
+        let err = rt.await_stillness().unwrap_err();
+        assert!(err.contains("loose thread"), "{err}");
     }
 }

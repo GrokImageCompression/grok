@@ -43,19 +43,19 @@ public:
   {
     std::lock_guard<std::mutex> lock(mutex_);
     numThreads = numThreads ? numThreads : std::thread::hardware_concurrency();
-    if(numThreads_ == numThreads && instance_)
+    if(numThreads_ == numThreads)
       return;
     numThreads_ = numThreads;
-    // numThreads == 1 => inline executor (0 workers): all work runs on the
-    // calling thread, keeping the process truly single-threaded.
-    // Swap rather than destroy: codecs pin the executor via acquire(), so a
+    // The pool is built by acquire() on first use, so a process whose codecs all
+    // run on their own executors never spawns it.
+    // Release rather than destroy: codecs pin the executor via acquire(), so a
     // resize can never free an executor that still has tasks in flight.
-    instance_ = std::make_shared<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
+    instance_.reset();
   }
 
   /**
-   * @brief Pins the current global executor (creating it with full hardware
-   * concurrency if null).
+   * @brief Pins the current global executor (creating it at the configured
+   * thread count, or full hardware concurrency, if null).
    *
    * Codec entry points hold the returned shared_ptr for the duration of a
    * compress/decompress, so a concurrent grk_initialize resize or
@@ -67,7 +67,10 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     if(!instance_)
     {
-      numThreads_ = std::thread::hardware_concurrency();
+      if(!numThreads_)
+        numThreads_ = std::thread::hardware_concurrency();
+      // numThreads == 1 => inline executor (0 workers): all work runs on the
+      // calling thread, keeping the process truly single-threaded.
       instance_ = std::make_shared<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
     }
     return instance_;
