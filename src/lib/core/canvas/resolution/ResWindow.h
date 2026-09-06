@@ -77,9 +77,8 @@ private:
             ResSimple tileCompAtLowerRes, Rect32 resWindow, Rect32 tileCompWindowUnreduced,
             Rect32 tileCompUnreduced, uint32_t FILTER_WIDTH, DecompositionSplit split,
             uint8_t numDecompsX, uint8_t numDecompsY)
-      : allocated_(false), filterWidth_(FILTER_WIDTH), tileCompAtRes_(tileCompAtRes),
-        tileCompAtLowerRes_(tileCompAtLowerRes), resWindowBuffer_(new Buf2dAligned(resWindow)),
-        resWindowBufferSplit_{nullptr, nullptr},
+      : allocated_(false), tileCompAtRes_(tileCompAtRes), tileCompAtLowerRes_(tileCompAtLowerRes),
+        resWindowBuffer_(new Buf2dAligned(resWindow)), resWindowBufferSplit_{nullptr, nullptr},
         resWindowBufferHighestResREL_(resWindowHighestResREL),
         resWindowBufferREL_(new Buf2dAligned(resWindow.width(), resWindow.height())),
         resWindowBufferSplitREL_{nullptr, nullptr}
@@ -212,6 +211,17 @@ private:
         Rect32(resWin.x0, lowerRes.y1 + xhBounds.y0, resWin.x1, lowerRes.y1 + xhBounds.y1);
     resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds);
   }
+  bool allocResWindowBuffer(bool clear)
+  {
+    if(allocated_)
+      return true;
+    if(!resWindowBufferREL_->alloc2d(clear))
+      return false;
+    resWindowBuffer_->attach(resWindowBufferREL_);
+    allocated_ = true;
+
+    return true;
+  }
   bool alloc(bool clear)
   {
     if(allocated_)
@@ -223,10 +233,6 @@ private:
       // ensure that top level window is allocated
       if(!resWindowBufferHighestResREL_->alloc2d(clear))
         return false;
-
-      // don't allocate bandWindows for windowed decompression
-      if(filterWidth_)
-        return true;
 
       // attach to top level window
       if(resWindowBufferREL_ != resWindowBufferHighestResREL_)
@@ -397,7 +403,6 @@ private:
     return resWindowBufferREL_;
   }
   bool allocated_;
-  uint32_t filterWidth_;
 
   ResSimple tileCompAtRes_; // numTileBandWindows> 0 will trigger creation of band window buffers
   ResSimple tileCompAtLowerRes_; // numTileBandWindows==0 for lowest resolution

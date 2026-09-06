@@ -182,6 +182,9 @@ struct TileComponentWindowBase : public ITileComponentWindow
   }
   bool alloc() override
   {
+    // a region decode keeps its band and split data in the sparse canvas
+    if(!wholeTileDecompress_)
+      return resWindows.back()->allocResWindowBuffer(!compress_);
     return std::all_of(resWindows.begin(), resWindows.end(),
                        [this](const auto& b) { return b->alloc(!compress_); });
   }
