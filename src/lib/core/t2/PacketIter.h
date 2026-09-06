@@ -233,7 +233,6 @@ class PacketManager;
  * 2. No subsampling (all components have dx=dy=1)
  * 3. Constant number of resolutions across all components
  * 4. Non-decreasing projected precinct size as resolution decreases (CPRL/PCRL only)
- * 5. Tile origin at (0,0)
  *
  * ## Spatial Progressions and Step Sizes
  *
@@ -440,6 +439,11 @@ private:
 
   /** RPCL OPT: tracks whether left-of-window precincts have been skipped for current row */
   bool skippedLeft_ = false;
+  /** first position of the PCRL/CPRL spatial loops: the highest resolution's precinct grid start */
+  uint64_t spatialStartX_ = 0;
+  uint64_t spatialStartY_ = 0;
+  bool precinctRowStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t yPos) const;
+  bool precinctColumnStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t xPos) const;
 
   /**
    * @brief Tests whether a precinct row of rpInfo starts at the current y (non-OPT path).

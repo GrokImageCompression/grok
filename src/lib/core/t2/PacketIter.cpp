@@ -279,6 +279,8 @@ void PacketIter::genPrecinctInfo(PacketIterInfoComponent* comp, PacketIterInfoRe
  * 4. All components have the same number of resolutions
  * 5. For PCRL/CPRL: projected precinct sizes are non-decreasing as resolution decreases
  *    (ensures the highest-resolution precinct grid covers all lower-resolution precincts)
+ *    The tile origin may sit inside a precinct: the spatial loops start on the highest
+ *    resolution's precinct grid and emit such a precinct at their first position.
  *
  * The OPT path uses per-resolution precinct step sizes for spatial
  * progressions (RPCL), avoiding degenerate iteration when tiles have
@@ -310,11 +312,6 @@ bool PacketIter::genPrecinctInfoOPT(void)
       break;
     case GRK_PCRL:
     case GRK_CPRL:
-      // PCRL/CPRL OPT spatial loops use precinct-aligned bounds and bitwise
-      // alignment checks that assume tile origin falls on a precinct boundary.
-      // Non-zero tile origins break these assumptions.
-      if(tb.x0 || tb.y0)
-        return false;
       // if P occurs before R, then we must ensure that for all resolutions, the precinct
       // projected onto canvas is a "multiple" of the highest resolution precinct,
       // so that the P loops covers all precincts from all resolutions
@@ -856,9 +853,19 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
   return true;
 }
 
+bool PacketIter::precinctRowStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t yPos) const
+{
+  return (yPos & rpInfo->precHeightPRJMinusOne) == 0 ||
+         (yPos == spatialStartY_ && rpInfo->resOffsetY0PRJ);
+}
+bool PacketIter::precinctColumnStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t xPos) const
+{
+  return (xPos & rpInfo->precWidthPRJMinusOne) == 0 ||
+         (xPos == spatialStartX_ && rpInfo->resOffsetX0PRJ);
+}
 bool PacketIter::genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-  if((y & rpInfo->precHeightPRJMinusOne) != 0)
+  if(!precinctRowStartsOPT(rpInfo, y))
     return false;
 
   py0grid_ = ((uint32_t)ceildivpow2(y, rpInfo->decompLevel_) >> rpInfo->precHeightExp) -
@@ -867,7 +874,7 @@ bool PacketIter::genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 }
 bool PacketIter::genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-  if((x & rpInfo->precWidthPRJMinusOne) != 0)
+  if(!precinctColumnStartsOPT(rpInfo, x))
     return false;
 
   px0grid_ = ((uint32_t)ceildivpow2(x, rpInfo->decompLevel_) >> rpInfo->precWidthExp) -
@@ -975,6 +982,8 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pocIndex, TileCodingPar
   prog.ty1 = tileBounds.y1;
   x = prog.tx0;
   y = prog.ty0;
+  spatialStartX_ = x;
+  spatialStartY_ = y;
 
   // generate precinct grids
   for(uint16_t compno = 0; compno < numcomps; ++compno)
@@ -994,6 +1003,18 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pocIndex, TileCodingPar
   }
   genPrecinctInfo();
   update_dxy();
+  // the highest resolution's precinct holding the tile origin can start before it
+  if(precinctInfoOPT_ && (prog.progression == GRK_PCRL || prog.progression == GRK_CPRL))
+  {
+    auto highest = precinctInfoOPT_ + prog.res_e - 1;
+    if(highest->valid)
+    {
+      spatialStartX_ = highest->tileBoundsPrecPRJ.x0;
+      spatialStartY_ = highest->tileBoundsPrecPRJ.y0;
+      x = (uint32_t)spatialStartX_;
+      y = (uint32_t)spatialStartY_;
+    }
+  }
 
   // single progression optimizations
   if(singleProgression_)
@@ -1452,8 +1473,12 @@ uint64_t PacketIter::packetsInRowsOPT(uint64_t yBegin, uint64_t yEnd) const
     if(!info->valid)
       continue;
     uint64_t rows = info->tileBoundsPrecGrid.height();
-    auto rowsBefore = [&](uint64_t yLimit) {
-      return std::min<uint64_t>(ceildiv<uint64_t>(yLimit, info->precHeightPRJ), rows);
+    uint64_t firstStart = info->resOffsetY0PRJ ? spatialStartY_ : info->tileBoundsPrecPRJ.y0;
+    auto rowsBefore = [&](uint64_t yLimit) -> uint64_t {
+      if(yLimit <= firstStart)
+        return 0;
+      uint64_t cells = ceildiv<uint64_t>(yLimit, info->precHeightPRJ) - info->tileBoundsPrecGrid.y0;
+      return std::min<uint64_t>(std::max<uint64_t>(cells, 1), rows);
     };
     precincts += (rowsBefore(yEnd) - rowsBefore(yBegin)) * info->tileBoundsPrecGrid.width();
   }
@@ -1465,11 +1490,15 @@ uint64_t PacketIter::packetsInColumnsOPT(uint64_t y, uint64_t xBegin, uint64_t x
   for(uint8_t res = prog.res_s; res < prog.res_e; ++res)
   {
     auto info = precinctInfoOPT_ + res;
-    if(!info->valid || (y & info->precHeightPRJMinusOne) != 0)
+    if(!info->valid || !precinctRowStartsOPT(info, y))
       continue;
     uint64_t columns = info->tileBoundsPrecGrid.width();
-    auto columnsBefore = [&](uint64_t xLimit) {
-      return std::min<uint64_t>(ceildiv<uint64_t>(xLimit, info->precWidthPRJ), columns);
+    uint64_t firstStart = info->resOffsetX0PRJ ? spatialStartX_ : info->tileBoundsPrecPRJ.x0;
+    auto columnsBefore = [&](uint64_t xLimit) -> uint64_t {
+      if(xLimit <= firstStart)
+        return 0;
+      uint64_t cells = ceildiv<uint64_t>(xLimit, info->precWidthPRJ) - info->tileBoundsPrecGrid.x0;
+      return std::min<uint64_t>(std::max<uint64_t>(cells, 1), columns);
     };
     precincts += columnsBefore(xEnd) - columnsBefore(xBegin);
   }
@@ -1496,7 +1525,7 @@ std::pair<uint64_t, uint64_t> PacketIter::windowColumnsOPT(uint64_t y) const
   for(uint8_t res = prog.res_s; res < prog.res_e; ++res)
   {
     auto info = precinctInfoOPT_ + res;
-    if(!info->valid || (y & info->precHeightPRJMinusOne) != 0)
+    if(!info->valid || !precinctRowStartsOPT(info, y))
       continue;
     x0 = std::min(x0, info->winPrecPRJ.x0);
     x1 = std::max(x1, info->winPrecPRJ.x1);
@@ -1507,7 +1536,7 @@ bool PacketIter::next_cprlOPT(SparseBuffer* compressedPackets)
 {
   auto wholeTile = isWholeTile();
   auto precInfo = precinctInfoOPT_ + prog.res_e - 1;
-  if(!precInfoCheck(precInfo))
+  if(!precInfo->valid)
     return false;
   bool skipOutsideWindow = !wholeTile && compressedPackets;
   auto [windowY0, windowY1] = wholeTile ? std::pair<uint64_t, uint64_t>{0, 0} : windowRowsOPT();
@@ -1582,9 +1611,9 @@ bool PacketIter::next_cprlOPT(SparseBuffer* compressedPackets)
         }
         resno = prog.res_s;
       }
-      x = prog.tx0;
+      x = (uint32_t)spatialStartX_;
     }
-    y = prog.ty0;
+    y = (uint32_t)spatialStartY_;
   }
 
   return false;
@@ -1593,7 +1622,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* compressedPackets)
 {
   auto wholeTile = isWholeTile();
   auto precInfo = precinctInfoOPT_ + prog.res_e - 1;
-  if(!precInfoCheck(precInfo))
+  if(!precInfo->valid)
     return false;
   bool skipOutsideWindow = !wholeTile && compressedPackets;
   uint64_t components = prog.comp_e - prog.comp_s;
@@ -1662,7 +1691,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* compressedPackets)
       }
       compno = prog.comp_s;
     }
-    x = precInfo->tileBoundsPrecPRJ.x0;
+    x = (uint32_t)spatialStartX_;
   }
 
   return false;

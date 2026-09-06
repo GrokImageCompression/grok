@@ -186,6 +186,30 @@ bool decode(const std::string& path, const Window* window, Decoded& out)
   return ok;
 }
 
+bool matchesPattern(const Decoded& full, const char* name)
+{
+  for(uint16_t c = 0; c < NUM_COMPONENTS; ++c)
+  {
+    if(full.w[c] != IMAGE_WIDTH || full.h[c] != IMAGE_HEIGHT)
+    {
+      fprintf(stderr, "%s: full decode component %u is %ux%u\n", name, c, full.w[c], full.h[c]);
+      return false;
+    }
+    for(uint32_t y = 0; y < IMAGE_HEIGHT; ++y)
+      for(uint32_t x = 0; x < IMAGE_WIDTH; ++x)
+      {
+        int32_t got = full.comps[c][(size_t)y * IMAGE_WIDTH + x];
+        if(got != expectedSample(x, y, c))
+        {
+          fprintf(stderr, "%s: full decode component %u sample (%u,%u) is %d, expected %d\n", name,
+                  c, x, y, got, expectedSample(x, y, c));
+          return false;
+        }
+      }
+  }
+  return true;
+}
+
 bool windowMatches(const Decoded& full, const Decoded& windowed, const char* label)
 {
   for(uint16_t c = 0; c < NUM_COMPONENTS; ++c)
@@ -229,7 +253,8 @@ bool runOrder(GRK_PROG_ORDER order, const char* name)
   Window fullReduced = {0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, 1};
   if(decode(referencePath, nullptr, full) && decode(referencePath, &fullReduced, reducedFull))
   {
-    ok = true;
+    // the stream is lossless, so the full decode has to reproduce the source
+    ok = matchesPattern(full, name);
     // windows inside one tile, across tile borders, at the image edges, and reduced.
     // only the first tile sits at the canvas origin the pcrl and cprl fast paths need
     const Window windows[] = {
