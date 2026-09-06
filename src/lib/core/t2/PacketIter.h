@@ -18,6 +18,7 @@
 #pragma once
 
 #include <limits>
+#include <utility>
 
 namespace grk
 {
@@ -520,7 +521,11 @@ private:
   bool next_pcrl();
   /** next packet in precinct-resolution-component-layer order (Part 2) */
   bool next_prcl();
-  bool next_pcrlOPT();
+  bool next_pcrlOPT(SparseBuffer* compressedPackets);
+  uint64_t packetsInRowsOPT(uint64_t yBegin, uint64_t yEnd) const;
+  uint64_t packetsInColumnsOPT(uint64_t y, uint64_t xBegin, uint64_t xEnd) const;
+  std::pair<uint64_t, uint64_t> windowRowsOPT(void) const;
+  std::pair<uint64_t, uint64_t> windowColumnsOPT(uint64_t y) const;
 
   /**
    Get next packet in layer-resolution-component-precinct order.

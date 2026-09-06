@@ -82,7 +82,7 @@ grk_image* makeImage(void)
   return image;
 }
 
-bool compress(GRK_PROG_ORDER order, const std::string& path)
+bool compress(GRK_PROG_ORDER order, bool writePlt, const std::string& path)
 {
   grk_image* image = makeImage();
   if(!image)
@@ -91,7 +91,7 @@ bool compress(GRK_PROG_ORDER order, const std::string& path)
   grk_compress_set_default_params(&parameters);
   parameters.cod_format = GRK_FMT_J2K;
   parameters.prog_order = order;
-  parameters.write_plt = true;
+  parameters.write_plt = writePlt;
   parameters.tile_size_on = true;
   parameters.t_width = TILE_WIDTH;
   parameters.t_height = TILE_HEIGHT;
@@ -219,19 +219,22 @@ bool windowMatches(const Decoded& full, const Decoded& windowed, const char* lab
 bool runOrder(GRK_PROG_ORDER order, const char* name)
 {
   std::string path = std::string("plt_window_skip_") + name + ".j2k";
-  if(!compress(order, path))
+  // the references come from a stream without plt, whose packets are byte-identical
+  std::string referencePath = std::string("plt_window_skip_") + name + "_no_plt.j2k";
+  if(!compress(order, true, path) || !compress(order, false, referencePath))
     return false;
   bool ok = false;
   Decoded full;
   Decoded reducedFull;
   Window fullReduced = {0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, 1};
-  if(decode(path, nullptr, full) && decode(path, &fullReduced, reducedFull))
+  if(decode(referencePath, nullptr, full) && decode(referencePath, &fullReduced, reducedFull))
   {
     ok = true;
-    // windows inside one tile, across tile borders, at the image edges, and reduced
+    // windows inside one tile, across tile borders, at the image edges, and reduced.
+    // only the first tile sits at the canvas origin the pcrl and cprl fast paths need
     const Window windows[] = {
         {10, 10, 30, 30, 0}, {140, 100, 250, 200, 0}, {64, 0, 300, 96, 0}, {200, 150, 300, 220, 0},
-        {0, 0, 300, 220, 0}, {130, 90, 260, 210, 1},  {40, 40, 41, 41, 0}};
+        {0, 0, 300, 220, 0}, {130, 90, 260, 210, 1},  {40, 40, 41, 41, 0}, {20, 20, 200, 150, 1}};
     for(const auto& window : windows)
     {
       Decoded windowed;
@@ -244,6 +247,7 @@ bool runOrder(GRK_PROG_ORDER order, const char* name)
     }
   }
   remove(path.c_str());
+  remove(referencePath.c_str());
   return ok;
 }
 } // namespace
