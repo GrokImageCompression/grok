@@ -231,7 +231,7 @@ bool ImageFormat::allComponentsSanityCheck(const grk_image* image, bool checkEqu
   auto comp0 = image->comps;
   if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
   {
-    spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
+    spdlog::warn("component 0 precision {} is not supported.", comp0->prec);
     return false;
   }
   for(uint16_t i = 1U; i < image->decompress_num_comps; ++i)

@@ -252,6 +252,11 @@ bool PGXFormat<T>::writeImage(void)
       goto beach;
     }
 
+    if(!comp->data)
+    {
+      spdlog::error("PGXFormat: component {} has no data", compno);
+      goto beach;
+    }
     uint32_t w = comp->w;
     uint32_t h = comp->h;
 

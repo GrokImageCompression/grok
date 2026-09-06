@@ -556,6 +556,14 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_eycc_tiff_warning_test PROPERTIES
     ENVIRONMENT "GRK_DEBUG=2"
     PASS_REGULAR_EXPRESSION "eYCC is recorded as rec.601 YCbCr")
+
+  # a window with no samples in one component reaches the pgx writer with null data
+  add_test(NAME grk_pgx_empty_component_test
+    COMMAND grk_decompress
+            -i ${GRK_DATA_ROOT}/input/nonregression/empty-subsampled-component-window.j2k
+            -o ${CMAKE_CURRENT_BINARY_DIR}/empty_component.pgx -d 0,0,1024,1024)
+  set_tests_properties(grk_pgx_empty_component_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "has no data")
 endif()
 
 # needs page sized files, so it only runs where the page size is known

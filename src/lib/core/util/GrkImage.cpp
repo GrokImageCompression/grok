@@ -1093,7 +1093,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
   }
   if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
   {
-    grklog.warn("component 0 precision %d is not supported.", 0, comp0->prec);
+    grklog.warn("component 0 precision %d is not supported.", comp0->prec);
     return false;
   }
 
@@ -1101,7 +1101,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
   {
     auto compi = comps + i;
 
-    if(!comp0->data)
+    if(!compi->data)
     {
       grklog.warn("component %d : data is null.", i);
       return false;
@@ -1124,21 +1124,21 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
     {
       grklog.warn("width %d of component %d"
                   " differs from width %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->w, i, comp0->w);
       return false;
     }
     if(comp0->stride != compi->stride)
     {
       grklog.warn("stride %d of component %d"
                   " differs from stride %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->stride, i, comp0->stride);
       return false;
     }
     if(comp0->h != compi->h)
     {
       grklog.warn("height %d of component %d"
                   " differs from height %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->h, i, comp0->h);
       return false;
     }
   }
