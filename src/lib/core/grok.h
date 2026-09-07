@@ -2678,6 +2678,17 @@ typedef bool (*GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK)(void* user, const uint
                                                           size_t* length, void** frame_user);
 
 /**
+ * @brief A display transform the device runs on a 12 bit RGB frame before packing 8 bit RGB.
+ */
+typedef struct grk_plugin_display_transform
+{
+  const float* transfer; /* 4096 entries: each 12 bit code as display linear light, 1.0 at the
+                            display peak */
+  const float* matrix; /* 9 entries, row major, linear source RGB to linear display RGB; NULL for
+                          none */
+} grk_plugin_display_transform;
+
+/**
  * @brief One code stream's shape and the callbacks for an in-memory decompress batch.
  */
 typedef struct grk_plugin_batch_decompress_memory_info
@@ -2688,7 +2699,9 @@ typedef struct grk_plugin_batch_decompress_memory_info
   GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK callback; /* per frame result */
   void* user; /* handed back to both callbacks */
   bool srgb8_output; /* ask for 8 bit sRGB frames instead of the code stream's planes */
-  bool* srgb8_on_device; /* optional, set true when the device runs that transform */
+  const grk_plugin_display_transform*
+      display_transform; /* ask for 8 bit RGB through these tables, NULL for none */
+  bool* rgb8_on_device; /* optional, set true when the device packs 8 bit RGB */
 } grk_plugin_batch_decompress_memory_info;
 
 /**
@@ -2710,9 +2723,20 @@ typedef struct grk_plugin_batch_decompress_memory_info
  * sRGB matrix, the sRGB curve) and packs interleaved RGB. The frame callback's
  * image then has three components of prec 8 and comps[0].data holds the whole
  * interleaved buffer, comps[0].stride its row pitch in bytes, comps[1] and
- * comps[2] a null data pointer. @p info.srgb8_on_device, when given, says
- * whether this batch got that; a shape the device cannot transform comes back
- * as planes as usual.
+ * comps[2] a null data pointer.
+ *
+ * @p info.display_transform asks for the same layout through the caller's own
+ * tables: each channel's 12 bit code becomes display linear light through
+ * @p transfer, then optionally goes through @p matrix, then becomes an 8 bit
+ * code as the inverse of a 2.2 gamma at 12 bits with the low four bits dropped,
+ * which is the largest code c in 0 to 255 whose threshold ((c * 16) / 4095) to
+ * the power 2.2, evaluated in single precision, is at or below the light. The
+ * @p transfer and @p matrix memory only has to outlive this call. Setting
+ * @p info.srgb8_output and @p info.display_transform together returns -1.
+ *
+ * Either request needs the same shape, three component unsigned 12 bit;
+ * anything else comes back as planes as usual. @p info.rgb8_on_device, when
+ * given, says whether this batch got the 8 bit RGB layout.
  *
  * Requires grk_plugin_init() to have succeeded. While the batch runs, an ordinary
  * grk_decompress() call decompresses on the CPU.

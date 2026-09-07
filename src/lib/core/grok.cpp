@@ -2075,6 +2075,10 @@ GRK_API int32_t GRK_CALLCONV
     return -1;
   if(!info.codestream || !info.codestream_length || !info.callback || !info.pull)
     return -1;
+  if(info.srgb8_output && info.display_transform)
+    return -1;
+  if(info.display_transform && !info.display_transform->transfer)
+    return -1;
   if(!pluginAccelerates())
     return 1;
   auto begin = (PLUGIN_BATCH_DECODE_MEMORY_BEGIN)batchMemorySymbol(
@@ -2111,7 +2115,14 @@ GRK_API int32_t GRK_CALLCONV
   gpupInfo.pull = batchDecompressMemoryPull;
   gpupInfo.pull_user = nullptr;
   gpupInfo.srgb8_output = info.srgb8_output;
-  gpupInfo.srgb8_on_device = false;
+  gpup_display_transform displayTransform = {};
+  if(info.display_transform)
+  {
+    displayTransform.transfer = info.display_transform->transfer;
+    displayTransform.matrix = info.display_transform->matrix;
+    gpupInfo.display_transform = &displayTransform;
+  }
+  gpupInfo.rgb8_on_device = false;
   batchDecompress.pull = info.pull;
   batchDecompress.callback = info.callback;
   batchDecompress.user = info.user;
@@ -2122,8 +2133,8 @@ GRK_API int32_t GRK_CALLCONV
   int32_t rc = begin(&gpupInfo, grk_plugin_internal_decode_callback);
   gpup_image_free_shell(gpupInfo.image);
   grk_object_unref(codec);
-  if(info.srgb8_on_device)
-    *info.srgb8_on_device = rc == 0 && gpupInfo.srgb8_on_device;
+  if(info.rgb8_on_device)
+    *info.rgb8_on_device = rc == 0 && gpupInfo.rgb8_on_device;
   if(rc != 0)
   {
     batchDecompress.running = false;

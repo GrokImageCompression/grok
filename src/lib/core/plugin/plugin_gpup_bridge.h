@@ -55,8 +55,8 @@ inline void grk_to_gpup_compress_params(const grk_cparameters* src, gpup_compres
     dst->prcw_init[i] = src->prcw_init[i];
     dst->prch_init[i] = src->prch_init[i];
   }
-  memcpy(dst->infile, src->infile, GPUP_PATH_LEN);
-  memcpy(dst->outfile, src->outfile, GPUP_PATH_LEN);
+  memcpy(dst->infile, src->infile, sizeof(src->infile));
+  memcpy(dst->outfile, src->outfile, sizeof(src->outfile));
   dst->image_offset_x0 = src->image_offset_x0;
   dst->image_offset_y0 = src->image_offset_y0;
   dst->subsampling_dx = src->subsampling_dx;
@@ -88,8 +88,8 @@ inline void grk_to_gpup_decompress_params(const grk_decompress_parameters* src,
   memset(dst, 0, sizeof(*dst));
   dst->core.reduce = src->core.reduce;
   dst->core.layers_to_decompress_ = src->core.layers_to_decompress;
-  memcpy(dst->infile, src->infile, GPUP_PATH_LEN);
-  memcpy(dst->outfile, src->outfile, GPUP_PATH_LEN);
+  memcpy(dst->infile, src->infile, sizeof(src->infile));
+  memcpy(dst->outfile, src->outfile, sizeof(src->outfile));
   dst->decod_format = (gpup_codec_fmt)src->decod_format;
   dst->cod_format = (gpup_file_fmt)src->cod_format;
   dst->dw_x0 = src->dw_x0;

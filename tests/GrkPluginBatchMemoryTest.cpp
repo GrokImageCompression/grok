@@ -48,6 +48,13 @@ constexpr int32_t kDeviceDecodeTolerance = 2;
 constexpr int kSrgb8ByteTolerance = 8;
 constexpr double kSrgb8ShareOverOneCode = 0.1;
 constexpr double kSrgb8PullWait = 60.0;
+// neither the identity nor the sRGB curve, so a device running its own transform fails
+constexpr float kDisplayTransferGamma = 2.4f;
+constexpr float kDisplayTransferScale = 0.9f;
+// the 8 bit encode inverts a 2.2 gamma at 12 bits with the low four bits dropped
+constexpr float kDisplayEncodeGamma = 2.2f;
+constexpr int kDisplayEncodeCodeStep = 16;
+constexpr int kDisplayEncodeLevels = 256;
 
 void fail(const char* what)
 {
@@ -1215,6 +1222,59 @@ std::vector<uint8_t> srgb8Reference(const XyzToSrgb& transform,
   return rgb;
 }
 
+// postkit's render_display_rgb8: table, optional matrix, threshold encode
+struct DisplayTransform
+{
+  explicit DisplayTransform(bool withMatrix) : matrixOn(withMatrix)
+  {
+    for(int code = 0; code <= kMaxSample; ++code)
+      transfer[code] =
+          std::pow((float)code / 4095.0f, kDisplayTransferGamma) * kDisplayTransferScale;
+    for(int code = 0; code < kDisplayEncodeLevels; ++code)
+      threshold[code] =
+          std::pow((float)(code * kDisplayEncodeCodeStep) / 4095.0f, kDisplayEncodeGamma);
+  }
+  uint8_t channel(float light) const
+  {
+    auto above = std::upper_bound(threshold, threshold + kDisplayEncodeLevels, light) - threshold;
+    return (uint8_t)(above ? above - 1 : 0);
+  }
+  void pixel(int32_t redCode, int32_t greenCode, int32_t blueCode, uint8_t* out) const
+  {
+    float rgb[kNumComps] = {transfer[redCode], transfer[greenCode], transfer[blueCode]};
+    if(matrixOn)
+    {
+      float mixed[kNumComps];
+      for(int row = 0; row < kNumComps; ++row)
+        mixed[row] = kMatrix[row * kNumComps] * rgb[0] + kMatrix[row * kNumComps + 1] * rgb[1] +
+                     kMatrix[row * kNumComps + 2] * rgb[2];
+      for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+        rgb[channelNum] = mixed[channelNum];
+    }
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+      out[channelNum] = channel(rgb[channelNum]);
+  }
+  // made up, rows summing to about 1 so a frame keeps its brightness
+  static constexpr float kMatrix[9] = {1.2f,   -0.15f, -0.05f, -0.1f, 1.15f,
+                                       -0.05f, 0.0f,   -0.1f,  1.1f};
+  bool matrixOn;
+  float transfer[kMaxSample + 1];
+  float threshold[kDisplayEncodeLevels];
+};
+
+// the same planes the device transforms, run through the host reference
+std::vector<uint8_t> displayReference(const DisplayTransform& transform,
+                                      const std::vector<std::vector<int32_t>>& planes)
+{
+  std::vector<uint8_t> rgb;
+  if(planes.size() != kNumComps)
+    return rgb;
+  rgb.resize(planes[0].size() * kNumComps);
+  for(size_t i = 0; i < planes[0].size(); ++i)
+    transform.pixel(planes[0][i], planes[1][i], planes[2][i], rgb.data() + i * kNumComps);
+  return rgb;
+}
+
 bool pullNextFrame(void* user, const uint8_t** codestream, size_t* length, void** frameUser)
 {
   auto source = (PullSource*)user;
@@ -1226,6 +1286,57 @@ bool pullNextFrame(void* user, const uint8_t** codestream, size_t* length, void*
   *length = entry.first == source->truncatedId ? entry.second->size() / 8 : entry.second->size();
   *frameUser = (void*)entry.first;
   return true;
+}
+
+// one display transform batch over a whole set of code streams, run to the end
+bool runDisplayBatch(const Collector& encoded, const std::vector<uint8_t>& shapeStream,
+                     const grk_plugin_display_transform& transform, Rgb8Collector& rgb8,
+                     double* seconds)
+{
+  PullSource source;
+  source.rgb8 = &rgb8;
+  for(const auto& entry : encoded.codestreams)
+    source.frames.emplace_back(entry.first, &entry.second);
+
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledRgb8;
+  info.user = &source;
+  info.display_transform = &transform;
+  bool onDevice = false;
+  info.rgb8_on_device = &onDevice;
+  grk_plugin_set_enabled(true);
+  auto start = std::chrono::steady_clock::now();
+  int32_t rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  display grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    grk_plugin_set_enabled(false);
+    return false;
+  }
+  // end makes every pull return false, so the workers need their chance at the streams first
+  while(secondsSince(start) < kSrgb8PullWait)
+  {
+    bool pulledEverything = false;
+    {
+      std::lock_guard<std::mutex> lock(source.mutex);
+      pulledEverything = source.next >= source.frames.size();
+    }
+    if(pulledEverything)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  bool drained = grk_plugin_batch_decompress_memory_end();
+  *seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  if(!drained)
+    std::printf("  display grk_plugin_batch_decompress_memory_end failed\n");
+  if(!onDevice)
+    std::printf("  the device declined the display transform\n");
+
+  return drained && onDevice;
 }
 
 // the code streams of a cinema batch decoded through the in-memory decompress
@@ -1324,9 +1435,11 @@ void checkBatchDecompress()
     fail("decompress batch delivery");
   }
   size_t truncatedArrived = decoded.frames.count(source.truncatedId) ? 1 : 0;
-  if(decoded.frames.size() - truncatedArrived != kNumFrames || decoded.failed + truncatedArrived != 1)
+  if(decoded.frames.size() - truncatedArrived != kNumFrames ||
+     decoded.failed + truncatedArrived != 1)
   {
-    std::printf("  %u frames arrived, %d failed\n", (unsigned)decoded.frames.size(), decoded.failed);
+    std::printf("  %u frames arrived, %d failed\n", (unsigned)decoded.frames.size(),
+                decoded.failed);
     fail("decompress batch delivery");
   }
   int32_t worst = 0;
@@ -1363,7 +1476,7 @@ void checkBatchDecompress()
   srgb8Info.user = &rgb8Source;
   srgb8Info.srgb8_output = true;
   bool onDevice = false;
-  srgb8Info.srgb8_on_device = &onDevice;
+  srgb8Info.rgb8_on_device = &onDevice;
   grk_plugin_set_enabled(true);
   start = std::chrono::steady_clock::now();
   rc = grk_plugin_batch_decompress_memory_begin(srgb8Info);
@@ -1424,9 +1537,8 @@ void checkBatchDecompress()
       if(difference > worstByte)
       {
         worstByte = difference;
-        std::printf("  frame %u sample %u: device %d, reference %d\n",
-                    (unsigned)(entry.first - 1), (unsigned)i, (int)entry.second[i],
-                    (int)reference[i]);
+        std::printf("  frame %u sample %u: device %d, reference %d\n", (unsigned)(entry.first - 1),
+                    (unsigned)i, (int)entry.second[i], (int)reference[i]);
       }
       if(difference > 1)
         ++overOneCode;
@@ -1440,6 +1552,117 @@ void checkBatchDecompress()
     fail("an srgb8 frame strays from the host transform");
   if(shareOverOneCode > kSrgb8ShareOverOneCode)
     fail("too many srgb8 samples stray from the host transform by more than one code");
+
+  // the same code streams through the caller's own tables, with and without the matrix
+  DisplayTransform matrixTransform(true);
+  DisplayTransform plainTransform(false);
+  grk_plugin_display_transform matrixRequest = {matrixTransform.transfer,
+                                                DisplayTransform::kMatrix};
+  grk_plugin_display_transform plainRequest = {plainTransform.transfer, nullptr};
+  Rgb8Collector matrixFrames;
+  Rgb8Collector plainFrames;
+  double matrixSeconds = 0;
+  double plainSeconds = 0;
+  if(!runDisplayBatch(encoded, shapeStream, matrixRequest, matrixFrames, &matrixSeconds))
+  {
+    fail("display transform batch with a matrix");
+    return;
+  }
+  if(!runDisplayBatch(encoded, shapeStream, plainRequest, plainFrames, &plainSeconds))
+  {
+    fail("display transform batch without a matrix");
+    return;
+  }
+  std::printf("display transform batch: %u frames on device in %.2f s with a matrix and %.2f s "
+              "without, %.1f and %.1f frames per second\n",
+              kNumFrames, matrixSeconds, plainSeconds, kNumFrames / matrixSeconds,
+              kNumFrames / plainSeconds);
+  if(matrixFrames.frames.size() != kNumFrames || matrixFrames.failed || matrixFrames.wrongShape ||
+     plainFrames.frames.size() != kNumFrames || plainFrames.failed || plainFrames.wrongShape)
+  {
+    std::printf("  with a matrix %u frames, %d failed, %d of the wrong shape; without %u frames, "
+                "%d failed, %d of the wrong shape\n",
+                (unsigned)matrixFrames.frames.size(), matrixFrames.failed, matrixFrames.wrongShape,
+                (unsigned)plainFrames.frames.size(), plainFrames.failed, plainFrames.wrongShape);
+    fail("display transform batch delivery");
+    return;
+  }
+
+  // both variants hold against the same host decode, so each stream decodes once
+  int worstMatrixByte = 0;
+  int worstPlainByte = 0;
+  size_t matrixOverOneCode = 0;
+  size_t plainOverOneCode = 0;
+  compared = 0;
+  for(const auto& entry : encoded.codestreams)
+  {
+    auto planes = decodeOnCpu(entry.second);
+    const auto& fromMatrix = matrixFrames.frames[entry.first];
+    const auto& fromPlain = plainFrames.frames[entry.first];
+    auto matrixExpected = displayReference(matrixTransform, planes);
+    auto plainExpected = displayReference(plainTransform, planes);
+    if(matrixExpected.size() != frameSamples || plainExpected.size() != frameSamples ||
+       fromMatrix.size() != frameSamples || fromPlain.size() != frameSamples)
+    {
+      fail("display transform batch: frame size");
+      return;
+    }
+    for(size_t i = 0; i < frameSamples; ++i)
+    {
+      int matrixDifference = std::abs((int)fromMatrix[i] - (int)matrixExpected[i]);
+      int plainDifference = std::abs((int)fromPlain[i] - (int)plainExpected[i]);
+      if(matrixDifference > worstMatrixByte)
+        worstMatrixByte = matrixDifference;
+      if(plainDifference > worstPlainByte)
+        worstPlainByte = plainDifference;
+      if(matrixDifference > 1)
+        ++matrixOverOneCode;
+      if(plainDifference > 1)
+        ++plainOverOneCode;
+    }
+    compared += frameSamples;
+  }
+  double matrixShare = 100.0 * (double)matrixOverOneCode / (double)compared;
+  double plainShare = 100.0 * (double)plainOverOneCode / (double)compared;
+  std::printf("display transform batch: worst byte difference %d with a matrix and %d without, "
+              "%.4f%% and %.4f%% of samples over one code\n",
+              worstMatrixByte, worstPlainByte, matrixShare, plainShare);
+  if(worstMatrixByte > kSrgb8ByteTolerance || worstPlainByte > kSrgb8ByteTolerance)
+    fail("a display transform frame strays from the host transform");
+  if(matrixShare > kSrgb8ShareOverOneCode || plainShare > kSrgb8ShareOverOneCode)
+    fail("too many display transform samples stray from the host transform by more than one code");
+
+  // asking for both transforms at once is a caller error that starts nothing
+  Rgb8Collector noFrames;
+  PullSource emptySource;
+  emptySource.rgb8 = &noFrames;
+  grk_plugin_batch_decompress_memory_info bothInfo = {};
+  bothInfo.codestream = shapeStream.data();
+  bothInfo.codestream_length = shapeStream.size();
+  bothInfo.pull = pullNextFrame;
+  bothInfo.callback = collectPulledRgb8;
+  bothInfo.user = &emptySource;
+  bothInfo.srgb8_output = true;
+  bothInfo.display_transform = &plainRequest;
+  grk_plugin_set_enabled(true);
+  if(grk_plugin_batch_decompress_memory_begin(bothInfo) != -1)
+  {
+    fail("a begin asking for both transforms");
+    grk_plugin_batch_decompress_memory_end();
+  }
+  // the failed begin left no batch running, so this one takes
+  bothInfo.srgb8_output = false;
+  rc = grk_plugin_batch_decompress_memory_begin(bothInfo);
+  if(rc != 0)
+  {
+    std::printf("  begin after the rejected one returned %d\n", (int)rc);
+    fail("a begin after one asking for both transforms");
+  }
+  else if(!grk_plugin_batch_decompress_memory_end())
+  {
+    fail("end after the rejected begin");
+  }
+  grk_plugin_set_enabled(false);
 }
 
 void checkYuvSource(const YuvSource& source)

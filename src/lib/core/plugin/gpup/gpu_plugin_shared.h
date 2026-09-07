@@ -478,6 +478,15 @@ typedef struct _gpup_batch_memory_info
 typedef bool (*GPUP_BATCH_DECOMPRESS_PULL)(void* user, const uint8_t** codestream, size_t* length,
                                            void** frame_user);
 
+/* tables the device runs a 12 bit RGB frame through before packing 8 bit RGB, copied by begin */
+typedef struct _gpup_display_transform
+{
+  /* 4096 entries: each 12 bit code as display linear light, 1.0 at the display peak */
+  const float* transfer;
+  /* 9 entries, row major, linear source RGB to linear display RGB, NULL for none */
+  const float* matrix;
+} gpup_display_transform;
+
 /* one code stream shape for a whole in-memory decode batch: the host reads the
    header of a representative code stream and hands it over */
 typedef struct _gpup_batch_decompress_memory_info
@@ -490,8 +499,10 @@ typedef struct _gpup_batch_decompress_memory_info
   /* asks for 8 bit sRGB frames: the device runs the DCI X'Y'Z' to sRGB transform and
      packs interleaved RGB, which the frame callback's comps[0] then carries */
   bool srgb8_output;
-  /* written by begin: true when the device does that for this batch's shape */
-  bool srgb8_on_device;
+  /* the same packing through the caller's tables, NULL for none, -1 with srgb8_output too */
+  const gpup_display_transform* display_transform;
+  /* written by begin: true when the device packs 8 bit RGB for this batch's shape */
+  bool rgb8_on_device;
 } gpup_batch_decompress_memory_info;
 
 typedef struct _gpup_decompress_callback_info
