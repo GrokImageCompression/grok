@@ -15,6 +15,7 @@
  *
  */
 
+#include <algorithm>
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -77,10 +78,17 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
   auto tcp = tileProcessor->getTCP();
   uint32_t pocno = (cp->rsiz_ == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 
-  // Cinema profile has CPRL progression and maximum component size specification,
-  // so in this case, we set max_comp to the number of components, so we can ensure that
-  // each component length meets spec. Otherwise, set to 1.
+  // each enable call walks one tile part, so walk them all or the budget
+  // check only sees the first component
+  uint32_t numTileParts = 1;
+  if(PacketIter::walksOneTilePart(cp, THRESH_CALC))
+  {
+    for(uint32_t poc = 0; poc < pocno; ++poc)
+      numTileParts = std::max<uint32_t>(numTileParts, cp->numTilePartsForProgression(poc, tile_no));
+  }
+  // under the cinema per component cap each tile part is one component
   uint32_t max_comp = cp->codingParams_.enc_.maxComponentRate_ > 0 ? image->numcomps : 1;
+  max_comp = std::max(max_comp, numTileParts);
 
   PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
   *allPacketBytes = 0;

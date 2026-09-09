@@ -289,6 +289,13 @@ struct PacketIter
                                    uint8_t newTilePartProgressionPosition);
 
   /**
+   * @brief True when each enable_tile_part_generation call confines the walk to one tile part
+   * @param cp   coding parameters
+   * @param mode T2 mode
+   */
+  static bool walksOneTilePart(CodingParams* cp, T2_MODE mode);
+
+  /**
    * @brief Generates optimized precinct information
    * @return true if image meets optimization criteria
    */

@@ -1136,7 +1136,7 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
   uint32_t prog_iter_num;
   auto tcp = cp_.tcps_.get(tileProcessor->getIndex());
   // write tile parts for first progression order
-  uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->getIndex());
+  uint64_t numTileParts = cp_.numTilePartsForProgression(0, tileProcessor->getIndex());
   if(numTileParts > maxTilePartsPerTileJ2K)
   {
     grklog.error("Number of tile parts %u for first POC exceeds maximum number of tile parts %u",
@@ -1153,7 +1153,7 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
   for(prog_iter_num = 1; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     tileProcessor->setProgIterNum(prog_iter_num);
-    numTileParts = getNumTilePartsForProgression(prog_iter_num, tileProcessor->getIndex());
+    numTileParts = cp_.numTilePartsForProgression(prog_iter_num, tileProcessor->getIndex());
     if(numTileParts > maxTilePartsPerTileJ2K)
     {
       grklog.error("Number of tile parts %u exceeds maximum number of "
@@ -2109,65 +2109,6 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* tcp, GrkImage* imag
 
   return true;
 }
-uint8_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno)
-{
-  uint64_t numTileParts = 1;
-  auto cp = &cp_;
-  auto tcp = cp->tcps_.get(tileno);
-  assert(tcp != nullptr);
-
-  /*  preconditions */
-  assert(tileno < (cp->t_grid_width_ * cp->t_grid_height_));
-  assert(prog_iter_num < tcp->getNumProgressions());
-
-  auto current_poc = &(tcp->progressionOrderChange_[prog_iter_num]);
-  assert(current_poc != 0);
-
-  /* get the progression order as a character string */
-  auto prog = convertProgressionOrder(tcp->prg_);
-  assert(strlen(prog) > 0);
-
-  if(cp->codingParams_.enc_.enableTilePartGeneration_)
-  {
-    for(uint8_t i = 0; i < 4; ++i)
-    {
-      switch(prog[i])
-      {
-        /* component wise */
-        case 'C':
-          numTileParts *= current_poc->tp_comp_e;
-          break;
-          /* resolution wise */
-        case 'R':
-          numTileParts *= current_poc->tp_res_e;
-          break;
-          /* precinct wise */
-        case 'P':
-          numTileParts *= current_poc->tp_prec_e;
-          break;
-          /* layer wise */
-        case 'L':
-          numTileParts *= current_poc->tp_lay_e;
-          break;
-      }
-      // we start a new tile part when progression matches specified tile part
-      // divider
-      if(cp->codingParams_.enc_.newTilePartProgressionDivider_ == prog[i])
-      {
-        assert(prog[i] != 'P');
-        cp->codingParams_.enc_.newTilePartProgressionPosition_ = i;
-        break;
-      }
-    }
-  }
-  else
-  {
-    numTileParts = 1;
-  }
-  assert(numTileParts < maxTilePartsPerTileJ2K);
-
-  return (uint8_t)numTileParts;
-}
 bool CodeStreamCompress::getNumTileParts(uint32_t* numTilePartsForAllTiles, GrkImage* image)
 {
   assert(numTilePartsForAllTiles != nullptr);
@@ -2182,7 +2123,7 @@ bool CodeStreamCompress::getNumTileParts(uint32_t* numTilePartsForAllTiles, GrkI
     PacketManager::updateCompressParams(image, &cp_, tcp, tileno);
     for(uint32_t prog_iter_num = 0; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
     {
-      auto numTilePartsForProgression = getNumTilePartsForProgression(prog_iter_num, tileno);
+      auto numTilePartsForProgression = cp_.numTilePartsForProgression(prog_iter_num, tileno);
       uint16_t newTotalTilePartsForTile =
           uint16_t(numTilePartsForProgression + totalTilePartsForTile);
       if(newTotalTilePartsForTile > maxTilePartsPerTileJ2K)

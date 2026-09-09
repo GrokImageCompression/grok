@@ -76,6 +76,11 @@ target_link_libraries(grk_rate_control_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_control_test COMMAND grk_rate_control_test)
 
 # synthesizes its own image, so it needs no GRK_DATA_ROOT
+add_executable(grk_imf_tile_part_rate_control_test GrkImfTilePartRateControlTest.cpp)
+target_link_libraries(grk_imf_tile_part_rate_control_test ${GROK_CORE_NAME})
+add_test(NAME grk_imf_tile_part_rate_control_test COMMAND grk_imf_tile_part_rate_control_test)
+
+# synthesizes its own image, so it needs no GRK_DATA_ROOT
 add_executable(grk_compress_data_type_test GrkCompressDataTypeTest.cpp)
 target_link_libraries(grk_compress_data_type_test ${GROK_CORE_NAME})
 add_test(NAME grk_compress_data_type_test COMMAND grk_compress_data_type_test)

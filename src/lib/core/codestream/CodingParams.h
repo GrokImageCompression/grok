@@ -472,6 +472,15 @@ struct CodingParams
    */
   uint8_t getNumTilePartsFromTLM(uint16_t tileIndex) const noexcept;
 
+  /**
+   * @brief Number of tile parts the given progression of the given tile is written as
+   * (sets newTilePartProgressionPosition_)
+   * @param prog_iter_num index of the progression
+   * @param tileno        index of the tile
+   * @return number of tile parts
+   */
+  uint8_t numTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno);
+
   bool hasTLM(void) const noexcept;
 
   // true when the layers or reduce changed

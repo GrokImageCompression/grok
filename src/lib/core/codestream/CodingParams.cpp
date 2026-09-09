@@ -215,6 +215,64 @@ bool CodingParams::hasTLM(void) const noexcept
 {
   return this->tlmMarkers_ && tlmMarkers_->valid();
 }
+uint8_t CodingParams::numTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno)
+{
+  uint64_t numTileParts = 1;
+  auto tcp = tcps_.get(tileno);
+  assert(tcp != nullptr);
+
+  /*  preconditions */
+  assert(tileno < (t_grid_width_ * t_grid_height_));
+  assert(prog_iter_num < tcp->getNumProgressions());
+
+  auto current_poc = &(tcp->progressionOrderChange_[prog_iter_num]);
+  assert(current_poc != 0);
+
+  /* get the progression order as a character string */
+  auto prog = CodeStreamCompress::convertProgressionOrder(tcp->prg_);
+  assert(strlen(prog) > 0);
+
+  if(codingParams_.enc_.enableTilePartGeneration_)
+  {
+    for(uint8_t i = 0; i < 4; ++i)
+    {
+      switch(prog[i])
+      {
+        /* component wise */
+        case 'C':
+          numTileParts *= current_poc->tp_comp_e;
+          break;
+          /* resolution wise */
+        case 'R':
+          numTileParts *= current_poc->tp_res_e;
+          break;
+          /* precinct wise */
+        case 'P':
+          numTileParts *= current_poc->tp_prec_e;
+          break;
+          /* layer wise */
+        case 'L':
+          numTileParts *= current_poc->tp_lay_e;
+          break;
+      }
+      // we start a new tile part when progression matches specified tile part
+      // divider
+      if(codingParams_.enc_.newTilePartProgressionDivider_ == prog[i])
+      {
+        assert(prog[i] != 'P');
+        codingParams_.enc_.newTilePartProgressionPosition_ = i;
+        break;
+      }
+    }
+  }
+  else
+  {
+    numTileParts = 1;
+  }
+  assert(numTileParts < maxTilePartsPerTileJ2K);
+
+  return (uint8_t)numTileParts;
+}
 uint8_t CodingParams::getNumTilePartsFromTLM(uint16_t tileIndex) const noexcept
 {
   return hasTLM() ? tlmMarkers_->getNumTileParts(tileIndex) : 0;

@@ -515,6 +515,11 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t prog_i
 
   return false;
 }
+bool PacketIter::walksOneTilePart(CodingParams* cp, T2_MODE mode)
+{
+  return cp->codingParams_.enc_.enableTilePartGeneration_ &&
+         (GRK_IS_CINEMA(cp->rsiz_) || GRK_IS_IMF(cp->rsiz_) || mode == FINAL_PASS);
+}
 void PacketIter::enable_tile_part_generation(uint32_t prog_iter_num, bool first_poc_tile_part,
                                              uint8_t newTilePartProgressionPosition)
 {
@@ -524,9 +529,7 @@ void PacketIter::enable_tile_part_generation(uint32_t prog_iter_num, bool first_
   auto pocProg = CodeStreamCompress::convertProgressionOrder(poc->progression);
   prog.progression = poc->progression;
 
-  if(cp->codingParams_.enc_.enableTilePartGeneration_ &&
-     (GRK_IS_CINEMA(cp->rsiz_) || GRK_IS_IMF(cp->rsiz_) ||
-      packetManager->getT2Mode() == FINAL_PASS))
+  if(walksOneTilePart(cp, packetManager->getT2Mode()))
   {
     for(uint8_t i = newTilePartProgressionPosition + 1; i < 4; i++)
     {

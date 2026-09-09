@@ -281,17 +281,6 @@ private:
      */
   bool getNumTileParts(uint32_t* p_nb_tile_parts, GrkImage* image);
 
-  /**
-   * Gets the number of tile parts used for the given change of progression (if any) and the given
-   * tile.
-   *
-   * @param               prog_iter_num            the offset of the given poc (i.e. its position in
-   * the coding parameter).
-   * @param               tileno          the given tile.
-   *
-   * @return              the number of tile parts.
-   */
-  uint8_t getNumTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno);
 
   /**
    * Validate progression orders
