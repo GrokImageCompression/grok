@@ -237,6 +237,18 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_t2_corrupt_packet_bound_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz timeout: mercury bails, then classic walks a
+# 1x137 grid of huge tiles. The test must RETURN; the TIMEOUT turns a
+# regression hang into a failure.
+add_executable(grk_mercury_fuzzer_timeout_test GrkMercuryFuzzerTimeoutTest.cpp)
+target_link_libraries(grk_mercury_fuzzer_timeout_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_mercury_fuzzer_timeout_test
+    COMMAND grk_mercury_fuzzer_timeout_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6523675860598784)
+  set_tests_properties(grk_mercury_fuzzer_timeout_test PROPERTIES TIMEOUT 60)
+endif()
+
 # Regression for an OSS-Fuzz timeout: an RPCL tile 2.2 billion columns wide with
 # component dy=255 made the packet iterator scan every x on a row that aligns to
 # no precinct. The test must RETURN; the TIMEOUT turns a regression hang into a
