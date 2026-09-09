@@ -288,6 +288,22 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_packet_parser_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz out-of-memory: a stream with PLT markers and a
+# huge precinct grid treated missing PLT lengths as "no PLT" and created a
+# precinct tag tree for every remaining packet. The test fails if peak
+# resident memory exceeds 1 GB.
+add_executable(grk_packet_length_exhaustion_test GrkPacketLengthExhaustionTest.cpp)
+target_link_libraries(grk_packet_length_exhaustion_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(grk_packet_length_exhaustion_test psapi)
+endif()
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_packet_length_exhaustion_test
+    COMMAND grk_packet_length_exhaustion_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5365440688488448)
+  set_tests_properties(grk_packet_length_exhaustion_test PROPERTIES TIMEOUT 60)
+endif()
+
 # OSS-Fuzz OOM: region decode allocated band and split buffers it never read
 add_executable(grk_region_window_oom_test GrkRegionWindowOomTest.cpp)
 target_link_libraries(grk_region_window_oom_test ${GROK_CORE_NAME} spdlog::spdlog)

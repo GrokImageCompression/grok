@@ -363,14 +363,6 @@ bool PLMarker::readNextByte(uint8_t Iplm, uint32_t* packetLength)
 
   return packetLen_ == 0;
 }
-uint64_t PLMarker::pop(uint64_t numPackets)
-{
-  uint64_t total = 0;
-  for(uint64_t i = 0; i < numPackets; ++i)
-    total += pop();
-
-  return total;
-}
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
 uint32_t PLMarker::pop(void)

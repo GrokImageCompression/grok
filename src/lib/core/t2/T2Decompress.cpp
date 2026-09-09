@@ -70,9 +70,8 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
   auto tcp = tileProcessor->getTCP();
   PacketManager packetManager(false, tileProcessor->getHeaderImage(), cp, tile_no, FINAL_PASS,
                               tileProcessor);
-  auto pltMarkers = tileProcessor->getPacketLengthCache()->getMarkers();
-  if(pltMarkers && !pltMarkers->isEnabled())
-    pltMarkers = nullptr;
+  auto packetLengthCache = tileProcessor->getPacketLengthCache();
+  auto usePacketLengths = packetLengthCache->usesPacketLengths();
   // Bound the PLT skip-corrupt-packet path: the smallest legal packet with no
   // SOP/EPH is a 1-byte header, so a tile cannot hold more packets than it has
   // compressed bytes. A malformed precinct grid can declare far more packets
@@ -83,7 +82,7 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
   for(auto prog_iter_num = 0U; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     auto currPi = packetManager.getPacketIter(prog_iter_num);
-    while(currPi->next(pltMarkers ? compressedPackets : nullptr))
+    while(currPi->next(usePacketLengths ? compressedPackets : nullptr))
     {
       // code below is written this way as chunkLength() can throw, also indicating truncated tile
       // With selective fetch, the buffer may be exhausted for skipped (unfetched) packets,
@@ -146,6 +145,9 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
         // ToDo: skip corrupt packet if SOP marker is present
       }
     }
+    // skipPackets failure also ends next()
+    if(packetLengthCache->hasPacketLengthError())
+      return true;
   }
 
   return false;
@@ -190,7 +192,9 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   }
 
   // read from PL cache or PLM or PLT marker, if available
-  auto packetLength = tileProcessor->getPacketLengthCache()->next();
+  uint32_t packetLength;
+  if(!tileProcessor->getPacketLengthCache()->readNextPacketLength(packetLength))
+    return false;
 
   // 3. packetLength is non-zero only if there is a PLT marker or previously cached
   // parser. Otherwise, we need to create the precinct and at least read the packet header

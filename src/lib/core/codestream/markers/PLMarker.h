@@ -132,13 +132,6 @@ struct PLMarker
    */
   uint32_t pop(void);
 
-  /**
-   * @brief pop length of next set of consecutive packets
-   * @param numPackets number of packets to generate length for
-   * @return length of consecutive packets
-   */
-  uint64_t pop(uint64_t numPackets);
-
 private:
   void clearMarkers(void);
   bool findMarker(uint32_t index, bool compress);

@@ -1369,8 +1369,10 @@ bool PacketIter::next_rpcl(SparseBuffer*)
 bool PacketIter::skipPackets(SparseBuffer* compressedPackets, uint64_t numPackets)
 {
   auto tp = packetManager->getTileProcessor();
-  auto plMarkers = tp->getPacketLengthCache()->getMarkers();
-  auto skippedBytes = plMarkers->pop(numPackets);
+  auto packetLengthCache = tp->getPacketLengthCache();
+  uint64_t skippedBytes;
+  if(!packetLengthCache->readPacketLengths(numPackets, skippedBytes))
+    return false;
   if(compressedPackets->skip(skippedBytes) != skippedBytes)
   {
     grklog.error("Packet iterator: unable to skip precincts.");
