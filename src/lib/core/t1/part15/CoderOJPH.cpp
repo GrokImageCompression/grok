@@ -133,36 +133,52 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
   // convert to sign-magnitude
   if(block->qmfbid == 1)
   {
-    auto tiledp = block->tiledp;
-    for(auto j = 0U; j < h; ++j)
+    if(block->uses16BitBuffer)
     {
-      for(auto i = 0U; i < w; ++i)
+      auto tileData = static_cast<const int16_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
       {
-        int32_t temp = *tiledp++;
-        uint32_t val = temp >= 0 ? (uint32_t)temp : -(uint32_t)temp;
-        uint32_t sign = temp >= 0 ? 0U : 0x80000000U;
-        int32_t res = (int32_t)(sign | (val << shift));
-        unencoded_data[cblk_index] = res;
-        cblk_index++;
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t value = *tileData++;
+          uint32_t magnitude = value >= 0 ? (uint32_t)value : -(uint32_t)value;
+          uint32_t sign = value >= 0 ? 0U : 0x80000000U;
+          unencoded_data[cblk_index++] = (int32_t)(sign | (magnitude << shift));
+        }
+        tileData += tileLineAdvance;
       }
-      tiledp += tileLineAdvance;
+    }
+    else
+    {
+      auto tileData = static_cast<const int32_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
+      {
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t value = *tileData++;
+          uint32_t magnitude = value >= 0 ? (uint32_t)value : -(uint32_t)value;
+          uint32_t sign = value >= 0 ? 0U : 0x80000000U;
+          unencoded_data[cblk_index++] = (int32_t)(sign | (magnitude << shift));
+        }
+        tileData += tileLineAdvance;
+      }
     }
   }
   else
   {
-    auto tiledp = (float*)block->tiledp;
+    auto tileData = static_cast<const float*>(block->tileData);
     for(auto j = 0U; j < h; ++j)
     {
       for(auto i = 0U; i < w; ++i)
       {
-        int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
+        int32_t t = (int32_t)((float)*tileData++ * block->inv_step_ht * (float)(1 << shift));
         uint32_t val = t >= 0 ? (uint32_t)t : -(uint32_t)t;
         uint32_t sign = t >= 0 ? 0U : 0x80000000U;
         int32_t res = (int32_t)(sign | val);
         unencoded_data[cblk_index] = res;
         cblk_index++;
       }
-      tiledp += tileLineAdvance;
+      tileData += tileLineAdvance;
     }
   }
   return true;

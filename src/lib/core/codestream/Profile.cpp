@@ -97,7 +97,6 @@ int Profile::getImfMaxNumDecompLevels(grk_cparameters* parameters, GrkImage* ima
 void Profile::setImfParams(grk_cparameters* parameters, GrkImage* image)
 {
   const uint16_t rsiz = parameters->rsiz;
-  const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
   /* Override defaults set by set_default_compressor_parameters */
   if(parameters->cblockw_init == GRK_COMP_PARAM_DEFAULT_CBLOCKW &&
@@ -114,9 +113,7 @@ void Profile::setImfParams(grk_cparameters* parameters, GrkImage* image)
   if(parameters->prog_order == GRK_DEFAULT_PROG_ORDER)
     parameters->prog_order = GRK_CPRL;
 
-  if(profile == GRK_PROFILE_IMF_2K || profile == GRK_PROFILE_IMF_4K ||
-     profile == GRK_PROFILE_IMF_8K)
-    /* 9-7 transform */
+  if(usesIrreversibleWavelet(rsiz))
     parameters->irreversible = true;
 
   /* Adjust the number of resolutions if set to its defaults */
@@ -687,7 +684,6 @@ int Profile::getBroadcastMaxDecompLevels(grk_cparameters* parameters, GrkImage* 
 void Profile::setBroadcastParams(grk_cparameters* parameters)
 {
   const uint16_t rsiz = parameters->rsiz;
-  const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
   parameters->prog_order = GRK_CPRL;
 
@@ -702,7 +698,7 @@ void Profile::setBroadcastParams(grk_cparameters* parameters)
   parameters->subsampling_dx = 1;
   parameters->subsampling_dy = 1;
 
-  if(profile != GRK_PROFILE_BC_MULTI_R)
+  if(usesIrreversibleWavelet(rsiz))
     parameters->irreversible = true;
 
   /* Adjust the number of resolutions if set to its defaults */
@@ -998,6 +994,16 @@ bool Profile::isBroadcastCompliant(grk_cparameters* parameters, GrkImage* image)
 /*****************
  * Cinema Profile
  *****************/
+
+bool Profile::usesIrreversibleWavelet(uint16_t rsiz)
+{
+  if(GRK_IS_CINEMA(rsiz))
+    return true;
+  uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
+  if(GRK_IS_BROADCAST(rsiz))
+    return profile != GRK_PROFILE_BC_MULTI_R;
+  return GRK_IS_IMF(rsiz) && profile >= GRK_PROFILE_IMF_2K && profile <= GRK_PROFILE_IMF_8K;
+}
 
 void Profile::init4kPoc(grk_progression* prog, uint8_t numres)
 {

@@ -122,7 +122,7 @@ struct CompressBlockExec : public BlockExec
   uint32_t tile_width = 0;
   bool doRateControl = false;
   double distortion = 0;
-  int32_t* tiledp = nullptr;
+  void* tileData = nullptr;
   uint16_t compno = 0;
   uint8_t resno = 0;
   uint8_t level = 0;
@@ -133,7 +133,7 @@ struct CompressBlockExec : public BlockExec
   int32_t* unencodedData = nullptr;
 #endif
   uint16_t mct_numcomps = 0;
-  bool use16BitDwt = false;
+  bool uses16BitBuffer = false;
 
   /**
    * @brief Progressive early-stop slope threshold (log-domain, uint16_t).

@@ -97,16 +97,24 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
             if(!cblk->allocData(nominalBlockSize))
               continue;
             auto block = new t1::CompressBlockExec();
-            block->tile_width =
-                (tile_->comps_ + compno)->getWindow()->getResWindowBufferHighestStride();
+            block->tile_width = tilec->highestResStride();
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
             block->y = cblk->y0();
-            tilec->getWindow()->toRelativeCoordinates(resno, band->orientation_, block->x,
-                                                      block->y);
-            auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
-            block->tiledp =
-                highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            tilec->toRelativeCoordinates(resno, band->orientation_, block->x, block->y);
+            block->uses16BitBuffer = tilec->uses16BitWindow();
+            if(block->uses16BitBuffer)
+            {
+              auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
+            else
+            {
+              auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
             maxCblkW = std::max<uint16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw_expn_));
             maxCblkH = std::max<uint16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh_expn_));
             block->compno = compno;
@@ -121,7 +129,6 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
-            block->use16BitDwt = tilec->is16BitDwt();
             blocks.push_back(block);
           }
         }
@@ -190,16 +197,24 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
             if(!cblk->allocData(nominalBlockSize))
               continue;
             auto block = new t1::CompressBlockExec();
-            block->tile_width =
-                (tile_->comps_ + compno)->getWindow()->getResWindowBufferHighestStride();
+            block->tile_width = tilec->highestResStride();
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
             block->y = cblk->y0();
-            tilec->getWindow()->toRelativeCoordinates(resno, band->orientation_, block->x,
-                                                      block->y);
-            auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
-            block->tiledp =
-                highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            tilec->toRelativeCoordinates(resno, band->orientation_, block->x, block->y);
+            block->uses16BitBuffer = tilec->uses16BitWindow();
+            if(block->uses16BitBuffer)
+            {
+              auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
+            else
+            {
+              auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
             maxCblkW = std::max<uint16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw_expn_));
             maxCblkH = std::max<uint16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh_expn_));
             block->compno = compno;
@@ -214,7 +229,6 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
-            block->use16BitDwt = tilec->is16BitDwt();
             blocks.push_back(block);
           }
         }

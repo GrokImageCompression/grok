@@ -853,7 +853,7 @@ namespace HWY_NAMESPACE
    *  16-bit 5/3 Forward DWT (Analysis)
    *
    *  Uses separated even/odd (E/O) layout in scratch for the lifting steps.
-   *  Reads/writes int32_t tile buffer, performs lifting in int16_t.
+   *  Performs lifting in int16_t and preserves the tile buffer type.
    *
    *  Eligible when bit-depth + DWT headroom <= 16 (same criteria as inverse).
    *
@@ -875,21 +875,22 @@ namespace HWY_NAMESPACE
    *  purpose.
    **************************************************************************/
 
-  // Helper: narrow numcols int32 values to int16
-  HWY_ATTR static void narrow_row(const int32_t* src, int16_t* dst, uint32_t numcols)
+  template<typename T>
+  HWY_ATTR static void copy_to_int16(const T* src, int16_t* dst, uint32_t numcols)
   {
     for(uint32_t j = 0; j < numcols; ++j)
       dst[j] = (int16_t)src[j];
   }
 
-  // Helper: widen numcols int16 values to int32
-  HWY_ATTR static void widen_row(const int16_t* src, int32_t* dst, uint32_t numcols)
+  template<typename T>
+  HWY_ATTR static void copy_from_int16(const int16_t* src, T* dst, uint32_t numcols)
   {
     for(uint32_t j = 0; j < numcols; ++j)
       dst[j] = (int32_t)src[j];
   }
 
-  HWY_ATTR void encode_53_16_v(int32_t* resolution, int16_t* scratch, const uint32_t height,
+  template<typename T>
+  HWY_ATTR void encode_53_16_v(T* resolution, int16_t* scratch, const uint32_t height,
                                const uint8_t parity, const uint32_t stride, const uint32_t numcols,
                                int32_t dcShift)
   {
@@ -907,7 +908,7 @@ namespace HWY_NAMESPACE
           int16_t v = (int16_t)resolution[j];
           if(dcShift != 0)
             v = (int16_t)(v - (int16_t)dcShift);
-          resolution[j] = (int32_t)(int16_t)(parity == 1 ? (int16_t)(v << 1) : v);
+          resolution[j] = (T)(int16_t)(parity == 1 ? (int16_t)(v << 1) : v);
         }
       }
       return;
@@ -919,11 +920,10 @@ namespace HWY_NAMESPACE
     int16_t* E = scratch;
     int16_t* O = scratch + sn * lanes16;
 
-    // Separate even/odd rows into E[] and O[] (narrowing int32 → int16)
     for(uint32_t k = 0; k < sn; ++k)
-      narrow_row(resolution + size_t(2 * k + parity) * stride, E + k * lanes16, numcols);
+      copy_to_int16(resolution + size_t(2 * k + parity) * stride, E + k * lanes16, numcols);
     for(uint32_t k = 0; k < dn; ++k)
-      narrow_row(resolution + size_t(2 * k + !parity) * stride, O + k * lanes16, numcols);
+      copy_to_int16(resolution + size_t(2 * k + !parity) * stride, O + k * lanes16, numcols);
 
     // Type tags for the signed↔unsigned averaging trick
     const HWY_FULL(uint16_t) du16;
@@ -1011,12 +1011,13 @@ namespace HWY_NAMESPACE
 
     // Deinterleave: write E[] → first sn rows, O[] → next dn rows (widening to int32)
     for(uint32_t k = 0; k < sn; ++k)
-      widen_row(E + k * lanes16, resolution + k * stride, numcols);
+      copy_from_int16(E + k * lanes16, resolution + k * stride, numcols);
     for(uint32_t k = 0; k < dn; ++k)
-      widen_row(O + k * lanes16, resolution + (sn + k) * stride, numcols);
+      copy_from_int16(O + k * lanes16, resolution + (sn + k) * stride, numcols);
   }
 
-  HWY_ATTR void encode_53_16_h(int32_t* resolution, int16_t* scratch, const uint32_t width,
+  template<typename T>
+  HWY_ATTR void encode_53_16_h(T* resolution, int16_t* scratch, const uint32_t width,
                                const uint8_t parity, const uint32_t stride, const uint32_t numrows)
   {
     if(width <= 1)
@@ -1036,11 +1037,11 @@ namespace HWY_NAMESPACE
 
     for(uint32_t r = 0; r < numrows; ++r)
     {
-      int32_t* row = resolution + r * stride;
+      T* row = resolution + r * stride;
 
       // Load row and narrow to int16
       int16_t* buf = scratch;
-      narrow_row(row, buf, width);
+      copy_to_int16(row, buf, width);
 
       // Separate into E[0..sn-1] and O[0..dn-1]
       int16_t* E = buf + width;
@@ -1159,12 +1160,25 @@ namespace HWY_NAMESPACE
         }
       }
 
-      // Write back: E[] → row[0..sn-1], O[] → row[sn..sn+dn-1] (widened to int32)
       for(uint32_t k = 0; k < sn; ++k)
-        row[k] = (int32_t)E[k];
+        row[k] = (T)E[k];
       for(uint32_t k = 0; k < dn; ++k)
-        row[sn + k] = (int32_t)O[k];
+        row[sn + k] = (T)O[k];
     }
+  }
+
+  void encode_53_16_v_in_place(int16_t* resolution, int16_t* scratch, uint32_t height,
+                               uint8_t parity, uint32_t stride, uint32_t numcols, int16_t dcShift,
+                               bool)
+  {
+    encode_53_16_v(resolution, scratch, height, parity, stride, numcols, dcShift);
+  }
+
+  void encode_53_16_h_in_place(int16_t* resolution, int16_t* scratch, uint32_t width,
+                               uint8_t parity, uint32_t stride, uint32_t numrows, int16_t dcShift)
+  {
+    encode_53_16_h(resolution, scratch, width, parity, stride, numrows);
+    (void)dcShift;
   }
 
   bool encode_53_16(TileComponent* tilec, int32_t dcShift)
@@ -1323,11 +1337,23 @@ namespace HWY_NAMESPACE
   {
     if(tilec->num_resolutions_ == 1U)
       return true;
-    const HWY_FULL(float) d;
+    const HWY_FULL(T) d;
     const uint32_t lanes = uint32_t(Lanes(d));
 
-    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
-    T* tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+    uint32_t stride;
+    T* tiledp;
+    if constexpr(std::is_same_v<T, int16_t>)
+    {
+      auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = highest.buf_;
+    }
+    else
+    {
+      auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = (T*)highest.buf_;
+    }
 
     const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
     auto currentRes = tilec->resolutions_ + maxNumResolutions;
@@ -1335,7 +1361,7 @@ namespace HWY_NAMESPACE
 
     size_t dataSize = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
     const size_t thick = lanes;
-    dataSize *= thick * sizeof(int32_t);
+    dataSize *= thick * sizeof(T);
     int32_t i = maxNumResolutions;
     const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     T* scratch_pool = nullptr;
@@ -1361,8 +1387,6 @@ namespace HWY_NAMESPACE
       // DC shift only on first (finest) resolution level
       bool isFirstLevel = (i == maxNumResolutions - 1);
       T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      // For integer types, after the first level the data is
-      // always int32_t (widened from int16_t), so intInput must stay true.
       bool currentIntInput;
       if constexpr(std::is_floating_point_v<T>)
         currentIntInput = isFirstLevel && intInput;
@@ -1492,6 +1516,10 @@ namespace HWY_NAMESPACE
   {
     return encode<int32_t, dwt53>(tilec, dcShift, false);
   }
+  bool encode_53_16_in_place(TileComponent* tilec, int16_t dcShift)
+  {
+    return encode<int16_t, dwt53_16>(tilec, dcShift, false);
+  }
   bool encode_97(TileComponent* tilec, float dcShift, bool intInput)
   {
     return encode<float, dwt97>(tilec, dcShift, intInput);
@@ -1525,11 +1553,23 @@ namespace HWY_NAMESPACE
   {
     if(tilec->num_resolutions_ == 1U)
       return nullptr;
-    const HWY_FULL(float) d;
+    const HWY_FULL(T) d;
     const uint32_t lanes = uint32_t(Lanes(d));
 
-    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
-    T* tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+    uint32_t stride;
+    T* tiledp;
+    if constexpr(std::is_same_v<T, int16_t>)
+    {
+      auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = highest.buf_;
+    }
+    else
+    {
+      auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = (T*)highest.buf_;
+    }
 
     const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
     auto currentRes = tilec->resolutions_ + maxNumResolutions;
@@ -1537,7 +1577,7 @@ namespace HWY_NAMESPACE
 
     size_t dataSize = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
     const size_t thick = lanes;
-    dataSize *= thick * sizeof(int32_t);
+    dataSize *= thick * sizeof(T);
     int32_t i = maxNumResolutions;
     const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
 
@@ -1556,8 +1596,6 @@ namespace HWY_NAMESPACE
       // DC shift only on first (finest) resolution level
       bool isFirstLevel = (i == maxNumResolutions - 1);
       T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      // For integer types, after the first level the data is
-      // always int32_t (widened from int16_t), so intInput must stay true.
       bool currentIntInput;
       if constexpr(std::is_floating_point_v<T>)
         currentIntInput = isFirstLevel && intInput;
@@ -1688,6 +1726,12 @@ namespace HWY_NAMESPACE
   {
     return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows, false);
   }
+  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_53_16_in_place(
+      TileComponent* tilec, int16_t dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    return schedule_encode<int16_t, dwt53_16>(tilec, dcShift, levelFlows, false);
+  }
   std::unique_ptr<WaveletFwdScheduleData>
       schedule_encode_97(TileComponent* tilec, float dcShift,
                          std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
@@ -1708,12 +1752,16 @@ namespace grk
 {
 HWY_EXPORT(encode_53_v);
 HWY_EXPORT(encode_53_h);
+HWY_EXPORT(encode_53_16_v_in_place);
+HWY_EXPORT(encode_53_16_h_in_place);
 HWY_EXPORT(encode_97_v);
 HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
 HWY_EXPORT(encode_53_16);
+HWY_EXPORT(encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_53);
+HWY_EXPORT(schedule_encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_97);
 
 template<typename T>
@@ -1745,7 +1793,12 @@ bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, DcShiftP
   if(qmfbid == 1)
   {
     if(tile_comp->is16BitDwt())
+    {
+      if(tile_comp->uses16BitWindow())
+        return HWY_DYNAMIC_DISPATCH(encode_53_16_in_place)(
+            tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0));
       return HWY_DYNAMIC_DISPATCH(encode_53_16)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
+    }
     return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
   }
   else
@@ -1759,8 +1812,13 @@ std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
     std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput)
 {
   if(qmfbid == 1)
+  {
+    if(tile_comp->uses16BitWindow())
+      return HWY_DYNAMIC_DISPATCH(schedule_encode_53_16_in_place)(
+          tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0), levelFlows);
     return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0,
                                                     levelFlows);
+  }
   else
     return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
         tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows, intInput);
@@ -1787,15 +1845,17 @@ void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uin
 {
   HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows, dcShift);
 }
-void dwt53_16::encode_v(int16_t*, int16_t*, uint32_t, uint8_t, uint32_t, uint32_t, int16_t, bool)
+void dwt53_16::encode_v(int16_t* resolution, int16_t* scratch, uint32_t height, uint8_t parity,
+                        uint32_t stride, uint32_t columns, int16_t dcShift, bool intInput)
 {
-  // 16-bit forward DWT uses encode_53_16() which operates directly on int32 tile buffer.
-  // These stubs exist only to satisfy the class declaration.
+  HWY_DYNAMIC_DISPATCH(encode_53_16_v_in_place)(resolution, scratch, height, parity, stride,
+                                                columns, dcShift, intInput);
 }
-void dwt53_16::encode_h(int16_t*, int16_t*, uint32_t, uint8_t, uint32_t, uint32_t, int16_t)
+void dwt53_16::encode_h(int16_t* resolution, int16_t* scratch, uint32_t width, uint8_t parity,
+                        uint32_t stride, uint32_t rows, int16_t dcShift)
 {
-  // 16-bit forward DWT uses encode_53_16() which operates directly on int32 tile buffer.
-  // These stubs exist only to satisfy the class declaration.
+  HWY_DYNAMIC_DISPATCH(encode_53_16_h_in_place)(resolution, scratch, width, parity, stride, rows,
+                                                dcShift);
 }
 
 } // namespace grk

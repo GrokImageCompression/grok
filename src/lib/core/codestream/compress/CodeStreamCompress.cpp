@@ -63,6 +63,25 @@ struct ITileProcessor;
 #include "TileProcessorCompress.h"
 #include "XYZTransform.h"
 
+static bool compressionUses32BitPreprocessing(const grk_cparameters* parameters)
+{
+  return parameters->apply_icc || parameters->apply_xyz_transform ||
+         GRK_IS_CINEMA(parameters->rsiz) || grk::pluginAccelerates();
+}
+
+grk_data_type grk_compress_get_recommended_data_type(const grk_cparameters* parameters,
+                                                     uint8_t precision, bool is_mct_component)
+{
+  if(!parameters || precision == 0 || parameters->numresolution <= 1 || parameters->irreversible ||
+     parameters->mct == 2 || parameters->mct_data || compressionUses32BitPreprocessing(parameters))
+    return GRK_INT_32;
+  if(grk::Profile::usesIrreversibleWavelet(parameters->rsiz))
+    return GRK_INT_32;
+
+  bool usesStandardMct = parameters->mct == 1 && is_mct_component;
+  return grk_get_data_type(true, precision, usesStandardMct, 1);
+}
+
 namespace grk
 {
 
@@ -181,6 +200,31 @@ static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
   comp->prec = targetPrec;
 }
 
+static bool widen16BitComponents(GrkImage* image)
+{
+  for(uint16_t componentIndex = 0; componentIndex < image->numcomps; ++componentIndex)
+  {
+    auto component = image->comps + componentIndex;
+    if(component->data_type != GRK_INT_16)
+      continue;
+
+    auto source = static_cast<const int16_t*>(component->data);
+    uint32_t sourceStride = component->stride;
+    component->data_type = GRK_INT_32;
+    if(!source)
+      continue;
+    if(!GrkImage::allocData(component))
+      return false;
+
+    auto destination = static_cast<int32_t*>(component->data);
+    for(uint32_t row = 0; row < component->h; ++row)
+      for(uint32_t column = 0; column < component->w; ++column)
+        destination[(size_t)row * component->stride + column] =
+            source[(size_t)row * sourceStride + column];
+  }
+  return true;
+}
+
 bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
   if(!parameters || !image)
@@ -216,12 +260,24 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       grklog.error("Invalid component precision of 0 found while setting up JP2 compressor");
       return false;
     }
-    if(comp->data_type != GRK_INT_32)
+    bool valid16BitInput = comp->data_type == GRK_INT_16 && comp->prec <= (comp->sgnd ? 16 : 15);
+    if(comp->data_type != GRK_INT_32 && !valid16BitInput)
     {
-      grklog.error("Compressor requires GRK_INT_32 component data, got %d", (int)comp->data_type);
+      grklog.error(
+          "Compressor cannot use component data type %d at precision %u with signedness %d",
+          (int)comp->data_type, comp->prec, comp->sgnd);
       return false;
     }
   }
+
+  headerImage_ = new GrkImage();
+  image->copyHeaderTo(headerImage_);
+  image = headerImage_;
+
+  bool requires32BitInput = compressionUses32BitPreprocessing(parameters);
+  if(requires32BitInput && !widen16BitComponents(image))
+    return false;
+
   if(parameters->apply_icc)
     image->applyICC<int32_t>();
 
@@ -257,22 +313,6 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   // the plugin gets the image after the colour transform and precision cut above
   if(pluginAccelerates())
     pluginParameters_ = std::make_unique<grk_cparameters>(*parameters);
-
-  // create private sanitized copy of image
-  headerImage_ = new GrkImage();
-  image->copyHeaderTo(headerImage_);
-  if(image->comps)
-  {
-    for(uint16_t compno = 0; compno < image->numcomps; compno++)
-    {
-      if(image->comps[compno].data)
-      {
-        headerImage_->comps[compno].data = image->comps[compno].data;
-        headerImage_->comps[compno].owns_data = false;
-        headerImage_->comps[compno].stride = image->comps[compno].stride;
-      }
-    }
-  }
 
   if(isHT)
   {

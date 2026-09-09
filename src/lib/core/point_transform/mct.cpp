@@ -531,6 +531,53 @@ namespace HWY_NAMESPACE
     }
   };
 
+  class CompressRev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto window0 = info.tile->comps_[0].getWindow16()->getResWindowBufferHighestSimple();
+      auto window1 = info.tile->comps_[1].getWindow16()->getResWindowBufferHighestSimple();
+      auto window2 = info.tile->comps_[2].getWindow16()->getResWindowBufferHighestSimple();
+      auto channel0 = window0.buf_;
+      auto channel1 = window1.buf_;
+      auto channel2 = window2.buf_;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      const HWY_FULL(int16_t) dataType;
+      const uint32_t lanes = (uint32_t)Lanes(dataType);
+      auto redShift = Set(dataType, (int16_t)shiftInfo[0]._shift);
+      auto greenShift = Set(dataType, (int16_t)shiftInfo[1]._shift);
+      auto blueShift = Set(dataType, (int16_t)shiftInfo[2]._shift);
+      const uint32_t width = info.tile->comps_[0].width();
+
+      for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
+      {
+        uint64_t rowOffset = (uint64_t)row * window0.stride_;
+        uint32_t column = 0;
+        for(; column + lanes <= width; column += lanes)
+        {
+          auto red = Load(dataType, channel0 + rowOffset + column) + redShift;
+          auto green = Load(dataType, channel1 + rowOffset + column) + greenShift;
+          auto blue = Load(dataType, channel2 + rowOffset + column) + blueShift;
+          auto luminance = ShiftRight<2>((green + green) + blue + red);
+          Store(luminance, dataType, channel0 + rowOffset + column);
+          Store(blue - green, dataType, channel1 + rowOffset + column);
+          Store(red - green, dataType, channel2 + rowOffset + column);
+        }
+        for(; column < width; ++column)
+        {
+          auto sampleIndex = rowOffset + column;
+          int32_t red = channel0[sampleIndex] + shiftInfo[0]._shift;
+          int32_t green = channel1[sampleIndex] + shiftInfo[1]._shift;
+          int32_t blue = channel2[sampleIndex] + shiftInfo[2]._shift;
+          channel0[sampleIndex] = (int16_t)(((green + green) + blue + red) >> 2);
+          channel1[sampleIndex] = (int16_t)(blue - green);
+          channel2[sampleIndex] = (int16_t)(red - green);
+        }
+      }
+    }
+  };
+
   /**
    * Apply MCT with optional DC shift to irreversible compressed image
    */
@@ -687,6 +734,11 @@ namespace HWY_NAMESPACE
     }
   }
 
+  void hwy_compress_rev16(ScheduleInfo info)
+  {
+    vscheduler16<CompressRev16>(info);
+  }
+
   void hwy_schedule_decompress_dc_shift_irrev16(ScheduleInfo info)
   {
     vscheduler16<DecompressDcShiftIrrev16>(info);
@@ -714,6 +766,7 @@ HWY_AFTER_NAMESPACE();
 namespace grk
 {
 HWY_EXPORT(hwy_compress_rev);
+HWY_EXPORT(hwy_compress_rev16);
 HWY_EXPORT(hwy_compress_irrev);
 HWY_EXPORT(hwy_schedule_decompress_rev);
 HWY_EXPORT(hwy_schedule_decompress_irrev);
@@ -789,6 +842,12 @@ void Mct::compress_rev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, singleTileRowsPerStrip);
   genShift(applyDcShift ? -1 : 0, info.shiftInfo);
+  if(tile_->comps_[0].uses16BitWindow() && tile_->comps_[1].uses16BitWindow() &&
+     tile_->comps_[2].uses16BitWindow())
+  {
+    HWY_DYNAMIC_DISPATCH(hwy_compress_rev16)(info);
+    return;
+  }
   HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
   (info);
 }

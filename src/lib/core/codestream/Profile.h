@@ -31,6 +31,7 @@ public:
   static bool isImfCompliant(grk_cparameters* parameters, GrkImage* image);
   static void setBroadcastParams(grk_cparameters* parameters);
   static bool isBroadcastCompliant(grk_cparameters* parameters, GrkImage* image);
+  static bool usesIrreversibleWavelet(uint16_t rsiz);
 
 private:
   static int getImfMaxNumDecompLevels(grk_cparameters* parameters, GrkImage* image);

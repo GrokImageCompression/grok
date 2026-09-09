@@ -236,10 +236,11 @@ struct TileComponent : public Rect32
    *
    * @param unreducedTileCompOrImageCompWindow window bounds
    */
-  void createWindow(Rect32 unreducedTileCompOrImageCompWindow)
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, bool use16BitWindow)
   {
     dealloc();
-    if(use16BitDwt_)
+    uses16BitWindow_ = use16BitWindow;
+    if(uses16BitWindow_)
     {
       window_ = new TileComponentWindow<int16_t>(
           isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
@@ -257,6 +258,10 @@ struct TileComponent : public Rect32
           isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
           tccp_->horizontalDepth_, tccp_->verticalDepth_);
     }
+  }
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow)
+  {
+    createWindow(unreducedTileCompOrImageCompWindow, use16BitDwt_);
   }
 
   /**
@@ -335,6 +340,10 @@ struct TileComponent : public Rect32
   {
     return use16BitDwt_;
   }
+  bool uses16BitWindow() const
+  {
+    return uses16BitWindow_;
+  }
   void setUse16BitDwt(bool use16Bit)
   {
     use16BitDwt_ = use16Bit;
@@ -367,6 +376,11 @@ struct TileComponent : public Rect32
   const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const
   {
     return window_->getBandWindowPadded(resno, orientation);
+  }
+  void toRelativeCoordinates(uint8_t resno, t1::eBandOrientation orientation, uint32_t& offsetX,
+                             uint32_t& offsetY) const
+  {
+    window_->toRelativeCoordinates(resno, orientation, offsetX, offsetY);
   }
   void transferWindowData(void** data, uint32_t* stride)
   {
@@ -481,6 +495,7 @@ private:
    */
   ITileComponentWindow* window_;
   bool use16BitDwt_ = false;
+  bool uses16BitWindow_ = false;
   uint8_t qShift_ = 0;
   /**
    * @brief @ref TileComponentCodingParams
