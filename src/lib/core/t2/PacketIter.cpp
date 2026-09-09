@@ -413,6 +413,40 @@ bool PacketIter::anyPrecinctStartsAtY(uint16_t componentStart, uint16_t componen
 
   return false;
 }
+uint32_t PacketIter::nextYAfterCurrent(uint16_t componentStart, uint16_t componentEnd,
+                                       uint8_t resolutionStart, uint8_t resolutionEnd)
+{
+  uint64_t best = UINT64_MAX;
+  auto tileY0 = packetManager->getTileBounds().y0;
+  ResPrecinctInfo compressionScratch;
+  for(uint16_t componentIndex = componentStart; componentIndex < componentEnd; ++componentIndex)
+  {
+    for(uint8_t resolutionIndex = resolutionStart; resolutionIndex < resolutionEnd;
+        ++resolutionIndex)
+    {
+      auto rpInfo = precinctInfoFor(componentIndex, resolutionIndex, &compressionScratch);
+      if(!rpInfo || rpInfo->precHeightPRJ == 0)
+        continue;
+      uint64_t step = rpInfo->precHeightPRJ;
+      uint64_t candidate;
+      if(y < tileY0 && rpInfo->resOffsetY0PRJ)
+        candidate = tileY0;
+      else
+      {
+        uint64_t rem = (uint64_t)y % step;
+        uint64_t gap = rem == 0 ? step : step - rem;
+        if(gap > UINT32_MAX - y)
+          continue;
+        candidate = (uint64_t)y + gap;
+      }
+      if(candidate < best)
+        best = candidate;
+    }
+  }
+  if(best >= prog.ty1 || best > UINT32_MAX)
+    return prog.ty1;
+  return (uint32_t)best;
+}
 void PacketIter::generatePrecinctIndex(void)
 {
   auto comp = comps + compno;
@@ -811,6 +845,15 @@ bool PacketIter::update_include(void)
     return true;
   return packetManager->getIncludeTracker()->update(layno, resno, compno, precinctIndex);
 }
+bool PacketIter::packetBudgetRemaining(void)
+{
+  if(compression_)
+    return true;
+  if(packetSlots_ >= packetSlotLimit_)
+    return false;
+  ++packetSlots_;
+  return true;
+}
 void PacketIter::destroy_include(void)
 {
   packetManager->getIncludeTracker()->clear();
@@ -1001,6 +1044,10 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pocIndex, TileCodingPar
       res->precinctGridHeight = *(precinctExp++);
     }
   }
+  packetSlots_ = 0;
+  packetSlotLimit_ = std::numeric_limits<uint64_t>::max();
+  if(!compression && tcp->packets_)
+    packetSlotLimit_ = tcp->packets_->length();
   genPrecinctInfo();
   update_dxy();
   // the highest resolution's precinct holding the tile origin can start before it
@@ -1125,11 +1172,20 @@ bool PacketIter::next_cprl(SparseBuffer*)
   for(; compno < prog.comp_e; compno++)
   {
     auto comp = comps + compno;
-    for(; y < prog.ty1; y += dyActive, dyActive = dy)
+    for(; y < prog.ty1;)
     {
       // no precinct starts on this row
       if(!anyPrecinctStartsAtY(compno, (uint16_t)(compno + 1), prog.res_s, prog.res_e))
+      {
+        uint32_t nextY = nextYAfterCurrent(compno, (uint16_t)(compno + 1), prog.res_s, prog.res_e);
+        if(nextY <= y)
+          break;
+        y = nextY;
+        dyActive = dy;
         continue;
+      }
+      if(!packetBudgetRemaining())
+        return false;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
       {
         for(; resno < prog.res_e; resno++)
@@ -1142,6 +1198,8 @@ bool PacketIter::next_cprl(SparseBuffer*)
           {
             incrementInner = true;
             generatePrecinctIndex();
+            if(!packetBudgetRemaining())
+              return false;
             if(update_include())
             {
               return true;
@@ -1154,6 +1212,8 @@ bool PacketIter::next_cprl(SparseBuffer*)
       }
       x = prog.tx0;
       dxActive = (uint32_t)(dx - (x % dx));
+      y += dyActive;
+      dyActive = dy;
     }
     y = prog.ty0;
     dx = 0;
@@ -1165,11 +1225,20 @@ bool PacketIter::next_cprl(SparseBuffer*)
 }
 bool PacketIter::next_pcrl()
 {
-  for(; y < prog.ty1; y += dyActive, dyActive = dy)
+  for(; y < prog.ty1;)
   {
     // no precinct starts on this row
     if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
+    {
+      uint32_t nextY = nextYAfterCurrent(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e);
+      if(nextY <= y)
+        break;
+      y = nextY;
+      dyActive = dy;
       continue;
+    }
+    if(!packetBudgetRemaining())
+      return false;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
     {
       // windowed decode:
@@ -1193,6 +1262,8 @@ bool PacketIter::next_pcrl()
           {
             incrementInner = true;
             generatePrecinctIndex();
+            if(!packetBudgetRemaining())
+              return false;
             if(update_include())
               return true;
           }
@@ -1205,17 +1276,28 @@ bool PacketIter::next_pcrl()
     }
     x = prog.tx0;
     dxActive = (uint32_t)(dx - (x % dx));
+    y += dyActive;
+    dyActive = dy;
   }
 
   return false;
 }
 bool PacketIter::next_prcl()
 {
-  for(; y < prog.ty1; y += dyActive, dyActive = dy)
+  for(; y < prog.ty1;)
   {
     // no precinct starts on this row
     if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e))
+    {
+      uint32_t nextY = nextYAfterCurrent(prog.comp_s, prog.comp_e, prog.res_s, prog.res_e);
+      if(nextY <= y)
+        break;
+      y = nextY;
+      dyActive = dy;
       continue;
+    }
+    if(!packetBudgetRemaining())
+      return false;
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
     {
       for(; resno < prog.res_e; resno++)
@@ -1230,6 +1312,8 @@ bool PacketIter::next_prcl()
           {
             incrementInner = true;
             generatePrecinctIndex();
+            if(!packetBudgetRemaining())
+              return false;
             if(update_include())
               return true;
           }
@@ -1242,6 +1326,8 @@ bool PacketIter::next_prcl()
     }
     x = prog.tx0;
     dxActive = (uint32_t)(dx - (x % dx));
+    y += dyActive;
+    dyActive = dy;
   }
 
   return false;
@@ -1264,6 +1350,8 @@ bool PacketIter::next_lrcp()
         if(precinctIndex < prec_e)
         {
           incrementInner = true;
+          if(!packetBudgetRemaining())
+            return false;
           if(update_include())
             return true;
         }
@@ -1295,6 +1383,8 @@ bool PacketIter::next_rlcp()
         if(precinctIndex < prec_e)
         {
           incrementInner = true;
+          if(!packetBudgetRemaining())
+            return false;
           if(update_include())
             return true;
         }
@@ -1330,11 +1420,20 @@ bool PacketIter::next_rpcl(SparseBuffer*)
     if(!sane)
       continue;
 
-    for(; y < prog.ty1; y += dyActive, dyActive = dy)
+    for(; y < prog.ty1;)
     {
       // no precinct starts on this row
       if(!anyPrecinctStartsAtY(prog.comp_s, prog.comp_e, resno, (uint8_t)(resno + 1)))
+      {
+        uint32_t nextY = nextYAfterCurrent(prog.comp_s, prog.comp_e, resno, (uint8_t)(resno + 1));
+        if(nextY <= y)
+          break;
+        y = nextY;
+        dyActive = dy;
         continue;
+      }
+      if(!packetBudgetRemaining())
+        return false;
       for(; x < prog.tx1; x += dxActive, dxActive = dx)
       {
         // calculate x
@@ -1348,6 +1447,8 @@ bool PacketIter::next_rpcl(SparseBuffer*)
           {
             incrementInner = true;
             generatePrecinctIndex();
+            if(!packetBudgetRemaining())
+              return false;
             if(update_include())
               return true;
           }
@@ -1358,6 +1459,8 @@ bool PacketIter::next_rpcl(SparseBuffer*)
       }
       x = prog.tx0;
       dxActive = (uint32_t)(dx - (x % dx));
+      y += dyActive;
+      dyActive = dy;
     }
     y = prog.ty0;
     dyActive = (uint32_t)(dy - (y % dy));
@@ -1379,6 +1482,7 @@ bool PacketIter::skipPackets(SparseBuffer* compressedPackets, uint64_t numPacket
     return false;
   }
   tp->incNumProcessedPackets(numPackets);
+  packetSlots_ += numPackets;
 
   return true;
 }

@@ -426,6 +426,9 @@ private:
   bool singleProgression_ = false;
   /** true when used for compression, false for decompression */
   bool compression_ = false;
+  uint64_t packetSlots_ = 0;
+  uint64_t packetSlotLimit_ = std::numeric_limits<uint64_t>::max();
+  bool packetBudgetRemaining(void);
   /**
    * Cached per-resolution precinct info for the optimized iteration path.
    * Non-null only when all OPT preconditions are met. Length = comps[0].numresolutions.
@@ -500,6 +503,8 @@ private:
    */
   bool anyPrecinctStartsAtY(uint16_t componentStart, uint16_t componentEnd, uint8_t resolutionStart,
                             uint8_t resolutionEnd);
+  uint32_t nextYAfterCurrent(uint16_t componentStart, uint16_t componentEnd,
+                             uint8_t resolutionStart, uint8_t resolutionEnd);
   /**
    * @brief Computes dx/dy for a single component and merges into the global minimum.
    * @param comp component info

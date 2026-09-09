@@ -77,13 +77,18 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
   // compressed bytes. A malformed precinct grid can declare far more packets
   // than that, and skipping each corrupt one would iterate the whole bogus
   // grid. Once skips exceed the byte budget the grid is provably lying.
-  const size_t maxCorruptSkips = compressedPackets->length();
+  const size_t maxPackets = compressedPackets->length();
   size_t corruptSkips = 0;
   for(auto prog_iter_num = 0U; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     auto currPi = packetManager.getPacketIter(prog_iter_num);
     while(currPi->next(usePacketLengths ? compressedPackets : nullptr))
     {
+      if(tileProcessor->getNumProcessedPackets() >= maxPackets)
+      {
+        grklog.warn("Tile %u is truncated.", tile_no);
+        return true;
+      }
       // code below is written this way as chunkLength() can throw, also indicating truncated tile
       // With selective fetch, the buffer may be exhausted for skipped (unfetched) packets,
       // so we only check for truncation when not in selective fetch mode.
@@ -136,7 +141,7 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
                       "layer=%02d",
                       tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
                       currPi->getLayno());
-          if(++corruptSkips > maxCorruptSkips)
+          if(++corruptSkips > maxPackets)
           {
             grklog.warn("Tile %u is truncated.", tile_no);
             return true;

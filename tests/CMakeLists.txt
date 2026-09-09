@@ -263,6 +263,19 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_packet_iter_empty_poc_test PROPERTIES TIMEOUT 60)
 endif()
 
+# Regression for an OSS-Fuzz timeout: a 17 by 4-billion-row RPCL tile with
+# component dy=1 made the packet iterator walk every other canvas row without
+# ever yielding a packet. The hang only shows up on a memory stream. The test
+# must RETURN; the TIMEOUT turns a regression hang into a failure.
+add_executable(grk_packet_iter_tall_tile_test GrkPacketIterTallTileTest.cpp)
+target_link_libraries(grk_packet_iter_tall_tile_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_packet_iter_tall_tile_test
+    COMMAND grk_packet_iter_tall_tile_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6015347287982080)
+  set_tests_properties(grk_packet_iter_tall_tile_test PROPERTIES TIMEOUT 60)
+endif()
+
 # OSS-Fuzz timeout: block scheduler walked every code block of a 2^15 precinct for a 1024x1024 window
 add_executable(grk_block_schedule_window_test GrkBlockScheduleWindowTest.cpp)
 target_link_libraries(grk_block_schedule_window_test ${GROK_CORE_NAME} spdlog::spdlog)
