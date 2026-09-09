@@ -208,6 +208,8 @@ public:
   }
 
   void transferDataFrom(const Tile* tile_src_data);
+  void transferComponentDataFrom(const Tile* sourceTile, uint16_t componentNumber);
+  GrkImage* createTileImage(const Tile* sourceTile) const;
 
   /**
    * @brief Check if postProcess would be a no-op for the current image.

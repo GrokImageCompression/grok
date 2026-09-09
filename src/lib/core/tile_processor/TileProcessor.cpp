@@ -557,12 +557,13 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
 
 bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
                                       CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                      std::function<void()> post, TileFutureManager& futures)
+                                      GrkImage* output, std::function<void()> post,
+                                      TileFutureManager& futures)
 {
   if(!decompressPrepareWithTLM(tilePartFetchSeq))
     return false;
 
-  scheduleAndRunDecompress(coderPool, unreducedImageBounds, post, futures);
+  scheduleAndRunDecompress(coderPool, unreducedImageBounds, output, post, futures);
 
   return true;
 }
@@ -1188,7 +1189,30 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   {
     if(tile_)
     {
-      if(scratch->has_multiple_tiles)
+      if(componentsTransferred_)
+      {
+        auto destination = scratch->has_multiple_tiles ? image_ : scratch;
+        for(uint16_t componentNumber = 0; componentNumber < destination->numcomps;
+            ++componentNumber)
+        {
+          auto component = destination->comps + componentNumber;
+          if(!component->data && component->w && component->h &&
+             !GrkImage::allocData(component, true))
+          {
+            success_ = false;
+            break;
+          }
+        }
+        if(scratch->has_multiple_tiles && cp_->dw_reduced && cp_->codingParams_.dec_.reduce_ > 0)
+        {
+          uint8_t reduce = cp_->codingParams_.dec_.reduce_;
+          image_->x0 = ceildivpow2<uint32_t>(image_->x0, reduce);
+          image_->y0 = ceildivpow2<uint32_t>(image_->y0, reduce);
+          image_->x1 = ceildivpow2<uint32_t>(image_->x1, reduce);
+          image_->y1 = ceildivpow2<uint32_t>(image_->y1, reduce);
+        }
+      }
+      else if(scratch->has_multiple_tiles)
       {
         grk_unref(image_);
         image_ = scratch->extractFrom(tile_);
@@ -1223,8 +1247,31 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   }
 }
 
+bool TileProcessor::transferDecompressedComponent(uint16_t componentNumber)
+{
+  if(!decompressionOutput_ || !tile_ || componentNumber >= tile_->numcomps_)
+    return false;
+
+  auto destination = decompressionOutput_;
+  if(decompressionOutput_->has_multiple_tiles)
+  {
+    if(!componentsTransferred_)
+    {
+      grk_unref(image_);
+      image_ = headerImage_->createTileImage(tile_);
+    }
+    destination = image_;
+  }
+  destination->transferComponentDataFrom(tile_, componentNumber);
+  tile_->comps_[componentNumber].dealloc();
+  componentsTransferred_ = true;
+
+  return destination->comps[componentNumber].data != nullptr;
+}
+
 void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                             std::function<void()> post, TileFutureManager& futures)
+                                             GrkImage* output, std::function<void()> post,
+                                             TileFutureManager& futures)
 {
   // GPU plugin T2-only fast path: run T2 parsing inline without task graph overhead
   if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
@@ -1286,6 +1333,8 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   futures.waitAndClear(tileIndex_);
   staleParsing_.clear();
   unreducedImageWindow_ = unreducedImageBounds;
+  decompressionOutput_ = output;
+  componentsTransferred_ = false;
 
   if(!scheduler_)
   {

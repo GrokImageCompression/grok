@@ -60,7 +60,7 @@ struct TileProcessor : virtual public ITileProcessor
   void setStream(IStream* stream, bool ownsStream) override;
 
   bool decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq, CoderPool* streamPool,
-                         Rect32 unreducedImageBounds, std::function<void()> post,
+                         Rect32 unreducedImageBounds, GrkImage* output, std::function<void()> post,
                          TileFutureManager& futures) override;
 
   bool decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq) override;
@@ -116,8 +116,10 @@ struct TileProcessor : virtual public ITileProcessor
    * @param post
    * @param futures
    */
-  void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+  void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds, GrkImage* output,
                                 std::function<void()> post, TileFutureManager& futures) override;
+
+  bool transferDecompressedComponent(uint16_t componentNumber) override;
   /**
    * @brief Performs post T2+T1 processing
    *
@@ -427,6 +429,8 @@ private:
   void prepareConcurrentParsing(void);
 
   std::atomic<bool> success_ = true;
+  GrkImage* decompressionOutput_ = nullptr;
+  bool componentsTransferred_ = false;
   bool concurrentFlowsStale_ = false;
 
   // Flow components for task graph scheduling.

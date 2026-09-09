@@ -997,29 +997,34 @@ void GrkImage::filterComponents(const std::vector<uint16_t>& compsToKeep)
  */
 GrkImage* GrkImage::extractFrom(const Tile* src) const
 {
-  auto destImage = new GrkImage();
-  copyHeaderTo(destImage);
-  destImage->x0 = src->x0;
-  destImage->y0 = src->y0;
-  destImage->x1 = src->x1;
-  destImage->y1 = src->y1;
-
-  for(uint16_t compno = 0; compno < src->numcomps_; ++compno)
-  {
-    auto srcComp = src->comps_ + compno;
-    auto src_bounds = srcComp->windowBounds();
-
-    auto destComp = destImage->comps + compno;
-    destComp->x0 = src_bounds.x0;
-    destComp->y0 = src_bounds.y0;
-    destComp->w = src_bounds.width();
-    destComp->h = src_bounds.height();
-  }
-
-  // stride is set here
+  auto destImage = createTileImage(src);
   destImage->transferDataFrom(src);
 
   return destImage;
+}
+
+GrkImage* GrkImage::createTileImage(const Tile* sourceTile) const
+{
+  auto destinationImage = new GrkImage();
+  copyHeaderTo(destinationImage);
+  destinationImage->x0 = sourceTile->x0;
+  destinationImage->y0 = sourceTile->y0;
+  destinationImage->x1 = sourceTile->x1;
+  destinationImage->y1 = sourceTile->y1;
+
+  for(uint16_t componentNumber = 0; componentNumber < sourceTile->numcomps_; ++componentNumber)
+  {
+    auto sourceComponent = sourceTile->comps_ + componentNumber;
+    auto sourceBounds = sourceComponent->windowBounds();
+    auto destinationComponent = destinationImage->comps + componentNumber;
+    destinationComponent->x0 = sourceBounds.x0;
+    destinationComponent->y0 = sourceBounds.y0;
+    destinationComponent->w = sourceBounds.width();
+    destinationComponent->h = sourceBounds.height();
+    destinationComponent->data_type = sourceComponent->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
+  }
+
+  return destinationImage;
 }
 
 bool GrkImage::composite(const GrkImage* srcImg)
@@ -1449,6 +1454,23 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
     default:
       break;
   }
+}
+
+void GrkImage::transferComponentDataFrom(const Tile* sourceTile, uint16_t componentNumber)
+{
+  if(!sourceTile || componentNumber >= numcomps || componentNumber >= sourceTile->numcomps_)
+    return;
+
+  auto sourceComponent = sourceTile->comps_ + componentNumber;
+  auto destinationComponent = comps + componentNumber;
+  single_component_data_free(destinationComponent);
+  uint32_t stride = 0;
+  void* data = nullptr;
+  sourceComponent->transferWindowData(&data, &stride);
+  destinationComponent->data = data;
+  destinationComponent->stride = stride;
+  destinationComponent->data_type = sourceComponent->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
+  destinationComponent->owns_data = true;
 }
 
 } // namespace grk

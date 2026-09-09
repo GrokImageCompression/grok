@@ -30,10 +30,10 @@ const uint32_t IMAGE_WIDTH = 61;
 const uint32_t IMAGE_HEIGHT = 67;
 const uint32_t TILE_WIDTH = 14;
 const uint32_t TILE_HEIGHT = 15;
-const uint16_t NUM_COMPONENTS = 1;
+const uint16_t NUM_COMPONENTS = 5;
 const uint8_t PRECISION = 8;
 
-struct Plane
+struct DecodedImage
 {
   uint32_t width = 0;
   uint32_t height = 0;
@@ -47,20 +47,29 @@ int32_t sampleAt(const grk_image_comp& comp, uint64_t index)
   return static_cast<int32_t*>(comp.data)[index];
 }
 
-bool capture(grk_image* image, Plane& out)
+bool capture(grk_image* image, DecodedImage& out)
 {
   const auto& source = image->comps[0];
-  if(!source.data || source.w == 0 || source.h == 0)
+  if(image->numcomps != NUM_COMPONENTS || !source.data || source.w == 0 || source.h == 0)
   {
-    fprintf(stderr, "decoded component is empty: %ux%u\n", source.w, source.h);
+    fprintf(stderr, "decoded image has %u components, first component is %ux%u\n", image->numcomps,
+            source.w, source.h);
     return false;
   }
   out.width = source.w;
   out.height = source.h;
-  out.samples.resize((size_t)source.w * source.h);
-  for(uint32_t y = 0; y < source.h; ++y)
-    for(uint32_t x = 0; x < source.w; ++x)
-      out.samples[(size_t)y * source.w + x] = sampleAt(source, (uint64_t)y * source.stride + x);
+  size_t componentSamples = (size_t)source.w * source.h;
+  out.samples.resize(NUM_COMPONENTS * componentSamples);
+  for(uint16_t componentNumber = 0; componentNumber < NUM_COMPONENTS; ++componentNumber)
+  {
+    const auto& component = image->comps[componentNumber];
+    if(!component.data || component.w != source.w || component.h != source.h)
+      return false;
+    for(uint32_t y = 0; y < source.h; ++y)
+      for(uint32_t x = 0; x < source.w; ++x)
+        out.samples[(size_t)componentNumber * componentSamples + (size_t)y * source.w + x] =
+            sampleAt(component, (uint64_t)y * component.stride + x);
+  }
   return true;
 }
 
@@ -78,19 +87,23 @@ grk_image* makeImage(void)
     params[c].prec = PRECISION;
     params[c].sgnd = false;
   }
-  grk_image* image = grk_image_new(NUM_COMPONENTS, params, GRK_CLRSPC_GRAY, true);
+  grk_image* image = grk_image_new(NUM_COMPONENTS, params, GRK_CLRSPC_SRGB, true);
   if(!image)
     return nullptr;
-  auto* data = static_cast<int32_t*>(image->comps[0].data);
-  if(!data)
+  for(uint16_t componentNumber = 0; componentNumber < NUM_COMPONENTS; ++componentNumber)
   {
-    grk_object_unref(&image->obj);
-    return nullptr;
+    auto* data = static_cast<int32_t*>(image->comps[componentNumber].data);
+    if(!data)
+    {
+      grk_object_unref(&image->obj);
+      return nullptr;
+    }
+    uint32_t stride = image->comps[componentNumber].stride;
+    for(uint32_t y = 0; y < IMAGE_HEIGHT; ++y)
+      for(uint32_t x = 0; x < IMAGE_WIDTH; ++x)
+        data[(size_t)y * stride + x] =
+            (int32_t)((x * 7 + y * 13 + ((x * y) % 29) * 3 + componentNumber * 17) & 0xFF);
   }
-  uint32_t stride = image->comps[0].stride;
-  for(uint32_t y = 0; y < IMAGE_HEIGHT; ++y)
-    for(uint32_t x = 0; x < IMAGE_WIDTH; ++x)
-      data[(size_t)y * stride + x] = (int32_t)((x * 7 + y * 13 + ((x * y) % 29) * 3) & 0xFF);
   return image;
 }
 
@@ -110,6 +123,7 @@ bool compress(const std::string& path)
   parameters.tile_size_on = true;
   parameters.t_width = TILE_WIDTH;
   parameters.t_height = TILE_HEIGHT;
+  parameters.mct = 1;
 
   grk_stream_params streamParams = {};
   snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
@@ -130,7 +144,7 @@ bool compress(const std::string& path)
 }
 
 // window == nullptr decodes the whole image
-bool decode(const std::string& path, const uint32_t* window, Plane& out)
+bool decode(const std::string& path, const uint32_t* window, DecodedImage& out)
 {
   grk_decompress_parameters params = {};
   if(window)
@@ -168,7 +182,7 @@ bool decode(const std::string& path, const uint32_t* window, Plane& out)
   return ok;
 }
 
-bool sameAsCrop(const Plane& full, const Plane& window, uint32_t x0, uint32_t y0)
+bool sameAsCrop(const DecodedImage& full, const DecodedImage& window, uint32_t x0, uint32_t y0)
 {
   if(window.width != 0 && window.height != 0 &&
      (window.width > full.width - x0 || window.height > full.height - y0))
@@ -177,28 +191,38 @@ bool sameAsCrop(const Plane& full, const Plane& window, uint32_t x0, uint32_t y0
             window.width, window.height, full.width, full.height);
     return false;
   }
-  for(uint32_t y = 0; y < window.height; ++y)
+  size_t fullComponentSamples = (size_t)full.width * full.height;
+  size_t windowComponentSamples = (size_t)window.width * window.height;
+  for(uint16_t componentNumber = 0; componentNumber < NUM_COMPONENTS; ++componentNumber)
   {
-    for(uint32_t x = 0; x < window.width; ++x)
+    for(uint32_t y = 0; y < window.height; ++y)
     {
-      int32_t got = window.samples[(size_t)y * window.width + x];
-      int32_t expected = full.samples[(size_t)(y0 + y) * full.width + x0 + x];
-      if(got != expected)
+      for(uint32_t x = 0; x < window.width; ++x)
       {
-        fprintf(stderr, "window (%u,%u,%u,%u): sample (%u,%u) is %d, whole image decode has %d\n",
-                x0, y0, x0 + window.width, y0 + window.height, x0 + x, y0 + y, got, expected);
-        return false;
+        int32_t got = window.samples[(size_t)componentNumber * windowComponentSamples +
+                                     (size_t)y * window.width + x];
+        int32_t expected = full.samples[(size_t)componentNumber * fullComponentSamples +
+                                        (size_t)(y0 + y) * full.width + x0 + x];
+        if(got != expected)
+        {
+          fprintf(stderr,
+                  "component %u window (%u,%u,%u,%u): sample (%u,%u) is %d, whole image decode "
+                  "has %d\n",
+                  componentNumber, x0, y0, x0 + window.width, y0 + window.height, x0 + x, y0 + y,
+                  got, expected);
+          return false;
+        }
       }
     }
   }
   return true;
 }
 
-bool checkWindow(const std::string& path, const Plane& full, uint32_t x0, uint32_t y0, uint32_t x1,
-                 uint32_t y1)
+bool checkWindow(const std::string& path, const DecodedImage& full, uint32_t x0, uint32_t y0,
+                 uint32_t x1, uint32_t y1)
 {
   const uint32_t window[4] = {x0, y0, x1, y1};
-  Plane decoded;
+  DecodedImage decoded;
   if(!decode(path, window, decoded))
   {
     fprintf(stderr, "window (%u,%u,%u,%u) failed to decode\n", x0, y0, x1, y1);
@@ -216,6 +240,11 @@ bool checkWindow(const std::string& path, const Plane& full, uint32_t x0, uint32
 
 int main(void)
 {
+#if defined(_WIN32)
+  _putenv_s("GRK_MERCURY", "0");
+#else
+  setenv("GRK_MERCURY", "0", 1);
+#endif
   grk_initialize(nullptr, 0, nullptr);
 
   std::string path = "region_decompress_test.j2k";
@@ -225,7 +254,7 @@ int main(void)
     return 1;
   }
 
-  Plane full;
+  DecodedImage full;
   if(!decode(path, nullptr, full))
   {
     remove(path.c_str());

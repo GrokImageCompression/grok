@@ -349,7 +349,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
       currTileProcessor_->prepareForDecompression();
       // Run T2 inline with no-op post (no image extraction needed)
       currTileProcessor_->scheduleAndRunDecompress(
-          &coderPool_, headerImage_->getBounds(), []() {}, decompressTileFutureManager_);
+          &coderPool_, headerImage_->getBounds(), nullptr, []() {}, decompressTileFutureManager_);
       currTileProcessor_ = nullptr;
       currTileIndex_ = -1;
     }
@@ -784,6 +784,7 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
     bool useMultiPost = multiTile || ioBandCallback_;
     tileProcessor->scheduleAndRunDecompress(
         &coderPool_, useMultiPost ? scratchImage_->getBounds() : headerImage_->getBounds(),
+        scratchImage_.get(),
         useMultiPost ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
         decompressTileFutureManager_);
 
@@ -862,7 +863,7 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
     try
     {
       if(!tileProcessor->decompressWithTLM(tilePartFetchSeq, &coderPool_, unreducedImageBounds,
-                                           post, decompressTileFutureManager_))
+                                           scratchImage_.get(), post, decompressTileFutureManager_))
       {
         return false;
       }
@@ -1301,7 +1302,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   try
   {
     if(!tileProcessor->decompressWithTLM(tilePartFetchFlat_, &coderPool_, headerImage_->getBounds(),
-                                         post, decompressTileFutureManager_))
+                                         scratchImage_.get(), post, decompressTileFutureManager_))
     {
       return false;
     }

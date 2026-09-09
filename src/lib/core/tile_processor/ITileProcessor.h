@@ -86,7 +86,8 @@ struct ITileProcessor
    */
   virtual bool decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
                                  CoderPool* streamPool, Rect32 unreducedImageBounds,
-                                 std::function<void()> post, TileFutureManager& futures) = 0;
+                                 GrkImage* output, std::function<void()> post,
+                                 TileFutureManager& futures) = 0;
 
   /**
    * @brief Prepares for decompression using Tile Length Markers (TLM)
@@ -145,7 +146,10 @@ struct ITileProcessor
    * @param futures Manager for tile futures
    */
   virtual void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                        std::function<void()> post, TileFutureManager& futures) = 0;
+                                        GrkImage* output, std::function<void()> post,
+                                        TileFutureManager& futures) = 0;
+
+  virtual bool transferDecompressedComponent(uint16_t componentNumber) = 0;
 
   /**
    * @brief Performs post-T2+T1 decompression processing
