@@ -70,6 +70,9 @@ jobs:
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
       run: |
+        # github's ubuntu image ships a chrome apt source that hash-mismatches
+        sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+          /etc/apt/sources.list.d/google-chrome.list.save
         sudo apt-get update && sudo apt-get install -y libpsl-dev swig
 
     - name: macos-dependencies
@@ -227,6 +230,9 @@ jobs:
 
     - name: dependencies
       run: |
+        # github's ubuntu image ships a chrome apt source that hash-mismatches
+        sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+          /etc/apt/sources.list.d/google-chrome.list.save
         wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- ${{ env.CLANG_VERSION }}
         git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
