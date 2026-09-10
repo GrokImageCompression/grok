@@ -260,6 +260,13 @@ cmake -S . -B build -G Ninja \
 cmake --build build --parallel
 ```
 
+`GPUP_ENABLE_AUTH` defaults to **OFF**: `plugin_init` uses a stub
+`checkRegistration` that always succeeds, so no licence or register
+server is required. A licensed build is `-DGPUP_ENABLE_AUTH=ON` (libcurl
++ OpenSSL). A Release configure that still has the `// dev key` line in
+`src/auth/license_public_key.h` also needs `-DGPUP_ALLOW_DEV_LICENSE_KEY=ON`.
+See the plugin README development-licence section.
+
 On current macOS, Command Line Tools often have no `metal` compiler. Point
 `xcode-select` at Xcode.app and, if needed, run
 `xcodebuild -downloadComponent MetalToolchain`. Details are in the plugin
