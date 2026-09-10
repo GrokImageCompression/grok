@@ -209,60 +209,77 @@ Grok provides bindings for Python, C#, Java, and Rust.
 ## GPU Plugin Integration
 
 Grok supports GPU-accelerated Tier-1 encode and decode via the
-closed source `grok-gpu-plugin` project.
-The plugin offloads DWT, bit-plane coding, and MQ arithmetic coding to
-NVIDIA CUDA GPUs while Grok handles file I/O, header parsing, and Tier-2
-packet assembly.
+closed source `grok-gpu-plugin` project (submodule
+`extern/grok-gpu-plugin`). The plugin offloads DWT, bit-plane coding, and
+MQ arithmetic coding to an NVIDIA CUDA GPU or Apple Silicon Metal GPU
+while Grok handles file I/O, header parsing, and Tier-2 packet assembly.
+
+Full Metal prerequisites and CMake options live in
+[extern/grok-gpu-plugin/README.md](extern/grok-gpu-plugin/README.md).
 
 ### Requirements
 
-| Dependency     | Version   | Notes                          |
-|----------------|-----------|--------------------------------|
-| CUDA Toolkit   | ≥ 11.0    | CUDA 12.x recommended          |
-| NVIDIA GPU     | CC ≥ 6.0  | Tested on Ampere (CC 8.6)      |
-| C++23 compiler | GCC 13+   | Also tested with Clang 17+     |
-| CMake          | ≥ 3.21    |                                |
+| Dependency     | Version   | Notes                                      |
+|----------------|-----------|--------------------------------------------|
+| CMake          | ≥ 3.21    |                                            |
+| C++23 compiler | GCC 13+ / Clang 17+ / Apple Clang |                       |
+| CUDA Toolkit   | ≥ 11.0    | CUDA backend only                          |
+| NVIDIA GPU     | CC ≥ 6.0  | CUDA. Tested on Ampere (CC 8.6)            |
+| Xcode          | ≥ 15      | Metal. Full Xcode.app + Metal toolchain    |
+| Apple Silicon  | M1+       | Metal. Tested on M1 Pro, M2 Max, M4, M5    |
+| libtiff        | any recent | `brew install libtiff` on macOS           |
 
-### Building the Plugin
+### Building the plugin with Grok (recommended)
 
-The plugin is built independently from Grok as a shared library:
-
-```bash
-# Clone with submodules
-git clone --recurse-submodules <plugin-repo-url>
-cd grok-gpu-plugin
-
-# Configure (shared library, CUDA enabled)
-cmake -B build -S . \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DGRK_GPU_BUILD_SHARED=ON \
-    -DGRK_GPU_USE_CUDA=ON \
-    -DGRK_GPU_CUDA_ARCH=86 \
-    -DGRK_GPU_BUILD_TESTS=ON \
-    -DGRK_GPU_BUILD_TOOLS=OFF
-
-# Build
-cmake --build build -j$(nproc)
-
-# Verify (optional)
-ctest --test-dir build --output-on-failure
-```
-
-Replace `86` with your GPU's compute capability (e.g., `75` for Turing,
-`90` for Hopper).
-
-### Installing the Plugin
-
-Grok discovers the plugin by searching for `libgrokj2k_plugin.so` in the
-same directory as the Grok executables. The plugin builds as
-`libgrok_gpu_plugin.so`, so a symlink is required:
+The submodule is marked `update = none`, so a recursive clone skips it:
 
 ```bash
-ln -sf /PATH/TO/grok-gpu-plugin/build/libgrok_gpu_plugin.so \
-       /PATH/TO/grok/build/bin/libgrokj2k_plugin.so
+git submodule update --init --checkout extern/grok-gpu-plugin
+git -C extern/grok-gpu-plugin submodule update --init --recursive
 ```
 
-The symlink must be recreated if the plugin or Grok build directory changes.
+Then configure Grok with the plugin loader. On Apple Silicon, disable CUDA
+and enable Metal. CMake names the library `libgrokj2k_plugin` and copies
+`grok_kernels.metallib` next to it — no extra symlink.
+
+```bash
+# NVIDIA
+cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DGRK_BUILD_PLUGIN_LOADER=ON \
+    -DGPUP_USE_CUDA=ON \
+    -DGPUP_CUDA_ARCH=86          # your GPU compute capability
+
+# Apple Silicon
+cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DGRK_BUILD_PLUGIN_LOADER=ON \
+    -DGPUP_USE_CUDA=OFF \
+    -DGPUP_USE_METAL=ON
+
+cmake --build build --parallel
+```
+
+On current macOS, Command Line Tools often have no `metal` compiler. Point
+`xcode-select` at Xcode.app and, if needed, run
+`xcodebuild -downloadComponent MetalToolchain`. Details are in the plugin
+README.
+
+### Plugin discovery
+
+Grok looks for `libgrokj2k_plugin` (`.so` / `.dylib` / `.dll`) in:
+
+1. the directory `GRK_PLUGIN_PATH` names
+2. the current working directory
+3. the directory of the Grok executable
+
+It does **not** search `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH`.
+On Metal the same directory must also contain `grok_kernels.metallib`.
+
+```bash
+export GRK_PLUGIN_PATH=/PATH/TO/grok/build/bin   # or $PREFIX/lib after install
+export GRK_DEBUG=3                               # log the load path and device
+```
 
 ### Using the GPU Plugin
 
@@ -304,7 +321,8 @@ The `-e` flag sets the number of executor threads for batch file I/O.
 
 | Variable              | Value   | Purpose                                          |
 |-----------------------|---------|--------------------------------------------------|
-| `CUDA_MODULE_LOADING` | `EAGER` | Required. Ensures CUDA modules load at init time |
+| `GRK_PLUGIN_PATH`     | dir     | Directory that contains `libgrokj2k_plugin` (and `grok_kernels.metallib` on Metal) |
+| `CUDA_MODULE_LOADING` | `EAGER` | CUDA only. Ensures CUDA modules load at init time |
 | `GRK_DEBUG`           | `1`–`5` | Optional. Verbosity: 1=error 2=warn 3=info 4=debug 5=trace. Level ≥ 3 enables plugin verbose output |
 
 ### Plugin Constraints
@@ -315,6 +333,9 @@ The `-e` flag sets the number of executor threads for batch file I/O.
 - Maximum 4 components
 - No code block style extensions (`cblk_sty = 0`)
 - Unsigned samples only
+- **Colour on the device** (16-bit Rec.709 RGB→XYZ, planar 8/10-bit YUV→RGB/XYZ,
+  inverse XYZ→sRGB, and the display LUT) runs on CUDA, HIP and Metal. See the
+  plugin README Metal notes.
 
 ### Known Issues
 
