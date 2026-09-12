@@ -579,6 +579,20 @@ add_executable(grk_flat_image_rate_control_test GrkFlatImageRateControlTest.cpp)
 target_link_libraries(grk_flat_image_rate_control_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_flat_image_rate_control_test COMMAND grk_flat_image_rate_control_test)
 
+add_executable(grk_compress_fuzzer_resource_test
+  GrkCompressFuzzerResourceTest.cpp
+  fuzzers/grk_compress_fuzzer.cpp)
+target_link_libraries(grk_compress_fuzzer_resource_test ${GROK_CORE_NAME})
+if(WIN32)
+  target_link_libraries(grk_compress_fuzzer_resource_test psapi)
+endif()
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_compress_fuzzer_resource_test
+    COMMAND grk_compress_fuzzer_resource_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_compress_fuzzer-6079638988980224)
+  set_tests_properties(grk_compress_fuzzer_resource_test PROPERTIES TIMEOUT 30)
+endif()
+
 add_executable(grk_qfactor_test GrkQfactorTest.cpp)
 target_link_libraries(grk_qfactor_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_qfactor_test COMMAND grk_qfactor_test)

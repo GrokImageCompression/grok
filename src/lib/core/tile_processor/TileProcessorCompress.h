@@ -69,10 +69,8 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   uint8_t getTilePartCounter(void) const override;
   void incTilePartCounter(void) override;
 
-  // Build and submit the compress DAG (MCT → DWT → T1 → rateAlloc).
-  // Must be called after preCompressTile().
   void buildCompressDAG(void);
-  tf::Future<void> submitCompressDAG(void);
+  void runCompressionTasks(void);
   bool compressDAGSuccess(void) const;
 
 private:

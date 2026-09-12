@@ -53,6 +53,7 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "CodeblockCompress.h"
+#include "MinHeap.h"
 #include "PacketManager.h"
 #include "mct.h"
 #include "ITileProcessor.h"
@@ -899,66 +900,42 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
     return success ? stream_->tell() : 0;
   }
 
-  // Multi-tile path: use DAG-based scheduling with no nested run().wait()
-  std::vector<TileProcessorCompress*> tileProcessors(numTiles);
-
-  // Create all tile processors
-  for(uint16_t i = 0; i < numTiles; ++i)
-    tileProcessors[i] = new TileProcessorCompress(i, cp_.tcps_.get(i), this, stream_);
-
-  // Phase 1: preCompress all tiles (parallel via TFSingleton)
-  {
-    tf::Taskflow preFlow;
-    for(uint16_t j = 0; j < numTiles; ++j)
+  MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker> completedTiles;
+  std::mutex completedTilesMutex;
+  auto finishTiles = [&](TileProcessorCompress* tileProcessor) {
+    std::lock_guard<std::mutex> lock(completedTilesMutex);
+    for(auto* completedTile : completedTiles.pop(tileProcessor))
     {
-      preFlow.emplace([&tileProcessors, j, &success] {
-        if(success)
+      if(success && !writeTileParts(completedTile))
+        success = false;
+      delete completedTile;
+    }
+  };
+
+  tf::Taskflow tileFlow;
+  for(uint16_t tileIndex = 0; tileIndex < numTiles; ++tileIndex)
+  {
+    tileFlow.emplace([&, tileIndex] {
+      auto tileProcessor =
+          new TileProcessorCompress(tileIndex, cp_.tcps_.get(tileIndex), this, stream_);
+      if(success)
+      {
+        if(!tileProcessor->preCompressTile(TFSingleton::workerId()))
+          success = false;
+        else
         {
-          if(!tileProcessors[j]->preCompressTile(0))
+          tileProcessor->buildCompressDAG();
+          tileProcessor->runCompressionTasks();
+          if(!tileProcessor->compressDAGSuccess())
             success = false;
         }
-      });
-    }
-    TFSingleton::get().run(preFlow).wait();
-  }
-  if(!success)
-    goto cleanup;
-
-  // Phase 2: Build compress DAGs and submit them all
-  {
-    std::vector<tf::Future<void>> futures;
-    for(uint16_t j = 0; j < numTiles; ++j)
-    {
-      tileProcessors[j]->buildCompressDAG();
-      futures.push_back(tileProcessors[j]->submitCompressDAG());
-    }
-    for(auto& f : futures)
-      f.wait();
-    for(uint16_t j = 0; j < numTiles; ++j)
-    {
-      if(!tileProcessors[j]->compressDAGSuccess())
-      {
-        success = false;
-        break;
       }
-    }
+      finishTiles(tileProcessor);
+    });
   }
-  if(!success)
-    goto cleanup;
+  TFSingleton::get().run(tileFlow).wait();
+  finishTiles(nullptr);
 
-  // Phase 3: Write tile parts sequentially in tile order
-  for(uint16_t j = 0; j < numTiles; ++j)
-  {
-    if(!writeTileParts(tileProcessors[j]))
-    {
-      success = false;
-      break;
-    }
-  }
-
-cleanup:
-  for(auto tp : tileProcessors)
-    delete tp;
   if(success)
     success = end();
 

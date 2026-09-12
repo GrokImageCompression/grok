@@ -525,9 +525,13 @@ void TileProcessorCompress::buildCompressDAG(void)
   t1Flow_->precede(rateAllocTask);
 }
 
-tf::Future<void> TileProcessorCompress::submitCompressDAG(void)
+void TileProcessorCompress::runCompressionTasks(void)
 {
-  return TFSingleton::get().run(*compressFlow_);
+  auto& executor = TFSingleton::get();
+  if(executor.this_worker_id() >= 0)
+    executor.corun(*compressFlow_);
+  else
+    executor.run(*compressFlow_).wait();
 }
 
 bool TileProcessorCompress::compressDAGSuccess(void) const
