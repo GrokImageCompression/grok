@@ -427,6 +427,10 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
                          : UINT_MAX;
     if(layerNeedsRateControl(layno))
     {
+      std::vector<uint8_t> lastSimulatedPassCounts(numBlocks);
+      bool hasSimulatedAllocation = false;
+      bool lastSimulationSucceeded = false;
+      uint32_t lastSimulatedPacketBytes = 0;
       // thresh from previous iteration - starts off uninitialized
       // used to bail out if difference with current thresh is small enough
       uint32_t prevthresh = 0;
@@ -455,11 +459,40 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         }
         else
         {
-          if(allocationChanged &&
-             (bodyBytes > maxLayerLength ||
-              !t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), allPacketBytes,
-                                          maxLayerLength, newTilePartProgressionPosition_,
-                                          packetLengthCache_->getMarkers(), false, false)))
+          bool allocationMatchesLastSimulation = hasSimulatedAllocation;
+          for(size_t blockIndex = 0; allocationMatchesLastSimulation && blockIndex < numBlocks;
+              ++blockIndex)
+          {
+            allocationMatchesLastSimulation =
+                flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_ ==
+                lastSimulatedPassCounts[blockIndex];
+          }
+
+          bool simulationSucceeded = true;
+          if(allocationChanged && bodyBytes <= maxLayerLength)
+          {
+            if(allocationMatchesLastSimulation)
+            {
+              simulationSucceeded = lastSimulationSucceeded;
+              *allPacketBytes = lastSimulatedPacketBytes;
+            }
+            else
+            {
+              simulationSucceeded = t2.compressPacketsSimulate(
+                  tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
+                  newTilePartProgressionPosition_, packetLengthCache_->getMarkers(), false, false);
+              for(size_t blockIndex = 0; blockIndex < numBlocks; ++blockIndex)
+              {
+                lastSimulatedPassCounts[blockIndex] =
+                    flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_;
+              }
+              hasSimulatedAllocation = true;
+              lastSimulationSucceeded = simulationSucceeded;
+              lastSimulatedPacketBytes = *allPacketBytes;
+            }
+          }
+
+          if(allocationChanged && (bodyBytes > maxLayerLength || !simulationSucceeded))
           {
             lowerBound = thresh;
             continue;
@@ -763,6 +796,10 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
     if(layerNeedsRateControl(layno))
     {
       double lowerBound = min_slope;
+      std::vector<uint8_t> lastSimulatedPassCounts(numBlocksSimple);
+      bool hasSimulatedAllocation = false;
+      bool lastSimulationSucceeded = false;
+      uint32_t lastSimulatedPacketBytes = 0;
       /* Threshold for Marcela Index */
       // start by including everything in this layer
       double goodthresh = 0;
@@ -796,10 +833,40 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
         }
         else
         {
-          if(bodyBytes > maxLayerLength ||
-             !t2.compressPacketsSimulate(tileIndex_, layno + 1U, allPacketBytes, maxLayerLength,
-                                         newTilePartProgressionPosition_,
-                                         packetLengthCache_->getMarkers(), false, false))
+          bool allocationMatchesLastSimulation = hasSimulatedAllocation;
+          for(size_t blockIndex = 0;
+              allocationMatchesLastSimulation && blockIndex < numBlocksSimple; ++blockIndex)
+          {
+            allocationMatchesLastSimulation =
+                flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_ ==
+                lastSimulatedPassCounts[blockIndex];
+          }
+
+          bool simulationSucceeded = false;
+          if(bodyBytes <= maxLayerLength)
+          {
+            if(allocationMatchesLastSimulation)
+            {
+              simulationSucceeded = lastSimulationSucceeded;
+              *allPacketBytes = lastSimulatedPacketBytes;
+            }
+            else
+            {
+              simulationSucceeded = t2.compressPacketsSimulate(
+                  tileIndex_, layno + 1U, allPacketBytes, maxLayerLength,
+                  newTilePartProgressionPosition_, packetLengthCache_->getMarkers(), false, false);
+              for(size_t blockIndex = 0; blockIndex < numBlocksSimple; ++blockIndex)
+              {
+                lastSimulatedPassCounts[blockIndex] =
+                    flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_;
+              }
+              hasSimulatedAllocation = true;
+              lastSimulationSucceeded = simulationSucceeded;
+              lastSimulatedPacketBytes = *allPacketBytes;
+            }
+          }
+
+          if(!simulationSucceeded)
           {
             lowerBound = thresh;
             continue;
