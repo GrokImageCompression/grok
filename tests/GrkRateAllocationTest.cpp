@@ -109,6 +109,13 @@ int main()
 {
   grk_initialize(nullptr, 0, nullptr);
   int failures = 0;
+  grk_cparameters defaultParameters;
+  grk_compress_set_default_params(&defaultParameters);
+  if(defaultParameters.rate_control_algorithm != GRK_RATE_CONTROL_PCRD_OPT)
+  {
+    std::fprintf(stderr, "FAIL: default rate control is not PCRD_OPT\n");
+    ++failures;
+  }
   const uint64_t rawBytes = (uint64_t)kWidth * kHeight * 3 * 12 / 8;
   const GRK_RATE_CONTROL_ALGORITHM algorithms[] = {GRK_RATE_CONTROL_BISECT,
                                                    GRK_RATE_CONTROL_PCRD_OPT};

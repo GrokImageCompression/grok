@@ -944,6 +944,7 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->numlayers = 0;
   parameters->allocation_by_rate_distortion = false;
   parameters->allocation_by_quality = false;
+  parameters->rate_control_algorithm = GRK_RATE_CONTROL_PCRD_OPT;
   parameters->write_plt = false;
   parameters->write_tlm = false;
   parameters->write_sop = false;
