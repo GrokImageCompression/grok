@@ -154,6 +154,14 @@ Quality values (double precision, greater than or equal to zero). Each value is 
 
 JPEG style quality factor, an integer between 1 and 100. Derives the quantization step size of every sub-band from the factor, the 9/7 synthesis gain and a visual weight per sub-band and component, the same model as Kakadu and OpenHTJ2K. Requires `-I` and a single component or a colour image. Step sizes only: use `-r` or `-q` as well to add rate constrained quality layers. Default: off.
 
+`--quant-step-shift [planes]`
+
+Multiplies every sub-band's base quantization step by 2 to the power of this, so the given number of finest bit planes is never coded and both encoding and rate control do less work. At most `8`. Requires `-I`, and is ignored when `--qfactor` is set. Default: `0`.
+
+`--rate-tolerance [fraction]`
+
+Fraction of a quality layer's byte budget rate control may leave unused. Rate control stops at the first threshold whose simulated size is within this fraction of the budget instead of bisecting to the exact answer, which cuts the number of packet simulations. Must be less than `0.5`. Default: `0.0`, an exact search.
+
 `-n, -numresolutions [number of resolutions]`
 
 Number of resolutions. It corresponds to the `number of DWT decompositions +1`. Default: 6.
@@ -181,6 +189,14 @@ Use PLT markers. Default: off
 `-X, -TLM`
 
 Use TLM markers. Default: off
+
+`--progressive-rc`
+
+Progressive rate control. The encoder estimates the rate control slope threshold while code blocks are still being coded, then stops generating the coding passes that the estimate says rate control would discard. This speeds up compression at a target rate, and makes the output differ slightly from a full encode. Only applies to the JPEG 2000 Part 1 coder. Default: off
+
+`--slope-hint [threshold]`
+
+Rate control slope threshold from a previously compressed similar frame, as logged with `-v`. It narrows the rate control search when there is a single quality layer allocated by compression ratio, reaching the same threshold in fewer packet simulations. It does not change block coding and does not need `--progressive-rc`. When compressing a directory the encoder carries each frame's threshold to the next on its own, so this flag is only needed for the first frame or when frames are compressed one process at a time. Default: `0`, no hint
 
 `-I, -irreversible`
 

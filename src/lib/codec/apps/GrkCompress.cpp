@@ -898,6 +898,9 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       guardBits, mct;
   std::string tileParts;
   uint16_t rsiz;
+  uint16_t slopeHint;
+  uint8_t quantStepShift;
+  double rateTolerance;
 
   bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC;
 
@@ -974,6 +977,12 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
   auto progressiveRCOpt =
       app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
+  auto slopeHintOpt = app.add_option("--slope-hint", slopeHint,
+                                     "Rate control slope threshold from a previous frame");
+  auto quantStepShiftOpt =
+      app.add_option("--quant-step-shift", quantStepShift, "Quantization step shift");
+  auto rateToleranceOpt =
+      app.add_option("--rate-tolerance", rateTolerance, "Rate control tolerance");
   app.add_option("--write-metadata", parameters->metadata_write_flags,
                  "JP2 metadata: 1=EXIF, 2=IPTC, 4=XMP, 8=none, 0=all")
       ->default_val(0);
@@ -1033,6 +1042,12 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->write_tlm = true;
   if(progressiveRCOpt->count() > 0)
     parameters->progressive_rate_control = true;
+  if(slopeHintOpt->count() > 0)
+    parameters->rate_control_slope_hint = slopeHint;
+  if(quantStepShiftOpt->count() > 0)
+    parameters->quant_step_shift = quantStepShift;
+  if(rateToleranceOpt->count() > 0)
+    parameters->rate_control_tolerance = rateTolerance;
   if(xyzOpt->count() > 0)
     parameters->apply_xyz_transform = true;
   if(repetitionsOpt->count() > 0)
@@ -2326,6 +2341,15 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   {
     spdlog::error("failed to compress image: grk_compress");
     goto cleanup;
+  }
+  {
+    uint16_t slopeThreshold = grk_compress_get_slope_threshold(codec);
+    if(slopeThreshold)
+    {
+      // carry the threshold to the next frame of a directory encode
+      parameters->rate_control_slope_hint = slopeThreshold;
+      spdlog::info("rate control slope threshold {}", slopeThreshold);
+    }
   }
 
 cleanup:

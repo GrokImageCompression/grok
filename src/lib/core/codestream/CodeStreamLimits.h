@@ -40,5 +40,6 @@ const uint8_t maxBitPlanesHT = 31;
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS - 1)
 const uint16_t maxCompressLayersGRK = 100;
+const uint8_t maxQuantStepShift = 8;
 
 } // namespace grk

@@ -36,6 +36,10 @@ struct ICompressor
   {
     return true;
   }
+  virtual uint16_t getSlopeThreshold(void) const
+  {
+    return 0;
+  }
 };
 
 } // namespace grk

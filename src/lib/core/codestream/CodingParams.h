@@ -402,6 +402,10 @@ struct EncodingParams
   uint32_t rateControlAlgorithm_;
   /* progressive rate control during T1 encoding */
   bool progressiveRateControl_;
+  /* log domain slope threshold carried over from a previous frame, 0 for none */
+  uint16_t rateControlSlopeHint_;
+  /* fraction of the layer budget rate control may leave unused, 0 for an exact search */
+  double rateControlTolerance_;
 };
 
 struct DecodingParams

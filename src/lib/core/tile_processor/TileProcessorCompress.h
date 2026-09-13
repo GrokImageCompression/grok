@@ -72,6 +72,7 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   void buildCompressDAG(void);
   void runCompressionTasks(void);
   bool compressDAGSuccess(void) const;
+  uint16_t getSlopeThreshold(void) const;
 
 private:
   void transferTileDataFromImage(void);
@@ -87,6 +88,7 @@ private:
   bool pcrdBisectFeasible(uint32_t* p_data_written, bool disableRateControl);
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
   void syncPluginCodeBlockData();
+  uint16_t slopeThreshold_ = 0;
   void prepareBlockForFirstLayer(t1::CodeblockCompress* cblk);
 
   uint32_t preCalculatedTileLen_ = 0;

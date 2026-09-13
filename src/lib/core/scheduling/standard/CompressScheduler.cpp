@@ -56,8 +56,14 @@ struct ITileProcessor;
 #include "CompressScheduler.h"
 #include "RateControl.h"
 
+#include <algorithm>
+#include <random>
+
 namespace grk
 {
+// fixed so a given tile always dispatches in the same order
+static constexpr uint32_t kBlockOrderSeed = 0x9e3779b9u;
+
 CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
                                      const double* mct_norms, uint16_t mct_numcomps,
                                      bool progressiveRateControl)
@@ -302,13 +308,12 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
 
     // Feed completed block data to the progressive slope estimator.
     // This builds the slope-rate histogram used to predict the PCRD threshold.
-    if(slopeEstimator_ && cblk->getNumPasses() > 0)
+    if(slopeEstimator_)
     {
       // Extract slopes and rates into stack arrays for the estimator.
-      // Maximum coding passes per block: 3 * maxBitPlanes ≈ 3*16 = 48.
       uint8_t numPasses = cblk->getNumPasses();
-      uint16_t slopes[48];
-      uint16_t rates[48];
+      uint16_t slopes[maxPassesPerSegmentJ2K];
+      uint16_t rates[maxPassesPerSegmentJ2K];
       for(uint8_t p = 0; p < numPasses; p++)
       {
         auto pass = cblk->getPass(p);
@@ -391,6 +396,10 @@ void CompressScheduler::initSlopeEstimator(const std::vector<t1::CompressBlockEx
 
   double targetRate = maxTargetBytes / static_cast<double>(totalSamples);
   slopeEstimator_ = std::make_unique<ProgressiveSlopeEstimator>(totalSamples, targetRate);
+
+  // block list is resolution 0 first, so the estimator's first sample would be all low resolution
+  std::mt19937 blockOrder(kBlockOrderSeed);
+  std::shuffle(encodeBlocks_.begin(), encodeBlocks_.end(), blockOrder);
 }
 
 } // namespace grk

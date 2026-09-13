@@ -1864,6 +1864,19 @@ typedef struct _grk_cparameters
    */
   bool progressive_rate_control;
 
+  /** Rate control slope threshold from a previous similar frame, see
+   *  grk_compress_get_slope_threshold(). Narrows the PCRD-opt search for a single
+   *  layer rate-distortion encode, block coding is unaffected. 0 for none */
+  uint16_t rate_control_slope_hint;
+
+  /** Multiplies every subband step by 2 to the power of this, so that many finest
+   *  bit planes are never coded. At most 8, irreversible only, ignored with qfactor */
+  uint8_t quant_step_shift;
+
+  /** Fraction of a layer's byte budget rate control may leave unused, stopping
+   *  the search early. In [0, 0.5), 0 is an exact search */
+  double rate_control_tolerance;
+
   /* Transcode mode: rewrite JP2 boxes while copying the codestream verbatim.
    * Set transcode=true and populate transcode_src with the source stream.
    * The image passed to grk_transcode() provides the metadata for the new boxes.
@@ -1991,6 +2004,14 @@ GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
  * @return	compressed length in bytes, or 0 on failure
  */
 GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* codec);
+
+/**
+ * @brief Final PCRD-opt slope threshold of the last quality layer, minimum over
+ *        tiles, for grk_cparameters::rate_control_slope_hint on the next frame
+ * @param	codec	compression codec (see @ref grk_object)
+ * @return	log-domain slope threshold, 0 when rate control did not run
+ */
+GRK_API uint16_t GRK_CALLCONV grk_compress_get_slope_threshold(grk_object* codec);
 
 /**
  * @brief Transcodes a JPEG 2000 file by rewriting JP2 boxes while copying

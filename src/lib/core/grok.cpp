@@ -954,6 +954,9 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->transcode_prog_order = GRK_PROG_UNKNOWN;
   parameters->device_id = 0;
   parameters->repeats = 1;
+  parameters->rate_control_slope_hint = 0;
+  parameters->quant_step_shift = 0;
+  parameters->rate_control_tolerance = 0.0;
 }
 bool grk_apply_xyz_transform(grk_image* image)
 {
@@ -1055,6 +1058,17 @@ uint64_t grk_compress_get_compressed_length(grk_object* codecWrapper)
     auto codec = Codec::getImpl(codecWrapper);
     if(codec->stream_)
       return codec->stream_->tell();
+  }
+  return 0;
+}
+
+uint16_t grk_compress_get_slope_threshold(grk_object* codecWrapper)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    if(codec->compressor_)
+      return codec->compressor_->getSlopeThreshold();
   }
   return 0;
 }

@@ -34,8 +34,11 @@ public:
   bool start(void) override;
   bool init(grk_cparameters* param, GrkImage* image) override;
   uint64_t compress(grk_plugin_tile* tile) override;
+  uint16_t getSlopeThreshold(void) const override;
 
 private:
+  void recordSlopeThreshold(uint16_t tileThreshold);
+  std::atomic<uint16_t> slopeThreshold_{0};
   // the parameters the plugin compresses with, copied at init
   std::unique_ptr<grk_cparameters> pluginParameters_;
   bool init_header_writing(void);
@@ -280,7 +283,6 @@ private:
      * @return true if the function was successful, false else.
      */
   bool getNumTileParts(uint32_t* p_nb_tile_parts, GrkImage* image);
-
 
   /**
    * Validate progression orders

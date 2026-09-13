@@ -462,6 +462,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   cp_.codingParams_.enc_.writeTlm_ = parameters->write_tlm;
   cp_.codingParams_.enc_.rateControlAlgorithm_ = parameters->rate_control_algorithm;
   cp_.codingParams_.enc_.progressiveRateControl_ = parameters->progressive_rate_control;
+  cp_.codingParams_.enc_.rateControlSlopeHint_ = parameters->rate_control_slope_hint;
+  cp_.codingParams_.enc_.rateControlTolerance_ = parameters->rate_control_tolerance;
 
   /* tiles */
   cp_.t_width_ = parameters->t_width;
@@ -564,6 +566,25 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     grklog.error("Number of guard bits %u is greater than 7", numgbits);
     return false;
   }
+  if(parameters->quant_step_shift > maxQuantStepShift)
+  {
+    grklog.error("Quantization step shift %u is greater than %u", parameters->quant_step_shift,
+                 maxQuantStepShift);
+    return false;
+  }
+  double quantStepScale = (double)(1U << parameters->quant_step_shift);
+  if(parameters->quant_step_shift && (!parameters->irreversible || parameters->qfactor))
+  {
+    grklog.warn("Quantization step shift applies only to irreversible compression without a "
+                "quality factor, ignoring it");
+    quantStepScale = 1.0;
+  }
+  if(parameters->rate_control_tolerance < 0.0 || parameters->rate_control_tolerance >= 0.5)
+  {
+    grklog.error("Rate control tolerance %f must lie in [0, 0.5)",
+                 parameters->rate_control_tolerance);
+    return false;
+  }
   if(parameters->qfactor)
   {
     if(parameters->qfactor > maxQfactor)
@@ -590,6 +611,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     tcp->tccps_ = new TileComponentCodingParams[image->numcomps];
 
     tcp->setIsHT(isHT, !parameters->irreversible, numgbits);
+    if(!isHT)
+      tcp->qcd_->setStepScale(quantStepScale);
     tcp->qcd_->generate((uint8_t)(parameters->numresolution - 1), image->comps[0].prec,
                         parameters->mct > 0, image->comps[0].sgnd);
     for(uint16_t i = 0; i < image->numcomps; i++)
@@ -893,6 +916,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
     {
       if(!writeTileParts(tileProcessor))
         success = false;
+      recordSlopeThreshold(tileProcessor->getSlopeThreshold());
       delete tileProcessor;
     }
     if(success)
@@ -908,6 +932,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
     {
       if(success && !writeTileParts(completedTile))
         success = false;
+      recordSlopeThreshold(completedTile->getSlopeThreshold());
       delete completedTile;
     }
   };
@@ -940,6 +965,21 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
     success = end();
 
   return success ? stream_->tell() : 0;
+}
+uint16_t CodeStreamCompress::getSlopeThreshold(void) const
+{
+  return slopeThreshold_.load(std::memory_order_relaxed);
+}
+void CodeStreamCompress::recordSlopeThreshold(uint16_t tileThreshold)
+{
+  if(tileThreshold == 0)
+    return;
+  uint16_t current = slopeThreshold_.load(std::memory_order_relaxed);
+  while(current == 0 || tileThreshold < current)
+  {
+    if(slopeThreshold_.compare_exchange_weak(current, tileThreshold, std::memory_order_relaxed))
+      break;
+  }
 }
 bool CodeStreamCompress::end(void)
 {

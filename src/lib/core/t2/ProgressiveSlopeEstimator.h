@@ -82,11 +82,10 @@
  *
  * Several factors provide conservatism:
  *
- *   1. SAMPLE BIAS: Early-completing blocks tend to be from higher-frequency subbands
- *      (smaller blocks, fewer bit-planes), which are typically more compressible.
- *      This means the early rate estimate is biased HIGH → the predicted threshold
- *      is biased LOW (more inclusive). As lower-frequency blocks complete, the
- *      threshold naturally rises toward the true value.
+ *   1. REPRESENTATIVE SAMPLE: The scheduler builds its block list component by
+ *      component with resolution 0 first, so it shuffles that list into a fixed
+ *      random order before dispatching. Every subband is then represented in
+ *      proportion to its size from the first blocks onward.
  *
  *   2. PADDING FACTOR: We add a conservative padding term when extrapolating from
  *      partial data:
@@ -96,11 +95,7 @@
  *      where padding = max(4096, total_samples / 16). This ensures the predicted
  *      threshold stays below the actual even in adversarial cases.
  *
- *   3. MONOTONE INCREASE: The threshold is only allowed to increase over time.
- *      As more blocks complete, the estimate can only become more restrictive
- *      (higher threshold = fewer passes survive). This prevents oscillation.
- *
- *   4. ALPHA SCALING: The threshold passed to the block encoder is scaled by a
+ *   3. ALPHA SCALING: The threshold passed to the block encoder is scaled by a
  *      factor α < 1 (default 0.75). This means we only terminate passes whose
  *      slopes are significantly below the predicted threshold, not marginally below.
  *
@@ -249,7 +244,10 @@ public:
    * @param passSlopesLog Array of log-domain slopes (from convex hull).
    *                      Slope of 0 indicates a non-feasible truncation point.
    * @param passRates Array of cumulative byte counts per pass.
-   * @param numPasses Number of coding passes in this block.
+   * @param numPasses Number of coding passes in this block. May be zero, for a
+   *                  block that coded to nothing. Such a block still counts
+   *                  toward the coded sample total, and leaves the histogram
+   *                  unchanged.
    * @param blockArea Number of samples in this block (width × height).
    *
    * @note Only feasible truncation points (slope != 0) are added to the
@@ -259,9 +257,6 @@ public:
   void updateStats(const uint16_t* passSlopesLog, const uint16_t* passRates, uint8_t numPasses,
                    uint32_t blockArea)
   {
-    if(numPasses == 0)
-      return;
-
     // Accumulate into local temporaries, then update under lock.
     // The histogram bins record: "total bytes belonging to passes whose
     // slope falls in bin s". When PCRD searches for threshold T, it sums
@@ -361,13 +356,6 @@ private:
    * keeping the threshold low (conservative). As encoding progresses
    * and codedSamples → totalSamples, the padding becomes negligible.
    *
-   * MONOTONE PROPERTY:
-   *
-   * The published threshold only increases over time. This is a natural
-   * consequence of the algorithm: as more blocks complete, the histogram
-   * fills in, and the cumulative bytes at any given slope increases.
-   * The crossing point can only move upward (toward higher threshold).
-   *
    * Must be called while holding mutex_.
    */
   void recomputeThreshold()
@@ -421,11 +409,7 @@ private:
     if(scaledThreshold < 1)
       scaledThreshold = 1;
 
-    // Monotone: only allow threshold to increase (becomes more restrictive)
-    uint16_t published = static_cast<uint16_t>(scaledThreshold);
-    uint16_t current = currentThreshold_.load(std::memory_order_relaxed);
-    if(published > current)
-      currentThreshold_.store(published, std::memory_order_relaxed);
+    currentThreshold_.store(static_cast<uint16_t>(scaledThreshold), std::memory_order_relaxed);
   }
 
   // --- Configuration (immutable after construction) ---
