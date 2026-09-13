@@ -23,6 +23,9 @@
 namespace grk::t1
 {
 
+// slopes decay by about this factor per bit-plane
+static constexpr float kPlaneSlopeDecay = 4.0f;
+
 static const double dwt_norms[4][32] = {
     {1.0000000000000000,      1.4999999999999998,      2.7500000000000000,
      5.3750000000000000,      10.6875000000000000,     21.3437499999999964,
@@ -811,6 +814,17 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
     linearSlopeThreshold = expf(logVal) * maxSlope;
   }
 
+  auto terminatePass = [&](pass_enc* pass, uint8_t type) {
+    if(type == T1_TYPE_RAW)
+      mqc->bypass_flush_enc(cblksty & GRK_CBLKSTY_PTERM);
+    else if(cblksty & GRK_CBLKSTY_PTERM)
+      mqc->erterm_enc();
+    else
+      mqc->flush_enc();
+    pass->term = true;
+    pass->rate = mqc->numbytes_enc();
+  };
+
   double cumwmsedec = 0.0;
   uint8_t passno;
   for(passno = 0; bpno >= 0; ++passno)
@@ -858,19 +872,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
     }
     if(enc_is_term_pass(cblk, cblksty, bpno, passtype))
     {
-      if(type == T1_TYPE_RAW)
-      {
-        mqc->bypass_flush_enc(cblksty & GRK_CBLKSTY_PTERM);
-      }
-      else
-      {
-        if(cblksty & GRK_CBLKSTY_PTERM)
-          mqc->erterm_enc();
-        else
-          mqc->flush_enc();
-      }
-      pass->term = true;
-      pass->rate = mqc->numbytes_enc();
+      terminatePass(pass, type);
     }
     else
     {
@@ -1007,15 +1009,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
             }
           }
 
-          // Apply escalating threshold: alpha(z - z0) = 3^floor((z - z0) / 3)
-          //
-          // Rationale for 3× per bit-plane:
-          // At high compression ratios, slopes decay approximately 4× per bit-plane
-          // (because each successive plane encodes ~1/4 the energy of the previous).
-          // Using 3× instead of the theoretical 4× provides a conservative safety
-          // margin: we demand less slope decay than theory predicts before concluding
-          // a pass is below threshold. This reduces the false-termination rate at
-          // the cost of slightly less aggressive pruning.
+          // Escalating threshold: kPlaneSlopeDecay^floor((z - z0) / 3)
           //
           // The "dist -= 3" step corresponds to one full bit-plane (3 coding passes:
           // significance, refinement, cleanup). We only begin escalating after the
@@ -1023,7 +1017,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
           // slopes don't follow the geometric decay model.
           float ref = linearSlopeThreshold * bestDeltaL;
           for(int dist = z - z0; dist > 2; dist -= 3)
-            ref *= 3.0f;
+            ref *= kPlaneSlopeDecay;
 
           // Condition 3.c: if the best (minimum) slope at z0 exceeds the scaled
           // threshold, this pass might be on the hull — abort termination check.
@@ -1056,6 +1050,9 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
         //   passes of below-threshold slopes, which is insufficient evidence.
         if(numHullPoints >= 2 && (z - z0) >= 3)
         {
+          // nothing follows to carry the bytes the decoder needs to finish this pass
+          if(!pass->term)
+            terminatePass(pass, type);
           break;
         }
       }

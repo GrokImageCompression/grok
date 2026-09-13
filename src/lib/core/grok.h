@@ -1870,7 +1870,11 @@ typedef struct _grk_cparameters
   uint16_t rate_control_slope_hint;
 
   /** Multiplies every subband step by 2 to the power of this, so that many finest
-   *  bit planes are never coded. At most 8, irreversible only, ignored with qfactor */
+   *  bit planes are never coded. At most 8, irreversible only, ignored with qfactor.
+   *  Applied only when rate_control_slope_hint is nonzero, a zero hint means the
+   *  previous frame kept every pass and the shifted planes would be lost for nothing.
+   *  A shifted frame that reports a zero threshold should be encoded again without
+   *  the hint, as grk_compress does for a directory */
   uint8_t quant_step_shift;
 
   /** Fraction of a layer's byte budget rate control may leave unused, stopping

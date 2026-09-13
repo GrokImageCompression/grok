@@ -478,6 +478,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
 
     // cache certain settings
     grk_cparameters parametersCache = initParams.parameters;
+    uint16_t carriedSlopeHint = parametersCache.rate_control_slope_hint;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < initParams.parameters.repeats; ++i)
     {
@@ -497,11 +498,25 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         for(const auto& entry :
             std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
         {
+          auto fileName = entry.path().filename().string();
           initParams.parameters = parametersCache;
-          if(compress(entry.path().filename().string(), &initParams) == 1)
+          initParams.parameters.rate_control_slope_hint = carriedSlopeHint;
+          int rc = compress(fileName, &initParams);
+          // a shifted frame that kept every pass would have kept the shifted planes too
+          bool shiftedFrameKeptEveryPass = rc == 1 && parametersCache.quant_step_shift &&
+                                           carriedSlopeHint &&
+                                           !initParams.parameters.rate_control_slope_hint;
+          if(shiftedFrameKeptEveryPass)
+          {
+            initParams.parameters = parametersCache;
+            initParams.parameters.rate_control_slope_hint = 0;
+            rc = compress(fileName, &initParams);
+          }
+          if(rc == 1)
           {
             spdlog::info("Compressed file {}", initParams.parameters.outfile);
             numCompressedFiles++;
+            carriedSlopeHint = initParams.parameters.rate_control_slope_hint;
           }
         }
       }
@@ -979,8 +994,9 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
   auto slopeHintOpt = app.add_option("--slope-hint", slopeHint,
                                      "Rate control slope threshold from a previous frame");
-  auto quantStepShiftOpt =
-      app.add_option("--quant-step-shift", quantStepShift, "Quantization step shift");
+  auto quantStepShiftOpt = app.add_option(
+      "--quant-step-shift", quantStepShift,
+      "Quantization step shift, applied only after a frame that hit its byte budget");
   auto rateToleranceOpt =
       app.add_option("--rate-tolerance", rateTolerance, "Rate control tolerance");
   app.add_option("--write-metadata", parameters->metadata_write_flags,
@@ -2343,13 +2359,10 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     goto cleanup;
   }
   {
+    // carry the threshold to the next frame of a directory encode, zero included
     uint16_t slopeThreshold = grk_compress_get_slope_threshold(codec);
-    if(slopeThreshold)
-    {
-      // carry the threshold to the next frame of a directory encode
-      parameters->rate_control_slope_hint = slopeThreshold;
-      spdlog::info("rate control slope threshold {}", slopeThreshold);
-    }
+    parameters->rate_control_slope_hint = slopeThreshold;
+    spdlog::info("rate control slope threshold {}", slopeThreshold);
   }
 
 cleanup:

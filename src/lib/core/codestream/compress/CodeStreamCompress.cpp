@@ -579,6 +579,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
                 "quality factor, ignoring it");
     quantStepScale = 1.0;
   }
+  // a zero hint means the previous frame kept every pass
+  if(!parameters->rate_control_slope_hint)
+    quantStepScale = 1.0;
   if(parameters->rate_control_tolerance < 0.0 || parameters->rate_control_tolerance >= 0.5)
   {
     grklog.error("Rate control tolerance %f must lie in [0, 0.5)",

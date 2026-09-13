@@ -43,6 +43,10 @@ constexpr int32_t kFaintNoiseAmplitude = 2;
 constexpr uint8_t kQuantStepShift = 1;
 constexpr double kQuantStepShiftToleranceDecibels = 1.0;
 constexpr double kRateControlTolerance = 0.02;
+constexpr uint8_t kHardEdgePrecision = 12;
+constexpr int32_t kHardEdgeMaxSample = (1 << kHardEdgePrecision) - 1;
+constexpr double kHardEdgeRatio = 60.0;
+constexpr int32_t kHardEdgeGrainAmplitude = 16;
 
 uint32_t xorshift32(uint32_t& state)
 {
@@ -54,11 +58,17 @@ uint32_t xorshift32(uint32_t& state)
 
 using Planes = std::vector<std::vector<int32_t>>;
 
-int32_t clampSample(int32_t value)
+struct Source
+{
+  Planes planes;
+  uint8_t precision;
+};
+
+int32_t clampSample(int32_t value, int32_t maxSample = kMaxSample)
 {
   if(value < 0)
     return 0;
-  return value > kMaxSample ? kMaxSample : value;
+  return value > maxSample ? maxSample : value;
 }
 
 Planes makeGradient()
@@ -108,7 +118,44 @@ Planes makeFaintNoiseSource()
   return planes;
 }
 
-grk_image* makeImage(const Planes& planes)
+Planes makeHardEdgedShapes()
+{
+  Planes planes(kNumComps, std::vector<int32_t>((size_t)kWidth * kHeight));
+  for(uint16_t compno = 0; compno < kNumComps; ++compno)
+  {
+    double centreX = kWidth * (0.3 + 0.2 * compno);
+    double centreY = kHeight * (0.6 - 0.15 * compno);
+    double radius = kWidth * (0.18 + 0.05 * compno);
+    int32_t background = (int32_t)(kHardEdgeMaxSample * (0.15 + 0.1 * compno));
+    for(uint32_t y = 0; y < kHeight; ++y)
+    {
+      for(uint32_t x = 0; x < kWidth; ++x)
+      {
+        double dx = x - centreX;
+        double dy = y - centreY;
+        bool insideDisc = dx * dx + dy * dy < radius * radius;
+        bool insideBar = y > kHeight * 0.1 && y < kHeight * 0.2 && x > kWidth * 0.1 * (compno + 1);
+        planes[compno][(size_t)y * kWidth + x] =
+            insideDisc || insideBar ? kHardEdgeMaxSample - background : background;
+      }
+    }
+  }
+
+  uint32_t state = kNoiseSeed;
+  const uint32_t span = (uint32_t)(2 * kHardEdgeGrainAmplitude + 1);
+  for(uint32_t y = 0; y < kHeight; ++y)
+    for(uint32_t x = 0; x < kWidth; ++x)
+      for(uint16_t compno = 0; compno < kNumComps; ++compno)
+      {
+        int32_t grain = (int32_t)(xorshift32(state) % span) - kHardEdgeGrainAmplitude;
+        auto& sample = planes[compno][(size_t)y * kWidth + x];
+        sample = clampSample(sample + grain, kHardEdgeMaxSample);
+      }
+
+  return planes;
+}
+
+grk_image* makeImage(const Source& source)
 {
   auto components = std::make_unique<grk_image_comp[]>(kNumComps);
   for(uint16_t i = 0; i < kNumComps; ++i)
@@ -118,7 +165,7 @@ grk_image* makeImage(const Planes& planes)
     c->h = kHeight;
     c->dx = 1;
     c->dy = 1;
-    c->prec = kPrecision;
+    c->prec = source.precision;
     c->sgnd = false;
   }
   auto image = grk_image_new(kNumComps, components.get(), GRK_CLRSPC_SRGB, true);
@@ -131,7 +178,7 @@ grk_image* makeImage(const Planes& planes)
     for(uint32_t y = 0; y < kHeight; ++y)
     {
       for(uint32_t x = 0; x < kWidth; ++x)
-        data[x] = planes[compno][(size_t)y * kWidth + x];
+        data[x] = source.planes[compno][(size_t)y * kWidth + x];
       data += comp->stride;
     }
   }
@@ -165,7 +212,7 @@ Planes capture(grk_image* image)
   return planes;
 }
 
-RoundTrip roundTrip(const Planes& source, double compressionRatio, bool progressiveRateControl,
+RoundTrip roundTrip(const Source& source, double compressionRatio, bool progressiveRateControl,
                     uint16_t slopeHint = 0, uint8_t quantStepShift = 0,
                     double rateControlTolerance = 0.0)
 {
@@ -228,15 +275,15 @@ RoundTrip roundTrip(const Planes& source, double compressionRatio, bool progress
   return result;
 }
 
-double peakSignalToNoiseRatio(const Planes& source, const Planes& decoded)
+double peakSignalToNoiseRatio(const Source& source, const Planes& decoded)
 {
   double squaredError = 0;
   size_t count = 0;
   for(uint16_t compno = 0; compno < kNumComps; ++compno)
   {
-    for(size_t i = 0; i < source[compno].size(); ++i)
+    for(size_t i = 0; i < source.planes[compno].size(); ++i)
     {
-      double difference = (double)source[compno][i] - (double)decoded[compno][i];
+      double difference = (double)source.planes[compno][i] - (double)decoded[compno][i];
       squaredError += difference * difference;
       ++count;
     }
@@ -244,11 +291,12 @@ double peakSignalToNoiseRatio(const Planes& source, const Planes& decoded)
   if(squaredError == 0)
     return INFINITY;
 
+  double peak = (double)((1 << source.precision) - 1);
   double meanSquaredError = squaredError / (double)count;
-  return 10.0 * std::log10((double)kMaxSample * kMaxSample / meanSquaredError);
+  return 10.0 * std::log10(peak * peak / meanSquaredError);
 }
 
-void check(const char* name, const Planes& source, double compressionRatio,
+void check(const char* name, const Source& source, double compressionRatio,
            const RoundTrip& reference, const RoundTrip& candidate,
            double toleranceDecibels = kPsnrToleranceDecibels)
 {
@@ -260,7 +308,7 @@ void check(const char* name, const Planes& source, double compressionRatio,
   }
 
   uint64_t targetBytes =
-      (uint64_t)((double)kWidth * kHeight * kNumComps * kPrecision / 8.0 / compressionRatio);
+      (uint64_t)((double)kWidth * kHeight * kNumComps * source.precision / 8.0 / compressionRatio);
   if(candidate.codeStreamLength > targetBytes)
   {
     ++g_failures;
@@ -289,8 +337,9 @@ int main()
 {
   grk_initialize(nullptr, 0, nullptr);
 
-  auto noiseRectangle = makeNoiseRectangleSource();
-  auto faintNoise = makeFaintNoiseSource();
+  Source noiseRectangle{makeNoiseRectangleSource(), kPrecision};
+  Source faintNoise{makeFaintNoiseSource(), kPrecision};
+  Source hardEdgedShapes{makeHardEdgedShapes(), kHardEdgePrecision};
 
   auto rectangleReference = roundTrip(noiseRectangle, kNoiseRectangleRatio, false);
   auto rectangleProgressive = roundTrip(noiseRectangle, kNoiseRectangleRatio, true);
@@ -316,16 +365,40 @@ int main()
     // a scene cut: the hint belongs to a completely different image
     auto foreignHinted = roundTrip(faintNoise, kFaintNoiseRatio, true, hint);
     check("faint noise, foreign hint", faintNoise, kFaintNoiseRatio, faintReference, foreignHinted);
+
+    auto coarseQuant =
+        roundTrip(noiseRectangle, kNoiseRectangleRatio, false, hint, kQuantStepShift);
+    check("noise rectangle, coarse quantization", noiseRectangle, kNoiseRectangleRatio,
+          rectangleReference, coarseQuant, kQuantStepShiftToleranceDecibels);
+    if(coarseQuant.codeStreamLength == rectangleReference.codeStreamLength)
+    {
+      ++g_failures;
+      std::fprintf(stderr,
+                   "FAIL noise rectangle, coarse quantization: the shift changed nothing\n");
+    }
   }
 
-  auto coarseQuant = roundTrip(noiseRectangle, kNoiseRectangleRatio, false, 0, kQuantStepShift);
-  check("noise rectangle, coarse quantization", noiseRectangle, kNoiseRectangleRatio,
-        rectangleReference, coarseQuant, kQuantStepShiftToleranceDecibels);
+  // without a hint the shift must not touch the output
+  auto unhintedShift = roundTrip(noiseRectangle, kNoiseRectangleRatio, false, 0, kQuantStepShift);
+  check("noise rectangle, shift without hint", noiseRectangle, kNoiseRectangleRatio,
+        rectangleReference, unhintedShift, 0.0);
+  if(unhintedShift.codeStreamLength != rectangleReference.codeStreamLength)
+  {
+    ++g_failures;
+    std::fprintf(stderr, "FAIL noise rectangle, shift without hint: %llu bytes, reference %llu\n",
+                 (unsigned long long)unhintedShift.codeStreamLength,
+                 (unsigned long long)rectangleReference.codeStreamLength);
+  }
 
   auto toleranced =
       roundTrip(noiseRectangle, kNoiseRectangleRatio, false, 0, 0, kRateControlTolerance);
   check("noise rectangle, rate control tolerance", noiseRectangle, kNoiseRectangleRatio,
         rectangleReference, toleranced);
+
+  auto hardEdgeReference = roundTrip(hardEdgedShapes, kHardEdgeRatio, false);
+  auto hardEdgeProgressive = roundTrip(hardEdgedShapes, kHardEdgeRatio, true);
+  check("hard edged shapes", hardEdgedShapes, kHardEdgeRatio, hardEdgeReference,
+        hardEdgeProgressive);
 
   grk_deinitialize();
   return g_failures == 0 ? 0 : 1;

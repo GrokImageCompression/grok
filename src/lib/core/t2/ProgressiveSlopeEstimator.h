@@ -76,28 +76,27 @@
  * CONSERVATIVE ESTIMATION
  * =======================
  *
- * The estimator must be CONSERVATIVE — it should never predict a threshold higher
- * than the actual PCRD result. Overestimation would cause passes to be skipped that
- * PCRD would have retained, resulting in irrecoverable quality loss.
+ * A pass whose slope sits just under the PCRD threshold removes almost no distortion,
+ * so a threshold a little above the true one costs nothing measurable. What must not
+ * happen is a threshold far above it.
  *
- * Several factors provide conservatism:
+ * Three things shape the published threshold:
  *
  *   1. REPRESENTATIVE SAMPLE: The scheduler builds its block list component by
  *      component with resolution 0 first, so it shuffles that list into a fixed
  *      random order before dispatching. Every subband is then represented in
  *      proportion to its size from the first blocks onward.
  *
- *   2. PADDING FACTOR: We add a conservative padding term when extrapolating from
- *      partial data:
+ *   2. PADDING FACTOR: We add a padding term when extrapolating from partial data:
  *
  *        R_adjusted = R_target × (coded_samples + padding) / total_samples
  *
- *      where padding = max(4096, total_samples / 16). This ensures the predicted
- *      threshold stays below the actual even in adversarial cases.
+ *      where padding = max(kMinimumSamplePadding, total_samples / kSamplePaddingDivisor).
+ *      It holds the threshold down while the coded fraction is small and the estimate
+ *      is still noisy, and decays as the coded fraction grows.
  *
- *   3. ALPHA SCALING: The threshold passed to the block encoder is scaled by a
- *      factor α < 1 (default 0.75). This means we only terminate passes whose
- *      slopes are significantly below the predicted threshold, not marginally below.
+ *   3. THRESHOLD SCALING: the published threshold is kDefaultThresholdScale times the
+ *      estimate.
  *
  * MULTI-THREADED OPERATION
  * ========================
@@ -149,6 +148,7 @@
 #include <mutex>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace grk
 {
@@ -157,28 +157,29 @@ namespace grk
  * @brief Number of quantized slope bins in the histogram.
  *
  * The 16-bit log-slope range [0, 65535] is quantized to 2048 bins:
- *   bin = max(0, (log_slope >> 4) - 2048)
+ *   bin = max(0, (log_slope >> kSlopeBinShift) - 2048)
  *
  * This gives ~0.4 dB resolution per bin, which is more than sufficient
  * for threshold estimation.
  */
 static constexpr int kSlopeBins = 2048;
 
+/** @brief Log-slope units per histogram bin, as a shift and as a width. */
+static constexpr int kSlopeBinShift = 4;
+static constexpr int kSlopeBinWidth = 1 << kSlopeBinShift;
+
+/** @brief Log-slope units per octave of linear slope, from RateControl::slopeToLog. */
+static constexpr double kLogSlopeUnitsPerOctave = 256.0;
+
 /**
- * @brief Default alpha scaling factor for conservative threshold delivery.
+ * @brief Scale applied to the estimated threshold before it is published.
  *
- * The published threshold is scaled: earlyStopSlope = alpha * estimated_threshold.
- * This factor of 0.75 means we only terminate passes whose slopes are 25% below
- * the estimated threshold, providing a safety margin against estimation error.
- *
- * Rationale: consecutive bit-planes' slopes differ by approximately 4× (each
- * additional bit of precision contributes ~4× less distortion per byte due to
- * the quadratic nature of MSE). With alpha=0.75, we require the pass slope to
- * be below 75% of the threshold — well within the inter-plane margin of 4×.
- * This ensures we never accidentally terminate a pass that is only 1 bin away
- * from the true threshold.
+ * Above 1 the published threshold sits above the estimate. The passes it skips
+ * have a slope just under PCRD's own threshold and remove orders of magnitude less
+ * distortion than the passes kept, so the reference frames lose nothing measurable
+ * until the scale reaches 2.5.
  */
-static constexpr double kDefaultAlpha = 0.75;
+static constexpr double kDefaultThresholdScale = 1.5;
 
 /**
  * @brief Minimum fraction of total samples that must be encoded before
@@ -190,6 +191,10 @@ static constexpr double kDefaultAlpha = 0.75;
  * 100-200 code blocks (depending on block size).
  */
 static constexpr double kMinSampleFraction = 0.05;
+
+/** @brief Phantom samples added to the coded total when extrapolating the byte budget. */
+static constexpr uint64_t kMinimumSamplePadding = 4096;
+static constexpr uint64_t kSamplePaddingDivisor = 64;
 
 /**
  * @class ProgressiveSlopeEstimator
@@ -216,20 +221,18 @@ public:
    *                   Computed as: targetBytes / totalSamples.
    *                   For DCI 4K at 10.4 MB/frame with ~8.8M samples: ~1.18 bytes/sample.
    *
-   * @param alpha Conservative scaling factor ∈ (0, 1].
-   *              Lower values are more conservative (fewer early terminations).
-   *              Default 0.75 provides good balance of safety vs performance.
+   * @param thresholdScale Scale applied to the estimate before publishing it.
+   *                       Lower values terminate fewer passes.
    */
-  ProgressiveSlopeEstimator(uint64_t totalSamples, double targetRate, double alpha = kDefaultAlpha)
-      : totalSamples_(totalSamples), targetRate_(targetRate), alpha_(alpha), codedSamples_(0),
-        minBin_(kSlopeBins - 1), maxBin_(0), currentThreshold_(0), updateCounter_(0),
-        nextUpdateInterval_(2)
+  ProgressiveSlopeEstimator(uint64_t totalSamples, double targetRate,
+                            double thresholdScale = kDefaultThresholdScale)
+      : totalSamples_(totalSamples), targetRate_(targetRate), thresholdScale_(thresholdScale),
+        codedSamples_(0), minBin_(kSlopeBins - 1), maxBin_(0), currentThreshold_(0),
+        updateCounter_(0), nextUpdateInterval_(2)
   {
-    // Conservative padding: ensures we don't overestimate the threshold
-    // when extrapolating from partial data. The padding represents
-    // "phantom" samples assumed to have average compressibility, biasing
-    // the rate estimate upward and the threshold estimate downward.
-    conservativePadding_ = std::max<uint64_t>(4096, totalSamples / 16);
+    // phantom samples assumed to have average compressibility
+    conservativePadding_ =
+        std::max<uint64_t>(kMinimumSamplePadding, totalSamples / kSamplePaddingDivisor);
 
     std::memset(slopeRateHistogram_, 0, sizeof(slopeRateHistogram_));
   }
@@ -277,7 +280,7 @@ public:
         continue; // Non-feasible point — skip
 
       // Quantize slope to histogram bin
-      int bin = (slope >> 4) - 2048;
+      int bin = (slope >> kSlopeBinShift) - 2048;
       if(bin < 0)
         bin = 0;
       if(bin >= kSlopeBins)
@@ -320,16 +323,13 @@ public:
   }
 
   /**
-   * @brief Get the current conservative early-stop slope threshold.
+   * @brief Get the current early-stop slope threshold, already scaled.
    *
    * Lock-free atomic read. Safe to call from any thread at any time.
    *
    * @return Log-domain slope threshold (uint16_t). Code blocks should stop
    *         encoding passes when the pass slope drops below this value.
    *         Returns 0 if insufficient data to estimate (encode all passes).
-   *
-   * The returned value incorporates the alpha safety factor — it is already
-   * scaled to be conservative.
    */
   uint16_t getEarlyStopSlope() const
   {
@@ -367,7 +367,6 @@ private:
 
     // Compute byte budget: how many bytes should be included at the threshold.
     // We scale by (coded + padding) / total to extrapolate from partial data.
-    // The padding makes this estimate larger than reality → threshold stays LOW.
     double adjustedSamples = static_cast<double>(codedSamples_ + conservativePadding_);
     uint64_t maxBytes = static_cast<uint64_t>(1.0 + adjustedSamples * targetRate_);
 
@@ -387,27 +386,13 @@ private:
     if(thresholdBin <= 0)
       return; // All data fits → no truncation needed → don't limit encoder
 
-    // Convert bin back to 16-bit log slope:
-    //   bin = (log_slope >> 4) - 2048
-    //   log_slope = (bin + 2048) << 4
-    //
-    // We subtract 1 because PCRD includes passes with slope > threshold
-    // (strict inequality), so our threshold must be 1 less than the
-    // slope of the first excluded pass.
-    uint16_t rawThreshold = static_cast<uint16_t>(((thresholdBin + 2048) << 4) - 1);
+    // the top of the bin, PCRD's own threshold lies anywhere inside it
+    int rawThreshold = ((thresholdBin + 2048) << kSlopeBinShift) + kSlopeBinWidth - 1;
 
-    // Apply alpha safety factor: multiply the threshold (in log domain)
-    // by alpha. Since log-slope is logarithmic, scaling the linear slope
-    // by alpha corresponds to SUBTRACTING log2(1/alpha) * 256 in log domain.
-    //
-    // log_slope = 256 * log2(slope / slope_cutoff) + shift
-    // alpha * slope → log_slope - 256 * log2(1/alpha)
-    //
-    // For alpha = 0.75: 256 * log2(1/0.75) ≈ 256 * 0.415 ≈ 106
-    int logReduction = static_cast<int>(std::round(256.0 * std::log2(1.0 / alpha_)));
-    int scaledThreshold = static_cast<int>(rawThreshold) - logReduction;
-    if(scaledThreshold < 1)
-      scaledThreshold = 1;
+    int scaleShift =
+        static_cast<int>(std::lround(kLogSlopeUnitsPerOctave * std::log2(thresholdScale_)));
+    constexpr int maxLogSlope = std::numeric_limits<uint16_t>::max();
+    int scaledThreshold = std::clamp(rawThreshold + scaleShift, 1, maxLogSlope);
 
     currentThreshold_.store(static_cast<uint16_t>(scaledThreshold), std::memory_order_relaxed);
   }
@@ -416,8 +401,8 @@ private:
 
   uint64_t totalSamples_; ///< Total subband samples in tile
   double targetRate_; ///< Target bytes per sample
-  double alpha_; ///< Conservative scaling factor
-  uint64_t conservativePadding_; ///< Extra samples for conservative estimate
+  double thresholdScale_; ///< Scale applied to the estimate before publishing
+  uint64_t conservativePadding_; ///< Extra samples for extrapolating the byte budget
 
   // --- Mutable state (protected by mutex_) ---
 
