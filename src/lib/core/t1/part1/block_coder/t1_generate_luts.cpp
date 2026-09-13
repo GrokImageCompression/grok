@@ -234,7 +234,7 @@ static void dump_array16(int array[], int size)
   --size;
   for(i = 0; i < size; ++i)
   {
-    printf("0x%04x,", array[i]);
+    printf("%d,", array[i]);
     if(!((i + 1) & 0x7))
     {
       printf("\n    ");
@@ -244,7 +244,7 @@ static void dump_array16(int array[], int size)
       printf(" ");
     }
   }
-  printf("0x%04x\n};\n\n", array[size]);
+  printf("%d\n};\n\n", array[size]);
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -332,10 +332,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     t = i / pow(2, T1_NMSEDEC_FRACBITS);
     u = t;
     v = t - 1.5;
-    lut_nmsedec_sig[i] = max(0, (int)(floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
-                                      pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
-    lut_nmsedec_sig0[i] = max(0, (int)(floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
-                                       pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
+    lut_nmsedec_sig[i] = (int)(floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
+                               pow(2, T1_NMSEDEC_FRACBITS) * 8192.0);
+    lut_nmsedec_sig0[i] = (int)(floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
+                                pow(2, T1_NMSEDEC_FRACBITS) * 8192.0);
     u = t - 1.0;
     if(i & (1 << (T1_NMSEDEC_BITS - 1)))
     {
@@ -345,10 +345,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     {
       v = t - 0.5;
     }
-    lut_nmsedec_ref[i] = max(0, (int)(floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
-                                      pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
-    lut_nmsedec_ref0[i] = max(0, (int)(floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
-                                       pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
+    lut_nmsedec_ref[i] = (int)(floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
+                               pow(2, T1_NMSEDEC_FRACBITS) * 8192.0);
+    lut_nmsedec_ref0[i] = (int)(floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) /
+                                pow(2, T1_NMSEDEC_FRACBITS) * 8192.0);
   }
 
   printf("static const int16_t lut_nmsedec_sig[1U << T1_NMSEDEC_BITS] = {\n    ");
