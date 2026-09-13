@@ -97,10 +97,10 @@ bool tile_equals(grk_plugin_tile* plugin_tile, const Tile* tilePtr)
           }
           for(uint32_t cblkno = 0; cblkno < num_blocks; ++cblkno)
           {
-            auto cblk = precinct->getDecompressBlock(cblkno);
+            auto bounds = precinct->getCodeBlockBounds(cblkno);
             auto plugin_cblk = plugin_precinct->blocks[cblkno];
-            if(cblk->x0() != plugin_cblk->x0 || cblk->x1() != plugin_cblk->x1 ||
-               cblk->y0() != plugin_cblk->y0 || cblk->y1() != plugin_cblk->y1)
+            if(bounds.x0() != plugin_cblk->x0 || bounds.x1() != plugin_cblk->x1 ||
+               bounds.y0() != plugin_cblk->y0 || bounds.y1() != plugin_cblk->y1)
               return false;
           }
         }
