@@ -33,7 +33,6 @@ public:
   void print(void);
   bool alloc(uint16_t w, uint16_t h);
 
-  void code_block_enc_deallocate(cblk_enc* p_code_block);
   double compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
                        uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
                        const double* mct_norms, uint16_t mct_numcomps, bool doRateControl,
@@ -94,6 +93,8 @@ private:
   grk_flag* flags_;
   uint32_t flagsLen_;
   bool compressor;
+
+  pass_enc encoderPasses_[maxCodePassesPerBlock];
 
   void checkSegSym(int32_t cblksty);
 

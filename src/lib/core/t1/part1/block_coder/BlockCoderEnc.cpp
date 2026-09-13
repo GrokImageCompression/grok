@@ -385,18 +385,9 @@ void BlockCoder::initFlags(void)
 }
 
 /// ENCODE ////////////////////////////////////////////////////
-/**
- * Deallocate the compressing data of the given precinct.
- */
-void BlockCoder::code_block_enc_deallocate(cblk_enc* code_block)
-{
-  delete[] code_block->passes;
-  code_block->passes = nullptr;
-}
 void BlockCoder::code_block_enc_allocate(cblk_enc* p_code_block)
 {
-  if(!p_code_block->passes)
-    p_code_block->passes = new pass_enc[100];
+  p_code_block->passes = encoderPasses_;
 }
 double BlockCoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level, uint8_t orientation,
                               int8_t bpno, uint32_t qmfbid, double stepsize,

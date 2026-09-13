@@ -56,12 +56,11 @@ struct PrecinctImpl
   /**
    * @brief Initializes code block
    *
-   * @tparam T CodeBlock type
    * @param block code block
    * @param cblkno index of code block in precinct
    */
-  template<typename T>
-  void initCodeBlock(T* block, uint32_t cblkno);
+  void initCodeBlock(t1::CodeblockCompress* block, uint32_t cblkno);
+  void initCodeBlock(t1::CodeblockDecompress* block, uint32_t cblkno);
 
   /**
    * @brief Deletes tag trees
@@ -94,6 +93,8 @@ struct PrecinctImpl
    *
    */
   BlockCache<t1::CodeblockDecompress, PrecinctImpl>* dec_;
+
+  t1::PrecinctCodeblockStorage* blockStorage_;
 
   /**
    * @brief code block grid

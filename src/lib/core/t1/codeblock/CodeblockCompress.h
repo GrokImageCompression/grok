@@ -35,14 +35,11 @@ struct CodeblockCompress : public Codeblock
    * the implementation lies.
    * @param numlayers Number of layers in code block
    */
-  explicit CodeblockCompress(uint16_t numLayers) : Codeblock(numLayers), impl_(nullptr) {}
+  explicit CodeblockCompress(uint16_t numLayers) : Codeblock(numLayers), impl_(numLayers) {}
   /**
    * @brief Destorys a CodeblockCompress
    */
-  ~CodeblockCompress()
-  {
-    delete impl_;
-  }
+  ~CodeblockCompress() = default;
   /**
    * @brief Gets number of passes in layer
    * @param layno Layer number
@@ -110,24 +107,9 @@ struct CodeblockCompress : public Codeblock
     getImpl()->setNumLenBits(bits);
   }
 
-  /**
-   * @brief Initializes the code block - allocates resources
-   */
-  void init()
+  void init(PrecinctCodeblockStorage* storage, uint32_t cblkno)
   {
-    getImpl()->init();
-  }
-  /**
-   * @brief Allocates data memory for a compression code block.
-   * We actually allocate 2 more bytes than specified, and then offset data by +2.
-   * This is done so that we can safely initialize the MQ coder pointer to data-1,
-   * without risk of accessing uninitialized memory.
-   * @param nominalBlockSize nominal block size - actual size may be smaller
-   * @return
-   */
-  bool allocData(size_t nominalBlockSize)
-  {
-    return getImpl()->allocData(nominalBlockSize);
+    getImpl()->init(storage, cblkno);
   }
   CodePass* getPass(uint8_t passno)
   {
@@ -167,13 +149,11 @@ struct CodeblockCompress : public Codeblock
   }
   CodeblockCompressImpl* getImpl(void)
   {
-    if(!impl_)
-      impl_ = new CodeblockCompressImpl(numLayers_);
-    return impl_;
+    return &impl_;
   }
 
 private:
-  CodeblockCompressImpl* impl_;
+  CodeblockCompressImpl impl_;
   explicit CodeblockCompress(const CodeblockCompress& rhs) = delete;
   CodeblockCompress& operator=(const CodeblockCompress& rhs) = delete;
 };

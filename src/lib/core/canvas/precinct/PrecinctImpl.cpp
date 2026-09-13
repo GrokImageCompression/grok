@@ -28,7 +28,8 @@ namespace grk
 {
 
 PrecinctImpl::PrecinctImpl(Precinct* prec)
-    : enc_(nullptr), dec_(nullptr), prec_(prec), incltree_(nullptr), imsbtree_(nullptr)
+    : enc_(nullptr), dec_(nullptr), blockStorage_(nullptr), prec_(prec), incltree_(nullptr),
+      imsbtree_(nullptr)
 {
   if(!genCodeBlockGrid())
     throw std::runtime_error("PrecinctImpl: unable to generate code block grid");
@@ -38,6 +39,7 @@ PrecinctImpl::~PrecinctImpl()
   deleteTagTrees();
   delete enc_;
   delete dec_;
+  delete blockStorage_;
 }
 bool PrecinctImpl::genCodeBlockGrid(void)
 {
@@ -61,8 +63,14 @@ Rect32_16 PrecinctImpl::getCodeBlockBounds(uint32_t cblkno)
   return cblk_bounds.intersection(prec_);
 }
 
-template<typename T>
-void PrecinctImpl::initCodeBlock(T* block, uint32_t cblkno)
+void PrecinctImpl::initCodeBlock(t1::CodeblockCompress* block, uint32_t cblkno)
+{
+  if(!block->empty())
+    return;
+  block->init(blockStorage_, cblkno);
+  block->setRect(getCodeBlockBounds(cblkno));
+}
+void PrecinctImpl::initCodeBlock(t1::CodeblockDecompress* block, uint32_t cblkno)
 {
   if(!block->empty())
     return;
@@ -125,6 +133,8 @@ PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers) :
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
+    blockStorage_ = new t1::PrecinctCodeblockStorage((uint32_t)num_blocks, numLayers,
+                                                     prec->getNominalBlockSize());
     enc_ = new BlockCache<t1::CodeblockCompress, PrecinctImpl>(numLayers, num_blocks, this);
   }
 }

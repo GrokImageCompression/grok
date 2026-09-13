@@ -94,13 +94,10 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
         auto band = &res->band[bandIndex];
         for(auto prc : band->precincts_)
         {
-          auto nominalBlockSize = prc->getNominalBlockSize();
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
           {
             auto cblk = prc->getCompressBlock(cblkno);
             if(cblk->empty())
-              continue;
-            if(!cblk->allocData(nominalBlockSize))
               continue;
             auto block = new t1::CompressBlockExec();
             block->tile_width = tilec->highestResStride();
@@ -194,13 +191,10 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
         auto band = &res->band[bandIndex];
         for(auto prc : band->precincts_)
         {
-          auto nominalBlockSize = prc->getNominalBlockSize();
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
           {
             auto cblk = prc->getCompressBlock(cblkno);
             if(cblk->empty())
-              continue;
-            if(!cblk->allocData(nominalBlockSize))
               continue;
             auto block = new t1::CompressBlockExec();
             block->tile_width = tilec->highestResStride();

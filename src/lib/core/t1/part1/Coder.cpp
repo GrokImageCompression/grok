@@ -148,9 +148,6 @@ bool Coder::compress(CompressBlockExec* block)
     passgrk->term_ = passexp->term;
   }
 
-  blockCoder_->code_block_enc_deallocate(&cblkexp);
-  cblkexp.data = nullptr;
-
   block->distortion = distortion;
 
   return true;

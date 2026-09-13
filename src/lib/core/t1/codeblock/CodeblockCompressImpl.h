@@ -18,6 +18,8 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
+#include "CodeStreamLimits.h"
 #include "CodeblockImpl.h"
 const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
@@ -94,6 +96,53 @@ struct Layer
   uint8_t* data;
 };
 
+struct PrecinctCodeblockStorage
+{
+  // a small block with many bit planes can emit more than nominalBlockSize * 4 bytes
+  static const uint32_t minCompressedStreamBytes = 4096;
+
+  PrecinctCodeblockStorage(uint32_t numBlocks, uint16_t numLayers, uint16_t nominalBlockSize)
+      : numLayers_(numLayers),
+        compressedStreamBytes_(std::max((uint32_t)nominalBlockSize * (uint32_t)sizeof(uint32_t),
+                                        minCompressedStreamBytes) +
+                               grk_cblk_enc_compressed_data_pad_left),
+        passesOffset_((size_t)numBlocks * numLayers * sizeof(Layer)),
+        compressedStreamsOffset_(passesOffset_ +
+                                 (size_t)numBlocks * maxCodePassesPerBlock * sizeof(CodePass)),
+        storage_(new uint8_t[compressedStreamsOffset_ + (size_t)numBlocks * compressedStreamBytes_])
+  {
+    std::uninitialized_value_construct_n(reinterpret_cast<Layer*>(storage_.get()),
+                                         (size_t)numBlocks * numLayers);
+    std::uninitialized_value_construct_n(
+        reinterpret_cast<CodePass*>(storage_.get() + passesOffset_),
+        (size_t)numBlocks * maxCodePassesPerBlock);
+  }
+  Layer* getLayers(uint32_t cblkno)
+  {
+    return reinterpret_cast<Layer*>(storage_.get()) + (size_t)cblkno * numLayers_;
+  }
+  CodePass* getPasses(uint32_t cblkno)
+  {
+    return reinterpret_cast<CodePass*>(storage_.get() + passesOffset_) +
+           (size_t)cblkno * maxCodePassesPerBlock;
+  }
+  uint8_t* getCompressedStream(uint32_t cblkno)
+  {
+    return storage_.get() + compressedStreamsOffset_ + (size_t)cblkno * compressedStreamBytes_;
+  }
+  uint32_t getCompressedStreamBytes(void) const
+  {
+    return compressedStreamBytes_;
+  }
+
+private:
+  uint16_t numLayers_;
+  uint32_t compressedStreamBytes_;
+  size_t passesOffset_;
+  size_t compressedStreamsOffset_;
+  std::unique_ptr<uint8_t[]> storage_;
+};
+
 struct CodeblockCompressImpl : public CodeblockImpl
 {
   explicit CodeblockCompressImpl(uint16_t numLayers)
@@ -104,44 +153,19 @@ struct CodeblockCompressImpl : public CodeblockImpl
         context_stream(nullptr)
 #endif
   {}
-  ~CodeblockCompressImpl()
-  {
-    delete[] layers;
-    delete[] passes;
-  }
-  void init()
+  ~CodeblockCompressImpl() = default;
+  // the mq coder is initialized to data[-1], so the output starts two bytes into the slice
+  void init(PrecinctCodeblockStorage* storage, uint32_t cblkno)
   {
     CodeblockImpl::init();
-    if(!layers)
-      layers = new Layer[numLayers_];
-    if(!passes)
-      passes = new CodePass[3 * 32 - 2];
-  }
-  /**
-   * Allocates data memory for a compression code block.
-   * We actually allocate 2 more bytes than specified, and then offset data by +2.
-   * This is done so that we can safely initialize the MQ coder pointer to data-1,
-   * without risk of accessing uninitialized memory.
-   */
-  bool allocData(size_t nominalBlockSize)
-  {
-    // The MQ coder output can exceed nominalBlockSize * 4 for small code blocks
-    // with many bit-planes (up to ~30 planes × 3 passes each, with flush/termination
-    // overhead per pass). Use a minimum of 4096 bytes to prevent overflow.
-    uint32_t desired_data_size =
-        std::max((uint32_t)(nominalBlockSize * sizeof(uint32_t)), (uint32_t)4096);
-    // we add two fake zero bytes at beginning of buffer, so that mq coder
-    // can be initialized to data[-1] == actualData[1], and still point
-    // to a valid memory location
-    auto buf = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
+    layers = storage->getLayers(cblkno);
+    passes = storage->getPasses(cblkno);
+    auto buf = storage->getCompressedStream(cblkno);
     buf[0] = 0;
     buf[1] = 0;
-
     paddedCompressedStream = buf + grk_cblk_enc_compressed_data_pad_left;
-    compressedStream.set_buf(buf, desired_data_size);
-    compressedStream.set_owns_data(true);
-
-    return true;
+    compressedStream.set_buf(buf, storage->getCompressedStreamBytes() -
+                                      grk_cblk_enc_compressed_data_pad_left);
   }
   CodePass* getPass(uint8_t passno)
   {
