@@ -99,7 +99,7 @@ struct Layer
 struct PrecinctCodeblockStorage
 {
   // a small block with many bit planes can emit more than nominalBlockSize * 4 bytes
-  static const uint32_t minCompressedStreamBytes = 4096;
+  static constexpr uint32_t minCompressedStreamBytes = 4096;
 
   PrecinctCodeblockStorage(uint32_t numBlocks, uint16_t numLayers, uint16_t nominalBlockSize)
       : numLayers_(numLayers),
