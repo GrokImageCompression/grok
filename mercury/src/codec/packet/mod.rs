@@ -227,6 +227,7 @@ fn tally_passes(reader: &mut PacketBitReader) -> Result<u8, PacketError> {
 pub enum PacketError {
     /// Ran out of data in the packet header.
     Truncated,
+    InvalidMarker,
     /// Precision overflow (beta too large or segment too long).
     PrecisionOverflow,
     /// Illegal missing MSBs value (>74).
@@ -239,6 +240,7 @@ impl std::fmt::Display for PacketError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Truncated => write!(f, "packet header truncated"),
+            Self::InvalidMarker => write!(f, "invalid marker in packet header"),
             Self::PrecisionOverflow => write!(f, "precision overflow"),
             Self::IllegalMissingMsbs => write!(f, "illegal missing MSBs (>74)"),
             Self::TagTreeError => write!(f, "tag tree decoding error"),

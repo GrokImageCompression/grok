@@ -13,6 +13,7 @@ pub struct PacketBitReader<'a> {
     byte: u8,
     /// Bits remaining in current byte.
     bits_left: u8,
+    prev_ff: bool,
     /// Total header bytes consumed.
     header_bytes: u32,
 }
@@ -25,22 +26,33 @@ impl<'a> PacketBitReader<'a> {
             pos: 0,
             byte: 0,
             bits_left: 0,
+            prev_ff: false,
             header_bytes: 0,
         }
+    }
+
+    #[inline]
+    fn byte_in(&mut self) -> Result<(), PacketError> {
+        if self.prev_ff && self.byte >= 0x90 {
+            return Err(PacketError::InvalidMarker);
+        }
+        if self.pos >= self.data.len() {
+            self.bits_left = 0;
+            return Err(PacketError::Truncated);
+        }
+        self.prev_ff = self.byte == 0xFF;
+        self.bits_left = if self.prev_ff { 7 } else { 8 };
+        self.byte = self.data[self.pos];
+        self.pos += 1;
+        self.header_bytes += 1;
+        Ok(())
     }
 
     /// Read one bit (MSB first) honouring bit-stuffing after 0xFF; returns 0/1.
     #[inline]
     pub fn pluck_bit(&mut self) -> Result<u32, PacketError> {
         if self.bits_left == 0 {
-            self.bits_left = if self.byte == 0xFF { 7 } else { 8 };
-            if self.pos >= self.data.len() {
-                self.bits_left = 0;
-                return Err(PacketError::Truncated);
-            }
-            self.byte = self.data[self.pos];
-            self.pos += 1;
-            self.header_bytes += 1;
+            self.byte_in()?;
         }
         self.bits_left -= 1;
         Ok(((self.byte >> self.bits_left) & 1) as u32)
@@ -51,14 +63,11 @@ impl<'a> PacketBitReader<'a> {
     #[inline]
     pub fn pluck_bit_soft(&mut self) -> Result<i32, PacketError> {
         if self.bits_left == 0 {
-            self.bits_left = if self.byte == 0xFF { 7 } else { 8 };
-            if self.pos >= self.data.len() {
-                self.bits_left = 0;
-                return Ok(-1);
+            match self.byte_in() {
+                Ok(()) => {}
+                Err(PacketError::Truncated) => return Ok(-1),
+                Err(e) => return Err(e),
             }
-            self.byte = self.data[self.pos];
-            self.pos += 1;
-            self.header_bytes += 1;
         }
         self.bits_left -= 1;
         Ok(((self.byte >> self.bits_left) & 1) as i32)
@@ -70,14 +79,7 @@ impl<'a> PacketBitReader<'a> {
         let mut result: u32 = 0;
         while num_bits > 0 {
             if self.bits_left == 0 {
-                self.bits_left = if self.byte == 0xFF { 7 } else { 8 };
-                if self.pos >= self.data.len() {
-                    self.bits_left = 0;
-                    return Err(PacketError::Truncated);
-                }
-                self.byte = self.data[self.pos];
-                self.pos += 1;
-                self.header_bytes += 1;
+                self.byte_in()?;
             }
             let xfer_bits = num_bits.min(self.bits_left as u32);
             self.bits_left -= xfer_bits as u8;
@@ -92,13 +94,7 @@ impl<'a> PacketBitReader<'a> {
     /// Returns total header bytes consumed.
     pub fn fasten_off(&mut self) -> Result<u32, PacketError> {
         if self.byte == 0xFF {
-            self.bits_left = 7;
-            if self.pos >= self.data.len() {
-                return Err(PacketError::Truncated);
-            }
-            self.byte = self.data[self.pos];
-            self.pos += 1;
-            self.header_bytes += 1;
+            self.byte_in()?;
         }
         Ok(self.header_bytes)
     }
@@ -106,6 +102,7 @@ impl<'a> PacketBitReader<'a> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::PacketError;
     use super::*;
 
     #[test]
@@ -152,6 +149,20 @@ mod tests {
         assert_eq!(r.pluck_bits(8).unwrap(), 0b10100101);
         // Read 4 bits: 0101
         assert_eq!(r.pluck_bits(4).unwrap(), 0b0101);
+    }
+
+    #[test]
+    fn ff_then_marker_is_invalid() {
+        // 0xFF 0x90 is a marker: classic consumes the pair, then the next load errors
+        let data = [0xFF, 0x90, 0x00];
+        let mut r = PacketBitReader::warp(&data);
+        for _ in 0..8 {
+            assert_eq!(r.pluck_bit().unwrap(), 1);
+        }
+        for _ in 0..7 {
+            let _ = r.pluck_bit().unwrap();
+        }
+        assert!(matches!(r.pluck_bit(), Err(PacketError::InvalidMarker)));
     }
 
     #[test]

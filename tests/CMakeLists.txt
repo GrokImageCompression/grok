@@ -257,6 +257,11 @@ if(GRK_DATA_ROOT)
     COMMAND grk_mercury_fuzzer_timeout_test
             ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6523675860598784)
   set_tests_properties(grk_mercury_fuzzer_timeout_test PROPERTIES TIMEOUT 60)
+  # OSS-Fuzz timeout: RLCP tall tile, 1024x1024 window
+  add_test(NAME grk_mercury_fuzzer_timeout_tagtree_test
+    COMMAND grk_mercury_fuzzer_timeout_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-5119630834991104)
+  set_tests_properties(grk_mercury_fuzzer_timeout_tagtree_test PROPERTIES TIMEOUT 60)
 endif()
 
 # Regression for an OSS-Fuzz timeout: an RPCL tile 2.2 billion columns wide with

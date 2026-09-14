@@ -13,11 +13,11 @@
 
 use crate::decode::ReadAt;
 
-use crate::codec::packet::{BlockState, PacketBitReader, TagTree, comb_packet_header};
+use crate::codec::packet::{comb_packet_header, BlockState, PacketBitReader, TagTree};
 use crate::codec::params::{CodParams, ProgressionOrder, QcdParams, SizParams};
-use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
+use crate::codec::tile_geom::{chart_tile_geom, Dims, TileGeom};
+use crate::decode::window::{chart_tile_comp_window, intersect, intersects, TileCompWindow};
 use crate::decode::DecodeError;
-use crate::decode::window::{TileCompWindow, chart_tile_comp_window, intersect, intersects};
 
 /// One tile-part's position from the host's parsed TLM markers.
 pub struct TlmEntry {
@@ -753,7 +753,11 @@ fn plt_packet_lengths(mut markers: Vec<(u8, Vec<u8>)>) -> Option<Vec<u32>> {
             }
         }
     }
-    if continued { None } else { Some(lengths) }
+    if continued {
+        None
+    } else {
+        Some(lengths)
+    }
 }
 
 /// Parse all of one tile's packets and build its band plans.
@@ -1055,7 +1059,13 @@ fn comb_tile(
 
     let mut vpos: u64 = 0;
     let mut plt_idx: usize = 0;
+    // classic: at most one packet per compressed tile byte
+    let mut processed: u64 = 0;
     for (_, pkt) in walk {
+        if processed >= stream.total {
+            break;
+        }
+        processed += 1;
         let (c, r) = (pkt.comp as usize, pkt.res as usize);
         // A PLT length covers the whole packet, SOP and header included
         // (A.7.1), so a packet that contributes no block records hops by
@@ -1071,6 +1081,9 @@ fn comb_tile(
                 vpos += len as u64;
                 continue;
             }
+        }
+        if vpos >= stream.total {
+            break;
         }
         let pkt_start = vpos;
         let tc = &geom.components[c];
@@ -1095,7 +1108,9 @@ fn comb_tile(
 
         // SOP marker segment (6 bytes) before the packet, if signalled.
         if cod.use_sop {
-            let (rp, avail) = stream.unspool(vpos)?;
+            let Ok((rp, avail)) = stream.unspool(vpos) else {
+                break;
+            };
             if avail >= 2 {
                 let mut m = [0u8; 2];
                 file.draw_at(&mut m, rp).map_err(io_snag)?;
@@ -1105,19 +1120,22 @@ fn comb_tile(
             }
         }
 
-        let (real_pos, seg_avail) = stream.unspool(vpos)?;
-        let slice = win
-            .strand_at(real_pos, seg_avail as usize)
-            .map_err(io_snag)?;
+        let Ok((real_pos, seg_avail)) = stream.unspool(vpos) else {
+            break;
+        };
+        let Ok(slice) = win.strand_at(real_pos, seg_avail as usize) else {
+            break;
+        };
         let mut reader = PacketBitReader::warp(slice);
-        let parsed = comb_packet_header(
+        let Ok(parsed) = comb_packet_header(
             &mut reader,
             &mut state.trees,
             &mut state.states,
             pkt.layer,
             0,
-        )
-        .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
+        ) else {
+            break;
+        };
         let mut hdr_len = parsed.header_bytes as u64;
         if pkt_debug {
             eprintln!(
@@ -1779,8 +1797,7 @@ mod tests {
     }
 
     /// Two tiles, the second one's packet bytes absent from the stream: a
-    /// window over the first tile must never touch the second, so the plan
-    /// builds where a whole-image parse cannot.
+    /// window over the first tile must never touch the second.
     #[test]
     fn window_skips_tiles_it_misses() {
         let mut hdr = synth_header();
@@ -1827,10 +1844,110 @@ mod tests {
         };
         assert_eq!(tile0_passes(&plan), tile0_passes(&baseline));
 
+        let whole_cut =
+            draft(&cut, &hdr, 0, 0, true, None).expect("a truncated tile 1 must still plan");
+        assert_eq!(tile0_passes(&whole_cut), tile0_passes(&baseline));
+        assert!(whole_cut.tiles[1].in_window);
+        let tile1_passes: Vec<u8> = whole_cut.tiles[1]
+            .comps
+            .iter()
+            .flatten()
+            .flat_map(|r| r.bands.iter())
+            .flat_map(|b| b.blocks())
+            .map(|blk| blk.num_passes)
+            .collect();
         assert!(
-            draft(&cut, &hdr, 0, 0, true, None).is_err(),
-            "a whole-image parse needs tile 1's missing bytes"
+            tile1_passes.iter().all(|&n| n == 0),
+            "tile 1 has no packet bytes"
         );
+    }
+
+    #[test]
+    fn out_of_window_packets_that_cannot_fit_end_the_walk() {
+        let mut hdr = synth_header();
+        hdr.siz.x_siz = 256;
+        hdr.siz.y_siz = 4096;
+        hdr.siz.xt_siz = 256;
+        hdr.siz.yt_siz = 4096;
+        hdr.cod.order = ProgressionOrder::Rlcp;
+        hdr.cod.num_layers = 1;
+        hdr.cod.block_width = 4;
+        hdr.cod.block_height = 4;
+        hdr.cod.precincts = vec![
+            crate::codec::params::PrecinctSize {
+                width: 256,
+                height: 256,
+            },
+            crate::codec::params::PrecinctSize {
+                width: 256,
+                height: 256,
+            },
+        ];
+        let stream = assemble_stream(&[vec![0u8; 600]], &[]);
+        let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)))
+            .expect("a truncated windowed walk must still plan");
+        assert!(plan.tiles[0].in_window);
+        assert_eq!((plan.width, plan.height), (8, 8));
+    }
+
+    #[test]
+    fn empty_out_of_window_packets_are_parsed_without_plt() {
+        let (hdr, mut packets) = tall_rlcp();
+        for p in &mut packets[1..] {
+            *p = synth_empty_packet();
+        }
+        let stream = assemble_stream(&packets, &[]);
+        let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)))
+            .expect("empty out-of-window packets must not block the plan");
+        assert!(plan.tiles[0].in_window);
+        assert!(passes(&plan).iter().any(|&n| n > 0));
+    }
+
+    #[test]
+    fn plt_hops_nonempty_out_of_window_packets() {
+        let (hdr, packets) = tall_rlcp();
+        let plt = plt_encode(&packet_lengths(&packets));
+        let stream = assemble_stream(&packets, &[(0, plt)]);
+        let plan = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)))
+            .expect("PLT must hop the out-of-window packets");
+        assert!(plan.tiles[0].in_window);
+        assert!(passes(&plan).iter().any(|&n| n > 0));
+    }
+
+    fn synth_empty_packet() -> Vec<u8> {
+        let mut w = BitWriter::new();
+        w.put(0);
+        w.finish()
+    }
+
+    fn tall_rlcp() -> (MainHeaderIn, Vec<Vec<u8>>) {
+        let mut hdr = synth_header();
+        hdr.siz.x_siz = 16;
+        hdr.siz.y_siz = 64;
+        hdr.siz.xt_siz = 16;
+        hdr.siz.yt_siz = 64;
+        hdr.cod.order = ProgressionOrder::Rlcp;
+        hdr.cod.num_layers = 1;
+        hdr.cod.block_width = 4;
+        hdr.cod.block_height = 4;
+        hdr.cod.precincts = vec![
+            crate::codec::params::PrecinctSize {
+                width: 4,
+                height: 4,
+            },
+            crate::codec::params::PrecinctSize {
+                width: 8,
+                height: 8,
+            },
+        ];
+        let mut packets = Vec::new();
+        for _ in 0..16 {
+            packets.push(synth_packet(true, 1));
+        }
+        for _ in 0..16 {
+            packets.push(synth_packet(true, 3));
+        }
+        (hdr, packets)
     }
 
     #[test]
