@@ -225,6 +225,12 @@ struct CodeblockDecompressImpl : public CodeblockImpl
 
     // 2. read signalled length bits
     uint8_t increment = bio->getcommacode();
+    if(increment > (uint8_t)(maxSegmentLengthBits - numlenbits()))
+    {
+      grklog.warn("readPacketHeader: Lblock increment %u exceeds %u bits", increment,
+                  maxSegmentLengthBits);
+      throw CorruptPacketHeaderException();
+    }
     setNumLenBits(numlenbits() + increment);
 
     if(segs_.empty() && (cblk_sty & GRK_CBLKSTY_HT_ONLY))
@@ -333,6 +339,11 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       {
         uint8_t lengthBits = (uint8_t)(numlenbits() + floorlog2(segmentPasses));
         bytes = readLength(bio, lengthBits);
+        if(lengthBits == 0)
+        {
+          grklog.warn("HT packet header has 0 length bits");
+          throw CorruptPacketHeaderException();
+        }
         bool lengthMsbClear = (bytes >> (lengthBits - 1)) == 0;
         bool cleanupFound =
             bytes != 0 && (!mixed || (numlenbits() > 3 && bytes > 1 && lengthMsbClear));

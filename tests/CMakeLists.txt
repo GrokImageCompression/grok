@@ -288,6 +288,21 @@ if(GRK_DATA_ROOT)
     COMMAND grk_packet_iter_empty_poc_test
             ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6042331325988864)
   set_tests_properties(grk_packet_iter_empty_poc_test PROPERTIES TIMEOUT 60)
+  # OSS-Fuzz overflow: PCRL OPT index when res_e is 0
+  add_test(NAME grk_packet_iter_pcrl_empty_res_test
+    COMMAND grk_packet_iter_empty_poc_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6331592625422336)
+  set_tests_properties(grk_packet_iter_pcrl_empty_res_test PROPERTIES TIMEOUT 60)
+endif()
+
+# OSS-Fuzz UBSan: HT lengthBits-1 shift when Lblock is 0
+add_executable(grk_ht_packet_header_test GrkMercuryFuzzerTimeoutTest.cpp)
+target_link_libraries(grk_ht_packet_header_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_ht_packet_header_test
+    COMMAND grk_ht_packet_header_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6513182047535104)
+  set_tests_properties(grk_ht_packet_header_test PROPERTIES TIMEOUT 60)
 endif()
 
 # Regression for an OSS-Fuzz timeout: a 17 by 4-billion-row RPCL tile with

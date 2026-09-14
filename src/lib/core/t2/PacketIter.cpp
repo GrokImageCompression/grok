@@ -1054,9 +1054,10 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pocIndex, TileCodingPar
   genPrecinctInfo();
   update_dxy();
   // the highest resolution's precinct holding the tile origin can start before it
-  if(precinctInfoOPT_ && (prog.progression == GRK_PCRL || prog.progression == GRK_CPRL))
+  if(precinctInfoOPT_ && prog.res_e > 0 &&
+     (prog.progression == GRK_PCRL || prog.progression == GRK_CPRL))
   {
-    auto highest = precinctInfoOPT_ + prog.res_e - 1;
+    auto highest = precinctInfoOPT_ + (prog.res_e - 1);
     if(highest->valid)
     {
       spatialStartX_ = highest->tileBoundsPrecPRJ.x0;
@@ -1644,7 +1645,9 @@ std::pair<uint64_t, uint64_t> PacketIter::windowColumnsOPT(uint64_t y) const
 bool PacketIter::next_cprlOPT(SparseBuffer* compressedPackets)
 {
   auto wholeTile = isWholeTile();
-  auto precInfo = precinctInfoOPT_ + prog.res_e - 1;
+  if(prog.res_e == 0)
+    return false;
+  auto precInfo = precinctInfoOPT_ + (prog.res_e - 1);
   if(!precInfo->valid)
     return false;
   bool skipOutsideWindow = !wholeTile && compressedPackets;
@@ -1730,7 +1733,9 @@ bool PacketIter::next_cprlOPT(SparseBuffer* compressedPackets)
 bool PacketIter::next_pcrlOPT(SparseBuffer* compressedPackets)
 {
   auto wholeTile = isWholeTile();
-  auto precInfo = precinctInfoOPT_ + prog.res_e - 1;
+  if(prog.res_e == 0)
+    return false;
+  auto precInfo = precinctInfoOPT_ + (prog.res_e - 1);
   if(!precInfo->valid)
     return false;
   bool skipOutsideWindow = !wholeTile && compressedPackets;
