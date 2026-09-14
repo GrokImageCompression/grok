@@ -728,7 +728,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
 
     return true;
   }
-  auto final_read = [this, sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
+  auto final_read = [sa, synthesisWindow, simpleBuf, apply_dc_shift]() {
     // final read into tile buffer
     bool ret = sa->read(synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
     apply_dc_shift();
@@ -758,8 +758,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
     vert.parity = fullRes->y0 & 1;
     PartialBandInfo<CT, FILTER_WIDTH>& bandInfo = resBandInfo[resno - 1];
 
-    auto executor_h = [resno, sa, bandInfo,
-                       &decompressor](PartialTaskInfo<T, dwt_scratch<T>>* taskInfo) {
+    auto executor_h = [sa, bandInfo, &decompressor](PartialTaskInfo<T, dwt_scratch<T>>* taskInfo) {
       for(uint32_t yPos = taskInfo->indexMin_; yPos < taskInfo->indexMax_;
           yPos += HORIZ_PASS_HEIGHT)
       {
@@ -788,8 +787,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<CT>* sa,
 
       return true;
     };
-    auto executor_v = [resno, sa, bandInfo,
-                       &decompressor](PartialTaskInfo<T, dwt_scratch<T>>* taskInfo) {
+    auto executor_v = [sa, bandInfo, &decompressor](PartialTaskInfo<T, dwt_scratch<T>>* taskInfo) {
       for(uint32_t xPos = taskInfo->indexMin_; xPos < taskInfo->indexMax_; xPos += VERT_PASS_WIDTH)
       {
         auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (taskInfo->indexMax_ - xPos));

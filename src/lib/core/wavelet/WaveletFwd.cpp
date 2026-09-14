@@ -886,7 +886,7 @@ namespace HWY_NAMESPACE
   HWY_ATTR static void copy_from_int16(const int16_t* src, T* dst, uint32_t numcols)
   {
     for(uint32_t j = 0; j < numcols; ++j)
-      dst[j] = (int32_t)src[j];
+      dst[j] = (T)src[j];
   }
 
   template<typename T>
@@ -1251,8 +1251,9 @@ namespace HWY_NAMESPACE
           uint32_t max_j = (t + 1 == num_tasks) ? rw : (t + 1) * step_j;
           int16_t* scratch = scratch_pool + t * scratchElems;
           int32_t* td = tiledp;
-          nodes[t].work([td, scratch, rh, parity_col, stride, lanes16, currentDcShift, min_j,
-                         max_j] {
+          // Lanes() is a runtime value on SVE and RVV
+          nodes[t].work([td, scratch, rh, parity_col, stride, lanes16 = lanes16, currentDcShift,
+                         min_j, max_j] {
             uint32_t j;
             for(j = min_j; j + lanes16 - 1 < max_j; j += lanes16)
               encode_53_16_v(td + j, scratch, rh, parity_col, stride, lanes16, currentDcShift);
@@ -1624,8 +1625,9 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rw < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
+          // Lanes() is a runtime value on SVE and RVV
           vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, currentDcShift,
-                                     currentIntInput, lanes] {
+                                     currentIntInput, lanes = lanes] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rw; j += lanes)
@@ -1674,7 +1676,8 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rh < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes] {
+          // Lanes() is a runtime value on SVE and RVV
+          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes = lanes] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rh; j += lanes)
