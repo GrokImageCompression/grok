@@ -1567,6 +1567,8 @@ struct BatchMemoryState
   void* user = nullptr;
 };
 BatchMemoryState batchMemory;
+// the rate control threshold of whichever frame finished last narrows the next search
+std::atomic<uint16_t> batchMemorySlopeHint{0};
 
 // the bound grk_compress uses for a compressed frame
 size_t codestreamBound(const BatchMemoryState& state)
@@ -1635,9 +1637,14 @@ static uint64_t batchMemoryEncodeCallback(gpup_compress_callback_info* info)
     stream.buf = codestream.data();
     stream.buf_len = codestream.size();
     grk_cparameters parameters = batchMemory.t2Parameters;
+    parameters.rate_control_slope_hint = batchMemorySlopeHint.load(std::memory_order_relaxed);
     auto codec = grk_compress_init(&stream, &parameters, &headerImage);
     if(codec)
+    {
       length = grk_compress(codec, wrapPluginTile(info->tile));
+      batchMemorySlopeHint.store(grk_compress_get_slope_threshold(codec),
+                                 std::memory_order_relaxed);
+    }
     grk_object_unref(codec);
   }
   batchMemory.callback(batchMemory.user, info->host_data, codestream.data(), length);
@@ -1673,6 +1680,7 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_batch_memory_begin(grk_plugin_batch_memo
   batchMemory.xyzOnDevice = false;
   batchMemory.rsiz = info.compress_parameters->rsiz;
   batchMemory.t2Parameters = *info.compress_parameters;
+  batchMemorySlopeHint.store(0, std::memory_order_relaxed);
   batchMemory.t2Parameters.apply_xyz_transform = false;
   batchMemory.t2Parameters.mct = gpupParameters.mct;
   batchMemory.callback = info.callback;
