@@ -132,12 +132,19 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/crash-ea90940e12a27e75c1a9aaa7c39079c43576f175)
 endif()
 
-add_executable(grk_truncated_components_memory_test GrkTruncatedComponentsMemoryTest.cpp)
-target_link_libraries(grk_truncated_components_memory_test ${GROK_CORE_NAME})
+add_executable(grk_decode_peak_memory_test GrkDecodePeakMemoryTest.cpp)
+target_link_libraries(grk_decode_peak_memory_test ${GROK_CORE_NAME})
 if(GRK_DATA_ROOT)
   add_test(NAME grk_truncated_components_memory_test
-    COMMAND grk_truncated_components_memory_test
+    COMMAND grk_decode_peak_memory_test
             ${GRK_DATA_ROOT}/input/nonregression/oom-dd67eec3c81d56b3dec670a93acfe50fe88d03c6)
+endif()
+
+# OSS-Fuzz OOM: 8192x8192 code block grid per precinct, tag trees must only allocate touched nodes
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_huge_precinct_tagtree_memory_test
+    COMMAND grk_decode_peak_memory_test
+            ${GRK_DATA_ROOT}/input/nonregression/oom-a7167864c261ba3ab1e31def07c9e813d725c92e)
 endif()
 
 add_executable(grk_rescale_test GrkRescaleTest.cpp)

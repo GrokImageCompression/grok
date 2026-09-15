@@ -15,10 +15,6 @@
  *
  */
 
-// a truncated stream declaring hundreds of components must only allocate
-// wavelet windows for components that have code blocks. the test stream
-// declares 257 components and holds a single empty packet.
-
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -28,8 +24,7 @@
 namespace
 {
 const uint32_t WINDOW_SIZE = 1024;
-// well below the 2.5GB peak of the unfixed code, well above the ~600MB
-// composite the decode legitimately needs
+// well above the ~600MB the 257 component case legitimately needs
 const long PEAK_RSS_LIMIT_KB = 1500L * 1024;
 
 #ifdef __linux__
@@ -55,7 +50,7 @@ int main(int argc, char** argv)
 {
   if(argc < 2)
   {
-    fprintf(stderr, "usage: %s <truncated codestream>\n", argv[0]);
+    fprintf(stderr, "usage: %s <codestream>\n", argv[0]);
     return 1;
   }
 
