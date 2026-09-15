@@ -275,6 +275,11 @@ if(GRK_DATA_ROOT)
     COMMAND grk_packet_iter_row_skip_test
             ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6420654795325440)
   set_tests_properties(grk_packet_iter_row_skip_test PROPERTIES TIMEOUT 60)
+  # OSS-Fuzz timeout: packet header parser walked every code block of a huge precinct per packet
+  add_test(NAME grk_packet_header_tagtree_skip_test
+    COMMAND grk_packet_iter_row_skip_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4727725403996160)
+  set_tests_properties(grk_packet_header_tagtree_skip_test PROPERTIES TIMEOUT 60)
 endif()
 
 # Regression for an OSS-Fuzz timeout: a ~2-billion-column CPRL tile with a

@@ -21,6 +21,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <queue>
+#include <functional>
 
 namespace grk
 {
@@ -140,6 +142,20 @@ public:
    @param threshold Threshold to use when decoding value of the leaf
    @param value the node's value
    */
+  // a node reads bits only at its first leaf under a known parent, so other leaves are skipped
+  template<typename Visit>
+  void forEachLeafThatMayReadBits(Visit visit)
+  {
+    std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> pending;
+    pending.push(0);
+    while(!pending.empty())
+    {
+      auto leafno = pending.top();
+      pending.pop();
+      visit(leafno);
+      pushChildFirstLeaves(leafno, pending);
+    }
+  }
   void decode(t1_t2::BitIO* bio, uint64_t leafno, T threshold, T* value)
   {
     if(leafCache_[leafno] < threshold) [[likely]]
@@ -201,6 +217,39 @@ private:
     bool known;
   };
 
+  uint64_t firstLeaf(uint8_t level, uint32_t row, uint32_t column) const
+  {
+    return (static_cast<uint64_t>(row) << level) * leavesWidth_ +
+           (static_cast<uint64_t>(column) << level);
+  }
+  void pushChildFirstLeaves(
+      uint64_t leafno,
+      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>>& pending)
+  {
+    uint32_t node = static_cast<uint32_t>(leafno);
+    for(uint8_t level = 0; node != UINT32_MAX; ++level, node = parents_[node])
+    {
+      uint32_t indexInLevel = node - levelBase_[level];
+      uint32_t row = indexInLevel / levelWidth_[level];
+      uint32_t column = indexInLevel % levelWidth_[level];
+      if(firstLeaf(level, row, column) != leafno)
+        break;
+      if(level == 0 || nodes_[node].value == getUninitializedValue())
+        continue;
+      uint8_t childLevel = level - 1;
+      uint32_t childRowEnd = std::min<uint32_t>(2 * row + 2, levelHeight_[childLevel]);
+      uint32_t childColumnEnd = std::min<uint32_t>(2 * column + 2, levelWidth_[childLevel]);
+      for(uint32_t childRow = 2 * row; childRow < childRowEnd; ++childRow)
+      {
+        for(uint32_t childColumn = 2 * column; childColumn < childColumnEnd; ++childColumn)
+        {
+          bool topLeftChild = childRow == 2 * row && childColumn == 2 * column;
+          if(!topLeftChild)
+            pending.push(firstLeaf(childLevel, childRow, childColumn));
+        }
+      }
+    }
+  }
   void buildTree()
   {
     // same level calculation as original
@@ -221,6 +270,14 @@ private:
     } while(nodesPerLevel > 1);
 
     nodes_.resize(totalNodes);
+    levelWidth_.assign(resW, resW + levels);
+    levelHeight_.assign(resH, resH + levels);
+    uint32_t base = 0;
+    for(size_t lvl = 0; lvl < levelWidth_.size(); ++lvl)
+    {
+      levelBase_.push_back(base);
+      base += static_cast<uint32_t>(levelWidth_[lvl]) * levelHeight_[lvl];
+    }
     parents_.resize(totalNodes, UINT32_MAX);
     leafCache_.resize(static_cast<uint64_t>(leavesWidth_) * leavesHeight_);
 
@@ -249,6 +306,9 @@ private:
   std::vector<Node> nodes_;
   std::vector<uint32_t> parents_; // UINT32_MAX = root
   std::vector<T> leafCache_;
+  std::vector<uint16_t> levelWidth_;
+  std::vector<uint16_t> levelHeight_;
+  std::vector<uint32_t> levelBase_;
 };
 
 using TagTreeU8 = TagTree<uint8_t>;

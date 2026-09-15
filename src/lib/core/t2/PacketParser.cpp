@@ -164,22 +164,16 @@ uint32_t PacketParser::readHeader(void)
         auto prc = band->tryGetPrecinct(precinctIndex_);
         if(!prc)
           continue;
-        auto numPrecCodeBlocks = prc->getNumCblks();
-        // assuming 1 bit minimum encoded per code block,
-        // let's check if we have enough bytes
-        if((numPrecCodeBlocks >> 3) > packets_->length())
-        {
-          headerError_ = true;
-          throw t1_t2::TruncatedPacketHeaderException();
-        }
-        for(uint32_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
-        {
+        auto incl = prc->getInclTree();
+        if(!incl)
+          continue;
+        incl->forEachLeafThatMayReadBits([&](uint64_t leafno) {
+          auto cblkno = (uint32_t)leafno;
           auto cblk = prc->tryGetDecompressBlock(cblkno);
           uint8_t included;
           if(!cblk || !cblk->numlenbits())
           {
             uint16_t value;
-            auto incl = prc->getInclTree();
             incl->decode(bio.get(), cblkno, layno_ + 1, &value);
             if(value != incl->getUninitializedValue() && value != layno_)
             {
@@ -195,7 +189,7 @@ uint32_t PacketParser::readHeader(void)
             included = bio->read();
           }
           if(!included)
-            continue;
+            return;
           if(!cblk)
             cblk = prc->getDecompressBlock(cblkno);
           if(!cblk->numlenbits())
@@ -246,7 +240,7 @@ uint32_t PacketParser::readHeader(void)
             cblk->setNumLenBits(3);
           }
           cblk->readPacketHeader(bio, signalledLayerDataBytes_, layno_, tccp->cblkStyle_);
-        }
+        });
       }
     }
     bio->readFinalHeaderByte();
