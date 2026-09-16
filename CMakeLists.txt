@@ -443,13 +443,22 @@ if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
           DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
           NAMESPACE GROK::)
 
+  # Install the GrokToolsTargets file
+  install(EXPORT GrokToolsTargets
+          FILE GrokToolsTargets.cmake
+          DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
+          NAMESPACE GROK::)
+
   # Generate the GrokConfig.cmake file
   include(CMakePackageConfigHelpers)
   configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GrokConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
     INSTALL_DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
-    PATH_VARS CMAKE_INSTALL_INCLUDEDIR)
+    PATH_VARS
+        CMAKE_INSTALL_INCLUDEDIR
+        CMAKE_INSTALL_BINDIR
+  )
 
   # Generate the version file
   write_basic_package_version_file(

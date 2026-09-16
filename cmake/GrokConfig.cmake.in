@@ -36,6 +36,18 @@ else()
         "Ensure Grok is built and installed correctly.")
 endif()
 
+# Detect tools install targets
+set(_grok_program_path "@PACKAGE_CMAKE_INSTALL_BINDIR@/grk_decompress${CMAKE_EXECUTABLE_SUFFIX}")
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/GrokToolsTargets.cmake"
+  AND EXISTS "${_grok_program_path}")
+    include("${CMAKE_CURRENT_LIST_DIR}/GrokToolsTargets.cmake")
+else()
+    if(Grok_FIND_REQUIRED_Applications)
+        set(Grok_FOUND FALSE)
+        set(Grok_NOT_FOUND_MESSAGE "Required component 'Applications' not found. Missing binary at: ${_grok_program_path}")
+    endif()
+endif()
+
 # Backward compatibility
 set(Grok_FOUND TRUE)
 
