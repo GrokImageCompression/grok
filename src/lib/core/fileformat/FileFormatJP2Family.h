@@ -231,6 +231,10 @@ protected:
   bool headerError_;
   bool headerRead_;
 
+  // contiguous code stream box extent, both zero until the box is read
+  uint64_t codestreamOffset_;
+  uint64_t codestreamLength_;
+
   std::stack<Box> superBoxes_;
 
   std::unordered_map<uint32_t, BOX_FUNC> img_header;

@@ -38,6 +38,11 @@ pub struct MainHeaderIn {
     pub qcd: QcdParams,
     /// Per-component quantization overrides (QCC): `(component index, params)`.
     pub qcc: Vec<(usize, QcdParams)>,
+    /// Absolute file offset of the SOC marker.
+    pub codestream_off: u64,
+    /// Codestream length from `codestream_off`; 0 means it runs to the end of
+    /// the file (raw .j2k input, or a jp2c box of undefined length).
+    pub codestream_len: u64,
     /// Absolute file offset of the first SOT marker.
     pub first_sot_off: u64,
     /// Tile-part table from TLM markers, per tile in tile-part order; empty
@@ -446,6 +451,14 @@ pub fn draft(
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
     let file_len = file.extent().map_err(io_snag)?;
+    // for a jp2c box followed by more boxes the codestream ends before the file does
+    let codestream_end = if hdr.codestream_len == 0 {
+        file_len
+    } else {
+        hdr.codestream_off
+            .saturating_add(hdr.codestream_len)
+            .min(file_len)
+    };
 
     // Whitelist code-block modes: RESET/CAUSAL/ERTERM/SEGMARK are handled by
     // the T1 and verified bit-exact. BYPASS/RESTART split codewords into
@@ -571,7 +584,7 @@ pub fn draft(
             }
             let seg = comb_tile_part(
                 file,
-                file_len,
+                codestream_end,
                 e.offset,
                 e.length as u64,
                 use_plt.then(|| &mut tile_plt[t]),
@@ -594,21 +607,36 @@ pub fn draft(
                     "plan: SOT tile index {isot} out of range"
                 )));
             }
-            if psot == 0 {
-                return Err(DecodeError::Logic("plan: Psot=0 not supported".into()));
-            }
+            // A.4.2: only the last tile-part may carry Psot=0, and it runs to the EOC
+            let last = psot == 0;
+            let psot = if last {
+                let mut span = codestream_end.saturating_sub(sot_pos);
+                if span >= 2 {
+                    let mut m = [0u8; 2];
+                    file.draw_at(&mut m, codestream_end - 2).map_err(io_snag)?;
+                    if u16::from_be_bytes(m) == 0xFFD9 {
+                        span -= 2;
+                    }
+                }
+                span
+            } else {
+                psot
+            };
             if tile_in_window[isot] {
                 let seg = comb_tile_part(
                     file,
-                    file_len,
+                    codestream_end,
                     sot_pos,
                     psot,
                     use_plt.then(|| &mut tile_plt[isot]),
                 )?;
                 tile_segs[isot].push(seg);
             }
+            if last {
+                break;
+            }
             sot_pos += psot;
-            if sot_pos + 2 > file_len {
+            if sot_pos + 2 > codestream_end {
                 break;
             }
             let mut m = [0u8; 2];
@@ -730,11 +758,11 @@ pub fn draft(
 
 /// Scan one tile-part's header markers to SOD, collecting PLT payloads on the
 /// way when a sink is given. Returns the packet-data segment (absolute
-/// offset, length), clipped to the file: a Psot reaching past the end means a
-/// truncated (or lying) stream, and those bytes do not exist.
+/// offset, length), clipped to the codestream end: a Psot reaching past it
+/// means a truncated (or lying) stream, and those bytes do not exist.
 fn comb_tile_part(
     file: &dyn ReadAt,
-    file_len: u64,
+    codestream_end: u64,
     sot_pos: u64,
     psot: u64,
     mut plt_sink: Option<&mut Vec<(u8, Vec<u8>)>>,
@@ -775,7 +803,7 @@ fn comb_tile_part(
             return Err(DecodeError::Logic("SOD not found in tile-part".into()));
         }
     }
-    Ok((mp, (sot_pos + psot).min(file_len).saturating_sub(mp)))
+    Ok((mp, (sot_pos + psot).min(codestream_end).saturating_sub(mp)))
 }
 
 /// Decode one tile's PLT markers into per-packet lengths, in packet order.
@@ -1471,6 +1499,8 @@ mod tests {
                 steps: vec![],
             },
             qcc: vec![],
+            codestream_off: 0,
+            codestream_len: 0,
             first_sot_off: 0,
             tlm: vec![],
         }
@@ -1763,6 +1793,8 @@ mod tests {
                 steps: vec![],
             },
             qcc: vec![],
+            codestream_off: 0,
+            codestream_len: 0,
             first_sot_off: 0,
             tlm: vec![],
         }
@@ -1845,6 +1877,52 @@ mod tests {
         hdr.cod.num_layers = OVERSIZED_LAYERS;
         let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
             panic!("a tile declaring {OVERSIZED_LAYERS} layers of packets must be rejected");
+        };
+        assert!(msg.contains("declared packets"), "got {msg}");
+    }
+
+    /// The synthetic stream with its one tile-part's Psot zeroed.
+    fn zero_psot_stream() -> Vec<u8> {
+        let mut stream = synth_stream();
+        stream[6..10].fill(0);
+        stream
+    }
+
+    /// A.4.2 lets the last tile-part carry Psot=0, meaning it runs to the EOC.
+    #[test]
+    fn a_zero_psot_tile_part_runs_to_the_eoc() {
+        let hdr = synth_header();
+        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
+        let plan = draft(&zero_psot_stream(), &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(block_offsets(&plan), block_offsets(&baseline));
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+    }
+
+    /// Bytes of a box following jp2c, which a Psot=0 tile-part must not reach.
+    const TRAILING_BYTES: usize = 128;
+
+    #[test]
+    fn a_zero_psot_tile_part_stops_at_the_codestream_end() {
+        let baseline =
+            draft(&synth_stream(), &synth_header(), 0, 0, true, None).expect("baseline must build");
+        let mut stream = zero_psot_stream();
+        let mut hdr = synth_header();
+        hdr.codestream_len = stream.len() as u64;
+        stream.extend([0x5A; TRAILING_BYTES]);
+
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(block_offsets(&plan), block_offsets(&baseline));
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+
+        // SOT (12) + SOD (2) ahead of the packets, EOC (2) behind them
+        let packet_bytes = hdr.codestream_len as usize - 16;
+        // two packets per layer, each needing at least one bit of the tile's
+        // packet bytes: one layer too many unless the trailing bytes count
+        hdr.cod.num_layers = (4 * packet_bytes + 4) as u16;
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+            panic!("the trailing bytes must not pad the tile's packet bytes");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
     }
@@ -1984,6 +2062,8 @@ mod tests {
                 steps: vec![],
             },
             qcc: vec![],
+            codestream_off: 0,
+            codestream_len: 0,
             first_sot_off: 0,
             tlm: vec![],
         }

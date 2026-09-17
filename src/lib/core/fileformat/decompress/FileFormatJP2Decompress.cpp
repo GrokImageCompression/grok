@@ -95,6 +95,7 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
   auto image = getHeaderImage();
   if(!FileFormatJP2Family::readHeader(header_info, image))
     return false;
+  codeStream->setCodestreamExtent(codestreamOffset_, codestreamLength_);
   if(codeStream->needsHeaderRead())
   {
     if(!codeStream->readHeader(header_info))

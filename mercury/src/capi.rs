@@ -214,8 +214,11 @@ pub struct MercuryMainHeader {
     pub poc: *const MercuryProgressionVolume,
     pub num_poc: u32,
     // Codestream layout in the file the read_at/fd addresses.
-    /// Absolute file offset of the SOC marker (informational).
+    /// Absolute file offset of the SOC marker.
     pub codestream_off: u64,
+    /// Codestream length from `codestream_off`; 0 means it runs to the end of
+    /// the file. A tile-part with Psot=0 ends here, minus a trailing EOC.
+    pub codestream_len: u64,
     /// Absolute file offset of the first SOT marker.
     pub first_sot_off: u64,
     /// Tile-part table from the host's parsed TLM markers, per tile in
@@ -382,6 +385,8 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
         cod,
         qcd,
         qcc,
+        codestream_off: h.codestream_off,
+        codestream_len: h.codestream_len,
         first_sot_off: h.first_sot_off,
         tlm,
     })

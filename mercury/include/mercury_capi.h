@@ -83,7 +83,7 @@ typedef struct MercuryPrecinct
 typedef struct MercuryQuant
 {
   uint8_t guard_bits;
-  uint8_t style; /* 0 = reversible, 1 = derived, 2 = expounded */
+  uint8_t style; /* 0 = reversible, 2 = expounded, host expands derived (1) per band */
   const uint8_t* ranges; /* reversible: one ranging exponent per band, otherwise nullptr */
   uint32_t num_ranges;
   const float* steps; /* irreversible: one step size per band, otherwise nullptr */
@@ -160,6 +160,9 @@ typedef struct MercuryMainHeader
   uint32_t num_poc;
   /* Codestream layout in the file the read_at/fd addresses. */
   uint64_t codestream_off; /* absolute file offset of the SOC marker */
+  /* Codestream length from codestream_off; 0 means it runs to the end of the
+   * file. A tile-part with Psot=0 ends here, minus a trailing EOC. */
+  uint64_t codestream_len;
   uint64_t first_sot_off; /* absolute file offset of the first SOT marker */
   /* Tile-part table from the host's parsed TLM markers, per tile in tile-part
    * order; NULL/0 when the stream has no trusted TLM. Lets the plan read only

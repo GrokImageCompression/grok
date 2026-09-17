@@ -29,7 +29,7 @@ TILE_PART_REJECTION = "must be less than number of tile parts"
 
 
 def parse_codestream(path):
-    """Return (numcomps, reversible) from SIZ/COD, or None if unparseable."""
+    """Return (numcomps, reversible, precision) from SIZ/COD, or None if unparseable."""
     with open(path, "rb") as f:
         data = f.read(65536)
     jp2_codestream = data.find(b"\xff\x4f\xff\x51")
@@ -44,7 +44,10 @@ def parse_codestream(path):
     reversible = data[cod + 13] == 1
     if numcomps == 0 or numcomps > 16384:
         return None
-    return numcomps, reversible
+    if siz + 40 + 3 * numcomps > len(data):
+        return None
+    precision = max((data[siz + 40 + 3 * c] & 0x7F) + 1 for c in range(numcomps))
+    return numcomps, reversible, precision
 
 
 def run_decode(bin_dir, in_file, out_file, mercury):
@@ -76,7 +79,7 @@ def sweep_one(bin_dir, work_dir, in_file):
     parsed = parse_codestream(in_file)
     if not parsed:
         return "skip", "unparseable header"
-    numcomps, reversible = parsed
+    numcomps, reversible, precision = parsed
     base = os.path.join(work_dir, os.path.basename(in_file))
     classic_out = base + ".classic.tif"
     mercury_out = base + ".mercury.tif"
@@ -116,9 +119,11 @@ def sweep_one(bin_dir, work_dir, in_file):
         if filecmp.cmp(classic_out, mercury_out, shallow=False):
             return ("bail", "") if note == "bail" else ("ok", "")
 
-        # conformance mode (no -d): peak/MSE tolerances gate the comparison
-        peaks = ":".join([str(IRREVERSIBLE_PEAK_TOLERANCE)] * numcomps)
-        mses = ":".join([str(IRREVERSIBLE_PEAK_TOLERANCE)] * numcomps)
+        # conformance mode (no -d): peak/MSE tolerances gate the comparison.
+        # the tolerance is in 8-bit sample units, so deeper images scale it
+        tolerance = IRREVERSIBLE_PEAK_TOLERANCE << max(precision - 8, 0)
+        peaks = ":".join([str(tolerance)] * numcomps)
+        mses = ":".join([str(tolerance)] * numcomps)
 
         def compare(base_file, test_file):
             r = subprocess.run(
@@ -148,7 +153,7 @@ def sweep_one(bin_dir, work_dir, in_file):
                 return "unloadable", "compare_images cannot load classic output"
             return (
                 "FAIL",
-                f"differs beyond peak tolerance {IRREVERSIBLE_PEAK_TOLERANCE}",
+                f"differs beyond peak tolerance {tolerance}",
             )
         return ("bail", "") if note == "bail" else ("ok", "")
 

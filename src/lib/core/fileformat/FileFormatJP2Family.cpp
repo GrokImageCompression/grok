@@ -51,7 +51,8 @@ FileFormatJP2Family::FileFormatJP2Family(IStream* stream)
       cl(nullptr), w(0), h(0), numcomps(0), bpc(0), C(0), UnkC(0), IPR(0), meth(0), approx(0),
       enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), comps(nullptr), has_capture_resolution(false),
       has_display_resolution(false), numXmlBoxes(0), io_xml_(false), numUuids(0), jp2_state(0),
-      headerError_(false), headerRead_(false), stream_(stream)
+      headerError_(false), headerRead_(false), codestreamOffset_(0), codestreamLength_(0),
+      stream_(stream)
 {
   for(uint32_t i = 0; i < 2; ++i)
   {
@@ -289,6 +290,8 @@ bool FileFormatJP2Family::readHeaderProcedure(void)
           if(jp2_state & JP2_STATE_HEADER)
           {
             jp2_state |= JP2_STATE_CODESTREAM;
+            codestreamOffset_ = stream_->tell();
+            codestreamLength_ = box.length - boxHeaderBytesRead;
             rc = true;
             goto cleanup;
           }

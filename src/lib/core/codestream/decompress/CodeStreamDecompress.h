@@ -70,6 +70,11 @@ public:
   {
     inputFilePath_ = path ? path : "";
   }
+  void setCodestreamExtent(uint64_t offset, uint64_t length)
+  {
+    codestreamOffset_ = offset;
+    codestreamLength_ = length;
+  }
 
   void setBandCallback(grk_io_band_callback callback, void* user_data) override;
   grk_io_band_callback getBandCallback() const override
@@ -398,6 +403,13 @@ private:
    * mercury fast path. Per codec so concurrent decodes cannot cross files.
    */
   std::string inputFilePath_;
+
+  /**
+   * @brief Contiguous code stream box extent, read by the mercury fast path.
+   * A zero length means the code stream runs to the end of the file.
+   */
+  uint64_t codestreamOffset_ = 0;
+  uint64_t codestreamLength_ = 0;
 
   /**
    * @brief Tile processor currently being parsed

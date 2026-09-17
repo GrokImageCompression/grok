@@ -248,6 +248,22 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(grk_mercury_subsampling_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_mercury_subsampling_test COMMAND grk_mercury_subsampling_test)
 
+  add_executable(grk_mercury_psot_zero_test GrkMercuryPsotZeroTest.cpp)
+  target_link_libraries(grk_mercury_psot_zero_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    # last tile-part with Psot=0, running to the EOC (T.800 A.4.2)
+    foreach(psot_zero_stream
+            Cannotreaddatawithnosizeknown.j2k
+            illegalcolortransform.j2k
+            MarkerIsNotCompliant.j2k
+            123.j2c
+            bug.j2c)
+      add_test(NAME grk_mercury_psot_zero_test_${psot_zero_stream}
+        COMMAND grk_mercury_psot_zero_test
+                ${GRK_DATA_ROOT}/input/nonregression/${psot_zero_stream})
+    endforeach()
+  endif()
+
   add_executable(grk_mercury_composite_type_test GrkMercuryCompositeTypeTest.cpp)
   target_link_libraries(grk_mercury_composite_type_test ${GROK_CORE_NAME} spdlog::spdlog)
   if(GRK_DATA_ROOT)

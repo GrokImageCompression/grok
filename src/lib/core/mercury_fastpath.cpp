@@ -509,7 +509,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
                       MercuryQuant& q) {
     const uint32_t nbands = (uint32_t)(3 * (t.numresolutions_ - 1) + 1);
     q.guard_bits = t.numgbits_;
-    q.style = t.qntsty_; // 0 = reversible, 1 = derived, 2 = expounded
+    // readQcd expands a derived QCD into one step per band, so mercury sees it expounded
+    q.style = t.qntsty_ == CCP_QNTSTY_SIQNT ? CCP_QNTSTY_SEQNT : t.qntsty_;
     ranges.clear();
     steps.clear();
     if(t.qntsty_ == CCP_QNTSTY_NOQNT)
@@ -625,7 +626,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mhdr.num_coc = (uint32_t)mhCoc.size();
   mhdr.poc = mhPoc.empty() ? nullptr : mhPoc.data();
   mhdr.num_poc = (uint32_t)mhPoc.size();
-  mhdr.codestream_off = 0; // informational; mercury drives off first_sot_off
+  // zero length: a raw code stream, which runs to the end of the file
+  mhdr.codestream_off = cs.codestreamOffset_;
+  mhdr.codestream_len = cs.codestreamLength_;
   mhdr.first_sot_off = cs.markerCache_->getTileStreamStart();
 
   // TLM tile-part table: with it, mercury reads only the tile-part headers of
