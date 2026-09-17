@@ -1332,14 +1332,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       progression[numProgressions].comp_e = (uint16_t)comp_e;
       progression[numProgressions].specified_compression_poc_prog =
           getProgression(progression[numProgressions].progression_str);
-      // sanity check on layer
-      if(progression[numProgressions].lay_e > parameters->numlayers)
-      {
-        spdlog::warn("End layer {} in POC {} is greater than"
-                     " total number of layers {}. Truncating.",
-                     progression[numProgressions].lay_e, numProgressions, parameters->numlayers);
-        progression[numProgressions].lay_e = parameters->numlayers;
-      }
       if(progression[numProgressions].res_e > parameters->numresolution)
       {
         spdlog::warn("POC end resolution {} cannot be greater than"
@@ -1791,6 +1783,21 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->layer_rate[0] = 0;
     parameters->numlayers = 1;
     parameters->allocation_by_rate_distortion = false;
+  }
+  // the layer count is only known once the rates are parsed
+  if(pocOpt->count() > 0)
+  {
+    for(uint32_t i = 0; i <= parameters->numpocs; i++)
+    {
+      auto& progression = parameters->progression[i];
+      if(progression.lay_e > parameters->numlayers)
+      {
+        spdlog::warn("End layer {} in POC {} is greater than total number of layers {}. "
+                     "Truncating.",
+                     progression.lay_e, i, parameters->numlayers);
+        progression.lay_e = parameters->numlayers;
+      }
+    }
   }
   // cinema/broadcast profiles
   if(!isHT)

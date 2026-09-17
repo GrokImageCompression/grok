@@ -90,6 +90,15 @@ add_executable(grk_compress_data_type_test GrkCompressDataTypeTest.cpp)
 target_link_libraries(grk_compress_data_type_test ${GROK_CORE_NAME})
 add_test(NAME grk_compress_data_type_test COMMAND grk_compress_data_type_test)
 
+# the POC option is parsed before the layer rates, so its layer bound must not
+# be clamped to the default layer count
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_compress_cli_poc_layers
+    COMMAND grk_compress -i ${GRK_DATA_ROOT}/input/nonregression/Bretagne1.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/cli_poc_layers.j2k -n 4 -r 40,20,1
+      -P T0=0,0,2,2,3,RLCP/T0=0,0,3,4,3,CPRL)
+endif()
+
 # synthesizes its own frames, so it needs no GRK_DATA_ROOT
 add_executable(grk_cinema_eight_bit_test GrkCinemaEightBitTest.cpp)
 target_link_libraries(grk_cinema_eight_bit_test ${GROK_CORE_NAME})
