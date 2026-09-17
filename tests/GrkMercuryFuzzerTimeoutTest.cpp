@@ -17,7 +17,7 @@
 
 // Regression test for an OSS-Fuzz timeout (testcase
 // clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6523675860598784).
-// Mercury bails (precinct smaller than code-block). Classic then walks a
+// Mercury bails (declared packets exceed the tile bytes). Classic then walks a
 // 1x137 grid of huge tiles and hung in TileFutureManager::wait until the
 // packet iterator budget stopped it. This test only requires the call to
 // RETURN (any bool); a hang is caught by the ctest TIMEOUT property.

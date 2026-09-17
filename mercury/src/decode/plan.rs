@@ -13,11 +13,12 @@
 
 use crate::decode::ReadAt;
 
-use crate::codec::packet::{comb_packet_header, BlockState, PacketBitReader, TagTree};
-use crate::codec::params::{CodParams, ProgressionOrder, QcdParams, SizParams};
-use crate::codec::tile_geom::{chart_tile_geom, Dims, TileGeom};
-use crate::decode::window::{chart_tile_comp_window, intersect, intersects, TileCompWindow};
+use crate::codec::packet::{BlockState, PacketBitReader, TagTree, comb_packet_header};
+use crate::codec::params::{CodParams, ProgressionOrder, ProgressionVolume, QcdParams, SizParams};
+use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
 use crate::decode::DecodeError;
+use crate::decode::window::comp_window;
+use crate::decode::window::{TileCompWindow, chart_tile_comp_window, intersect, intersects};
 
 /// One tile-part's position from the host's parsed TLM markers.
 pub struct TlmEntry {
@@ -97,6 +98,9 @@ pub struct BandPlan {
     pub y0: u32,
     pub width: u32,
     pub height: u32,
+    /// Effective code-block size at this band's resolution (T.800 B.7 clamp).
+    pub block_w: u32,
+    pub block_h: u32,
     /// `guard_bits + epsilon_b - 1` for this band.
     pub k_max_prime: i32,
     /// Irreversible dequant scale: raw QCD step size times accumulated
@@ -164,18 +168,20 @@ pub struct TilePlan {
 }
 
 pub struct DecodePlan {
-    /// Output dims, already reduced (the window's when one is set).
+    /// Output dims on the canvas plane, already reduced (the window's when one
+    /// is set).
     pub width: u32,
     pub height: u32,
+    /// Per component, the output rectangle on that component's reduced plane:
+    /// grok's GrkImage::subsampleAndReduce, so `x0`/`y0` are the component's
+    /// origin and `width()`/`height()` its sample counts.
+    pub comp_dims: Vec<Dims>,
     /// Tiles in raster order (index = ty * tiles_across + tx).
     pub tiles: Vec<TilePlan>,
     pub cod: CodParams,
     pub siz: SizParams,
     /// Resolutions skipped from the top (0 = full resolution).
     pub reduce: u8,
-    /// Decode window in canvas coordinates (unreduced, clipped to the image);
-    /// None decodes the whole image.
-    pub window: Option<Dims>,
     /// Irreversible 9/7 runs on int16 Q13 fixed-point samples instead of f32
     /// (see dwt::fixed97). Band deltas are then one-level gains, not the
     /// accumulated normalization.
@@ -188,7 +194,8 @@ pub struct DecodePlan {
 /// accumulated rounding shows against the T.803 tolerances.
 /// MERCURY_FORCE_F32 keeps the float path for A/B comparison.
 pub fn q13_97(cod: &CodParams, siz: &SizParams) -> bool {
-    !cod.reversible
+    // every component's kernel is the same; draft rejects mixed ones
+    !cod.comps[0].reversible
         && siz.components.iter().all(|c| c.precision <= 8)
         && std::env::var_os("MERCURY_FORCE_F32").is_none()
 }
@@ -449,33 +456,60 @@ pub fn draft(
         use crate::codec::params::CodingModes;
         let supported =
             CodingModes::RESET | CodingModes::CAUSAL | CodingModes::ERTERM | CodingModes::SEGMARK;
-        let m = hdr.cod.modes.0;
-        if m & !supported != 0 {
-            return Err(DecodeError::Logic(format!(
-                "plan: unsupported code-block modes (Cmodes {m:#x})"
-            )));
+        for style in &hdr.cod.comps {
+            let m = style.modes.0;
+            if m & !supported != 0 {
+                return Err(DecodeError::Logic(format!(
+                    "plan: unsupported code-block modes (Cmodes {m:#x})"
+                )));
+            }
         }
     }
 
+    if hdr.cod.comps.len() != hdr.siz.comp_count() {
+        return Err(DecodeError::Logic(format!(
+            "plan: {} coding styles for {} components",
+            hdr.cod.comps.len(),
+            hdr.siz.comp_count()
+        )));
+    }
+    // The sample path (5/3 integer or 9/7 float) is chosen once for the whole
+    // image, so components cannot disagree on the kernel.
+    if hdr
+        .cod
+        .comps
+        .iter()
+        .any(|s| s.reversible != hdr.cod.comps[0].reversible)
+    {
+        return Err(DecodeError::Logic(
+            "plan: mixed wavelet kernels across components".into(),
+        ));
+    }
+
+    // Every component reduces by the same `reduce`, so the one with the fewest
+    // levels is the binding limit.
+    let fewest_levels = hdr
+        .cod
+        .comps
+        .iter()
+        .map(|s| s.num_levels)
+        .min()
+        .unwrap_or(0);
     // A zero-level image is just its LL band; the graph builder wires leaf
     // slices per decomposition level, so it cannot represent levels == 0.
-    if hdr.cod.num_levels == 0 {
+    if fewest_levels == 0 {
         return Err(DecodeError::Logic("plan: no decomposition levels".into()));
     }
     // A reduced decode runs a truncated chain, which still needs one level, so
     // the target resolution can never be 0 either.
-    if reduce >= hdr.cod.num_levels {
+    if reduce >= fewest_levels {
         return Err(DecodeError::Logic(format!(
-            "plan: reduce {reduce} leaves no decomposition level ({} available)",
-            hdr.cod.num_levels
+            "plan: reduce {reduce} leaves no decomposition level ({fewest_levels} available)"
         )));
     }
 
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
-    let n_res = (hdr.cod.num_levels + 1) as usize;
-    let d = hdr.cod.num_levels as u32;
-    let target_res = n_res - 1 - reduce as usize;
 
     // Per-component quantization: QCD unless a QCC override exists.
     let quant: Vec<QcdParams> = (0..num_comps)
@@ -606,8 +640,15 @@ pub fn draft(
             let wins = geom
                 .components
                 .iter()
-                .map(|tc| {
-                    let clipped = intersect(w, tc.resolutions[n_res - 1].dims);
+                .enumerate()
+                .map(|(c, tc)| {
+                    let style = &hdr.cod.comps[c];
+                    let comp = &hdr.siz.components[c];
+                    // the window arrives in canvas coordinates; every rect below
+                    // this line lives on the component's own plane
+                    let on_comp = comp_window(w, comp.xr_siz as u32, comp.yr_siz as u32);
+                    let clipped =
+                        intersect(on_comp, tc.resolutions[style.num_levels as usize].dims);
                     let resolutions: Vec<(Dims, Vec<(u8, Dims)>)> = tc
                         .resolutions
                         .iter()
@@ -624,8 +665,8 @@ pub fn draft(
                     chart_tile_comp_window(
                         clipped,
                         &resolutions,
-                        hdr.cod.num_levels,
-                        hdr.cod.reversible,
+                        style.num_levels,
+                        style.reversible,
                     )
                 })
                 .collect();
@@ -640,9 +681,7 @@ pub fn draft(
             &hdr.siz,
             &geom,
             TileStream::warp(std::mem::take(&mut tile_segs[t])),
-            n_res,
-            d,
-            target_res,
+            reduce,
             max_layers,
             plt.as_deref(),
             tile_wins.as_deref(),
@@ -663,14 +702,28 @@ pub fn draft(
         x1: hdr.siz.x_siz,
         y1: hdr.siz.y_siz,
     });
+    let comp_dims = hdr
+        .siz
+        .components
+        .iter()
+        .map(|c| {
+            let on_comp = comp_window(out, c.xr_siz as u32, c.yr_siz as u32);
+            Dims {
+                x0: ceildivpow2(on_comp.x0, reduce),
+                y0: ceildivpow2(on_comp.y0, reduce),
+                x1: ceildivpow2(on_comp.x1, reduce),
+                y1: ceildivpow2(on_comp.y1, reduce),
+            }
+        })
+        .collect();
     Ok(DecodePlan {
         width: ceildivpow2(out.x1, reduce) - ceildivpow2(out.x0, reduce),
         height: ceildivpow2(out.y1, reduce) - ceildivpow2(out.y0, reduce),
+        comp_dims,
         tiles,
         cod: hdr.cod.clone(),
         siz: hdr.siz.clone(),
         reduce,
-        window,
         q13: q13_97(&hdr.cod, &hdr.siz),
     })
 }
@@ -697,8 +750,10 @@ fn comb_tile_part(
         }
         match code {
             // COD/COC/QCD/QCC tile overrides would silently change
-            // decode parameters; PPT means packed headers elsewhere.
-            0xFF52 | 0xFF53 | 0xFF5C | 0xFF5D | 0xFF61 => {
+            // decode parameters; PPT means packed headers elsewhere, a POC
+            // reorders the tile's packets away from the COD progression, and
+            // an RGN upshifts the tile's coefficients.
+            0xFF52 | 0xFF53 | 0xFF5C | 0xFF5D | 0xFF5E | 0xFF5F | 0xFF61 => {
                 return Err(DecodeError::Logic(format!(
                     "plan: tile-part marker {code:#x} not supported"
                 )));
@@ -753,11 +808,7 @@ fn plt_packet_lengths(mut markers: Vec<(u8, Vec<u8>)>) -> Option<Vec<u32>> {
             }
         }
     }
-    if continued {
-        None
-    } else {
-        Some(lengths)
-    }
+    if continued { None } else { Some(lengths) }
 }
 
 /// Parse all of one tile's packets and build its band plans.
@@ -770,46 +821,30 @@ fn comb_tile(
     siz: &SizParams,
     geom: &TileGeom,
     stream: TileStream,
-    n_res: usize,
-    d: u32,
-    target_res: usize,
+    reduce: u8,
     max_layers: u16,
     plt: Option<&[u32]>,
     wins: Option<&[TileCompWindow]>,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
     let pkt_debug = std::env::var_os("MERCURY_PKT_DEBUG").is_some();
     let num_comps = geom.components.len();
-    let block_w = cod.block_width;
-    let block_h = cod.block_height;
-
-    // Precincts smaller than the code-block would clamp the effective
-    // block size (B.7: xcb' = min(xcb, PPx)); that clamp isn't wired, so
-    // reject rather than mis-decode (dyadic precinct chains hit this).
-    for r in 0..n_res {
-        let ps = cod.precinct_span(r as u8);
-        let scale = if r == 0 { 1 } else { 2 };
-        if ps.width / scale < block_w || ps.height / scale < block_h {
-            return Err(DecodeError::Logic(format!(
-                "plan: res {r} precinct {}x{} smaller than code-block {block_w}x{block_h} \
-                 (effective block clamping not wired)",
-                ps.width, ps.height
-            )));
-        }
-    }
+    // Resolution counts and the reduce target are per component (COC).
+    let n_res = |c: usize| cod.comps[c].num_levels as usize + 1;
+    let target_res = |c: usize| cod.comps[c].num_levels as usize - reduce as usize;
 
     // --- precinct grids per (comp, res) ---
     // grid[c][r] = (px0, py0, npx, npy); raster index = (py-py0)*npx + (px-px0).
     let mut grids: Vec<Vec<(u32, u32, u32, u32)>> = Vec::with_capacity(num_comps);
     for c in 0..num_comps {
         let tc = &geom.components[c];
-        let mut g = Vec::with_capacity(n_res);
-        for r in 0..n_res {
+        let mut g = Vec::with_capacity(n_res(c));
+        for r in 0..n_res(c) {
             let res = &tc.resolutions[r];
             if res.dims.is_empty() {
                 g.push((0, 0, 0, 0));
                 continue;
             }
-            let ps = cod.precinct_span(r as u8);
+            let ps = cod.comps[c].precinct_span(r as u8);
             let px0 = res.dims.x0 / ps.width;
             let py0 = res.dims.y0 / ps.height;
             let px1 = (res.dims.x1 - 1) / ps.width;
@@ -840,41 +875,44 @@ fn comb_tile(
         )));
     }
 
-    // --- packet schedule in progression order ---
+    // --- per-precinct facts every progression volume reuses ---
     // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
     // projected onto the reference grid, see prec_position.
-    // The same walk collects the block rectangle each band stores: the writer
+    // This walk also collects the block rectangle each band stores: the writer
     // below fills every band of a precinct that passes the any-band window
     // predicate, so a band's rectangle unions its own range over all those
     // precincts, not just the ones whose slice of it is in the window.
     let mut band_rects: Vec<Vec<Vec<Option<BlockRect>>>> = (0..num_comps)
         .map(|c| {
-            (0..n_res)
+            (0..n_res(c))
                 .map(|r| vec![None; geom.components[c].resolutions[r].subbands.len()])
                 .collect()
         })
         .collect();
-    let mut pkts: Vec<([u64; 5], Pkt)> = Vec::new();
-    let order = cod.order;
+    // (ypos, xpos, in_win) per precinct, in raster index order.
+    let mut prec_info: Vec<Vec<Vec<(u64, u64, bool)>>> = (0..num_comps)
+        .map(|c| (0..n_res(c)).map(|_| Vec::new()).collect())
+        .collect();
     for c in 0..num_comps {
         let dx = siz.components[c].xr_siz as u64;
         let dy = siz.components[c].yr_siz as u64;
         let tc = &geom.components[c];
-        for r in 0..n_res {
+        let style = &cod.comps[c];
+        for r in 0..n_res(c) {
             let (px0, py0, npx, npy) = grids[c][r];
             if npx == 0 {
                 continue;
             }
             let res = &tc.resolutions[r];
-            let ps = cod.precinct_span(r as u8);
-            let scale = 1u64 << (d - r as u32);
+            let ps = style.precinct_span(r as u8);
+            let (block_w, block_h) = style.block_span(r as u8);
+            let scale = 1u64 << (style.num_levels as u32 - r as u32);
             for py in py0..py0 + npy {
                 for px in px0..px0 + npx {
                     let ypos =
                         prec_position(py, py0, ps.height, res.dims.y0, geom.tile_y0, scale * dy);
                     let xpos =
                         prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
-                    let prec = (py - py0) * npx + (px - px0);
                     let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
                     // every code-block spends at least one header bit, so a
                     // precinct needing more than eight header bits per byte the
@@ -898,22 +936,55 @@ fn comb_tile(
                             unite_block_rect(&mut band_rects[c][r][band_idx], pb);
                         }
                     }
-                    for l in 0..cod.num_layers {
-                        let (cu, ru, lu) = (c as u64, r as u64, l as u64);
-                        let key = match order {
-                            ProgressionOrder::Lrcp => [lu, ru, cu, py as u64, px as u64],
-                            ProgressionOrder::Rlcp => [ru, lu, cu, py as u64, px as u64],
-                            ProgressionOrder::Rpcl => [ru, ypos, xpos, cu, lu],
-                            ProgressionOrder::Pcrl => [ypos, xpos, cu, ru, lu],
-                            ProgressionOrder::Cprl => [cu, ypos, xpos, ru, lu],
-                        };
-                        pkts.push((
+                    prec_info[c][r].push((ypos, xpos, in_win));
+                }
+            }
+        }
+    }
+
+    // --- packet schedule, one progression volume at a time ---
+    let volumes = chart_volumes(cod, num_comps, (0..num_comps).map(n_res).max().unwrap_or(0))?;
+    // Volumes overlap, so a packet an earlier one already emitted is skipped
+    // (T.800 A.6.6); with a single volume nothing can repeat.
+    let mut emitted: Vec<Vec<Vec<bool>>> = if volumes.len() > 1 {
+        (0..num_comps)
+            .map(|c| {
+                (0..n_res(c))
+                    .map(|r| {
+                        let (_, _, npx, npy) = grids[c][r];
+                        vec![false; (npx * npy) as usize * cod.num_layers as usize]
+                    })
+                    .collect()
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let mut pkts: Vec<Pkt> = Vec::new();
+    let mut vol_pkts: Vec<([u64; 5], Pkt)> = Vec::new();
+    for vol in &volumes {
+        vol_pkts.clear();
+        for c in vol.comp_s as usize..vol.comp_e as usize {
+            for r in vol.res_s as usize..(vol.res_e as usize).min(n_res(c)) {
+                let (px0, py0, npx, _) = grids[c][r];
+                if npx == 0 {
+                    continue;
+                }
+                for (prec, &(ypos, xpos, in_win)) in prec_info[c][r].iter().enumerate() {
+                    let py = py0 + prec as u32 / npx;
+                    let px = px0 + prec as u32 % npx;
+                    for l in 0..vol.lay_e {
+                        let key = progression_key(
+                            vol.order, c as u64, r as u64, l as u64, py as u64, px as u64, ypos,
+                            xpos,
+                        );
+                        vol_pkts.push((
                             key,
                             Pkt {
                                 comp: c as u16,
                                 res: r as u8,
                                 layer: l,
-                                prec,
+                                prec: prec as u32,
                                 in_win,
                             },
                         ));
@@ -921,17 +992,29 @@ fn comb_tile(
                 }
             }
         }
+        vol_pkts.sort_by_key(|p| p.0);
+        for (_, pkt) in vol_pkts.drain(..) {
+            if !emitted.is_empty() {
+                let slot = &mut emitted[pkt.comp as usize][pkt.res as usize]
+                    [pkt.prec as usize * cod.num_layers as usize + pkt.layer as usize];
+                if *slot {
+                    continue;
+                }
+                *slot = true;
+            }
+            pkts.push(pkt);
+        }
     }
-    pkts.sort_by(|a, b| a.0.cmp(&b.0));
 
     // --- band plans, sized to the block rectangle the walk will fill ---
     let mut comps: Vec<Vec<ResPlan>> = Vec::with_capacity(num_comps);
     for c in 0..num_comps {
         let tc = &geom.components[c];
         let q = &quant[c];
-        let mut res_plans: Vec<ResPlan> = Vec::with_capacity(n_res);
-        for r in 0..n_res {
+        let mut res_plans: Vec<ResPlan> = Vec::with_capacity(n_res(c));
+        for r in 0..n_res(c) {
             let res = &tc.resolutions[r];
+            let (block_w, block_h) = cod.comps[c].block_span(r as u8);
             let bands = res
                 .subbands
                 .iter()
@@ -941,7 +1024,7 @@ fn comb_tile(
                     let epsilon_b = band_ranging(q, qcd_idx)?;
                     // reduced-away resolutions are still parsed (packet lengths
                     // only come from the headers) but never decoded
-                    let rect = if r > target_res {
+                    let rect = if r > target_res(c) {
                         BlockRect::EMPTY
                     } else if wins.is_some() {
                         band_rects[c][r][i].unwrap_or(BlockRect::EMPTY)
@@ -961,6 +1044,8 @@ fn comb_tile(
                         y0: sb.dims.y0,
                         width: sb.dims.width(),
                         height: sb.dims.height(),
+                        block_w,
+                        block_h,
                         k_max_prime: q.guard_bits as i32 + epsilon_b - 1,
                         delta: 0.0,
                         stored_block_x0: rect.x0,
@@ -981,7 +1066,7 @@ fn comb_tile(
     // 1.0; each level's bands divide by the kernel's low/high analysis scales
     // per direction, and the LL range feeds the next level down. The leaf
     // decoder's delta is the raw QCD step times that accumulated range.
-    if !cod.reversible {
+    if !cod.comps[0].reversible {
         let (low, high) = crate::dwt::level_builder::w9x7_gains();
         let q13 = q13_97(cod, siz);
         for c in 0..num_comps {
@@ -996,7 +1081,7 @@ fn comb_tile(
             // Normalization accumulates from the top of the chain that will
             // actually run, so under reduce it restarts at the target.
             let mut norm = 1.0f32;
-            for l in (0..target_res).rev() {
+            for l in (0..target_res(c)).rev() {
                 // Q13: one-level gains only; the graph rescales LL rows by
                 // K per non-unit direction as each level consumes them.
                 if q13 {
@@ -1035,7 +1120,7 @@ fn comb_tile(
     // Persistent precinct state, keyed [comp][res][precinct raster index].
     let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = (0..num_comps)
         .map(|c| {
-            (0..n_res)
+            (0..n_res(c))
                 .map(|r| {
                     let (_, _, npx, npy) = grids[c][r];
                     (0..npx * npy).map(|_| None).collect()
@@ -1047,19 +1132,19 @@ fn comb_tile(
     // A packet contributes when its resolution survives reduce, its layer
     // survives the limit, and its precinct touches the decode window.
     let contributes = |pkt: &Pkt| {
-        (pkt.res as usize) <= target_res
+        (pkt.res as usize) <= target_res(pkt.comp as usize)
             && !(max_layers != 0 && pkt.layer >= max_layers)
             && pkt.in_win
     };
     // Nothing after the last contributing packet is ever needed, so the walk
     // ends there: no header parse, no PLT hop, no read. This is the uniform
     // form of classic's per-progression window bail-outs.
-    let last_needed = pkts.iter().rposition(|(_, p)| contributes(p));
+    let last_needed = pkts.iter().rposition(|p| contributes(p));
     let walk = last_needed.map_or(&pkts[..0], |i| &pkts[..=i]);
 
     let mut vpos: u64 = 0;
     let mut plt_idx: usize = 0;
-    for (_, pkt) in walk {
+    for pkt in walk {
         let (c, r) = (pkt.comp as usize, pkt.res as usize);
         // A PLT length covers the whole packet, SOP and header included
         // (A.7.1), so a packet that contributes no block records hops by
@@ -1080,7 +1165,8 @@ fn comb_tile(
         let tc = &geom.components[c];
         let res = &tc.resolutions[r];
         let (px0, py0, npx, _) = grids[c][r];
-        let ps = cod.precinct_span(r as u8);
+        let ps = cod.comps[c].precinct_span(r as u8);
+        let (block_w, block_h) = cod.comps[c].block_span(r as u8);
         let px = px0 + pkt.prec % npx;
         let py = py0 + pkt.prec / npx;
 
@@ -1216,6 +1302,62 @@ fn comb_tile(
     Ok(comps)
 }
 
+/// The tile's progression volume list, clamped and rejected the way classic
+/// grok's `finalizePocs` does at the end of the main header. No POC is one
+/// volume covering every layer, resolution and component in the COD order.
+fn chart_volumes(
+    cod: &CodParams,
+    num_comps: usize,
+    max_res: usize,
+) -> Result<Vec<ProgressionVolume>, DecodeError> {
+    if cod.pocs.is_empty() {
+        return Ok(vec![ProgressionVolume {
+            res_s: 0,
+            comp_s: 0,
+            lay_e: cod.num_layers,
+            res_e: max_res as u8,
+            comp_e: num_comps as u16,
+            order: cod.order,
+        }]);
+    }
+    let mut volumes = Vec::with_capacity(cod.pocs.len());
+    for vol in &cod.pocs {
+        let mut vol = *vol;
+        vol.lay_e = vol.lay_e.min(cod.num_layers);
+        vol.res_e = vol.res_e.min(max_res as u8);
+        vol.comp_e = vol.comp_e.min(num_comps as u16);
+        if vol.res_s >= vol.res_e || vol.comp_s >= vol.comp_e || vol.lay_e == 0 {
+            return Err(DecodeError::Logic(format!(
+                "plan: empty POC volume, res {}..{} comp {}..{} layers {}",
+                vol.res_s, vol.res_e, vol.comp_s, vol.comp_e, vol.lay_e
+            )));
+        }
+        volumes.push(vol);
+    }
+    Ok(volumes)
+}
+
+/// Sort key of one packet under a progression order (T.800 B.12.1.1-5).
+#[allow(clippy::too_many_arguments)]
+fn progression_key(
+    order: ProgressionOrder,
+    comp: u64,
+    res: u64,
+    layer: u64,
+    py: u64,
+    px: u64,
+    ypos: u64,
+    xpos: u64,
+) -> [u64; 5] {
+    match order {
+        ProgressionOrder::Lrcp => [layer, res, comp, py, px],
+        ProgressionOrder::Rlcp => [res, layer, comp, py, px],
+        ProgressionOrder::Rpcl => [res, ypos, xpos, comp, layer],
+        ProgressionOrder::Pcrl => [ypos, xpos, comp, res, layer],
+        ProgressionOrder::Cprl => [comp, ypos, xpos, res, layer],
+    }
+}
+
 /// Reference-grid position of one precinct along an axis, the sort key of the
 /// position-ordered progressions. A first row or column the tile edge clips
 /// keys on the tile origin (T.800 B.12, the "y = ty0" case), which is what puts
@@ -1271,7 +1413,7 @@ fn io_snag(e: std::io::Error) -> DecodeError {
 mod tests {
     use super::*;
     use crate::codec::params::{
-        CodingModes, ProgressionOrder, QuantStyle, SizComponent, SizParams,
+        CodingModes, CompCodingStyle, ProgressionOrder, QuantStyle, SizComponent, SizParams,
     };
 
     const NUM_LEVELS: u8 = 5;
@@ -1295,19 +1437,26 @@ mod tests {
         }
     }
 
-    fn cod() -> CodParams {
-        CodParams {
-            order: ProgressionOrder::Lrcp,
-            num_layers: 1,
-            use_ycc: false,
+    fn comp_style() -> CompCodingStyle {
+        CompCodingStyle {
             num_levels: NUM_LEVELS,
             block_width: 64,
             block_height: 64,
             modes: CodingModes(0),
             reversible: true,
+            precincts: vec![],
+        }
+    }
+
+    fn cod() -> CodParams {
+        CodParams {
+            order: ProgressionOrder::Lrcp,
+            pocs: vec![],
+            num_layers: 1,
+            use_ycc: false,
             use_sop: false,
             use_eph: false,
-            precincts: vec![],
+            comps: vec![comp_style()],
         }
     }
 
@@ -1358,7 +1507,7 @@ mod tests {
     #[test]
     fn reduced_dims_span_the_target_resolution() {
         let (siz, cod) = (siz(), cod());
-        let n_res = cod.num_levels as usize + 1;
+        let n_res = cod.comps[0].num_levels as usize + 1;
         for reduce in 0..NUM_LEVELS {
             let target = n_res - 1 - reduce as usize;
             let mut x0 = u32::MAX;
@@ -1395,14 +1544,14 @@ mod tests {
     /// computed the way `comb_tile` does.
     fn first_positions(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> Vec<(u64, u64)> {
         let geom = crate::codec::tile_geom::chart_tile_geom(siz, cod, tile_idx);
-        let d = cod.num_levels as u32;
-        (0..=cod.num_levels as usize)
+        let d = cod.comps[0].num_levels as u32;
+        (0..=cod.comps[0].num_levels as usize)
             .filter_map(|r| {
                 let res = &geom.components[0].resolutions[r];
                 if res.dims.is_empty() {
                     return None;
                 }
-                let ps = cod.precinct_span(r as u8);
+                let ps = cod.comps[0].precinct_span(r as u8);
                 let scale = 1u64 << (d - r as u32);
                 let (px0, py0) = (res.dims.x0 / ps.width, res.dims.y0 / ps.height);
                 Some((
@@ -1449,7 +1598,7 @@ mod tests {
         siz.xt_siz = 1000;
         siz.yt_siz = 1000;
         let mut cod = cod();
-        cod.precincts = vec![
+        cod.comps[0].precincts = vec![
             crate::codec::params::PrecinctSize {
                 width: 64,
                 height: 64,
@@ -1602,7 +1751,7 @@ mod tests {
         siz.xt_siz = 8;
         siz.yt_siz = 8;
         let mut cod = cod();
-        cod.num_levels = 1;
+        cod.comps[0].num_levels = 1;
         cod.num_layers = LAYERS;
         MainHeaderIn {
             siz,
@@ -1627,6 +1776,16 @@ mod tests {
             .flat_map(|b| b.blocks())
             .map(|blk| blk.bolt_len())
             .sum()
+    }
+
+    fn block_offsets(plan: &DecodePlan) -> Vec<u64> {
+        plan.tiles
+            .iter()
+            .flat_map(|t| t.comps.iter().flatten())
+            .flat_map(|r| r.bands.iter())
+            .flat_map(|b| b.blocks())
+            .map(|blk| blk.file_off)
+            .collect()
     }
 
     fn passes(plan: &DecodePlan) -> Vec<u8> {
@@ -1785,6 +1944,134 @@ mod tests {
     /// Two tiles, the second one's packet bytes absent from the stream: a
     /// window over the first tile must never touch the second, so the plan
     /// builds where a whole-image parse cannot.
+    /// A 12x12 two-component stream whose second component is subsampled 2x2,
+    /// one decomposition level, one layer, LRCP: one packet per (resolution,
+    /// component), one code-block per band.
+    fn subsampled_header() -> MainHeaderIn {
+        let mut siz = siz();
+        siz.x_siz = 12;
+        siz.y_siz = 12;
+        siz.x_o_siz = 0;
+        siz.y_o_siz = 0;
+        siz.xt_siz = 12;
+        siz.yt_siz = 12;
+        siz.components = vec![
+            SizComponent {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 1,
+                yr_siz: 1,
+            },
+            SizComponent {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 2,
+                yr_siz: 2,
+            },
+        ];
+        let mut style = comp_style();
+        style.num_levels = 1;
+        let mut cod = cod();
+        cod.num_layers = 1;
+        cod.comps = vec![style; 2];
+        MainHeaderIn {
+            siz,
+            cod,
+            qcd: QcdParams {
+                guard_bits: 2,
+                style: QuantStyle::Reversible,
+                ranges: vec![8; 4],
+                steps: vec![],
+            },
+            qcc: vec![],
+            first_sot_off: 0,
+            tlm: vec![],
+        }
+    }
+
+    fn subsampled_stream() -> Vec<u8> {
+        let packets = vec![
+            synth_packet(true, 1),
+            synth_packet(true, 1),
+            synth_packet(true, 3),
+            synth_packet(true, 3),
+        ];
+        assemble_stream(&packets, &[])
+    }
+
+    #[test]
+    fn a_subsampled_component_gets_its_own_output_dims() {
+        let stream = subsampled_stream();
+        let hdr = subsampled_header();
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(plan.comp_dims[0], d(0, 0, 12, 12));
+        assert_eq!(plan.comp_dims[1], d(0, 0, 6, 6));
+        assert_eq!((plan.width, plan.height), (12, 12));
+
+        // an odd window origin rounds up onto the subsampled component
+        let windowed =
+            draft(&stream, &hdr, 0, 0, true, Some(d(3, 5, 12, 12))).expect("plan must build");
+        assert_eq!(windowed.comp_dims[0], d(3, 5, 12, 12));
+        assert_eq!(windowed.comp_dims[1], d(2, 3, 6, 6));
+    }
+
+    /// Every block decodes to zero coefficients: this test is about row
+    /// counts and widths, which the synthesis produces from geometry alone.
+    unsafe fn zero_coder(
+        blk: &crate::decode::stripe_decoder::MercuryStripeBlockInfo,
+    ) -> Option<Vec<i32>> {
+        let stripes = (blk.num_rows + 3) >> 2;
+        Some(vec![0i32; ((stripes << 2) * blk.num_cols) as usize])
+    }
+
+    #[test]
+    fn a_subsampled_decode_emits_each_component_at_its_own_size() {
+        use crate::decode::graph::{CompRow, CompRowSink, weave_comps_with_coder};
+        use std::sync::{Arc, Mutex};
+
+        let stream = subsampled_stream();
+        let hdr = subsampled_header();
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let expected: Vec<(u32, u32)> = plan
+            .comp_dims
+            .iter()
+            .map(|dims| (dims.width(), dims.height()))
+            .collect();
+
+        let seen: Arc<Mutex<Vec<Vec<usize>>>> = Arc::new(Mutex::new(vec![Vec::new(), Vec::new()]));
+        let sink_seen = Arc::clone(&seen);
+        let sink: CompRowSink = Box::new(move |c, row, samples| {
+            let width = match samples {
+                CompRow::I16(s) | CompRow::Q13(s) => s.len(),
+                CompRow::I32(s) => s.len(),
+                CompRow::F32(s) => s.len(),
+            };
+            let mut got = sink_seen.lock().unwrap();
+            assert_eq!(
+                got[c].len() as u32,
+                row,
+                "component {c} rows arrive in order"
+            );
+            got[c].push(width);
+        });
+        let emitted = weave_comps_with_coder(Arc::new(stream.clone()), plan, 2, sink, zero_coder)
+            .expect("decode must run");
+
+        assert_eq!(
+            emitted,
+            expected.iter().map(|&(_, h)| h as u64).collect::<Vec<_>>()
+        );
+        let got = seen.lock().unwrap();
+        for (c, &(width, height)) in expected.iter().enumerate() {
+            assert_eq!(got[c].len() as u32, height, "component {c} row count");
+            assert!(
+                got[c].iter().all(|&w| w as u32 == width),
+                "component {c} row widths: {:?}",
+                got[c]
+            );
+        }
+    }
+
     #[test]
     fn window_skips_tiles_it_misses() {
         let mut hdr = synth_header();
@@ -1875,9 +2162,9 @@ mod tests {
         hdr.siz.yt_siz = 64;
         hdr.cod.order = ProgressionOrder::Rlcp;
         hdr.cod.num_layers = 1;
-        hdr.cod.block_width = 4;
-        hdr.cod.block_height = 4;
-        hdr.cod.precincts = vec![
+        hdr.cod.comps[0].block_width = 4;
+        hdr.cod.comps[0].block_height = 4;
+        hdr.cod.comps[0].precincts = vec![
             crate::codec::params::PrecinctSize {
                 width: 4,
                 height: 4,
@@ -1895,6 +2182,290 @@ mod tests {
             packets.push(synth_packet(true, 3));
         }
         (hdr, packets)
+    }
+
+    /// A precinct smaller than the nominal code-block clamps the effective
+    /// block (B.7); the 4x4 bands of the synthetic stream still hold one block
+    /// each, so the clamped plan parses the same packets as the nominal one.
+    #[test]
+    fn a_precinct_smaller_than_the_block_is_planned() {
+        let stream = synth_stream();
+        let mut hdr = synth_header();
+        hdr.cod.comps[0].precincts = vec![
+            crate::codec::params::PrecinctSize {
+                width: 4,
+                height: 4,
+            },
+            crate::codec::params::PrecinctSize {
+                width: 8,
+                height: 8,
+            },
+        ];
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("clamped blocks must plan");
+        let baseline =
+            draft(&stream, &synth_header(), 0, 0, true, None).expect("baseline must build");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        let spans: Vec<(u32, u32)> = plan.tiles[0].comps[0]
+            .iter()
+            .flat_map(|r| r.bands.iter())
+            .map(|b| (b.block_w, b.block_h))
+            .collect();
+        assert_eq!(spans, vec![(4, 4); 4]);
+    }
+
+    /// Two components whose COC gives them different level counts and block
+    /// sizes: component 1 carries one more decomposition level and 4x4 blocks.
+    /// In LRCP the extra resolution contributes its packets after both
+    /// components' shared ones, and each component's band plans follow its own
+    /// coding style.
+    #[test]
+    fn a_component_with_its_own_levels_and_blocks_is_planned() {
+        let mut hdr = synth_header();
+        hdr.siz.components.push(SizComponent {
+            precision: 8,
+            is_signed: false,
+            xr_siz: 1,
+            yr_siz: 1,
+        });
+        let mut second = hdr.cod.comps[0].clone();
+        second.num_levels = 2;
+        second.block_width = 4;
+        second.block_height = 4;
+        hdr.cod.comps.push(second);
+        hdr.qcd.ranges = vec![8; 7];
+
+        // LRCP: layer, then resolution, then component. Component 0 stops at
+        // resolution 1, so resolution 2 is component 1 alone.
+        let mut packets = Vec::new();
+        for layer in 0..LAYERS {
+            let first = layer == 0;
+            packets.push(synth_packet(first, 1)); // res 0, comp 0: LL
+            packets.push(synth_packet(first, 1)); // res 0, comp 1: LL
+            packets.push(synth_packet(first, 3)); // res 1, comp 0
+            packets.push(synth_packet(first, 3)); // res 1, comp 1
+            packets.push(synth_packet(first, 3)); // res 2, comp 1
+        }
+        let stream = assemble_stream(&packets, &[]);
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+
+        const BLOCKS: usize = 11; // comp 0: 1 + 3, comp 1: 1 + 3 + 3
+        assert_eq!(
+            coded_bytes(&plan),
+            BLOCKS * LAYERS as usize * BODY_LEN as usize
+        );
+        assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS]);
+
+        let comps = &plan.tiles[0].comps;
+        assert_eq!(comps[0].len(), 2);
+        assert_eq!(comps[1].len(), 3);
+        let spans = |c: usize| -> Vec<(u32, u32)> {
+            comps[c]
+                .iter()
+                .flat_map(|r| r.bands.iter())
+                .map(|b| (b.block_w, b.block_h))
+                .collect()
+        };
+        assert_eq!(spans(0), vec![(64, 64); 4]);
+        assert_eq!(spans(1), vec![(4, 4); 7]);
+    }
+
+    /// The sample path is chosen once for the image, so a 5/3 component beside
+    /// a 9/7 one has to be rejected before the graph is built.
+    #[test]
+    fn mixed_wavelet_kernels_are_rejected() {
+        let mut hdr = synth_header();
+        hdr.siz.components.push(SizComponent {
+            precision: 8,
+            is_signed: false,
+            xr_siz: 1,
+            yr_siz: 1,
+        });
+        let mut second = hdr.cod.comps[0].clone();
+        second.reversible = false;
+        hdr.cod.comps.push(second);
+        let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None) else {
+            panic!("mixed kernels must be rejected");
+        };
+        assert!(msg.contains("mixed wavelet kernels"), "got {msg}");
+    }
+
+    /// A tile-part POC reorders that tile's packets, which the single
+    /// progression the plan takes from the COD cannot follow.
+    #[test]
+    fn a_tile_part_poc_is_rejected() {
+        let stream = synth_stream();
+        const POC: [u8; 11] = [0xFF, 0x5F, 0x00, 0x09, 0, 0, 0, 1, 1, 1, 0];
+        let mut spliced = stream[..12].to_vec();
+        spliced.extend(POC);
+        spliced.extend(&stream[12..]);
+        let psot =
+            u32::from_be_bytes([spliced[6], spliced[7], spliced[8], spliced[9]]) + POC.len() as u32;
+        spliced[6..10].copy_from_slice(&psot.to_be_bytes());
+        let Err(DecodeError::Logic(msg)) = draft(&spliced, &synth_header(), 0, 0, true, None)
+        else {
+            panic!("a tile-part POC must be rejected");
+        };
+        assert!(msg.contains("0xff5f"), "got {msg}");
+    }
+
+    /// Two components, two resolutions, three layers, one precinct each: a POC
+    /// whose first volume (resolution 0, layers 0..2, RLCP) is wholly inside
+    /// its second (everything, CPRL). The stream is laid out in the order the
+    /// two volumes produce, so a schedule that repeats the four shared packets
+    /// or orders them differently reads the wrong bytes into the wrong block.
+    #[test]
+    fn two_overlapping_poc_volumes_schedule_each_packet_once() {
+        let mut hdr = synth_header();
+        hdr.siz.components.push(SizComponent {
+            precision: 8,
+            is_signed: false,
+            xr_siz: 1,
+            yr_siz: 1,
+        });
+        hdr.cod.comps.push(hdr.cod.comps[0].clone());
+        hdr.cod.pocs = vec![
+            ProgressionVolume {
+                res_s: 0,
+                comp_s: 0,
+                lay_e: 2,
+                res_e: 1,
+                comp_e: 2,
+                order: ProgressionOrder::Rlcp,
+            },
+            ProgressionVolume {
+                res_s: 0,
+                comp_s: 0,
+                lay_e: LAYERS,
+                res_e: 2,
+                comp_e: 2,
+                order: ProgressionOrder::Cprl,
+            },
+        ];
+
+        // volume 0 (RLCP) then volume 1 (CPRL) minus what volume 0 emitted
+        let packets = vec![
+            synth_packet(true, 1),  // 0: comp 0, res 0, layer 0
+            synth_packet(true, 1),  // 1: comp 1, res 0, layer 0
+            synth_packet(false, 1), // 2: comp 0, res 0, layer 1
+            synth_packet(false, 1), // 3: comp 1, res 0, layer 1
+            synth_packet(false, 1), // 4: comp 0, res 0, layer 2
+            synth_packet(true, 3),  // 5: comp 0, res 1, layer 0
+            synth_packet(false, 3), // 6: comp 0, res 1, layer 1
+            synth_packet(false, 3), // 7: comp 0, res 1, layer 2
+            synth_packet(false, 1), // 8: comp 1, res 0, layer 2
+            synth_packet(true, 3),  // 9: comp 1, res 1, layer 0
+            synth_packet(false, 3), // 10: comp 1, res 1, layer 1
+            synth_packet(false, 3), // 11: comp 1, res 1, layer 2
+        ];
+        let stream = assemble_stream(&packets, &[]);
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("POC plan must build");
+
+        const BLOCKS: usize = 8; // two components of LL + HL + LH + HH
+        assert_eq!(
+            coded_bytes(&plan),
+            BLOCKS * LAYERS as usize * BODY_LEN as usize
+        );
+        assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS]);
+
+        // SOT (12) + SOD (2) precede the first packet
+        let starts: Vec<u64> = packets
+            .iter()
+            .scan(14u64, |off, p| {
+                let start = *off;
+                *off += p.len() as u64;
+                Some(start)
+            })
+            .collect();
+        let body = |packet: usize, header_len: u64| starts[packet] + header_len;
+        let (res0_header, res1_header) = (1u64, 3u64);
+        let step = BODY_LEN as u64;
+        assert_eq!(
+            block_offsets(&plan),
+            vec![
+                body(0, res0_header),
+                body(5, res1_header),
+                body(5, res1_header) + step,
+                body(5, res1_header) + 2 * step,
+                body(1, res0_header),
+                body(9, res1_header),
+                body(9, res1_header) + step,
+                body(9, res1_header) + 2 * step,
+            ]
+        );
+    }
+
+    /// A volume reaching past the stream's resolution, component and layer
+    /// counts is clamped to them, the way classic's finalizePocs does, so it
+    /// just replaces the COD order (the p0_03 / p0_15 shape).
+    #[test]
+    fn an_oversized_poc_volume_clamps_to_the_stream() {
+        let mut hdr = synth_header();
+        hdr.cod.order = ProgressionOrder::Pcrl;
+        hdr.cod.pocs = vec![ProgressionVolume {
+            res_s: 0,
+            comp_s: 0,
+            lay_e: 8,
+            res_e: 33,
+            comp_e: 255,
+            order: ProgressionOrder::Lrcp,
+        }];
+        let stream = synth_stream();
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("clamped POC must plan");
+        let mut lrcp = synth_header();
+        lrcp.cod.order = ProgressionOrder::Lrcp;
+        let baseline = draft(&stream, &lrcp, 0, 0, true, None).expect("baseline must build");
+        assert_eq!(block_offsets(&plan), block_offsets(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+    }
+
+    #[test]
+    fn a_poc_volume_covering_no_packet_is_rejected() {
+        let empty_volumes = [
+            ProgressionVolume {
+                res_s: 0,
+                comp_s: 0,
+                lay_e: 0,
+                res_e: 2,
+                comp_e: 1,
+                order: ProgressionOrder::Lrcp,
+            },
+            ProgressionVolume {
+                res_s: 0,
+                comp_s: 1,
+                lay_e: LAYERS,
+                res_e: 2,
+                comp_e: 1,
+                order: ProgressionOrder::Lrcp,
+            },
+        ];
+        for vol in empty_volumes {
+            let mut hdr = synth_header();
+            hdr.cod.pocs = vec![vol];
+            let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None)
+            else {
+                panic!("an empty POC volume must be rejected");
+            };
+            assert!(msg.contains("POC"), "got {msg}");
+        }
+    }
+
+    /// An RGN in a tile-part header raises that tile's magnitude bit planes,
+    /// which the host's main-header ROI check never sees.
+    #[test]
+    fn a_tile_part_rgn_is_rejected() {
+        let stream = synth_stream();
+        const RGN: [u8; 7] = [0xFF, 0x5E, 0x00, 0x05, 0, 0, 7];
+        let mut spliced = stream[..12].to_vec();
+        spliced.extend(RGN);
+        spliced.extend(&stream[12..]);
+        let psot =
+            u32::from_be_bytes([spliced[6], spliced[7], spliced[8], spliced[9]]) + RGN.len() as u32;
+        spliced[6..10].copy_from_slice(&psot.to_be_bytes());
+        let Err(DecodeError::Logic(msg)) = draft(&spliced, &synth_header(), 0, 0, true, None)
+        else {
+            panic!("a tile-part RGN must be rejected");
+        };
+        assert!(msg.contains("0xff5e"), "got {msg}");
     }
 
     #[test]

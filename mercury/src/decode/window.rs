@@ -97,6 +97,17 @@ pub fn intersects(a: &Dims, b: &Dims) -> bool {
     !a.is_empty() && !b.is_empty() && a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
 }
 
+/// Map a canvas rectangle onto one component's plane: each edge divided by
+/// the component's subsampling factor, rounding up (T.800 equation B-3).
+pub fn comp_window(rect: Dims, dx: u32, dy: u32) -> Dims {
+    Dims {
+        x0: rect.x0.div_ceil(dx),
+        y0: rect.y0.div_ceil(dy),
+        x1: rect.x1.div_ceil(dx),
+        y1: rect.y1.div_ceil(dy),
+    }
+}
+
 /// Padded decode windows of one tile component, on each plane the plan and
 /// graph consume.
 #[derive(Debug, Clone)]
@@ -195,6 +206,16 @@ mod tests {
         // 3 levels, res 0: window /8 then padded
         let w = padded_res_window(d(64, 64, 96, 96), res, 3, 0, true);
         assert_eq!((w.x0, w.y0, w.x1, w.y1), (4, 4, 16, 16));
+    }
+
+    #[test]
+    fn an_odd_window_origin_rounds_up_onto_a_subsampled_component() {
+        // grok's subsampleAndReduce divides each edge with ceildiv, so an odd
+        // x0 lands on the next component column, not the one below it
+        assert_eq!(comp_window(d(5, 7, 61, 69), 2, 2), d(3, 4, 31, 35));
+        assert_eq!(comp_window(d(5, 7, 61, 69), 4, 1), d(2, 7, 16, 69));
+        // a window narrower than one component sample collapses to nothing
+        assert_eq!(comp_window(d(5, 0, 6, 4), 4, 1), d(2, 0, 2, 4));
     }
 
     #[test]

@@ -15,10 +15,10 @@
  *
  */
 
-// A precinct smaller than the code-block clamps the effective block size
-// (B.7: xcb' = min(xcb, PPx), and band precincts halve above resolution 0).
-// The fast path must decode these streams and match the classic pipeline
-// sample for sample.
+// A main-header POC replaces the COD progression with a list of volumes, each
+// with its own order and its own layer, resolution and component ranges. The
+// fast path has to follow that list packet for packet, so these streams decode
+// through mercury and match the classic pipeline bit for bit.
 
 #include <cstdio>
 #include <cstdlib>
@@ -31,18 +31,20 @@
 
 namespace
 {
-// absence of this log line means the decode fell back to the classic pipeline
 const char* MERCURY_SUCCESS_MARKER = "mercury fast path: decoded";
-// presence of this log line means mercury was launched and rejected the plan
-// itself, i.e. grok's eligibility check missed the stream
-const char* MERCURY_PLAN_REJECTED_MARKER = "mercury fast path: plan rejected";
+const char* MERCURY_REJECT_MARKER = "mercury fast path: plan rejected";
 
 const uint32_t IMAGE_WIDTH = 61;
 const uint32_t IMAGE_HEIGHT = 69;
 const uint16_t NUM_COMPONENTS = 3;
 const uint8_t PRECISION = 8;
-const uint8_t NUM_RESOLUTIONS = 6;
-const uint8_t CSTY_PRECINCTS = 0x01;
+const uint8_t NUM_RESOLUTIONS = 4;
+const uint16_t NUM_LAYERS = 3;
+const uint32_t MAX_VOLUMES = 2;
+
+const uint8_t MARKER_HIGH_BYTE = 0xFF;
+const uint8_t MARKER_POC_LOW_BYTE = 0x5F;
+const uint8_t MARKER_SOT_LOW_BYTE = 0x90;
 
 std::mutex logMutex;
 std::string logText;
@@ -91,16 +93,22 @@ struct Decoded
   std::vector<Component> comps;
 };
 
+struct Volume
+{
+  uint8_t res_s;
+  uint16_t comp_s;
+  uint16_t lay_e;
+  uint8_t res_e;
+  uint16_t comp_e;
+  GRK_PROG_ORDER order;
+};
+
 struct Config
 {
   const char* name;
-  // one nominal precinct size per resolution, index 0 is the highest
-  // resolution (grk_cparameters order); the compressor writes them to the
-  // COD in resolution order
-  uint32_t precinctWidths[NUM_RESOLUTIONS];
-  uint32_t precinctHeights[NUM_RESOLUTIONS];
-  // true: fast path must decode, false: it must bail before launching mercury
-  bool expectFastPath;
+  GRK_PROG_ORDER codOrder;
+  uint32_t precinctSize; // 0 for the default one precinct per resolution
+  Volume volumes[MAX_VOLUMES];
 };
 
 int32_t sampleAt(const grk_image_comp& comp, uint64_t index)
@@ -139,6 +147,8 @@ bool capture(grk_image* image, Decoded& out)
   return true;
 }
 
+// structured enough that a mis-ordered packet parse shows up as a sample
+// difference rather than as flat noise
 grk_image* makeImage(void)
 {
   grk_image_comp params[NUM_COMPONENTS] = {};
@@ -183,14 +193,38 @@ bool compress(const Config& config, const std::string& path)
   grk_cparameters parameters = {};
   grk_compress_set_default_params(&parameters);
   parameters.cod_format = GRK_FMT_J2K;
+  parameters.prog_order = config.codOrder;
   parameters.irreversible = false;
   parameters.numresolution = NUM_RESOLUTIONS;
-  parameters.csty |= CSTY_PRECINCTS;
-  parameters.res_spec = NUM_RESOLUTIONS;
-  for(uint32_t r = 0; r < NUM_RESOLUTIONS; ++r)
+  parameters.numlayers = NUM_LAYERS;
+  // the last layer's rate 0 keeps the stream lossless overall
+  parameters.allocation_by_rate_distortion = true;
+  for(uint16_t i = 0; i + 1 < NUM_LAYERS; ++i)
+    parameters.layer_rate[i] = 20.0 - (double)i * 8.0;
+  parameters.layer_rate[NUM_LAYERS - 1] = 0.0;
+  if(config.precinctSize)
   {
-    parameters.prcw_init[r] = config.precinctWidths[r];
-    parameters.prch_init[r] = config.precinctHeights[r];
+    parameters.csty |= 0x01;
+    parameters.res_spec = NUM_RESOLUTIONS;
+    for(uint8_t r = 0; r < NUM_RESOLUTIONS; ++r)
+    {
+      parameters.prcw_init[r] = config.precinctSize;
+      parameters.prch_init[r] = config.precinctSize;
+    }
+  }
+  // numpocs is the volume count minus one
+  parameters.numpocs = MAX_VOLUMES - 1;
+  for(uint32_t i = 0; i < MAX_VOLUMES; ++i)
+  {
+    const auto& vol = config.volumes[i];
+    auto& prog = parameters.progression[i];
+    prog.res_s = vol.res_s;
+    prog.comp_s = vol.comp_s;
+    prog.lay_e = vol.lay_e;
+    prog.res_e = vol.res_e;
+    prog.comp_e = vol.comp_e;
+    prog.specified_compression_poc_prog = vol.order;
+    prog.tileno = 0;
   }
 
   grk_stream_params streamParams = {};
@@ -208,6 +242,63 @@ bool compress(const Config& config, const std::string& path)
     grk_object_unref(codec);
   }
   grk_object_unref(&image->obj);
+  return ok;
+}
+
+bool readFile(const std::string& path, std::vector<uint8_t>& out)
+{
+  FILE* file = fopen(path.c_str(), "rb");
+  if(!file)
+    return false;
+  uint8_t chunk[4096];
+  size_t read = 0;
+  while((read = fread(chunk, 1, sizeof(chunk), file)) > 0)
+    out.insert(out.end(), chunk, chunk + read);
+  fclose(file);
+  return !out.empty();
+}
+
+size_t findMarker(const std::vector<uint8_t>& bytes, size_t from, uint8_t low)
+{
+  for(size_t i = from; i + 1 < bytes.size(); ++i)
+    if(bytes[i] == MARKER_HIGH_BYTE && bytes[i + 1] == low)
+      return i;
+  return bytes.size();
+}
+
+// The compressor repeats the volume list in the first tile-part header, which
+// mercury rejects; the conformance streams carry it in the main header only, so
+// drop the copy. Also checks that the main header really got a POC.
+bool keepOnlyTheMainHeaderPoc(const Config& config, const std::string& path)
+{
+  std::vector<uint8_t> bytes;
+  if(!readFile(path, bytes))
+    return false;
+  size_t sot = findMarker(bytes, 0, MARKER_SOT_LOW_BYTE);
+  size_t mainPoc = findMarker(bytes, 0, MARKER_POC_LOW_BYTE);
+  if(sot == bytes.size() || mainPoc > sot)
+  {
+    fprintf(stderr, "%s: no POC marker in the main header\n", config.name);
+    return false;
+  }
+  size_t tilePoc = findMarker(bytes, sot, MARKER_POC_LOW_BYTE);
+  if(tilePoc == bytes.size())
+    return true;
+
+  size_t segment = 2 + ((size_t)bytes[tilePoc + 2] << 8 | bytes[tilePoc + 3]);
+  uint32_t psot = 0;
+  for(size_t i = 0; i < 4; ++i)
+    psot = psot << 8 | bytes[sot + 6 + i];
+  psot -= (uint32_t)segment;
+  for(size_t i = 0; i < 4; ++i)
+    bytes[sot + 6 + i] = (uint8_t)(psot >> (24 - 8 * i));
+  bytes.erase(bytes.begin() + (long)tilePoc, bytes.begin() + (long)(tilePoc + segment));
+
+  FILE* file = fopen(path.c_str(), "wb");
+  if(!file)
+    return false;
+  bool ok = fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size();
+  fclose(file);
   return ok;
 }
 
@@ -230,6 +321,9 @@ bool decode(const Config& config, const std::string& path, bool mercury, Decoded
   grk_header_info headerInfo = {};
   if(!grk_decompress_read_header(codec, &headerInfo))
     fprintf(stderr, "%s: grk_decompress_read_header failed\n", config.name);
+  else if(headerInfo.prog_order != config.codOrder || headerInfo.num_layers != NUM_LAYERS)
+    fprintf(stderr, "%s: the codestream does not carry the configuration: order %d layers %u\n",
+            config.name, (int)headerInfo.prog_order, headerInfo.num_layers);
   else if(!grk_decompress(codec, nullptr))
     fprintf(stderr, "%s: grk_decompress failed\n", config.name);
   else
@@ -279,27 +373,25 @@ bool sameImage(const Config& config, const Decoded& classic, const Decoded& merc
 
 bool runConfig(const Config& config)
 {
-  std::string path = std::string("mercury_precinct_clamp_") + config.name + ".j2k";
+  std::string path = std::string("mercury_poc_") + config.name + ".j2k";
   if(!compress(config, path))
     return false;
 
   bool ok = false;
   Decoded classic;
   Decoded mercury;
-  if(decode(config, path, false, classic) && decode(config, path, true, mercury))
+  if(keepOnlyTheMainHeaderPoc(config, path) && decode(config, path, false, classic) &&
+     decode(config, path, true, mercury))
   {
     std::string log = takeLog();
-    bool fastPath = log.find(MERCURY_SUCCESS_MARKER) != std::string::npos;
-    bool planRejected = log.find(MERCURY_PLAN_REJECTED_MARKER) != std::string::npos;
-    if(fastPath != config.expectFastPath)
-      fprintf(stderr, "%s: expected %s but the log says otherwise.\ncaptured log:\n%s\n",
-              config.name, config.expectFastPath ? "a fast-path decode" : "a classic fallback",
+    if(log.find(MERCURY_REJECT_MARKER) != std::string::npos)
+      fprintf(stderr, "%s: mercury rejected the plan.\ncaptured log:\n%s\n", config.name,
               log.c_str());
-    else if(planRejected)
+    else if(log.find(MERCURY_SUCCESS_MARKER) == std::string::npos)
       fprintf(stderr,
-              "%s: mercury was launched and rejected the plan itself; the eligibility "
-              "check should have bailed first.\ncaptured log:\n%s\n",
-              config.name, log.c_str());
+              "%s fell back to the classic pipeline: no \"%s\" in the log.\n"
+              "captured log:\n%s\n",
+              config.name, MERCURY_SUCCESS_MARKER, log.c_str());
     else
       ok = sameImage(config, classic, mercury);
   }
@@ -326,15 +418,36 @@ int main(void)
 
   grk_initialize(nullptr, 0, nullptr);
 
-  // code-block is the default 64x64 (exponent 6). 128x128 precincts give the
-  // non-LL bands 64x64, exactly the code-block, the no-clamp boundary. 32x32
-  // clamps everywhere, the mixed config clamps only at one mid resolution, and
-  // the last one clamps width while height stays at the nominal block.
+  // the compressor requires the volume list to cover every packet, so the last
+  // volume of each config spans the whole image
   const Config configs[] = {
-      {"boundary_128", {128, 128, 128, 128, 128, 128}, {128, 128, 128, 128, 128, 128}, true},
-      {"clamped_32", {32, 32, 32, 32, 32, 32}, {32, 32, 32, 32, 32, 32}, true},
-      {"clamped_one_res", {128, 128, 128, 32, 128, 128}, {128, 128, 128, 32, 128, 128}, true},
-      {"clamped_width_only", {32, 32, 32, 32, 32, 32}, {128, 128, 128, 128, 128, 128}, true},
+      // two orders, and the low resolutions the second volume must skip
+      {"two_volumes",
+       GRK_LRCP,
+       0,
+       {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RLCP},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}}},
+      // the first volume already covers everything, so the second contributes
+      // no packet at all and the POC just replaces the COD order
+      {"order_replaces_cod",
+       GRK_LRCP,
+       0,
+       {{0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL},
+        {0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_LRCP}}},
+      // the first volume takes component 0 alone, so the second has to skip a
+      // component's worth of packets scattered through its own walk
+      {"component_range",
+       GRK_RLCP,
+       0,
+       {{0, 0, NUM_LAYERS, NUM_RESOLUTIONS, 1, GRK_CPRL},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_LRCP}}},
+      // 16x16 precincts give every resolution several precinct positions,
+      // which is what the position-ordered volumes key on
+      {"position_orders",
+       GRK_RLCP,
+       16,
+       {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RPCL},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_PCRL}}},
   };
 
   int result = 0;

@@ -54,6 +54,14 @@ typedef void (*mercury_row_fn)(void* ctx, uint32_t row, const int32_t* const* co
 typedef void (*mercury_row_i16_fn)(void* ctx, uint32_t row, const int16_t* const* comps,
                                    uint32_t num_comps, uint64_t width);
 
+/* One component row. samples points at width samples of component comp, valid
+ * only during the call. Rows of one component arrive in order; components
+ * interleave in no fixed order. Same value conventions as mercury_row_fn. */
+typedef void (*mercury_comp_row_fn)(void* ctx, uint32_t comp, uint32_t row, const int32_t* samples,
+                                    uint64_t width);
+typedef void (*mercury_comp_row_i16_fn)(void* ctx, uint32_t comp, uint32_t row,
+                                        const int16_t* samples, uint64_t width);
+
 /* Main header, parsed by the host codec and handed in; mercury does not parse
  * it. Every pointer is borrowed for the mercury_warp_loom{,_fd} call only;
  * mercury copies what it keeps. */
@@ -88,6 +96,33 @@ typedef struct MercuryQccOverride
   MercuryQuant quant;
 } MercuryQccOverride;
 
+/* One component's coding style (COC), replacing the COD fields below for that
+ * component: everything T.800 A.6.2 lets a component carry of its own. */
+typedef struct MercuryCocOverride
+{
+  uint32_t comp;
+  uint8_t num_levels;
+  uint32_t block_width, block_height;
+  uint32_t modes;
+  bool reversible;
+  const MercuryPrecinct* precincts; /* nullptr => default 2^15 x 2^15 */
+  uint32_t num_precincts;
+} MercuryCocOverride;
+
+/* One POC progression volume (T.800 A.6.6): layers [0, lay_e), resolutions
+ * [res_s, res_e), components [comp_s, comp_e), every precinct, walked in
+ * order. Volumes are concatenated; a packet an earlier volume already emitted
+ * is skipped. */
+typedef struct MercuryProgressionVolume
+{
+  uint8_t res_s;
+  uint16_t comp_s;
+  uint16_t lay_e;
+  uint8_t res_e;
+  uint16_t comp_e;
+  uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
+} MercuryProgressionVolume;
+
 /* One tile-part's position, from the host's parsed TLM markers. */
 typedef struct MercuryTlmEntry
 {
@@ -115,6 +150,14 @@ typedef struct MercuryMainHeader
   MercuryQuant qcd;
   const MercuryQccOverride* qcc;
   uint32_t num_qcc;
+  /* Per-component coding style overrides; the COD fields above are the default
+   * for every component no COC names. */
+  const MercuryCocOverride* coc;
+  uint32_t num_coc;
+  /* Main-header POC volume list, in order; NULL/0 means the COD order covers
+   * the whole tile. */
+  const MercuryProgressionVolume* poc;
+  uint32_t num_poc;
   /* Codestream layout in the file the read_at/fd addresses. */
   uint64_t codestream_off; /* absolute file offset of the SOC marker */
   uint64_t first_sot_off; /* absolute file offset of the first SOT marker */
@@ -156,7 +199,8 @@ MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDec
                                   int32_t fd, uint8_t* err_buf, size_t err_cap);
 #endif
 
-/* width/height are the decoded output dims, i.e. already reduced. */
+/* width/height are the decoded output dims on the canvas plane, i.e. already
+ * reduced. Per-component dims come from mercury_loom_comp_info. */
 typedef struct MercuryImageInfo
 {
   uint32_t width;
@@ -166,8 +210,10 @@ typedef struct MercuryImageInfo
 } MercuryImageInfo;
 
 int32_t mercury_loom_info(const MercuryPlan* plan, MercuryImageInfo* out);
+/* width/height are that component's own reduced output dims: a subsampled
+ * component is smaller than MercuryImageInfo. Any out pointer may be NULL. */
 int32_t mercury_loom_comp_info(const MercuryPlan* plan, uint32_t comp, uint32_t* prec,
-                               int32_t* is_signed);
+                               int32_t* is_signed, uint32_t* width, uint32_t* height);
 void mercury_unwarp_loom(MercuryPlan* plan);
 
 /* t1 NULL = built-in coder in the standalone build; the extern-kernels
@@ -178,6 +224,17 @@ int32_t mercury_weave(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_fn row_fn
                       uint32_t threads);
 int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_fn row_fn,
                           void* row_ctx, uint32_t threads);
+
+/* Per-component row delivery. mercury_weave{,_i16} return MERCURY_EBADARG on a
+ * plan whose components differ in subsampling, because one joint row cannot
+ * carry components of different sizes; these entries take that plan. They also
+ * take a plan whose components share a rectangle, unless the codestream
+ * signals a color transform over components 0-2 (only the joint entry carries
+ * that, and mercury_weave_comps* then return MERCURY_EDECODE). */
+int32_t mercury_weave_comps(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_fn row_fn,
+                            void* row_ctx, uint32_t threads);
+int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1,
+                                mercury_comp_row_i16_fn row_fn, void* row_ctx, uint32_t threads);
 
 #ifdef __cplusplus
 }

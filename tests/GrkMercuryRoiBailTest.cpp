@@ -15,10 +15,8 @@
  *
  */
 
-// A precinct smaller than the code-block clamps the effective block size
-// (B.7: xcb' = min(xcb, PPx), and band precincts halve above resolution 0).
-// The fast path must decode these streams and match the classic pipeline
-// sample for sample.
+// An ROI upshift (RGN marker) must send the stream to the classic pipeline:
+// mercury is never launched, and the samples match a GRK_MERCURY=0 decode.
 
 #include <cstdio>
 #include <cstdlib>
@@ -37,12 +35,20 @@ const char* MERCURY_SUCCESS_MARKER = "mercury fast path: decoded";
 // itself, i.e. grok's eligibility check missed the stream
 const char* MERCURY_PLAN_REJECTED_MARKER = "mercury fast path: plan rejected";
 
+const char* TEST_NAME = "roi_bail";
+const char* STREAM_PATH = "mercury_roi_bail.j2k";
+
 const uint32_t IMAGE_WIDTH = 61;
 const uint32_t IMAGE_HEIGHT = 69;
 const uint16_t NUM_COMPONENTS = 3;
 const uint8_t PRECISION = 8;
-const uint8_t NUM_RESOLUTIONS = 6;
-const uint8_t CSTY_PRECINCTS = 0x01;
+
+const int32_t ROI_COMPONENT = 1;
+const uint32_t ROI_SHIFT = 8;
+
+const uint8_t MARKER_HIGH_BYTE = 0xFF;
+const uint8_t MARKER_RGN_LOW_BYTE = 0x5E;
+const uint8_t MARKER_SOT_LOW_BYTE = 0x90;
 
 std::mutex logMutex;
 std::string logText;
@@ -89,18 +95,6 @@ struct Decoded
   uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
   uint16_t numcomps = 0;
   std::vector<Component> comps;
-};
-
-struct Config
-{
-  const char* name;
-  // one nominal precinct size per resolution, index 0 is the highest
-  // resolution (grk_cparameters order); the compressor writes them to the
-  // COD in resolution order
-  uint32_t precinctWidths[NUM_RESOLUTIONS];
-  uint32_t precinctHeights[NUM_RESOLUTIONS];
-  // true: fast path must decode, false: it must bail before launching mercury
-  bool expectFastPath;
 };
 
 int32_t sampleAt(const grk_image_comp& comp, uint64_t index)
@@ -171,12 +165,12 @@ grk_image* makeImage(void)
   return image;
 }
 
-bool compress(const Config& config, const std::string& path)
+bool compress(const std::string& path)
 {
   grk_image* image = makeImage();
   if(!image)
   {
-    fprintf(stderr, "%s: could not build the source image\n", config.name);
+    fprintf(stderr, "%s: could not build the source image\n", TEST_NAME);
     return false;
   }
 
@@ -184,14 +178,8 @@ bool compress(const Config& config, const std::string& path)
   grk_compress_set_default_params(&parameters);
   parameters.cod_format = GRK_FMT_J2K;
   parameters.irreversible = false;
-  parameters.numresolution = NUM_RESOLUTIONS;
-  parameters.csty |= CSTY_PRECINCTS;
-  parameters.res_spec = NUM_RESOLUTIONS;
-  for(uint32_t r = 0; r < NUM_RESOLUTIONS; ++r)
-  {
-    parameters.prcw_init[r] = config.precinctWidths[r];
-    parameters.prch_init[r] = config.precinctHeights[r];
-  }
+  parameters.roi_compno = ROI_COMPONENT;
+  parameters.roi_shift = ROI_SHIFT;
 
   grk_stream_params streamParams = {};
   snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
@@ -199,19 +187,56 @@ bool compress(const Config& config, const std::string& path)
   grk_object* codec = grk_compress_init(&streamParams, &parameters, image);
   bool ok = false;
   if(!codec)
-    fprintf(stderr, "%s: grk_compress_init failed\n", config.name);
+    fprintf(stderr, "%s: grk_compress_init failed\n", TEST_NAME);
   else
   {
     ok = grk_compress(codec, nullptr) != 0;
     if(!ok)
-      fprintf(stderr, "%s: grk_compress failed\n", config.name);
+      fprintf(stderr, "%s: grk_compress failed\n", TEST_NAME);
     grk_object_unref(codec);
   }
   grk_object_unref(&image->obj);
   return ok;
 }
 
-bool decode(const Config& config, const std::string& path, bool mercury, Decoded& out)
+bool readFile(const std::string& path, std::vector<uint8_t>& out)
+{
+  FILE* file = fopen(path.c_str(), "rb");
+  if(!file)
+  {
+    fprintf(stderr, "%s: could not open %s\n", TEST_NAME, path.c_str());
+    return false;
+  }
+  uint8_t chunk[4096];
+  size_t read = 0;
+  while((read = fread(chunk, 1, sizeof(chunk), file)) > 0)
+    out.insert(out.end(), chunk, chunk + read);
+  fclose(file);
+  return !out.empty();
+}
+
+// the main header ends at the first SOT, so an RGN there is the one the
+// compressor wrote for the ROI component
+bool mainHeaderHasRegionMarker(const std::string& path)
+{
+  std::vector<uint8_t> bytes;
+  if(!readFile(path, bytes))
+    return false;
+  for(size_t i = 0; i + 1 < bytes.size(); ++i)
+  {
+    if(bytes[i] != MARKER_HIGH_BYTE)
+      continue;
+    if(bytes[i + 1] == MARKER_RGN_LOW_BYTE)
+      return true;
+    if(bytes[i + 1] == MARKER_SOT_LOW_BYTE)
+      break;
+  }
+  fprintf(stderr, "%s: no RGN marker in the main header, the stream has no ROI upshift\n",
+          TEST_NAME);
+  return false;
+}
+
+bool decode(const std::string& path, bool mercury, Decoded& out)
 {
   grk_decompress_parameters params = {};
   grk_stream_params streamParams = {};
@@ -223,20 +248,20 @@ bool decode(const Config& config, const std::string& path, bool mercury, Decoded
   grk_object* codec = grk_decompress_init(&streamParams, &params);
   if(!codec)
   {
-    fprintf(stderr, "%s: grk_decompress_init failed\n", config.name);
+    fprintf(stderr, "%s: grk_decompress_init failed\n", TEST_NAME);
     return false;
   }
   bool ok = false;
   grk_header_info headerInfo = {};
   if(!grk_decompress_read_header(codec, &headerInfo))
-    fprintf(stderr, "%s: grk_decompress_read_header failed\n", config.name);
+    fprintf(stderr, "%s: grk_decompress_read_header failed\n", TEST_NAME);
   else if(!grk_decompress(codec, nullptr))
-    fprintf(stderr, "%s: grk_decompress failed\n", config.name);
+    fprintf(stderr, "%s: grk_decompress failed\n", TEST_NAME);
   else
   {
     grk_image* image = grk_decompress_get_image(codec);
     if(!image)
-      fprintf(stderr, "%s: grk_decompress_get_image returned null\n", config.name);
+      fprintf(stderr, "%s: grk_decompress_get_image returned null\n", TEST_NAME);
     else
       ok = capture(image, out);
   }
@@ -244,12 +269,12 @@ bool decode(const Config& config, const std::string& path, bool mercury, Decoded
   return ok;
 }
 
-bool sameImage(const Config& config, const Decoded& classic, const Decoded& mercury)
+bool sameImage(const Decoded& classic, const Decoded& mercury)
 {
   if(classic.x0 != mercury.x0 || classic.y0 != mercury.y0 || classic.x1 != mercury.x1 ||
      classic.y1 != mercury.y1 || classic.numcomps != mercury.numcomps)
   {
-    fprintf(stderr, "%s: geometry mismatch: %u,%u..%u,%u/%u vs %u,%u..%u,%u/%u\n", config.name,
+    fprintf(stderr, "%s: geometry mismatch: %u,%u..%u,%u/%u vs %u,%u..%u,%u/%u\n", TEST_NAME,
             classic.x0, classic.y0, classic.x1, classic.y1, classic.numcomps, mercury.x0,
             mercury.y0, mercury.x1, mercury.y1, mercury.numcomps);
     return false;
@@ -261,15 +286,15 @@ bool sameImage(const Config& config, const Decoded& classic, const Decoded& merc
     if(a.w != b.w || a.h != b.h || a.prec != b.prec || a.sgnd != b.sgnd)
     {
       fprintf(stderr, "%s: component %u layout mismatch: %ux%u prec %u vs %ux%u prec %u\n",
-              config.name, c, a.w, a.h, a.prec, b.w, b.h, b.prec);
+              TEST_NAME, c, a.w, a.h, a.prec, b.w, b.h, b.prec);
       return false;
     }
     for(size_t i = 0; i < a.samples.size(); ++i)
     {
       if(a.samples[i] != b.samples[i])
       {
-        fprintf(stderr, "%s: component %u sample %zu (x %zu, y %zu) differs: %d vs %d\n",
-                config.name, c, i, i % a.w, i / a.w, a.samples[i], b.samples[i]);
+        fprintf(stderr, "%s: component %u sample %zu (x %zu, y %zu) differs: %d vs %d\n", TEST_NAME,
+                c, i, i % a.w, i / a.w, a.samples[i], b.samples[i]);
         return false;
       }
     }
@@ -277,31 +302,30 @@ bool sameImage(const Config& config, const Decoded& classic, const Decoded& merc
   return true;
 }
 
-bool runConfig(const Config& config)
+bool run(void)
 {
-  std::string path = std::string("mercury_precinct_clamp_") + config.name + ".j2k";
-  if(!compress(config, path))
+  std::string path = STREAM_PATH;
+  if(!compress(path))
     return false;
 
   bool ok = false;
   Decoded classic;
   Decoded mercury;
-  if(decode(config, path, false, classic) && decode(config, path, true, mercury))
+  if(mainHeaderHasRegionMarker(path) && decode(path, false, classic) && decode(path, true, mercury))
   {
     std::string log = takeLog();
     bool fastPath = log.find(MERCURY_SUCCESS_MARKER) != std::string::npos;
     bool planRejected = log.find(MERCURY_PLAN_REJECTED_MARKER) != std::string::npos;
-    if(fastPath != config.expectFastPath)
-      fprintf(stderr, "%s: expected %s but the log says otherwise.\ncaptured log:\n%s\n",
-              config.name, config.expectFastPath ? "a fast-path decode" : "a classic fallback",
+    if(fastPath)
+      fprintf(stderr, "%s: the fast path decoded an ROI stream.\ncaptured log:\n%s\n", TEST_NAME,
               log.c_str());
     else if(planRejected)
       fprintf(stderr,
               "%s: mercury was launched and rejected the plan itself; the eligibility "
-              "check should have bailed first.\ncaptured log:\n%s\n",
-              config.name, log.c_str());
+              "check should have bailed on the RGN marker first.\ncaptured log:\n%s\n",
+              TEST_NAME, log.c_str());
     else
-      ok = sameImage(config, classic, mercury);
+      ok = sameImage(classic, mercury);
   }
   remove(path.c_str());
   return ok;
@@ -326,27 +350,13 @@ int main(void)
 
   grk_initialize(nullptr, 0, nullptr);
 
-  // code-block is the default 64x64 (exponent 6). 128x128 precincts give the
-  // non-LL bands 64x64, exactly the code-block, the no-clamp boundary. 32x32
-  // clamps everywhere, the mixed config clamps only at one mid resolution, and
-  // the last one clamps width while height stays at the nominal block.
-  const Config configs[] = {
-      {"boundary_128", {128, 128, 128, 128, 128, 128}, {128, 128, 128, 128, 128, 128}, true},
-      {"clamped_32", {32, 32, 32, 32, 32, 32}, {32, 32, 32, 32, 32, 32}, true},
-      {"clamped_one_res", {128, 128, 128, 32, 128, 128}, {128, 128, 128, 32, 128, 128}, true},
-      {"clamped_width_only", {32, 32, 32, 32, 32, 32}, {128, 128, 128, 128, 128, 128}, true},
-  };
-
   int result = 0;
-  for(const auto& config : configs)
+  if(run())
+    printf("%s passed\n", TEST_NAME);
+  else
   {
-    if(runConfig(config))
-      printf("%s passed\n", config.name);
-    else
-    {
-      fprintf(stderr, "%s FAILED\n", config.name);
-      result = 1;
-    }
+    fprintf(stderr, "%s FAILED\n", TEST_NAME);
+    result = 1;
   }
 
   grk_deinitialize();

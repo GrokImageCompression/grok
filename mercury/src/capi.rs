@@ -27,11 +27,13 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::codec::params::{
-    CodParams, CodingModes, PrecinctSize, ProgressionOrder, QcdParams, QuantStyle, SizComponent,
-    SizParams,
+    CodParams, CodingModes, CompCodingStyle, PrecinctSize, ProgressionOrder, ProgressionVolume,
+    QcdParams, QuantStyle, SizComponent, SizParams,
 };
 use crate::codec::tile_geom::Dims;
-use crate::decode::graph::{Rows, weave_with_coder};
+use crate::decode::graph::{
+    CompRow, Rows, uniform_subsampling, weave_comps_with_coder, weave_with_coder,
+};
 use crate::decode::plan::{DecodePlan, MainHeaderIn, TlmEntry, draft};
 use crate::decode::read_at::ReadAt;
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
@@ -68,6 +70,16 @@ pub type MercuryRowFn =
 /// same as [`MercuryRowFn`].
 pub type MercuryRowI16Fn =
     extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const i16, num_comps: u32, width: u64);
+
+/// One component's row: `samples` points at `width` samples of component
+/// `comp`, valid only for the duration of the call. Rows of one component
+/// arrive in order; components interleave in no fixed order.
+pub type MercuryCompRowFn =
+    extern "C" fn(ctx: *mut c_void, comp: u32, row: u32, samples: *const i32, width: u64);
+
+/// [`MercuryCompRowFn`] for output that fits signed i16.
+pub type MercuryCompRowI16Fn =
+    extern "C" fn(ctx: *mut c_void, comp: u32, row: u32, samples: *const i16, width: u64);
 
 pub const MERCURY_OK: i32 = 0;
 pub const MERCURY_EBADARG: i32 = -1;
@@ -121,6 +133,36 @@ pub struct MercuryQccOverride {
     pub quant: MercuryQuant,
 }
 
+/// A per-component coding style override (COC): everything T.800 A.6.2 lets a
+/// component take from the COD default.
+#[repr(C)]
+pub struct MercuryCocOverride {
+    pub comp: u32,
+    pub num_levels: u8,
+    pub block_width: u32,
+    pub block_height: u32,
+    pub modes: u32,
+    pub reversible: bool,
+    /// NULL/0 = default 2^15 x 2^15 precincts.
+    pub precincts: *const MercuryPrecinct,
+    pub num_precincts: u32,
+}
+
+/// One POC progression volume (T.800 A.6.6): layers `[0, lay_e)`, resolutions
+/// `[res_s, res_e)`, components `[comp_s, comp_e)`, every precinct, walked in
+/// `order`. Volumes are concatenated; a packet an earlier volume already
+/// emitted is skipped.
+#[repr(C)]
+pub struct MercuryProgressionVolume {
+    pub res_s: u8,
+    pub comp_s: u16,
+    pub lay_e: u16,
+    pub res_e: u8,
+    pub comp_e: u16,
+    /// 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL.
+    pub order: u8,
+}
+
 /// One tile-part's position, from the host's parsed TLM markers.
 #[repr(C)]
 pub struct MercuryTlmEntry {
@@ -163,6 +205,14 @@ pub struct MercuryMainHeader {
     pub qcd: MercuryQuant,
     pub qcc: *const MercuryQccOverride,
     pub num_qcc: u32,
+    /// Per-component coding style overrides (COC); the COD fields above are
+    /// the default for every component a COC does not name.
+    pub coc: *const MercuryCocOverride,
+    pub num_coc: u32,
+    /// Main-header POC volume list, in order; NULL/0 means the COD order
+    /// covers the whole tile.
+    pub poc: *const MercuryProgressionVolume,
+    pub num_poc: u32,
     // Codestream layout in the file the read_at/fd addresses.
     /// Absolute file offset of the SOC marker (informational).
     pub codestream_off: u64,
@@ -237,29 +287,69 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
     };
 
     let order = ProgressionOrder::from_host(h.order).map_err(|_| "invalid progression order")?;
-    let precincts = if h.precincts.is_null() || h.num_precincts == 0 {
-        Vec::new()
-    } else {
-        unsafe { std::slice::from_raw_parts(h.precincts, h.num_precincts as usize) }
-            .iter()
-            .map(|p| PrecinctSize {
-                width: p.width,
-                height: p.height,
-            })
-            .collect()
+    let host_precincts = |p: *const MercuryPrecinct, n: u32| -> Vec<PrecinctSize> {
+        if p.is_null() || n == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(p, n as usize) }
+                .iter()
+                .map(|p| PrecinctSize {
+                    width: p.width,
+                    height: p.height,
+                })
+                .collect()
+        }
     };
-    let cod = CodParams {
-        order,
-        num_layers: h.num_layers,
-        use_ycc: h.use_ycc,
+    let default_style = CompCodingStyle {
         num_levels: h.num_levels,
         block_width: h.block_width,
         block_height: h.block_height,
         modes: CodingModes(h.modes),
         reversible: h.reversible,
+        precincts: host_precincts(h.precincts, h.num_precincts),
+    };
+    let mut comps = vec![default_style; h.num_comps as usize];
+    if !h.coc.is_null() && h.num_coc != 0 {
+        let coc_c = unsafe { std::slice::from_raw_parts(h.coc, h.num_coc as usize) };
+        for o in coc_c {
+            let Some(slot) = comps.get_mut(o.comp as usize) else {
+                return Err(format!(
+                    "COC override for component {} out of range",
+                    o.comp
+                ));
+            };
+            *slot = CompCodingStyle {
+                num_levels: o.num_levels,
+                block_width: o.block_width,
+                block_height: o.block_height,
+                modes: CodingModes(o.modes),
+                reversible: o.reversible,
+                precincts: host_precincts(o.precincts, o.num_precincts),
+            };
+        }
+    }
+    let mut pocs = Vec::new();
+    if !h.poc.is_null() && h.num_poc != 0 {
+        for v in unsafe { std::slice::from_raw_parts(h.poc, h.num_poc as usize) } {
+            pocs.push(ProgressionVolume {
+                res_s: v.res_s,
+                comp_s: v.comp_s,
+                lay_e: v.lay_e,
+                res_e: v.res_e,
+                comp_e: v.comp_e,
+                order: ProgressionOrder::from_host(v.order)
+                    .map_err(|_| "invalid POC progression order")?,
+            });
+        }
+    }
+    let cod = CodParams {
+        order,
+        pocs,
+        num_layers: h.num_layers,
+        use_ycc: h.use_ycc,
         use_sop: h.use_sop,
         use_eph: h.use_eph,
-        precincts,
+        comps,
     };
 
     let qcd = unsafe { quant_from_host(&h.qcd) }?;
@@ -478,18 +568,23 @@ pub extern "C" fn mercury_loom_info(plan: *const MercuryPlan, out: *mut MercuryI
             width: p.plan.width,
             height: p.plan.height,
             num_comps: p.plan.siz.comp_count() as u32,
-            reversible: p.plan.cod.reversible,
+            reversible: p.plan.cod.comps[0].reversible,
         };
     }
     MERCURY_OK
 }
 
+/// Per-component output facts: precision, signedness, and the component's own
+/// reduced output dimensions (subsampled components are smaller than the
+/// image-level `MercuryImageInfo` dims). Any out pointer may be null.
 #[unsafe(no_mangle)]
 pub extern "C" fn mercury_loom_comp_info(
     plan: *const MercuryPlan,
     comp: u32,
     prec: *mut u32,
     is_signed: *mut i32,
+    width: *mut u32,
+    height: *mut u32,
 ) -> i32 {
     if plan.is_null() {
         return MERCURY_EBADARG;
@@ -498,11 +593,18 @@ pub extern "C" fn mercury_loom_comp_info(
     let Some(c) = p.plan.siz.components.get(comp as usize) else {
         return MERCURY_EBADARG;
     };
+    let dims = p.plan.comp_dims[comp as usize];
     if !prec.is_null() {
         unsafe { *prec = c.precision as u32 };
     }
     if !is_signed.is_null() {
         unsafe { *is_signed = c.is_signed as i32 };
+    }
+    if !width.is_null() {
+        unsafe { *width = dims.width() };
+    }
+    if !height.is_null() {
+        unsafe { *height = dims.height() };
     }
     MERCURY_OK
 }
@@ -722,49 +824,43 @@ impl OutputSample for i16 {
 }
 
 /// Convert one component's row to absolute samples (see module doc).
-fn dye_comp_row<T: OutputSample>(
-    rows: &Rows<'_>,
-    ci: usize,
-    prec: u32,
-    signed: bool,
-    out: &mut [T],
-) {
+fn dye_row<T: OutputSample>(row: CompRow<'_>, prec: u32, signed: bool, out: &mut [T]) {
     let dc = 1i32 << (prec - 1);
     let mx = (1i64 << prec) as i32 - 1;
-    match rows {
-        Rows::I16(r) => {
+    match row {
+        CompRow::I16(r) => {
             if signed {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32((v as i32).clamp(-dc, mx - dc));
                 }
             } else {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32((v as i32 + dc).clamp(0, mx));
                 }
             }
         }
-        Rows::I32(r) => {
+        CompRow::I32(r) => {
             if signed {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32(v.clamp(-dc, mx - dc));
                 }
             } else {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32((v + dc).clamp(0, mx));
                 }
             }
         }
-        Rows::F32(r) => {
+        CompRow::F32(r) => {
             // normalized floats: sample / 2^prec, signed around 0.
             // round_ties_even matches the classic pipeline's NearestInt.
             if signed {
                 let sc = (1i64 << (prec - 1)) as f32;
-                for (o, &s) in out.iter_mut().zip(r[ci]) {
+                for (o, &s) in out.iter_mut().zip(r) {
                     *o = T::from_i32(((s * sc).round_ties_even() as i32).clamp(-dc, mx - dc));
                 }
             } else {
                 let sc = (1i64 << prec) as f32;
-                for (o, &s) in out.iter_mut().zip(r[ci]) {
+                for (o, &s) in out.iter_mut().zip(r) {
                     *o = T::from_i32(
                         ((s * sc).round_ties_even() as i32)
                             .saturating_add(dc)
@@ -773,18 +869,18 @@ fn dye_comp_row<T: OutputSample>(
                 }
             }
         }
-        Rows::Q13(r) => {
+        CompRow::Q13(r) => {
             // Q13 fixed point: shift the fractional bits back out with ties
             // to even, like the classic int16 sink.
             let shift = crate::dwt::fixed97::Q13_FRACTION_BITS.saturating_sub(prec);
             if signed {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32(
                         (crate::dwt::fixed97::rshift_even(v, shift) as i32).clamp(-dc, mx - dc),
                     );
                 }
             } else {
-                for (o, &v) in out.iter_mut().zip(r[ci]) {
+                for (o, &v) in out.iter_mut().zip(r) {
                     *o = T::from_i32(
                         (crate::dwt::fixed97::rshift_even(v, shift) as i32 + dc).clamp(0, mx),
                     );
@@ -792,6 +888,16 @@ fn dye_comp_row<T: OutputSample>(
             }
         }
     }
+}
+
+fn dye_comp_row<T: OutputSample>(
+    rows: &Rows<'_>,
+    ci: usize,
+    prec: u32,
+    signed: bool,
+    out: &mut [T],
+) {
+    dye_row(rows.comp(ci), prec, signed, out);
 }
 
 struct SendPtr(*mut c_void);
@@ -843,8 +949,13 @@ fn weave_rows<T: OutputSample>(
     {
         return MERCURY_EBADARG;
     }
-    let height = plan.height as u64;
-    let width = plan.width as usize;
+    // one row carrying every component only describes an image whose
+    // components share a rectangle
+    if !uniform_subsampling(&plan.siz) {
+        return MERCURY_EBADARG;
+    }
+    let height = plan.comp_dims[0].height() as u64;
+    let width = plan.comp_dims[0].width() as usize;
     let comps: Vec<(u32, bool)> = plan
         .siz
         .components
@@ -885,6 +996,86 @@ fn weave_rows<T: OutputSample>(
     }
 }
 
+/// Decode `plan` to completion, streaming one component row at a time.
+/// Consumes and frees `plan` even on failure.
+fn weave_comp_rows<T: OutputSample>(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<
+        extern "C" fn(ctx: *mut c_void, comp: u32, row: u32, samples: *const T, width: u64),
+    >,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    if plan.is_null() {
+        return MERCURY_EBADARG;
+    }
+    let handle = unsafe { Box::from_raw(plan) };
+    let Some(row_fn) = row_fn else {
+        return MERCURY_EBADARG;
+    };
+
+    let coder: BlockCoder = match t1 {
+        Some(f) => {
+            EXTERN_T1.store(f as usize, Ordering::Relaxed);
+            extern_t1_weave
+        }
+        None => return MERCURY_EBADARG,
+    };
+    let workers = if threads == 0 {
+        std::thread::available_parallelism().map_or(1, |n| n.get())
+    } else {
+        threads as usize
+    };
+
+    let MercuryPlan { plan, src } = *handle;
+    if !plan
+        .siz
+        .components
+        .iter()
+        .all(|component| T::supports(component.precision as u32, component.is_signed))
+    {
+        return MERCURY_EBADARG;
+    }
+    let heights: Vec<u64> = plan.comp_dims.iter().map(|d| d.height() as u64).collect();
+    let comps: Vec<(u32, bool, usize)> = plan
+        .siz
+        .components
+        .iter()
+        .zip(&plan.comp_dims)
+        .map(|(c, d)| (c.precision as u32, c.is_signed, d.width() as usize))
+        .collect();
+
+    let mut scratch: Vec<Vec<T>> = comps
+        .iter()
+        .map(|&(_, _, width)| vec![T::default(); width])
+        .collect();
+    let ctx = SendPtr(row_ctx);
+    let mut rows_out: Vec<u32> = vec![0; comps.len()];
+    let sink = Box::new(move |ci: usize, _row: u32, row: CompRow<'_>| {
+        let ctx = &ctx;
+        let (prec, signed, width) = comps[ci];
+        dye_row(row, prec, signed, &mut scratch[ci]);
+        row_fn(
+            ctx.0,
+            ci as u32,
+            rows_out[ci],
+            scratch[ci].as_ptr(),
+            width as u64,
+        );
+        rows_out[ci] += 1;
+    });
+
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        weave_comps_with_coder(src, plan, workers, sink, coder)
+    }));
+    match r {
+        Ok(Ok(emitted)) if emitted == heights => MERCURY_OK,
+        Ok(Ok(_)) | Ok(Err(_)) => MERCURY_EDECODE,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
 /// Decode `plan` to completion, streaming i32 rows to `row_fn`. Consumes and
 /// frees `plan` even on failure. `threads` 0 uses one worker per core.
 #[unsafe(no_mangle)]
@@ -909,6 +1100,34 @@ pub extern "C" fn mercury_weave_i16(
     threads: u32,
 ) -> i32 {
     weave_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+/// Decode `plan` to completion, streaming i32 rows one component at a time.
+/// Subsampled components need this entry; an image whose components share a
+/// rectangle may use it too, unless the codestream signals a color transform
+/// over components 0-2 (only [`mercury_weave`] can carry that).
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_comps(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryCompRowFn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_comp_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+/// [`mercury_weave_comps`] with i16 rows. Returns `MERCURY_EBADARG` if any
+/// component's absolute samples do not fit i16.
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_comps_i16(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryCompRowI16Fn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_comp_rows(plan, t1, row_fn, row_ctx, threads)
 }
 
 #[cfg(test)]

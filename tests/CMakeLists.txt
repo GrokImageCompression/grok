@@ -216,6 +216,29 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(grk_mercury_precinct_clamp_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_mercury_precinct_clamp_test COMMAND grk_mercury_precinct_clamp_test)
 
+  # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_roi_bail_test GrkMercuryRoiBailTest.cpp)
+  target_link_libraries(grk_mercury_roi_bail_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_roi_bail_test COMMAND grk_mercury_roi_bail_test)
+
+  add_executable(grk_mercury_coc_test GrkMercuryCocTest.cpp)
+  target_link_libraries(grk_mercury_coc_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    # 3 components with 7, 8 and 9 resolutions and two code-block sizes
+    add_test(NAME grk_mercury_coc_test
+      COMMAND grk_mercury_coc_test ${GRK_DATA_ROOT}/input/conformance/p0_08.j2k)
+  endif()
+
+  # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_poc_test GrkMercuryPocTest.cpp)
+  target_link_libraries(grk_mercury_poc_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_poc_test COMMAND grk_mercury_poc_test)
+
+  # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
+  add_executable(grk_mercury_subsampling_test GrkMercurySubsamplingTest.cpp)
+  target_link_libraries(grk_mercury_subsampling_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_subsampling_test COMMAND grk_mercury_subsampling_test)
+
   add_executable(grk_mercury_composite_type_test GrkMercuryCompositeTypeTest.cpp)
   target_link_libraries(grk_mercury_composite_type_test ${GROK_CORE_NAME} spdlog::spdlog)
   if(GRK_DATA_ROOT)

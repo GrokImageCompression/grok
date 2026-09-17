@@ -91,14 +91,14 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
         let comp_x1 = tile_x1.div_ceil(xr);
         let comp_y1 = tile_y1.div_ceil(yr);
 
-        let n_levels = cod.num_levels;
-        let block_w = cod.block_width;
-        let block_h = cod.block_height;
+        let style = &cod.comps[c as usize];
+        let n_levels = style.num_levels;
 
         let mut resolutions = Vec::with_capacity((n_levels + 1) as usize);
 
         for r in 0..=n_levels {
             let n_l = n_levels - r; // levels below full resolution
+            let (block_w, block_h) = style.block_span(r);
 
             // Resolution canvas bounds
             let res_x0 = comp_x0.div_ceil(1 << n_l);
@@ -114,8 +114,9 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
             };
 
             // Precinct grids are recomputed by the T2 plan (decode::plan via
-            // cod.precinct_span); tile geometry carries only the canvas and
-            // subband/code-block layout the plan can't derive as cheaply.
+            // CompCodingStyle::precinct_span); tile geometry carries only the
+            // canvas and subband/code-block layout the plan can't derive as
+            // cheaply.
 
             let subbands = if r == 0 {
                 // LL band only
@@ -210,10 +211,81 @@ pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileG
 mod tests {
     use super::*;
 
+    /// A precinct smaller than the nominal code-block clamps the effective
+    /// block (B.7), so a band splits into more blocks than the nominal size
+    /// would give. Resolution 1's precinct halves into the band domain, and
+    /// the height there stays above the nominal block, so only width clamps.
+    #[test]
+    fn a_precinct_smaller_than_the_block_splits_the_grid() {
+        use crate::codec::params::{CompCodingStyle, PrecinctSize, SizComponent};
+
+        let siz = SizParams {
+            x_siz: 128,
+            y_siz: 128,
+            x_o_siz: 0,
+            y_o_siz: 0,
+            xt_siz: 128,
+            yt_siz: 128,
+            xt_o_siz: 0,
+            yt_o_siz: 0,
+            components: vec![SizComponent {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 1,
+                yr_siz: 1,
+            }],
+        };
+
+        let cod = CodParams {
+            order: crate::codec::params::ProgressionOrder::Lrcp,
+            pocs: vec![],
+            num_layers: 1,
+            use_ycc: false,
+            use_sop: false,
+            use_eph: false,
+            comps: vec![CompCodingStyle {
+                num_levels: 1,
+                block_width: 64,
+                block_height: 64,
+                modes: crate::codec::params::CodingModes(0),
+                reversible: true,
+                precincts: vec![
+                    PrecinctSize {
+                        width: 32,
+                        height: 32,
+                    },
+                    PrecinctSize {
+                        width: 64,
+                        height: 256,
+                    },
+                ],
+            }],
+        };
+
+        assert_eq!(cod.comps[0].block_span(0), (32, 32));
+        assert_eq!(cod.comps[0].block_span(1), (32, 64));
+
+        let resolutions = &chart_tile_geom(&siz, &cod, 0).components[0].resolutions;
+
+        let ll = &resolutions[0].subbands[0];
+        assert_eq!((ll.dims.width(), ll.dims.height()), (64, 64));
+        assert_eq!((ll.blocks_wide, ll.blocks_high), (2, 2));
+
+        for sb in &resolutions[1].subbands {
+            assert_eq!((sb.dims.width(), sb.dims.height()), (64, 64));
+            assert_eq!(
+                (sb.blocks_wide, sb.blocks_high),
+                (2, 1),
+                "band {}",
+                sb.band_type
+            );
+        }
+    }
+
     #[test]
     fn hirise_layout() {
         // HiRISE: 28260×52834, 1 comp, 9 levels, 64×64 blocks, single tile
-        use crate::codec::params::SizComponent;
+        use crate::codec::params::{CompCodingStyle, SizComponent};
 
         let siz = SizParams {
             x_siz: 28260,
@@ -234,16 +306,19 @@ mod tests {
 
         let cod = CodParams {
             order: crate::codec::params::ProgressionOrder::Lrcp,
+            pocs: vec![],
             num_layers: 1,
             use_ycc: false,
-            num_levels: 9,
-            block_width: 64,
-            block_height: 64,
-            modes: crate::codec::params::CodingModes(0),
-            reversible: true,
             use_sop: false,
             use_eph: false,
-            precincts: vec![],
+            comps: vec![CompCodingStyle {
+                num_levels: 9,
+                block_width: 64,
+                block_height: 64,
+                modes: crate::codec::params::CodingModes(0),
+                reversible: true,
+                precincts: vec![],
+            }],
         };
 
         let geom = chart_tile_geom(&siz, &cod, 0);

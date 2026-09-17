@@ -30,7 +30,6 @@
 use crate::decode::ReadAt;
 use std::sync::{Arc, Mutex};
 
-use crate::codec::tile_geom::Dims;
 use crate::decode::DecodeError;
 use crate::decode::plan::{BandPlan, DecodePlan, TilePlan};
 use crate::decode::stripe_decoder::{
@@ -103,8 +102,6 @@ pub struct SubbandDecodeNode {
     /// First block column and number of block columns of this slice.
     bx0: u32,
     nbw: u32,
-    block_w: u32,
-    block_h: u32,
     modes: i32,
     path: Path,
     coder: BlockCoder,
@@ -124,18 +121,18 @@ pub struct SubbandDecodeNode {
 }
 
 /// Sample rows covered by block-row `row` of `band` (canvas-anchored).
-fn block_weft_span(band: &BandPlan, block_h: u32, row: u32) -> (u32, u32) {
-    let first_by = band.y0 / block_h;
-    let r0 = ((first_by + row) * block_h).max(band.y0);
-    let r1 = ((first_by + row + 1) * block_h).min(band.y0 + band.height);
+fn block_weft_span(band: &BandPlan, row: u32) -> (u32, u32) {
+    let first_by = band.y0 / band.block_h;
+    let r0 = ((first_by + row) * band.block_h).max(band.y0);
+    let r1 = ((first_by + row + 1) * band.block_h).min(band.y0 + band.height);
     (r0 - band.y0, r1 - band.y0)
 }
 
 /// Band-local sample columns covered by block columns `[bx0, bx0+nbw)`.
-fn block_warp_span(band: &BandPlan, block_w: u32, bx0: u32, nbw: u32) -> (usize, usize) {
-    let first_bx = band.x0 / block_w;
-    let c0 = ((first_bx + bx0) * block_w).max(band.x0);
-    let c1 = ((first_bx + bx0 + nbw) * block_w).min(band.x0 + band.width);
+fn block_warp_span(band: &BandPlan, bx0: u32, nbw: u32) -> (usize, usize) {
+    let first_bx = band.x0 / band.block_w;
+    let c0 = ((first_bx + bx0) * band.block_w).max(band.x0);
+    let c1 = ((first_bx + bx0 + nbw) * band.block_w).min(band.x0 + band.width);
     ((c0 - band.x0) as usize, (c1 - band.x0) as usize)
 }
 
@@ -149,8 +146,6 @@ impl SubbandDecodeNode {
     unsafe fn weave_block_row(
         file: &dyn ReadAt,
         band: &BandPlan,
-        block_w: u32,
-        block_h: u32,
         modes: i32,
         row: u32,
         bx0: u32,
@@ -188,9 +183,9 @@ impl SubbandDecodeNode {
             }
         }
 
-        let (row_a, row_b) = block_weft_span(band, block_h, row);
+        let (row_a, row_b) = block_weft_span(band, row);
         let num_rows = (row_b - row_a) as i32;
-        let (slice_c0, _) = block_warp_span(band, block_w, bx0, nbw);
+        let (slice_c0, _) = block_warp_span(band, bx0, nbw);
 
         // Segment-length storage must outlive the FFI call; inner Vec heap
         // buffers are stable even as the outer Vec grows.
@@ -198,7 +193,7 @@ impl SubbandDecodeNode {
         let mut infos: Vec<MercuryStripeBlockInfo> = Vec::with_capacity(recs.len());
         for (i, rec) in recs.iter().enumerate() {
             let bx = bx0 + i as u32; // band-global block column
-            let (c0, c1) = block_warp_span(band, block_w, bx, 1);
+            let (c0, c1) = block_warp_span(band, bx, 1);
             let num_cols = (c1 - c0) as i32;
             let seg_ptr = if rec.num_segments > 1 {
                 let lens = rec
@@ -275,7 +270,7 @@ impl SubbandDecodeNode {
 
     /// Rows of block row `row` that fall inside the publish range.
     fn picks_in_block_row(&self, row: u32) -> usize {
-        let (a, b) = block_weft_span(&self.band, self.block_h, row);
+        let (a, b) = block_weft_span(&self.band, row);
         (b.min(self.clip_hi).saturating_sub(a.max(self.clip_lo))) as usize
     }
 }
@@ -284,7 +279,7 @@ impl Node for SubbandDecodeNode {
     fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
         let mut produced = false;
         while self.next_block_row < self.block_row_hi {
-            let (row_a, row_b) = block_weft_span(&self.band, self.block_h, self.next_block_row);
+            let (row_a, row_b) = block_weft_span(&self.band, self.next_block_row);
             let picks = self.picks_in_block_row(self.next_block_row);
             if self.out.slack() < picks {
                 break;
@@ -311,8 +306,6 @@ impl Node for SubbandDecodeNode {
                 Self::weave_block_row(
                     &*self.file,
                     &self.band,
-                    self.block_w,
-                    self.block_h,
                     self.modes,
                     self.next_block_row,
                     self.bx0,
@@ -539,10 +532,36 @@ pub enum Rows<'a> {
     Q13(&'a [&'a [i16]]),
 }
 
+impl<'a> Rows<'a> {
+    /// Component `ci`'s slice of this row.
+    pub fn comp(&self, ci: usize) -> CompRow<'a> {
+        match self {
+            Rows::I16(r) => CompRow::I16(r[ci]),
+            Rows::I32(r) => CompRow::I32(r[ci]),
+            Rows::F32(r) => CompRow::F32(r[ci]),
+            Rows::Q13(r) => CompRow::Q13(r[ci]),
+        }
+    }
+}
+
+/// One component's row, in the same four representations as [`Rows`] and with
+/// the same value conventions.
+pub enum CompRow<'a> {
+    I16(&'a [i16]),
+    I32(&'a [i32]),
+    F32(&'a [f32]),
+    Q13(&'a [i16]),
+}
+
 /// Receives each full-image-width row exactly once, in order. When the
 /// codestream signals the reversible color transform, components 0-2
 /// arrive as R,G,B.
 pub type RowSink = Box<dyn FnMut(u32, Rows<'_>) + Send>;
+
+/// Receives one component's row at a time: `(component, that component's
+/// output row, samples)`. Rows of one component arrive in order; components
+/// interleave in no fixed order. Never carries a color transform.
+pub type CompRowSink = Box<dyn FnMut(usize, u32, CompRow<'_>) + Send>;
 
 /// One tile column's tree outputs feeding the merge sink.
 struct ColInput {
@@ -580,16 +599,20 @@ struct MergeSinkNode<T> {
 /// Sample type of the weft dataflow: i16/i32 (reversible) or f32 (9/7).
 trait Sample: Copy + Send + Default + 'static {
     fn skein<'a>(refs: &'a [&'a [Self]]) -> Rows<'a>;
+    fn skein_one(row: &[Self]) -> CompRow<'_>;
     /// In-place inverse color transform on components 0-2; leaves R,G,B in
     /// (c0, c1, c2). RCT for the integer paths, ICT for the float path.
     fn untangle_color(c0: &mut [Self], c1: &mut [Self], c2: &mut [Self]);
 }
 
 macro_rules! impl_rct_sample {
-    ($t:ty, $wide:ty, $wrap:path) => {
+    ($t:ty, $wide:ty, $wrap:path, $wrap_one:path) => {
         impl Sample for $t {
             fn skein<'a>(refs: &'a [&'a [$t]]) -> Rows<'a> {
                 $wrap(refs)
+            }
+            fn skein_one(row: &[$t]) -> CompRow<'_> {
+                $wrap_one(row)
             }
             fn untangle_color(y: &mut [$t], u: &mut [$t], v: &mut [$t]) {
                 for x in 0..y.len() {
@@ -604,8 +627,8 @@ macro_rules! impl_rct_sample {
         }
     };
 }
-impl_rct_sample!(i16, i32, Rows::I16);
-impl_rct_sample!(i32, i64, Rows::I32);
+impl_rct_sample!(i16, i32, Rows::I16, CompRow::I16);
+impl_rct_sample!(i32, i64, Rows::I32, CompRow::I32);
 
 // Inverse ICT (irreversible YCbCr→RGB) coefficients.
 const CR_FACT_R: f32 = (2.0 * (1.0 - 0.299)) as f32;
@@ -616,6 +639,9 @@ const CB_FACT_G: f32 = (2.0 * 0.114 * (1.0 - 0.114) / (1.0 - (0.299 + 0.114))) a
 impl Sample for f32 {
     fn skein<'a>(refs: &'a [&'a [f32]]) -> Rows<'a> {
         Rows::F32(refs)
+    }
+    fn skein_one(row: &[f32]) -> CompRow<'_> {
+        CompRow::F32(row)
     }
     /// Inverse ICT: f32 FMA, G from Cr then Cb.
     fn untangle_color(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
@@ -638,6 +664,9 @@ impl Sample for Q13Sample {
     fn skein<'a>(refs: &'a [&'a [Q13Sample]]) -> Rows<'a> {
         // repr(transparent): a Q13Sample slice is an i16 slice
         Rows::Q13(unsafe { &*(refs as *const [&[Q13Sample]] as *const [&[i16]]) })
+    }
+    fn skein_one(row: &[Q13Sample]) -> CompRow<'_> {
+        CompRow::Q13(unsafe { &*(row as *const [Q13Sample] as *const [i16]) })
     }
     /// Inverse ICT computed in f32 on the Q13 scale (the ICT is
     /// scale-invariant), rounded back per sample — the classic int16 path
@@ -757,6 +786,100 @@ impl<T: Sample> Node for MergeSinkNode<T> {
     }
 }
 
+/// One tile column's contribution to one component of the per-component sink.
+struct CompColInput {
+    input: Consumer<AlignedVec>,
+    producer: NodeId,
+    /// Output-relative sample column of this tile's first emitted sample.
+    x0: usize,
+    width: usize,
+    /// Windowed decode: the tree's rows start left of the emitted window.
+    src_off: usize,
+}
+
+/// One component's assembly state in the per-component sink.
+struct CompSinkState<T> {
+    cols: Vec<CompColInput>,
+    /// Output row of this tile row's first emitted row.
+    row_base: u32,
+    rows_seen: u32,
+    /// Windowed decode: leading tree rows above the output window.
+    discard: u32,
+    /// Assembled row, empty while a single tile column can be handed through
+    /// without a copy.
+    assembled: Vec<T>,
+    cb: Arc<Mutex<CompRowSink>>,
+}
+
+/// Joins each component's tile columns on that component's own row clock.
+/// Subsampled components emit rows at different rates, so there is no
+/// image-wide row to join them on and no color transform to apply.
+struct CompMergeSinkNode<T> {
+    comps: Vec<CompSinkState<T>>,
+}
+
+impl<T: Sample> Node for CompMergeSinkNode<T> {
+    fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
+        for (ci, st) in self.comps.iter_mut().enumerate() {
+            let mut n = st
+                .cols
+                .iter()
+                .map(|c| c.input.picks_ready())
+                .min()
+                .unwrap_or(0);
+            if n == 0 {
+                continue;
+            }
+            // Windowed decode: rows above the output window drain unemitted.
+            if st.discard > 0 {
+                let d = (st.discard as usize).min(n);
+                for col in &mut st.cols {
+                    col.input.unwind(d);
+                }
+                st.discard -= d as u32;
+                n -= d;
+            }
+            if n > 0 {
+                let mut cb = st.cb.lock().unwrap();
+                for i in 0..n {
+                    let row_no = st.row_base + st.rows_seen + i as u32;
+                    if st.cols.len() == 1 {
+                        let col = &st.cols[0];
+                        let row = col.input.peek(i);
+                        let src = unsafe {
+                            std::slice::from_raw_parts(
+                                (row.as_ptr() as *const T).add(col.src_off),
+                                col.width,
+                            )
+                        };
+                        (cb)(ci, row_no, T::skein_one(src));
+                        continue;
+                    }
+                    for col in &st.cols {
+                        let row = col.input.peek(i);
+                        let src = unsafe {
+                            std::slice::from_raw_parts(
+                                (row.as_ptr() as *const T).add(col.src_off),
+                                col.width,
+                            )
+                        };
+                        st.assembled[col.x0..col.x0 + col.width].copy_from_slice(src);
+                    }
+                    (cb)(ci, row_no, T::skein_one(&st.assembled));
+                }
+                drop(cb);
+                st.rows_seen += n as u32;
+                for col in &mut st.cols {
+                    col.input.unwind(n);
+                }
+            }
+            for col in &st.cols {
+                ctx.tug(col.producer);
+            }
+        }
+    }
+}
+
 // ============================================================================
 // Graph builder + driver
 // ============================================================================
@@ -764,7 +887,8 @@ impl<T: Sample> Node for MergeSinkNode<T> {
 pub struct WeftDecoder {
     rt: Runtime,
     kick: Vec<NodeId>,
-    pub rows_total: u32,
+    /// Rows this tile row emits, per component.
+    pub rows_total: Vec<u32>,
 }
 
 impl WeftDecoder {
@@ -775,6 +899,22 @@ impl WeftDecoder {
         }
         self.rt.await_stillness().map_err(DecodeError::Logic)
     }
+}
+
+/// Where a decode hands its rows: one joint callback per image row, or one
+/// callback per component row.
+enum EmitSink {
+    Joint(Arc<Mutex<RowSink>>),
+    PerComp(Arc<Mutex<CompRowSink>>),
+}
+
+/// Do all components share one subsampling factor? Only then do they land on
+/// the same output rectangle, which is what a joint row callback needs.
+pub fn uniform_subsampling(siz: &crate::codec::params::SizParams) -> bool {
+    let first = &siz.components[0];
+    siz.components
+        .iter()
+        .all(|c| c.xr_siz == first.xr_siz && c.yr_siz == first.yr_siz)
 }
 
 /// Decode the whole image, streaming rows to `sink` in order, using the
@@ -788,6 +928,60 @@ pub fn weave_with_coder(
     sink: RowSink,
     coder: BlockCoder,
 ) -> Result<u64, DecodeError> {
+    if !uniform_subsampling(&plan.siz) {
+        return Err(DecodeError::Logic(
+            "weft graph: one joint row cannot carry components of different sizes".into(),
+        ));
+    }
+    let rows = weave_sink(
+        file,
+        plan,
+        workers,
+        EmitSink::Joint(Arc::new(Mutex::new(sink))),
+        coder,
+    )?;
+    Ok(rows.first().copied().unwrap_or(0))
+}
+
+/// [`weave_with_coder`] delivering one component row at a time, which is what
+/// subsampled components need. Returns the rows emitted per component.
+pub fn weave_comps_with_coder(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    workers: usize,
+    sink: CompRowSink,
+    coder: BlockCoder,
+) -> Result<Vec<u64>, DecodeError> {
+    // grok skips the color transform when components 0-2 differ in size; when
+    // they agree it applies one, and only the joint sink can carry it
+    let c = &plan.siz.components;
+    if plan.cod.use_ycc
+        && c.len() >= 3
+        && c[1].xr_siz == c[0].xr_siz
+        && c[1].yr_siz == c[0].yr_siz
+        && c[2].xr_siz == c[0].xr_siz
+        && c[2].yr_siz == c[0].yr_siz
+    {
+        return Err(DecodeError::Logic(
+            "weft graph: per-component rows cannot carry the color transform".into(),
+        ));
+    }
+    weave_sink(
+        file,
+        plan,
+        workers,
+        EmitSink::PerComp(Arc::new(Mutex::new(sink))),
+        coder,
+    )
+}
+
+fn weave_sink(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    workers: usize,
+    sink: EmitSink,
+    coder: BlockCoder,
+) -> Result<Vec<u64>, DecodeError> {
     let mut plan = plan;
     let ntx = plan.siz.tiles_across() as usize;
     let nty = plan.siz.tiles_down() as usize;
@@ -804,7 +998,7 @@ pub fn weave_with_coder(
     // i32 choice still matches grok bit-for-bit. Irreversible 9/7 always takes
     // the float path: it never overflows and is at least as accurate as grok's
     // int16 fixed-point 9/7.
-    let path = if !plan.cod.reversible {
+    let path = if !plan.cod.comps[0].reversible {
         if plan.q13 { Path::Q13 } else { Path::F32 }
     } else {
         let num_comps = plan.siz.comp_count();
@@ -821,9 +1015,8 @@ pub fn weave_with_coder(
             Path::I32
         }
     };
-    let cb = Arc::new(Mutex::new(sink));
     let mut tiles = std::collections::VecDeque::from(std::mem::take(&mut plan.tiles));
-    let mut emitted = 0u64;
+    let mut emitted = vec![0u64; plan.siz.comp_count()];
     for _ty in 0..nty {
         let row_tiles: Vec<TilePlan> = tiles.drain(..ntx).collect();
         // A tile row the decode window misses entirely was never parsed and
@@ -838,20 +1031,22 @@ pub fn weave_with_coder(
             workers,
             path,
             coder,
-            Arc::clone(&cb),
+            &sink,
         )?;
         let Some(dec) = dec else {
             continue;
         };
         if std::env::var("WEFT_DEBUG").is_ok() {
             eprintln!(
-                "weft debug: tile row kick={} rows_total={}",
+                "weft debug: tile row kick={} rows_total={:?}",
                 dec.kick.len(),
                 dec.rows_total
             );
         }
         dec.weave()?;
-        emitted += dec.rows_total as u64;
+        for (total, rows) in emitted.iter_mut().zip(&dec.rows_total) {
+            *total += *rows as u64;
+        }
     }
     Ok(emitted)
 }
@@ -866,38 +1061,15 @@ fn dress_tile_loom(
     workers: usize,
     path: Path,
     coder: BlockCoder,
-    cb: Arc<Mutex<RowSink>>,
+    sink: &EmitSink,
 ) -> Result<Option<WeftDecoder>, DecodeError> {
-    let n_res = (plan.cod.num_levels + 1) as usize;
-    let target_res = n_res - 1 - plan.reduce as usize;
-    // one synthesis level per resolution step from 0 up to the target
-    let levels = target_res;
+    // Per component, since a COC gives a component its own level count.
+    let target_res = |c: usize| plan.cod.comps[c].num_levels as usize - plan.reduce as usize;
     let num_comps = plan.siz.comp_count();
-    let block_w = plan.cod.block_width;
-    let block_h = plan.cod.block_height;
-    let modes = plan.cod.modes.0 as i32;
-    for c in 0..num_comps {
-        let comp = &plan.siz.components[c];
-        if comp.xr_siz != 1 || comp.yr_siz != 1 {
-            return Err(DecodeError::Logic(
-                "weft graph: subsampled components not wired yet".into(),
-            ));
-        }
-    }
-    // Output rectangle on the reduced plane: the window's when one is set,
-    // the image's otherwise. Tile resolution dims at target_res live on the
-    // same plane, so emitted rows and columns are relative to this rect.
-    let out_rect = band_window(
-        plan.window.unwrap_or(Dims {
-            x0: plan.siz.x_o_siz,
-            y0: plan.siz.y_o_siz,
-            x1: plan.siz.x_siz,
-            y1: plan.siz.y_siz,
-        }),
-        plan.reduce,
-        0,
-    );
-    let width = plan.width as usize;
+    // Output rectangle of each component on its own reduced plane. Tile
+    // resolution dims at target_res live on the same plane, so emitted rows
+    // and columns are relative to that component's rect.
+    let out_rect = &plan.comp_dims;
     let sb: usize = path.fibre_bytes();
     let prec = if path.fibre_bytes() == 2 {
         SamplePrec::I16
@@ -930,26 +1102,25 @@ fn dress_tile_loom(
         /// a whole-tile decode; the fraction is zero off the Q13 path.
         ll_feed: Vec<(u32, usize, i16)>,
     }
-    struct ColSpec {
-        chains: Vec<ChainSpec>,
+    /// One component's chain within one tile column, with that component's
+    /// own slice of the output rectangle.
+    struct ColChain {
+        comp: usize,
+        spec: ChainSpec,
         x0: usize,
         width: usize,
         src_off: usize,
     }
 
     let mut band_nodes: Vec<SubbandDecodeNode> = Vec::new();
-    let mut col_specs: Vec<ColSpec> = Vec::with_capacity(row_tiles.len());
-    let mut row_base: u32 = 0;
-    let mut rows_total: u32 = 0;
-    let mut sink_discard: u32 = 0;
-    let mut first_tile = true;
+    let mut col_specs: Vec<Vec<ColChain>> = Vec::with_capacity(row_tiles.len());
+    let mut row_base = vec![0u32; num_comps];
+    let mut rows_total = vec![0u32; num_comps];
+    let mut sink_discard = vec![0u32; num_comps];
+    let mut first_tile = vec![true; num_comps];
 
     for tile in row_tiles.into_iter() {
         if !tile.in_window {
-            continue;
-        }
-        let full = &tile.geom.components[0].resolutions[target_res].dims;
-        if full.is_empty() {
             continue;
         }
         // Effective decode windows: the plan's padded ones, or the whole tile
@@ -968,27 +1139,32 @@ fn dress_tile_loom(
                 })
                 .collect()
         });
-        // This tile's emitted rectangle on the output plane.
-        let rw = intersect(out_rect, *full);
-        if rw.is_empty() {
-            continue;
-        }
-        let node_top = eff[0].res[target_res];
-        if first_tile {
-            first_tile = false;
-            row_base = rw.y0 - out_rect.y0;
-            rows_total = rw.height();
-            // rows the top engines emit above the output window
-            sink_discard = rw.y0 - node_top.y0;
-        }
-        let tile_x0 = (rw.x0 - out_rect.x0) as usize;
-        let tile_w = rw.width() as usize;
-        let col_src_off = (rw.x0 - node_top.x0) as usize;
-        let mut chains: Vec<ChainSpec> = Vec::with_capacity(num_comps);
+        let mut chains: Vec<ColChain> = Vec::with_capacity(num_comps);
         let mut plan_comps = tile.comps;
         for c in 0..num_comps {
             let tc = &tile.geom.components[c];
             let w = &eff[c];
+            let full = tc.resolutions[target_res(c)].dims;
+            if full.is_empty() {
+                continue;
+            }
+            // This component's emitted rectangle within this tile.
+            let rw = intersect(out_rect[c], full);
+            if rw.is_empty() {
+                continue;
+            }
+            let node_top = w.res[target_res(c)];
+            if first_tile[c] {
+                first_tile[c] = false;
+                row_base[c] = rw.y0 - out_rect[c].y0;
+                // rows the top engine emits above the output window
+                sink_discard[c] = rw.y0 - node_top.y0;
+            }
+            // every tile column of this row spans the same output rows
+            rows_total[c] = rw.height();
+            // one synthesis level per resolution step from 0 up to the target
+            let levels = target_res(c);
+            let modes = plan.cod.comps[c].modes.0 as i32;
             // Build synthesis engines from the (windowed) geometry, bottom
             // first: each level's spec is its resolution's padded window with
             // that window's band splits — the engine synthesizes only the
@@ -1060,7 +1236,7 @@ fn dress_tile_loom(
 
             let res_plans = std::mem::take(&mut plan_comps[c]);
             for (r, res_plan) in res_plans.into_iter().enumerate() {
-                if r > target_res {
+                if r > levels {
                     break;
                 }
                 for band in res_plan.bands {
@@ -1087,20 +1263,20 @@ fn dress_tile_loom(
                     let bwl_x1 = (bw.x1 - band.x0) as usize;
                     let clip_lo = bw.y0 - band.y0;
                     let clip_hi = bw.y1 - band.y0;
-                    let first_bx = band.x0 / block_w;
-                    let first_by = band.y0 / block_h;
-                    let bx_lo = bw.x0 / block_w - first_bx;
-                    let bx_hi = (bw.x1 - 1) / block_w - first_bx + 1;
-                    let by_lo = bw.y0 / block_h - first_by;
-                    let by_hi = (bw.y1 - 1) / block_h - first_by + 1;
-                    let cap_rows = band_ring_picks(block_h, bw.y1 - bw.y0);
+                    let first_bx = band.x0 / band.block_w;
+                    let first_by = band.y0 / band.block_h;
+                    let bx_lo = bw.x0 / band.block_w - first_bx;
+                    let bx_hi = (bw.x1 - 1) / band.block_w - first_bx + 1;
+                    let by_lo = bw.y0 / band.block_h - first_by;
+                    let by_hi = (bw.y1 - 1) / band.block_h - first_by + 1;
+                    let cap_rows = band_ring_picks(band.block_h, bw.y1 - bw.y0);
                     let k = slice_count(bx_hi - bx_lo);
                     let per = (bx_hi - bx_lo).div_ceil(k);
                     let band = Arc::new(band);
                     let mut bx0 = bx_lo;
                     while bx0 < bx_hi {
                         let nbw = per.min(bx_hi - bx0);
-                        let (col0, col1) = block_warp_span(&band, block_w, bx0, nbw);
+                        let (col0, col1) = block_warp_span(&band, bx0, nbw);
                         let slice_samples = col1 - col0;
                         // whole blocks are decoded into the slot; the engine
                         // reads only the window's sample span
@@ -1126,8 +1302,6 @@ fn dress_tile_loom(
                             band: Arc::clone(&band),
                             bx0,
                             nbw,
-                            block_w,
-                            block_h,
                             modes,
                             path,
                             coder,
@@ -1145,20 +1319,24 @@ fn dress_tile_loom(
                     }
                 }
             }
-            chains.push(ChainSpec {
-                engines,
-                level_rows,
-                slices: slices_wiring,
-                band_node_levels,
-                ll_feed,
+            chains.push(ColChain {
+                comp: c,
+                spec: ChainSpec {
+                    engines,
+                    level_rows,
+                    slices: slices_wiring,
+                    band_node_levels,
+                    ll_feed,
+                },
+                x0: (rw.x0 - out_rect[c].x0) as usize,
+                width: rw.width() as usize,
+                src_off: (rw.x0 - node_top.x0) as usize,
             });
         }
-        col_specs.push(ColSpec {
-            chains,
-            x0: tile_x0,
-            width: tile_w,
-            src_off: col_src_off,
-        });
+        if chains.is_empty() {
+            continue;
+        }
+        col_specs.push(chains);
     }
     if col_specs.is_empty() {
         return Ok(None);
@@ -1170,20 +1348,29 @@ fn dress_tile_loom(
     let num_level_nodes: u32 = col_specs
         .iter()
         .map(|cs| {
-            cs.chains
-                .iter()
-                .map(|ch| ch.engines.len() as u32)
+            cs.iter()
+                .map(|ch| ch.spec.engines.len() as u32)
                 .sum::<u32>()
         })
         .sum();
     let sink_id = NodeId::heddle(num_band_nodes + num_level_nodes);
     let mut next_level = num_band_nodes;
     let mut level_nodes: Vec<LevelNode> = Vec::with_capacity(num_level_nodes as usize);
-    let mut cols: Vec<ColInput> = Vec::with_capacity(col_specs.len());
-    for cs in col_specs {
-        let mut inputs = Vec::with_capacity(cs.chains.len());
-        let mut producers = Vec::with_capacity(cs.chains.len());
-        for ch in cs.chains {
+    /// One finished chain: which tile column and component it feeds the sink
+    /// for, and the ring it feeds through.
+    struct SinkFeed {
+        col: usize,
+        comp: usize,
+        input: Consumer<AlignedVec>,
+        producer: NodeId,
+        x0: usize,
+        width: usize,
+        src_off: usize,
+    }
+    let mut feeds: Vec<SinkFeed> = Vec::new();
+    for (col_idx, chains) in col_specs.into_iter().enumerate() {
+        for chain in chains {
+            let ch = chain.spec;
             let n_lv = ch.engines.len() as u32;
             let base = next_level;
             next_level += n_lv;
@@ -1237,23 +1424,22 @@ fn dress_tile_loom(
                     rows_total: ch.level_rows[l],
                 });
                 if is_top {
-                    inputs.push(out_con);
-                    producers.push(NodeId::heddle(base + top as u32));
+                    feeds.push(SinkFeed {
+                        col: col_idx,
+                        comp: chain.comp,
+                        input: out_con,
+                        producer: NodeId::heddle(base + top as u32),
+                        x0: chain.x0,
+                        width: chain.width,
+                        src_off: chain.src_off,
+                    });
                 } else {
                     ll_from_child = Some(out_con);
                 }
             }
         }
-        cols.push(ColInput {
-            inputs,
-            producers,
-            x0: cs.x0,
-            width: cs.width,
-            src_off: cs.src_off,
-        });
     }
 
-    let ycc = plan.cod.use_ycc && num_comps >= 3;
     let mut b = Builder::warp();
     let mut kick = Vec::new();
     for n in band_nodes {
@@ -1262,44 +1448,110 @@ fn dress_tile_loom(
     for ln in level_nodes {
         b.mount(Box::new(ln));
     }
+
     struct HemArgs {
         cols: Vec<ColInput>,
-        width: usize,
+        per_comp: Vec<Vec<CompColInput>>,
+        widths: Vec<usize>,
+        row_base: Vec<u32>,
+        discard: Vec<u32>,
         ycc: bool,
-        row_base: u32,
-        discard: u32,
         num_comps: usize,
-        cb: Arc<Mutex<RowSink>>,
     }
-    fn make_hem<T: Sample>(a: HemArgs) -> Box<MergeSinkNode<T>> {
-        Box::new(MergeSinkNode::<T> {
-            cols: a.cols,
-            width: a.width,
-            ycc: a.ycc,
-            row_base: a.row_base,
-            rows_seen: 0,
-            discard: a.discard,
-            assembled: (0..a.num_comps)
-                .map(|_| vec![T::default(); a.width])
-                .collect(),
-            cb: a.cb,
-        })
+    fn make_hem<T: Sample>(a: HemArgs, sink: &EmitSink) -> Box<dyn Node> {
+        match sink {
+            EmitSink::Joint(cb) => Box::new(MergeSinkNode::<T> {
+                cols: a.cols,
+                width: a.widths[0],
+                ycc: a.ycc,
+                row_base: a.row_base[0],
+                rows_seen: 0,
+                discard: a.discard[0],
+                assembled: (0..a.num_comps)
+                    .map(|_| vec![T::default(); a.widths[0]])
+                    .collect(),
+                cb: Arc::clone(cb),
+            }),
+            EmitSink::PerComp(cb) => Box::new(CompMergeSinkNode::<T> {
+                comps: a
+                    .per_comp
+                    .into_iter()
+                    .enumerate()
+                    .map(|(c, cols)| CompSinkState {
+                        assembled: if cols.len() > 1 {
+                            vec![T::default(); a.widths[c]]
+                        } else {
+                            Vec::new()
+                        },
+                        cols,
+                        row_base: a.row_base[c],
+                        rows_seen: 0,
+                        discard: a.discard[c],
+                        cb: Arc::clone(cb),
+                    })
+                    .collect(),
+            }),
+        }
     }
+
+    let mut cols: Vec<ColInput> = Vec::new();
+    let mut per_comp: Vec<Vec<CompColInput>> = (0..num_comps).map(|_| Vec::new()).collect();
+    match sink {
+        EmitSink::Joint(_) => {
+            let mut cur_col = usize::MAX;
+            for f in feeds {
+                if f.col != cur_col {
+                    cur_col = f.col;
+                    cols.push(ColInput {
+                        inputs: Vec::with_capacity(num_comps),
+                        producers: Vec::with_capacity(num_comps),
+                        x0: f.x0,
+                        width: f.width,
+                        src_off: f.src_off,
+                    });
+                }
+                let col = cols.last_mut().expect("a feed opens its own column");
+                debug_assert_eq!(
+                    (col.x0, col.width, col.src_off),
+                    (f.x0, f.width, f.src_off),
+                    "a joint row needs every component on the same rectangle"
+                );
+                col.inputs.push(f.input);
+                col.producers.push(f.producer);
+            }
+            debug_assert!(
+                cols.iter().all(|c| c.inputs.len() == num_comps),
+                "a joint row needs every component in every tile column"
+            );
+        }
+        EmitSink::PerComp(_) => {
+            for f in feeds {
+                per_comp[f.comp].push(CompColInput {
+                    input: f.input,
+                    producer: f.producer,
+                    x0: f.x0,
+                    width: f.width,
+                    src_off: f.src_off,
+                });
+            }
+        }
+    }
+
     let hem_args = HemArgs {
         cols,
-        width,
-        ycc,
+        per_comp,
+        widths: out_rect.iter().map(|d| d.width() as usize).collect(),
         row_base,
         discard: sink_discard,
+        ycc: matches!(sink, EmitSink::Joint(_)) && plan.cod.use_ycc && num_comps >= 3,
         num_comps,
-        cb,
     };
-    let got_sink = match path {
-        Path::I16 => b.mount(make_hem::<i16>(hem_args)),
-        Path::I32 => b.mount(make_hem::<i32>(hem_args)),
-        Path::F32 => b.mount(make_hem::<f32>(hem_args)),
-        Path::Q13 => b.mount(make_hem::<Q13Sample>(hem_args)),
-    };
+    let got_sink = b.mount(match path {
+        Path::I16 => make_hem::<i16>(hem_args, sink),
+        Path::I32 => make_hem::<i32>(hem_args, sink),
+        Path::F32 => make_hem::<f32>(hem_args, sink),
+        Path::Q13 => make_hem::<Q13Sample>(hem_args, sink),
+    });
     assert_eq!(got_sink, sink_id);
 
     Ok(Some(WeftDecoder {

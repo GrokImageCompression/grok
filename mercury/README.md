@@ -76,7 +76,9 @@ single-threaded (no locks inside nodes) and every ring is genuinely SPSC.
   loops dispatch through [ffi_dwt.rs](src/ffi_dwt.rs) to the Highway kernels.
 - **Merge sink** — joins components (and tile columns), applies the inverse
   RCT/ICT when signalled, and hands finished image rows to the host via the
-  row callback.
+  row callback. Components with their own `XRsiz`/`YRsiz` emit rows at
+  different rates, so they take a per-component sink instead, which carries no
+  color transform (grok skips the MCT on components of different sizes too).
 
 Multi-tile images decode one tile *row* at a time: all tiles of a tile row
 run concurrently, tile rows run in sequence with a fresh graph each, so peak
@@ -112,7 +114,9 @@ Grok drives the engine through [include/mercury_capi.h](include/mercury_capi.h):
    decodes the image, calling `t1_fn` per code-block and `row_fn` for each finished
    full-width row (in order). The i16 entry avoids an i32 staging row when
    the final samples fit signed i16. A null `t1_fn` is rejected. The host
-   must supply tier-1.
+   must supply tier-1. Components of different sizes have no full-width row,
+   so those plans take `mercury_weave_comps{,_i16}`, which delivers one
+   component row per call.
 
 [examples/capi_smoke.c](examples/capi_smoke.c) exercises all three surfaces.
 
@@ -140,7 +144,7 @@ tile, 9 levels, ~3 GB decoded):
   classic whole-image pipeline.
 - Fast-path output is byte-identical to the classic pipeline on the
   reversible corpus (5/3, all precisions), across multi-tile, multi-component
-  (RCT), and subsampling-free images.
+  (RCT), and subsampled images.
 - Irreversible 9/7 matches OpenJPEG within final rounding (≤ 1 LSB, i.e.
   spec-correct); different valid 9/7 inverse implementations disagree at the
   ±1 LSB level.
@@ -178,6 +182,7 @@ classic pipeline.
 - Full-resolution, full-image decode only. No `-reduce` / decode-window /
   region decode (the host handles those on its classic path).
 - Rejected at plan time (returned as errors, never mis-decoded, so the host
-  falls back): COC/POC markers, derived quantization, component subsampling,
-  precincts smaller than code-blocks, HT/BYPASS/RESTART code-block modes.
+  falls back): tile-part POC markers, mixed wavelet kernels across components,
+  derived quantization, precincts smaller than code-blocks,
+  HT/BYPASS/RESTART code-block modes.
 - Decode-only; the host owns compression, color management, and output.

@@ -101,6 +101,13 @@ namespace
       writeRow(ctx->planes[i], (size_t)row * ctx->strides[i], comps[i], width);
   }
 
+  template<typename T>
+  void compRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width)
+  {
+    auto ctx = (RowCtx*)c;
+    writeRow(ctx->planes[comp], (size_t)row * ctx->strides[comp], samples, width);
+  }
+
   // Streaming band mode: rows accumulate in a rows_per_strip-high scratch
   // window that is flushed through ioBandCallback_ (yBegin/yEnd are
   // band-relative, matching the classic drain loop's contract), then the
@@ -145,6 +152,97 @@ namespace
       }
       ctx->filled = 0;
     }
+  }
+
+  // One band per tile row, which is what classic's tileCompletion_ hands the
+  // consumer: yEnd counts canvas rows while each component carries its own y0
+  // and height, something a rows_per_strip window cannot express.
+  struct TileRowBand
+  {
+    uint32_t yEnd;
+    std::vector<uint32_t> y0;
+    std::vector<uint32_t> h;
+  };
+
+  struct TileRowBandCtx
+  {
+    grk_io_band_callback cb;
+    void* cbUserData;
+    GrkImage* scratch;
+    std::vector<void*> planes;
+    std::vector<uint32_t> strides;
+    std::vector<TileRowBand> bands;
+    size_t current = 0;
+    std::vector<uint32_t> filled; // rows of the current band, per component
+    uint32_t bandsFlushed = 0;
+    bool cbFailed = false;
+  };
+
+  // Components interleave in no fixed order, so a band is ready only once each
+  // has delivered its whole height. A tile row a decode window emptied carries
+  // no rows and passes straight through.
+  void flushCompleteBands(TileRowBandCtx* ctx)
+  {
+    while(ctx->current < ctx->bands.size())
+    {
+      const auto& band = ctx->bands[ctx->current];
+      bool complete = true;
+      for(size_t c = 0; c < ctx->filled.size(); c++)
+        complete = complete && ctx->filled[c] == band.h[c];
+      if(!complete)
+        return;
+      if(band.yEnd > 0)
+      {
+        for(uint16_t c = 0; c < ctx->scratch->numcomps; c++)
+        {
+          auto comp = ctx->scratch->comps + c;
+          comp->y0 = band.y0[c];
+          comp->h = band.h[c];
+        }
+        if(!ctx->cb(0, band.yEnd, ctx->scratch, ctx->cbUserData))
+        {
+          ctx->cbFailed = true;
+          return;
+        }
+        ctx->bandsFlushed++;
+      }
+      ctx->current++;
+      std::fill(ctx->filled.begin(), ctx->filled.end(), 0u);
+    }
+  }
+
+  template<typename T>
+  void tileRowBandRow(TileRowBandCtx* ctx, uint32_t comp, const T* samples, uint64_t width)
+  {
+    writeRow(ctx->planes[comp], (size_t)ctx->filled[comp] * ctx->strides[comp], samples, width);
+    ctx->filled[comp]++;
+  }
+
+  template<typename T>
+  void tileRowBandCompSink(void* c, uint32_t comp, uint32_t, const T* samples, uint64_t width)
+  {
+    auto ctx = (TileRowBandCtx*)c;
+    if(ctx->cbFailed)
+      return;
+    flushCompleteBands(ctx);
+    if(ctx->cbFailed)
+      return;
+    tileRowBandRow(ctx, comp, samples, width);
+    flushCompleteBands(ctx);
+  }
+
+  template<typename T>
+  void tileRowBandSink(void* c, uint32_t, const T* const* comps, uint32_t numComps, uint64_t width)
+  {
+    auto ctx = (TileRowBandCtx*)c;
+    if(ctx->cbFailed)
+      return;
+    flushCompleteBands(ctx);
+    if(ctx->cbFailed)
+      return;
+    for(uint32_t i = 0; i < numComps; i++)
+      tileRowBandRow(ctx, i, comps[i], width);
+    flushCompleteBands(ctx);
   }
 
   // read_at source over one contiguous span. read-only, so concurrent
@@ -315,12 +413,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // where that post-processing happens. the A/B sweep confirms both are
   // bit-exact against classic.
   for(uint16_t c = 0; c < img->numcomps; c++)
-  {
-    if(img->comps[c].dx != 1 || img->comps[c].dy != 1)
-      MFP_BAIL("subsampled component");
     if(img->comps[c].data) // already allocated by someone else — bail
       MFP_BAIL("component data pre-allocated");
-  }
 
   // ── Hand grok's parsed main header to mercury ────────────────────────────
   // Mercury no longer parses the main header (SIZ/COD/QCD/QCC); grok already
@@ -333,22 +427,45 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   const uint16_t nc = img->numcomps;
   const auto& t0 = tcp->tccps_[0];
 
+  // Components of one size share a row, and mercury's joint row callback
+  // carries the color transform; components of different sizes need the
+  // per-component entries, which cannot.
+  bool anySubsampled = false;
+  bool uniformSubsampling = true;
+  for(uint16_t c = 0; c < nc; c++)
+  {
+    anySubsampled = anySubsampled || img->comps[c].dx != 1 || img->comps[c].dy != 1;
+    uniformSubsampling = uniformSubsampling && img->comps[c].dx == img->comps[0].dx &&
+                         img->comps[c].dy == img->comps[0].dy;
+  }
+  // grok applies the MCT when components 0-2 match, so a later component of a
+  // different size leaves no entry point that can both split and transform
+  if(tcp->mct_ == 1 && nc >= 3 && img->componentsEqual(3, false))
+    for(uint16_t c = 3; c < nc; c++)
+      if(img->comps[c].dx != img->comps[0].dx || img->comps[c].dy != img->comps[0].dy)
+        MFP_BAIL("MCT with a subsampled component");
+
+  // Every component reduces by the same count, so the one with the fewest
+  // resolutions binds.
+  uint8_t fewestRes = t0.numresolutions_;
+  for(uint16_t c = 1; c < nc; c++)
+    fewestRes = std::min(fewestRes, tcp->tccps_[c].numresolutions_);
   // mercury's synthesis chain needs at least one decomposition level, so it
   // cannot produce resolution 0. classic already checked reduce < numresolutions.
-  if(t0.numresolutions_ < 2 || dec.reduce_ > t0.numresolutions_ - 2)
+  if(fewestRes < 2 || dec.reduce_ > fewestRes - 2)
     MFP_BAIL("reduce leaves no decomposition level");
 
-  // COC (per-component coding style) and POC are not streamable by mercury —
-  // it derives a single packet schedule from one progression and one coding
-  // style. (These were mercury's own rejections before; now grok owns them.)
-  // Bail on COC *presence*, not just on differing values: a redundant COC
-  // (identical to the COD) can still land on a mercury decode path the classic
-  // pipeline handles but the fast path does not, so match the old contract and
-  // fall back whenever any COC was read.
-  if(tcp->hasPoc())
-    MFP_BAIL("POC present");
-  if(tcp->sawCoc_)
-    MFP_BAIL("COC present");
+  // mercury picks one sample path for the whole image, so every component has
+  // to use the same wavelet
+  for(uint16_t c = 1; c < nc; c++)
+    if(tcp->tccps_[c].qmfbid_ != t0.qmfbid_)
+      MFP_BAIL("mixed wavelet kernels across components");
+  // mercury reads packet headers in the packet stream, and applies no ROI upshift
+  if(cs.cp_.ppmMarkers_)
+    MFP_BAIL("PPM present");
+  for(uint16_t c = 0; c < nc; c++)
+    if(tcp->tccps_[c].roishift_ != 0)
+      MFP_BAIL("RGN present");
 
   // classic rejects this in validateQuantization at tile init, too late for the fast path
   if(tcp->mainQcdQntsty != CCP_QNTSTY_SIQNT)
@@ -358,20 +475,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       if(!t.fromQCC_ && !t.fromTileHeader_ && tcp->mainQcdNumStepSizes < t.numStepSizesNeeded())
         MFP_BAIL("main QCD has fewer step sizes than the sub-bands it covers");
     }
-
-  // A precinct smaller than the code-block clamps the effective block size
-  // (B.7: xcb' = min(xcb, PPx), and band precincts halve above resolution 0).
-  // Mercury parses with the nominal block size, so these streams stay classic.
-  if(t0.csty_ & CCP_CSTY_PRECINCT)
-  {
-    for(uint8_t r = 0; r < t0.numresolutions_; r++)
-    {
-      int shift = r == 0 ? 0 : 1;
-      if(t0.precWidthExp_[r] - shift < t0.cblkw_expn_ ||
-         t0.precHeightExp_[r] - shift < t0.cblkh_expn_)
-        MFP_BAIL("precinct smaller than code-block");
-    }
-  }
 
   std::vector<MercurySizComp> mhComps(nc);
   for(uint16_t c = 0; c < nc; c++)
@@ -398,12 +501,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // rest. Mercury applies each component's own quant; identical values decode
   // identically whether they originated in a QCD or a QCC marker.
   //
-  // Band count is uniform (3*num_levels + 1); use it rather than a component's
-  // numStepSizes_, which grok's readQcd leaves at 0 for the components it
-  // propagates the QCD to (it copies the stepsizes_ array but not the count).
-  const uint32_t nbands = (uint32_t)(3 * (numres - 1) + 1);
-  auto fillQuant = [nbands](const auto& t, std::vector<uint8_t>& ranges, std::vector<float>& steps,
-                            MercuryQuant& q) {
+  // A component's band count follows its own resolution count (3*levels + 1);
+  // use it rather than numStepSizes_, which grok's readQcd leaves at 0 for the
+  // components it propagates the QCD to (it copies the stepsizes_ array but
+  // not the count).
+  auto fillQuant = [](const auto& t, std::vector<uint8_t>& ranges, std::vector<float>& steps,
+                      MercuryQuant& q) {
+    const uint32_t nbands = (uint32_t)(3 * (t.numresolutions_ - 1) + 1);
     q.guard_bits = t.numgbits_;
     q.style = t.qntsty_; // 0 = reversible, 1 = derived, 2 = expounded
     ranges.clear();
@@ -443,6 +547,53 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     fillQuant(tcp->tccps_[c], qccRanges[c - 1], qccSteps[c - 1], ov.quant);
   }
 
+  // Coding style: the COD fields below come from component 0, and a COC gives
+  // each other component its own decomposition count, block size, block style,
+  // wavelet, and precincts.
+  std::vector<MercuryCocOverride> mhCoc(tcp->sawCoc_ && nc > 1 ? (size_t)(nc - 1) : 0);
+  std::vector<std::vector<MercuryPrecinct>> cocPrec(mhCoc.size());
+  for(size_t i = 0; i < mhCoc.size(); i++)
+  {
+    const auto& t = tcp->tccps_[i + 1];
+    auto& ov = mhCoc[i];
+    ov.comp = (uint32_t)(i + 1);
+    ov.num_levels = (uint8_t)(t.numresolutions_ - 1);
+    ov.block_width = 1u << t.cblkw_expn_;
+    ov.block_height = 1u << t.cblkh_expn_;
+    ov.modes = t.cblkStyle_;
+    ov.reversible = (t.qmfbid_ == 1);
+    if(t.csty_ & CCP_CSTY_PRECINCT)
+    {
+      cocPrec[i].resize(t.numresolutions_);
+      for(uint8_t r = 0; r < t.numresolutions_; r++)
+      {
+        cocPrec[i][r].width = 1u << t.precWidthExp_[r];
+        cocPrec[i][r].height = 1u << t.precHeightExp_[r];
+      }
+    }
+    ov.precincts = cocPrec[i].empty() ? nullptr : cocPrec[i].data();
+    ov.num_precincts = (uint32_t)cocPrec[i].size();
+  }
+
+  // Main-header POC volume list; mercury clamps and rejects it the way
+  // finalizePocs does, so hand it over raw.
+  std::vector<MercuryProgressionVolume> mhPoc;
+  if(tcp->hasPoc())
+  {
+    mhPoc.resize(tcp->getNumProgressions());
+    for(size_t i = 0; i < mhPoc.size(); i++)
+    {
+      const auto& prog = tcp->progressionOrderChange_[i];
+      auto& vol = mhPoc[i];
+      vol.res_s = prog.res_s;
+      vol.comp_s = prog.comp_s;
+      vol.lay_e = prog.lay_e;
+      vol.res_e = prog.res_e;
+      vol.comp_e = prog.comp_e;
+      vol.order = (uint8_t)prog.progression;
+    }
+  }
+
   // SIZ canvas from the header image: under a decode window the composite's
   // bounds are the window rect, not the image, and tile geometry needs the
   // real canvas.
@@ -470,6 +621,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mhdr.num_precincts = (uint32_t)mhPrec.size();
   mhdr.qcc = mhQcc.empty() ? nullptr : mhQcc.data();
   mhdr.num_qcc = (uint32_t)mhQcc.size();
+  mhdr.coc = mhCoc.empty() ? nullptr : mhCoc.data();
+  mhdr.num_coc = (uint32_t)mhCoc.size();
+  mhdr.poc = mhPoc.empty() ? nullptr : mhPoc.data();
+  mhdr.num_poc = (uint32_t)mhPoc.size();
   mhdr.codestream_off = 0; // informational; mercury drives off first_sot_off
   mhdr.first_sot_off = cs.markerCache_->getTileStreamStart();
 
@@ -607,9 +762,11 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   {
     uint32_t prec = 0;
     int32_t sgnd = 0;
-    if(mercury_loom_comp_info(plan, c, &prec, &sgnd) != MERCURY_OK || prec != img->comps[c].prec ||
-       (sgnd != 0) != img->comps[c].sgnd || img->comps[c].w != info.width ||
-       img->comps[c].h != info.height)
+    uint32_t compWidth = 0;
+    uint32_t compHeight = 0;
+    if(mercury_loom_comp_info(plan, c, &prec, &sgnd, &compWidth, &compHeight) != MERCURY_OK ||
+       prec != img->comps[c].prec || (sgnd != 0) != img->comps[c].sgnd ||
+       img->comps[c].w != compWidth || img->comps[c].h != compHeight)
     {
       mercury_unwarp_loom(plan);
       MFP_BAIL("plan component info disagrees with the headers");
@@ -636,6 +793,97 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     auto scratch = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
         new GrkImage(), RefCountedDeleter<GrkImage>());
     img->copyHeaderTo(scratch.get());
+    // A subsampled component makes the components' heights differ, which a
+    // rows_per_strip window cannot hold, so mirror classic: one band per tile
+    // row, each component carrying its own y0 and height.
+    if(anySubsampled)
+    {
+      uint8_t reduce = dec.reduce_;
+      std::vector<TileRowBand> bands;
+      for(uint32_t ty = 0; ty < cs.cp_.t_grid_height_; ty++)
+      {
+        uint64_t rowY0 = (uint64_t)cs.cp_.ty0_ + (uint64_t)ty * cs.cp_.t_height_;
+        uint32_t y0 = (uint32_t)std::max<uint64_t>(rowY0, img->y0);
+        uint32_t y1 = (uint32_t)std::min<uint64_t>(rowY0 + cs.cp_.t_height_, img->y1);
+        if(y0 >= y1)
+          continue;
+        TileRowBand band;
+        band.yEnd = ceildivpow2<uint32_t>(y1, reduce) - ceildivpow2<uint32_t>(y0, reduce);
+        for(uint16_t c = 0; c < scratch->numcomps; c++)
+        {
+          uint32_t dy = scratch->comps[c].dy;
+          uint32_t compY0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y0, dy), reduce);
+          uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, dy), reduce);
+          band.y0.push_back(compY0);
+          band.h.push_back(compY1 - compY0);
+        }
+        bands.push_back(std::move(band));
+      }
+      for(uint16_t c = 0; c < scratch->numcomps; c++)
+      {
+        uint32_t total = 0;
+        uint32_t tallest = 0;
+        for(const auto& band : bands)
+        {
+          total += band.h[c];
+          tallest = std::max(tallest, band.h[c]);
+        }
+        // the bands must cover the component's plane exactly, or a row would
+        // land in the wrong band
+        if(total != img->comps[c].h)
+        {
+          mercury_unwarp_loom(plan);
+          MFP_BAIL("tile rows do not cover the component plane");
+        }
+        auto comp = scratch->comps + c;
+        comp->data_type = outType;
+        // a non-tile-aligned YTOsiz can make an interior row the tallest
+        comp->h = tallest;
+        if(!GrkImage::allocData(comp))
+        {
+          mercury_unwarp_loom(plan);
+          MFP_BAIL("scratch band buffer alloc failed");
+        }
+      }
+      TileRowBandCtx ctx;
+      ctx.cb = cs.ioBandCallback_;
+      ctx.cbUserData = cs.ioBandUserData_;
+      ctx.scratch = scratch.get();
+      ctx.bands = std::move(bands);
+      ctx.filled.assign(scratch->numcomps, 0);
+      for(uint16_t c = 0; c < scratch->numcomps; c++)
+      {
+        ctx.planes.push_back(scratch->comps[c].data);
+        ctx.strides.push_back(scratch->comps[c].stride);
+      }
+      int32_t rc;
+      if(uniformSubsampling)
+        rc = is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, tileRowBandSink<int16_t>, &ctx,
+                                      mercuryThreads)
+                  : mercury_weave(plan, mercury_grok_t1_decode, tileRowBandSink<int32_t>, &ctx,
+                                  mercuryThreads);
+      else
+        rc = is16 ? mercury_weave_comps_i16(plan, mercury_grok_t1_decode,
+                                            tileRowBandCompSink<int16_t>, &ctx, mercuryThreads)
+                  : mercury_weave_comps(plan, mercury_grok_t1_decode, tileRowBandCompSink<int32_t>,
+                                        &ctx, mercuryThreads);
+      // trailing bands a decode window emptied carry no rows to trigger them
+      if(rc == MERCURY_OK && !ctx.cbFailed)
+        flushCompleteBands(&ctx);
+      if(rc != MERCURY_OK || ctx.cbFailed || ctx.current != ctx.bands.size())
+      {
+        if(ctx.bandsFlushed == 0 && !ctx.cbFailed)
+          MFP_BAIL("decode failed before first band; falling back");
+        grklog.error("mercury fast path: streaming decode failed (rc=%d) after %u bands written",
+                     rc, ctx.bandsFlushed);
+        cs.success_ = false;
+        return true;
+      }
+      grklog.info("mercury fast path: streamed %ux%u x%u in %u tile-row bands", info.width,
+                  info.height, info.num_comps, (uint32_t)ctx.bands.size());
+      cs.success_ = true;
+      return true;
+    }
     uint32_t bandRows =
         scratch->rows_per_strip ? std::min(scratch->rows_per_strip, info.height) : info.height;
     for(uint16_t c = 0; c < scratch->numcomps; c++)
@@ -701,9 +949,16 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     strides[c] = comp->stride;
   }
   RowCtx ctx{planes.data(), strides.data()};
-  int32_t rc =
-      is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, rowSink<int16_t>, &ctx, mercuryThreads)
-           : mercury_weave(plan, mercury_grok_t1_decode, rowSink<int32_t>, &ctx, mercuryThreads);
+  int32_t rc;
+  if(uniformSubsampling)
+    rc = is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, rowSink<int16_t>, &ctx,
+                                  mercuryThreads)
+              : mercury_weave(plan, mercury_grok_t1_decode, rowSink<int32_t>, &ctx, mercuryThreads);
+  else
+    rc = is16 ? mercury_weave_comps_i16(plan, mercury_grok_t1_decode, compRowSink<int16_t>, &ctx,
+                                        mercuryThreads)
+              : mercury_weave_comps(plan, mercury_grok_t1_decode, compRowSink<int32_t>, &ctx,
+                                    mercuryThreads);
   // Classic runs postProcess on the composite after tile transfer
   // (postMultiTile) — precision/rescale, sycc/esycc->RGB, grey->RGB,
   // upsample, ICC. Mercury rows are the same final absolute samples the

@@ -333,7 +333,10 @@ mod tests {
     impl Node for Counter {
         fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
             self.passes.fetch_add(1, Ordering::Relaxed);
-            self.ran_on.lock().unwrap().push(std::thread::current().id());
+            self.ran_on
+                .lock()
+                .unwrap()
+                .push(std::thread::current().id());
             if let Some(next) = self.next.take() {
                 ctx.tug(next);
             }

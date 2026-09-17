@@ -30,6 +30,19 @@ impl ProgressionOrder {
     }
 }
 
+/// One POC progression volume (T.800 A.6.6): layers `[0, lay_e)`, resolutions
+/// `[res_s, res_e)`, components `[comp_s, comp_e)`, every precinct, walked in
+/// `order`.
+#[derive(Debug, Clone, Copy)]
+pub struct ProgressionVolume {
+    pub res_s: u8,
+    pub comp_s: u16,
+    pub lay_e: u16,
+    pub res_e: u8,
+    pub comp_e: u16,
+    pub order: ProgressionOrder,
+}
+
 // ─── Block coding modes ──────────────────────────────────────────────────────
 
 /// Block coder mode flags (Cmodes).
@@ -113,15 +126,10 @@ pub struct PrecinctSize {
     pub height: u32,
 }
 
-/// Parsed COD marker segment (coding style default).
+/// One component's coding style: the COD default, or its COC override
+/// (T.800 A.6.2).
 #[derive(Debug, Clone)]
-pub struct CodParams {
-    /// Progression order.
-    pub order: ProgressionOrder,
-    /// Number of quality layers.
-    pub num_layers: u16,
-    /// Multiple component transform (YCC).
-    pub use_ycc: bool,
+pub struct CompCodingStyle {
     /// Number of DWT decomposition levels.
     pub num_levels: u8,
     /// Code-block width (power of 2, e.g. 64).
@@ -132,16 +140,12 @@ pub struct CodParams {
     pub modes: CodingModes,
     /// Reversible transform.
     pub reversible: bool,
-    /// Use SOP markers.
-    pub use_sop: bool,
-    /// Use EPH markers.
-    pub use_eph: bool,
     /// Custom precinct sizes per resolution (level 0=LL up to NL).
     /// Empty ⇒ default 2^15 × 2^15.
     pub precincts: Vec<PrecinctSize>,
 }
 
-impl CodParams {
+impl CompCodingStyle {
     /// Precinct size for a resolution level (0=full res); default 2^15×2^15
     /// if no custom precincts.
     pub fn precinct_span(&self, res_level: u8) -> PrecinctSize {
@@ -159,6 +163,39 @@ impl CodParams {
             }
         }
     }
+
+    /// Effective code-block size at a resolution level (T.800 B.7:
+    /// xcb' = min(xcb, PPx)). Above resolution 0 the precinct halves per axis
+    /// into the band domain.
+    pub fn block_span(&self, res_level: u8) -> (u32, u32) {
+        let ps = self.precinct_span(res_level);
+        let band_scale = if res_level == 0 { 1 } else { 2 };
+        (
+            self.block_width.min((ps.width / band_scale).max(1)),
+            self.block_height.min((ps.height / band_scale).max(1)),
+        )
+    }
+}
+
+/// Parsed COD marker segment: the tile-wide fields plus one coding style per
+/// component, each the COD default unless a COC replaced it.
+#[derive(Debug, Clone)]
+pub struct CodParams {
+    /// Progression order.
+    pub order: ProgressionOrder,
+    /// Main-header POC volume list, in order. Empty means no POC, so `order`
+    /// covers the whole tile.
+    pub pocs: Vec<ProgressionVolume>,
+    /// Number of quality layers.
+    pub num_layers: u16,
+    /// Multiple component transform (YCC).
+    pub use_ycc: bool,
+    /// Use SOP markers.
+    pub use_sop: bool,
+    /// Use EPH markers.
+    pub use_eph: bool,
+    /// One entry per component, in component order.
+    pub comps: Vec<CompCodingStyle>,
 }
 
 // ─── QCD parameters ─────────────────────────────────────────────────────────
