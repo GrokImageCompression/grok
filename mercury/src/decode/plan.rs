@@ -8,8 +8,9 @@
 //! the SubbandDecode nodes via `pread` while decoding.
 //!
 //! Scope: any tile grid, any progression order, any layer count,
-//! multi-component, multi-tile-part, SOP/EPH. Violations error rather than
-//! produce wrong output.
+//! multi-component, multi-tile-part, SOP/EPH, and a tile-part header giving
+//! its tile its own coding style and quantization. Violations error rather
+//! than produce wrong output.
 
 use crate::decode::ReadAt;
 
@@ -164,6 +165,9 @@ pub struct ResPlan {
 pub struct TilePlan {
     /// [component][resolution]. Empty when the tile misses the decode window.
     pub comps: Vec<Vec<ResPlan>>,
+    /// This tile's coding style: the main header's, with its tile-part
+    /// header's COD and COC applied.
+    pub cod: CodParams,
     pub geom: TileGeom,
     /// Per-component padded decode windows; None on a whole-tile decode.
     pub win: Option<Vec<TileCompWindow>>,
@@ -460,66 +464,7 @@ pub fn draft(
             .min(file_len)
     };
 
-    // Whitelist code-block modes: RESET/CAUSAL/ERTERM/SEGMARK are handled by
-    // the T1 and verified bit-exact. BYPASS/RESTART split codewords into
-    // multiple segments (the packet parser reads one length per contribution)
-    // and HT/HTMIX use part-15 packet-length signalling — all would misparse,
-    // not just misdecode, so reject at plan time and let the host fall back.
-    {
-        use crate::codec::params::CodingModes;
-        let supported =
-            CodingModes::RESET | CodingModes::CAUSAL | CodingModes::ERTERM | CodingModes::SEGMARK;
-        for style in &hdr.cod.comps {
-            let m = style.modes.0;
-            if m & !supported != 0 {
-                return Err(DecodeError::Logic(format!(
-                    "plan: unsupported code-block modes (Cmodes {m:#x})"
-                )));
-            }
-        }
-    }
-
-    if hdr.cod.comps.len() != hdr.siz.comp_count() {
-        return Err(DecodeError::Logic(format!(
-            "plan: {} coding styles for {} components",
-            hdr.cod.comps.len(),
-            hdr.siz.comp_count()
-        )));
-    }
-    // The sample path (5/3 integer or 9/7 float) is chosen once for the whole
-    // image, so components cannot disagree on the kernel.
-    if hdr
-        .cod
-        .comps
-        .iter()
-        .any(|s| s.reversible != hdr.cod.comps[0].reversible)
-    {
-        return Err(DecodeError::Logic(
-            "plan: mixed wavelet kernels across components".into(),
-        ));
-    }
-
-    // Every component reduces by the same `reduce`, so the one with the fewest
-    // levels is the binding limit.
-    let fewest_levels = hdr
-        .cod
-        .comps
-        .iter()
-        .map(|s| s.num_levels)
-        .min()
-        .unwrap_or(0);
-    // A zero-level image is just its LL band; the graph builder wires leaf
-    // slices per decomposition level, so it cannot represent levels == 0.
-    if fewest_levels == 0 {
-        return Err(DecodeError::Logic("plan: no decomposition levels".into()));
-    }
-    // A reduced decode runs a truncated chain, which still needs one level, so
-    // the target resolution can never be 0 either.
-    if reduce >= fewest_levels {
-        return Err(DecodeError::Logic(format!(
-            "plan: reduce {reduce} leaves no decomposition level ({fewest_levels} available)"
-        )));
-    }
+    check_coding_style(&hdr.cod, hdr.siz.comp_count(), reduce, "")?;
 
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
@@ -557,6 +502,13 @@ pub fn draft(
     let mut tile_segs: Vec<Vec<(u64, u64)>> = vec![Vec::new(); num_tiles];
     // Raw PLT payloads per tile: (Zplt, comma-coded length bytes).
     let mut tile_plt: Vec<Vec<(u8, Vec<u8>)>> = vec![Vec::new(); num_tiles];
+    // Each tile's first tile-part header's COD/COC/QCD/QCC segments, in header
+    // order: (marker code, payload after Lmar).
+    let mut tile_styles: Vec<Vec<(u16, Vec<u8>)>> = vec![Vec::new(); num_tiles];
+    // A tile's coding style has to be known before its first packet, so only
+    // the tile-part that opens a tile may carry those markers. TPsot names it,
+    // but streams with a wrong TPsot decode anyway, so stream order decides.
+    let mut tile_opened = vec![false; num_tiles];
     if !hdr.tlm.is_empty() {
         for e in &hdr.tlm {
             let t = e.tile as usize;
@@ -588,6 +540,7 @@ pub fn draft(
                 e.offset,
                 e.length as u64,
                 use_plt.then(|| &mut tile_plt[t]),
+                (!std::mem::replace(&mut tile_opened[t], true)).then(|| &mut tile_styles[t]),
             )?;
             tile_segs[t].push(seg);
         }
@@ -629,6 +582,8 @@ pub fn draft(
                     sot_pos,
                     psot,
                     use_plt.then(|| &mut tile_plt[isot]),
+                    (!std::mem::replace(&mut tile_opened[isot], true))
+                        .then(|| &mut tile_styles[isot]),
                 )?;
                 tile_segs[isot].push(seg);
             }
@@ -647,11 +602,45 @@ pub fn draft(
         }
     }
 
+    // --- per-tile coding parameters ---
+    let mut tile_params: Vec<(CodParams, Vec<QcdParams>)> = Vec::with_capacity(num_tiles);
+    for (t, segs) in tile_styles.iter().enumerate() {
+        if segs.is_empty() {
+            tile_params.push((hdr.cod.clone(), quant.clone()));
+            continue;
+        }
+        let (mut cod, tile_quant) = comb_tile_params(&hdr.cod, &quant, segs)?;
+        // Classic bounds every tile at the main header's layer count, or at the
+        // caller's limit when it set one: grok copies layersToDecompress_ into
+        // the tile's coding params before reading the tile-part COD, and a
+        // tile-part COD never raises it.
+        let layer_bound = if max_layers != 0 {
+            max_layers
+        } else {
+            hdr.cod.num_layers
+        };
+        cod.num_layers = cod.num_layers.min(layer_bound);
+        check_coding_style(&cod, num_comps, reduce, &format!(" tile {t}"))?;
+        // The sample path and the color transform are chosen once for the
+        // whole image, in weave_sink, so no tile may move them.
+        if cod.comps[0].reversible != hdr.cod.comps[0].reversible {
+            return Err(DecodeError::Logic(format!(
+                "plan: tile {t} changes the wavelet kernel"
+            )));
+        }
+        if cod.use_ycc != hdr.cod.use_ycc {
+            return Err(DecodeError::Logic(format!(
+                "plan: tile {t} changes the component transform"
+            )));
+        }
+        tile_params.push((cod, tile_quant));
+    }
+
     // --- per-tile plans ---
     let mut win = StreamWin::warp(file).map_err(io_snag)?;
     let mut tiles: Vec<TilePlan> = Vec::with_capacity(num_tiles);
-    for t in 0..num_tiles {
-        let geom = chart_tile_geom(&hdr.siz, &hdr.cod, t as u16);
+    for (t, (cod, tile_quant)) in tile_params.into_iter().enumerate() {
+        let geom = chart_tile_geom(&hdr.siz, &cod, t as u16);
         // Per-component padded windows. A tile the window misses is never
         // parsed at all; its packet-data segments are simply dropped.
         let mut tile_wins: Option<Vec<TileCompWindow>> = None;
@@ -659,6 +648,7 @@ pub fn draft(
             if !tile_in_window[t] {
                 tiles.push(TilePlan {
                     comps: Vec::new(),
+                    cod,
                     geom,
                     win: None,
                     in_window: false,
@@ -670,7 +660,7 @@ pub fn draft(
                 .iter()
                 .enumerate()
                 .map(|(c, tc)| {
-                    let style = &hdr.cod.comps[c];
+                    let style = &cod.comps[c];
                     let comp = &hdr.siz.components[c];
                     // the window arrives in canvas coordinates; every rect below
                     // this line lives on the component's own plane
@@ -704,8 +694,8 @@ pub fn draft(
         let comps = comb_tile(
             file,
             &mut win,
-            &hdr.cod,
-            &quant,
+            &cod,
+            &tile_quant,
             &hdr.siz,
             &geom,
             TileStream::warp(std::mem::take(&mut tile_segs[t])),
@@ -716,6 +706,7 @@ pub fn draft(
         )?;
         tiles.push(TilePlan {
             comps,
+            cod,
             geom,
             win: tile_wins,
             in_window: true,
@@ -756,6 +747,128 @@ pub fn draft(
     })
 }
 
+/// Reject coding parameters mercury cannot decode. `label` names the tile the
+/// parameters belong to, and is empty for the main header's.
+fn check_coding_style(
+    cod: &CodParams,
+    num_comps: usize,
+    reduce: u8,
+    label: &str,
+) -> Result<(), DecodeError> {
+    // Whitelist code-block modes: RESET/CAUSAL/ERTERM/SEGMARK are handled by
+    // the T1 and verified bit-exact. BYPASS/RESTART split codewords into
+    // multiple segments (the packet parser reads one length per contribution)
+    // and HT/HTMIX use part-15 packet-length signalling — all would misparse,
+    // not just misdecode, so reject at plan time and let the host fall back.
+    use crate::codec::params::CodingModes;
+    let supported =
+        CodingModes::RESET | CodingModes::CAUSAL | CodingModes::ERTERM | CodingModes::SEGMARK;
+    for style in &cod.comps {
+        let m = style.modes.0;
+        if m & !supported != 0 {
+            return Err(DecodeError::Logic(format!(
+                "plan:{label} unsupported code-block modes (Cmodes {m:#x})"
+            )));
+        }
+    }
+
+    if cod.comps.len() != num_comps {
+        return Err(DecodeError::Logic(format!(
+            "plan:{label} {} coding styles for {num_comps} components",
+            cod.comps.len()
+        )));
+    }
+    // The sample path (5/3 integer or 9/7 float) is chosen once for the whole
+    // image, so components cannot disagree on the kernel.
+    if cod
+        .comps
+        .iter()
+        .any(|s| s.reversible != cod.comps[0].reversible)
+    {
+        return Err(DecodeError::Logic(format!(
+            "plan:{label} mixed wavelet kernels across components"
+        )));
+    }
+
+    // Every component reduces by the same `reduce`, so the one with the fewest
+    // levels is the binding limit.
+    let fewest_levels = cod.comps.iter().map(|s| s.num_levels).min().unwrap_or(0);
+    // A zero-level image is just its LL band; the graph builder wires leaf
+    // slices per decomposition level, so it cannot represent levels == 0.
+    if fewest_levels == 0 {
+        return Err(DecodeError::Logic(format!(
+            "plan:{label} no decomposition levels"
+        )));
+    }
+    // A reduced decode runs a truncated chain, which still needs one level, so
+    // the target resolution can never be 0 either.
+    if reduce >= fewest_levels {
+        return Err(DecodeError::Logic(format!(
+            "plan:{label} reduce {reduce} leaves no decomposition level ({fewest_levels} available)"
+        )));
+    }
+    Ok(())
+}
+
+/// One tile's coding parameters: the main header's with its tile-part header's
+/// markers applied in header order (T.800 A.6.1, A.6.2, A.6.4, A.6.5). A COD
+/// replaces every component's coding style and a QCD every component's
+/// quantization, except the components a COC or QCC of the same tile-part
+/// header covers.
+fn comb_tile_params(
+    base_cod: &CodParams,
+    base_quant: &[QcdParams],
+    segs: &[(u16, Vec<u8>)],
+) -> Result<(CodParams, Vec<QcdParams>), DecodeError> {
+    use crate::codec::markers;
+    let num_comps = base_quant.len();
+    let mut cod = base_cod.clone();
+    let mut quant = base_quant.to_vec();
+    let mut saw_cod = false;
+    let mut saw_qcd = false;
+    let mut saw_qcc = vec![false; num_comps];
+    for (code, payload) in segs {
+        let snag = |why: String| DecodeError::Logic(format!("plan: tile-part {code:#x}: {why}"));
+        match *code {
+            0xFF52 => {
+                if saw_cod {
+                    return Err(snag("second COD in one tile header".into()));
+                }
+                saw_cod = true;
+                markers::comb_cod(payload, &mut cod).map_err(snag)?;
+            }
+            0xFF53 => {
+                markers::comb_coc(payload, &mut cod).map_err(snag)?;
+            }
+            0xFF5C => {
+                if saw_qcd {
+                    return Err(snag("second QCD in one tile header".into()));
+                }
+                saw_qcd = true;
+                let q = markers::comb_qcd(payload).map_err(snag)?;
+                if !saw_qcc[0] {
+                    quant[0] = q;
+                }
+                for c in 1..num_comps {
+                    if !saw_qcc[c] {
+                        quant[c] = quant[0].clone();
+                    }
+                }
+            }
+            0xFF5D => {
+                let (c, q) = markers::comb_qcc(payload, num_comps).map_err(snag)?;
+                if saw_qcc[c] {
+                    return Err(snag(format!("second QCC for component {c}")));
+                }
+                saw_qcc[c] = true;
+                quant[c] = q;
+            }
+            _ => unreachable!("only COD/COC/QCD/QCC are collected"),
+        }
+    }
+    Ok((cod, quant))
+}
+
 /// Scan one tile-part's header markers to SOD, collecting PLT payloads on the
 /// way when a sink is given. Returns the packet-data segment (absolute
 /// offset, length), clipped to the codestream end: a Psot reaching past it
@@ -766,6 +879,7 @@ fn comb_tile_part(
     sot_pos: u64,
     psot: u64,
     mut plt_sink: Option<&mut Vec<(u8, Vec<u8>)>>,
+    mut style_sink: Option<&mut Vec<(u16, Vec<u8>)>>,
 ) -> Result<(u64, u64), DecodeError> {
     let mut mp = sot_pos + 12;
     loop {
@@ -777,11 +891,10 @@ fn comb_tile_part(
             break;
         }
         match code {
-            // COD/COC/QCD/QCC tile overrides would silently change
-            // decode parameters; PPT means packed headers elsewhere, a POC
-            // reorders the tile's packets away from the COD progression, and
-            // an RGN upshifts the tile's coefficients.
-            0xFF52 | 0xFF53 | 0xFF5C | 0xFF5D | 0xFF5E | 0xFF5F | 0xFF61 => {
+            // PPT means packed headers elsewhere, a POC reorders the tile's
+            // packets away from the COD progression, and an RGN upshifts the
+            // tile's coefficients.
+            0xFF5E | 0xFF5F | 0xFF61 => {
                 return Err(DecodeError::Logic(format!(
                     "plan: tile-part marker {code:#x} not supported"
                 )));
@@ -789,6 +902,24 @@ fn comb_tile_part(
             _ => {}
         }
         let l = u16::from_be_bytes([m[2], m[3]]) as u64;
+        // COD/COC/QCD/QCC give the tile its own coding style and quantization
+        // (A.6); only the first tile-part of a tile may carry them, which is
+        // the one the sink is given for.
+        if matches!(code, 0xFF52 | 0xFF53 | 0xFF5C | 0xFF5D) {
+            let Some(sink) = style_sink.as_deref_mut() else {
+                return Err(DecodeError::Logic(format!(
+                    "plan: tile-part marker {code:#x} outside the first tile-part"
+                )));
+            };
+            if l < 3 {
+                return Err(DecodeError::Logic(format!(
+                    "plan: tile-part marker {code:#x} carries no payload"
+                )));
+            }
+            let mut payload = vec![0u8; (l - 2) as usize];
+            file.draw_at(&mut payload, mp + 4).map_err(io_snag)?;
+            sink.push((code, payload));
+        }
         // PLT (A.7.1): Zplt byte then comma-coded packet lengths.
         if code == 0xFF58 && l >= 3 {
             if let Some(sink) = plt_sink.as_deref_mut() {
@@ -1280,6 +1411,15 @@ fn comb_tile(
                     .sum();
                 let lx = li as u32 % pb.nbw;
                 let ly = li as u32 / pb.nbw;
+                // classic abandons the tile at a block claiming more missing
+                // bit planes than its band has, so a plan that kept parsing
+                // would decode bytes classic never reads
+                if contrib.missing_msbs as i32 > band.k_max_prime.max(0) {
+                    return Err(DecodeError::Logic(format!(
+                        "plan: {} missing bit planes in a band of {}",
+                        contrib.missing_msbs, band.k_max_prime
+                    )));
+                }
                 let rec = band.block_mut(pb.bx0 + lx, pb.by0 + ly);
                 if rec.num_passes == 0 {
                     // First contribution (inclusion always adds ≥1 pass).
@@ -2587,5 +2727,227 @@ mod tests {
         assert_eq!(plt_packet_lengths(vec![(0, vec![0x85])]), None); // dangling
         assert_eq!(plt_packet_lengths(vec![(0, vec![0x00])]), None); // zero length
         assert_eq!(plt_packet_lengths(vec![(0, vec![0xFF; 5])]), None); // > 32 bits
+    }
+    /// One tile-part of tile 0: `markers` in its header, then `packets`.
+    fn tile_part(tpsot: u8, num_parts: u8, markers: &[Vec<u8>], packets: &[Vec<u8>]) -> Vec<u8> {
+        let body: usize = packets.iter().map(|p| p.len()).sum();
+        let marker_bytes: usize = markers.iter().map(|m| m.len()).sum();
+        const TILE_PART_HEADER: usize = 14; // SOT (12) + SOD (2)
+        let psot = (TILE_PART_HEADER + marker_bytes + body) as u32;
+        let mut out = vec![0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00];
+        out.extend(psot.to_be_bytes());
+        out.extend([tpsot, num_parts]);
+        for m in markers {
+            out.extend(m);
+        }
+        out.extend([0xFF, 0x93]); // SOD
+        for p in packets {
+            out.extend(p);
+        }
+        out
+    }
+
+    /// The synthetic stream in one tile-part whose header carries `markers`.
+    fn marked_stream(markers: &[Vec<u8>], packets: &[Vec<u8>]) -> Vec<u8> {
+        let mut out = tile_part(0, 1, markers, packets);
+        out.extend([0xFF, 0xD9]); // EOC
+        out
+    }
+
+    /// A COD segment: LRCP, `layers` layers, no MCT, `levels` decomposition
+    /// levels, 2^(`block_exponent` + 2) code-blocks, reversible.
+    fn cod_segment(layers: u16, levels: u8, block_exponent: u8) -> Vec<u8> {
+        let mut seg = vec![0xFF, 0x52, 0x00, 0x0C, 0x00, 0x00];
+        seg.extend(layers.to_be_bytes());
+        seg.extend([0x00, levels, block_exponent, block_exponent, 0x00, 0x01]);
+        seg
+    }
+
+    /// A COC segment carrying the same SPcod fields as `cod_segment`.
+    fn coc_segment(comp: u8, levels: u8, block_exponent: u8) -> Vec<u8> {
+        vec![
+            0xFF,
+            0x53,
+            0x00,
+            0x09,
+            comp,
+            0x00,
+            levels,
+            block_exponent,
+            block_exponent,
+            0x00,
+            0x01,
+        ]
+    }
+
+    /// A reversible quantization segment: `guard_bits` guard bits and one
+    /// `exponent` per band.
+    fn quant_segment(code: u8, comp: Option<u8>, guard_bits: u8, exponent: u8) -> Vec<u8> {
+        const BANDS: usize = 4;
+        let comp_bytes = comp.iter().count();
+        let mut seg = vec![0xFF, code];
+        seg.extend(((3 + comp_bytes + BANDS) as u16).to_be_bytes());
+        seg.extend(comp);
+        seg.push(guard_bits << 5);
+        seg.extend(std::iter::repeat_n(exponent << 3, BANDS));
+        seg
+    }
+
+    fn k_max_primes(plan: &DecodePlan, comp: usize) -> Vec<i32> {
+        plan.tiles[0].comps[comp]
+            .iter()
+            .flat_map(|r| r.bands.iter())
+            .map(|b| b.k_max_prime)
+            .collect()
+    }
+
+    /// A tile-part COD replaces the tile's coding style: the plan takes its
+    /// block size and stops at its layer count.
+    #[test]
+    fn a_tile_part_cod_replaces_the_tile_coding_style() {
+        const TILE_LAYERS: u16 = 2;
+        let hdr = synth_header();
+        let stream = marked_stream(&[cod_segment(TILE_LAYERS, 1, 0)], &synth_packets());
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(plan.tiles[0].cod.num_layers, TILE_LAYERS);
+        assert_eq!(plan.tiles[0].cod.comps[0].block_width, 4);
+        assert_eq!(plan.tiles[0].cod.comps[0].block_height, 4);
+        let spans: Vec<(u32, u32)> = plan.tiles[0].comps[0]
+            .iter()
+            .flat_map(|r| r.bands.iter())
+            .map(|b| (b.block_w, b.block_h))
+            .collect();
+        assert_eq!(spans, vec![(4, 4); 4]);
+
+        // the 4x4 bands hold one code-block either way, so the packets are the
+        // main header's stream cut to the tile's layer count
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, TILE_LAYERS, true, None).expect("baseline must build");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+    }
+
+    /// Classic caps every tile at the main header's layer count, so a tile-part
+    /// COD asking for more decodes the main header's.
+    #[test]
+    fn a_tile_part_cod_cannot_raise_the_layer_count() {
+        let hdr = synth_header();
+        let stream = marked_stream(&[cod_segment(LAYERS + 4, 1, 4)], &synth_packets());
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(plan.tiles[0].cod.num_layers, LAYERS);
+        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+        assert_eq!(passes(&plan), passes(&baseline));
+    }
+
+    /// A tile-part QCD replaces every component's quantization, which the band
+    /// plans carry as guard bits plus ranging exponent.
+    #[test]
+    fn a_tile_part_qcd_replaces_the_tile_quantization() {
+        let hdr = synth_header();
+        let stream = marked_stream(&[quant_segment(0x5C, None, 3, 10)], &synth_packets());
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
+
+        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
+        assert_eq!(k_max_primes(&baseline, 0), vec![2 + 8 - 1; 4]);
+        assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
+    }
+
+    /// Two components, one decomposition level each. The packets follow LRCP:
+    /// layer, then resolution, then component.
+    fn two_comp_stream() -> (MainHeaderIn, Vec<Vec<u8>>) {
+        let mut hdr = synth_header();
+        hdr.siz.components.push(SizComponent {
+            precision: 8,
+            is_signed: false,
+            xr_siz: 1,
+            yr_siz: 1,
+        });
+        hdr.cod.comps.push(hdr.cod.comps[0].clone());
+        hdr.qcd.ranges = vec![8; 7];
+        let mut packets = Vec::new();
+        for layer in 0..LAYERS {
+            let first = layer == 0;
+            packets.push(synth_packet(first, 1)); // res 0, comp 0
+            packets.push(synth_packet(first, 1)); // res 0, comp 1
+            packets.push(synth_packet(first, 3)); // res 1, comp 0
+            packets.push(synth_packet(first, 3)); // res 1, comp 1
+        }
+        (hdr, packets)
+    }
+
+    /// A tile-part COC covers one component only: component 1 takes a second
+    /// decomposition level and 4x4 blocks while component 0 keeps the main
+    /// header's style.
+    #[test]
+    fn a_tile_part_coc_replaces_one_component() {
+        let (hdr, mut packets) = two_comp_stream();
+        // component 1's extra resolution trails both components' shared packets
+        for layer in 0..LAYERS {
+            packets.insert(
+                4 * layer as usize + 4 + layer as usize,
+                synth_packet(layer == 0, 3),
+            );
+        }
+        let stream = marked_stream(&[coc_segment(1, 2, 0)], &packets);
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+
+        assert_eq!(plan.tiles[0].cod.comps[0].num_levels, 1);
+        assert_eq!(plan.tiles[0].cod.comps[0].block_width, 64);
+        assert_eq!(plan.tiles[0].cod.comps[1].num_levels, 2);
+        assert_eq!(plan.tiles[0].cod.comps[1].block_width, 4);
+        assert_eq!(plan.tiles[0].comps[0].len(), 2);
+        assert_eq!(plan.tiles[0].comps[1].len(), 3);
+
+        const BLOCKS: usize = 11; // comp 0: 1 + 3, comp 1: 1 + 3 + 3
+        assert_eq!(
+            coded_bytes(&plan),
+            BLOCKS * LAYERS as usize * BODY_LEN as usize
+        );
+        assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS]);
+    }
+
+    /// A tile-part QCC outranks the tile-part QCD of the same header for its
+    /// own component (T.800 A.6.5).
+    #[test]
+    fn a_tile_part_qcc_outranks_the_tile_part_qcd() {
+        let (hdr, packets) = two_comp_stream();
+        let markers = [
+            quant_segment(0x5C, None, 3, 10),
+            quant_segment(0x5D, Some(1), 1, 5),
+        ];
+        let stream = marked_stream(&markers, &packets);
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
+        assert_eq!(k_max_primes(&plan, 1), vec![1 + 5 - 1; 4]);
+    }
+
+    /// A tile's coding style has to be known before its first packet, so only
+    /// the tile-part that opens the tile may carry it.
+    #[test]
+    fn a_coding_style_marker_in_a_later_tile_part_is_rejected() {
+        let packets = synth_packets();
+        let (first, second) = packets.split_at(2);
+        let mut stream = tile_part(0, 2, &[], first);
+        stream.extend(tile_part(1, 2, &[cod_segment(2, 1, 0)], second));
+        stream.extend([0xFF, 0xD9]);
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None) else {
+            panic!("a later tile-part must not carry a COD");
+        };
+        assert!(msg.contains("outside the first tile-part"), "got {msg}");
+    }
+
+    /// A tile-part COD changing the wavelet would move the sample path the
+    /// whole image already chose.
+    #[test]
+    fn a_tile_part_cod_changing_the_kernel_is_rejected() {
+        let mut irreversible = cod_segment(LAYERS, 1, 4);
+        *irreversible.last_mut().unwrap() = 0x00;
+        let stream = marked_stream(&[irreversible], &synth_packets());
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None) else {
+            panic!("a tile-part kernel change must be rejected");
+        };
+        assert!(msg.contains("changes the wavelet kernel"), "got {msg}");
     }
 }

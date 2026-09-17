@@ -4,6 +4,7 @@
 //! C API; this layer parses only the per-tile SOT/tile-part chain and packet
 //! headers.
 
+pub mod markers;
 pub mod packet;
 pub mod params;
 pub mod tile_geom;

@@ -264,6 +264,30 @@ if(GRK_ENABLE_MERCURY)
     endforeach()
   endif()
 
+  add_executable(grk_mercury_tile_header_test GrkMercuryTileHeaderTest.cpp)
+  target_link_libraries(grk_mercury_tile_header_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    # tile-part COD/COC/QCD/QCC differing from the main header's
+    foreach(tile_header_stream
+            nonregression/Bretagne2.j2k
+            nonregression/j2k32.j2k
+            nonregression/movie_00000.j2k
+            nonregression/movie_00001.j2k
+            nonregression/movie_00002.j2k
+            nonregression/orb-blue10-lin-j2k.j2k
+            nonregression/orb-blue10-win-j2k.j2k
+            nonregression/orb-blue10-lin-jp2.jp2
+            nonregression/orb-blue10-win-jp2.jp2
+            conformance/f1_mono.j2c
+            conformance/f2_mono.j2c
+            conformance/d2_colr.j2c)
+      get_filename_component(tile_header_name ${tile_header_stream} NAME)
+      add_test(NAME grk_mercury_tile_header_test_${tile_header_name}
+        COMMAND grk_mercury_tile_header_test
+                ${GRK_DATA_ROOT}/input/${tile_header_stream})
+    endforeach()
+  endif()
+
   add_executable(grk_mercury_composite_type_test GrkMercuryCompositeTypeTest.cpp)
   target_link_libraries(grk_mercury_composite_type_test ${GROK_CORE_NAME} spdlog::spdlog)
   if(GRK_DATA_ROOT)

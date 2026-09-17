@@ -1063,8 +1063,6 @@ fn dress_tile_loom(
     coder: BlockCoder,
     sink: &EmitSink,
 ) -> Result<Option<WeftDecoder>, DecodeError> {
-    // Per component, since a COC gives a component its own level count.
-    let target_res = |c: usize| plan.cod.comps[c].num_levels as usize - plan.reduce as usize;
     let num_comps = plan.siz.comp_count();
     // Output rectangle of each component on its own reduced plane. Tile
     // resolution dims at target_res live on the same plane, so emitted rows
@@ -1123,6 +1121,10 @@ fn dress_tile_loom(
         if !tile.in_window {
             continue;
         }
+        // Per component, since a COC gives a component its own level count,
+        // and per tile, since a tile-part COD or COC replaces it.
+        let tile_cod = &tile.cod;
+        let target_res = |c: usize| tile_cod.comps[c].num_levels as usize - plan.reduce as usize;
         // Effective decode windows: the plan's padded ones, or the whole tile
         // expressed in the same shape so everything below is one code path.
         let eff: Vec<TileCompWindow> = tile.win.clone().unwrap_or_else(|| {
@@ -1164,7 +1166,7 @@ fn dress_tile_loom(
             rows_total[c] = rw.height();
             // one synthesis level per resolution step from 0 up to the target
             let levels = target_res(c);
-            let modes = plan.cod.comps[c].modes.0 as i32;
+            let modes = tile_cod.comps[c].modes.0 as i32;
             // Build synthesis engines from the (windowed) geometry, bottom
             // first: each level's spec is its resolution's padded window with
             // that window's band splits — the engine synthesizes only the

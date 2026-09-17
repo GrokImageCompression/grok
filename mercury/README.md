@@ -60,7 +60,7 @@ single-threaded (no locks inside nodes) and every ring is genuinely SPSC.
   the codestream's packet headers builds, per tile and subband, a table of
   every code-block's compressed bytes (absolute file offset + length) and
   decode parameters. Headers are parsed through a small sliding window;
-  block bodies are seeked over, never read. Handles all five progression orders, multi-layer, multi-tile, +multi-tile-part, multi-component, SOP/EPH. Unsupported features reject at plan time rather than mis-decode, and the host falls back to its own pipeline.
+  block bodies are seeked over, never read. Handles all five progression orders, multi-layer, multi-tile, +multi-tile-part, multi-component, SOP/EPH, and a tile-part header's own COD/COC/QCD/QCC. Unsupported features reject at plan time rather than mis-decode, and the host falls back to its own pipeline.
 - **SubbandDecode nodes** (T1) — read block bytes on demand via `pread` and
   decode one block-row (up to 64 subband rows) per pass directly into ring
   slots, calling the **host-supplied** tier-1 coder
