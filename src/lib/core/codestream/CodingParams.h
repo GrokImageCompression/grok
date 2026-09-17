@@ -296,6 +296,8 @@ struct TileCodingParams
   bool isHT(void);
   uint32_t getNumProgressions(void);
   bool hasPoc(void);
+  // volumes compare with their end bounds clamped to the layer, resolution and component counts
+  bool sameProgressions(TileCodingParams* other, uint16_t numComps);
   void finalizePocs(void);
 
   CodingParams* cp_ = nullptr;

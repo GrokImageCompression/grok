@@ -1080,7 +1080,7 @@ bool CodeStreamCompress::init_header_writing(void)
   if(cp_.codingParams_.enc_.writeTlm_)
     procedureList_.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
   if(cp_.tcps_.get(0)->hasPoc())
-    procedureList_.push_back(std::bind(&CodeStreamCompress::writePoc, this));
+    procedureList_.push_back([this] { return writePoc(0); });
 
   procedureList_.push_back(std::bind(&CodeStreamCompress::write_regions, this));
   procedureList_.push_back(std::bind(&CodeStreamCompress::write_com, this));
@@ -1108,7 +1108,7 @@ bool CodeStreamCompress::writeTilePart(ITileProcessorCompress* tileProcessor)
   // 2. write POC marker to first tile part
   if(tileProcessor->canWritePocMarker())
   {
-    if(!writePoc())
+    if(!writePoc(tileProcessor->getIndex()))
       return false;
     auto tcp = cp_.tcps_.get(tileProcessor->getIndex());
     tilePartBytesWritten += getPocSize(headerImage_->numcomps, tcp->getNumProgressions());
@@ -1454,9 +1454,9 @@ bool CodeStreamCompress::compare_qcc(uint16_t first_comp_no, uint16_t second_com
 {
   return compare_SQcd_SQcc(first_comp_no, second_comp_no);
 }
-bool CodeStreamCompress::writePoc()
+bool CodeStreamCompress::writePoc(uint16_t tileIndex)
 {
-  auto tcp = cp_.tcps_.get(0);
+  auto tcp = cp_.tcps_.get(tileIndex);
   auto tccp = tcp->tccps_;
   auto image = getHeaderImage();
   uint16_t numComps = image->numcomps;
@@ -1508,7 +1508,9 @@ bool CodeStreamCompress::writePoc()
         return false;
     }
     /* Ppoc_i */
-    if(!stream_->write8u((uint8_t)current_prog->progression))
+    // rate allocation parks the COD order in progression until the final T2 pass, so take the
+    // order the caller asked for
+    if(!stream_->write8u((uint8_t)current_prog->specified_compression_poc_prog))
       return false;
 
     /* change the value of the max layer according to the actual number of layers in the file,

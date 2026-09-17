@@ -1109,8 +1109,11 @@ void TileCodingParams::finalizePocs(void)
     maxNumResLevels = std::max(maxNumResLevels, tccps_[i].numresolutions_);
   }
 
+  // T.800 A.6.6: a POC in a tile's first tile-part replaces the main header volumes for that tile
+  bool firstTilePartReplaces = !pocLists_.empty() && !pocLists_[0].empty();
+
   // Validate main header POCs if any
-  if(hasPoc_ || numpocs_ > 0)
+  if(!firstTilePartReplaces && (hasPoc_ || numpocs_ > 0))
     for(uint32_t i = 0; i <= numpocs_; ++i)
     {
       auto& prog = progressionOrderChange_[i];
@@ -1148,7 +1151,7 @@ void TileCodingParams::finalizePocs(void)
       }
     }
 
-  uint32_t pos = numpocs_ + 1;
+  uint32_t pos = firstTilePartReplaces ? 0 : numpocs_ + 1;
   for(uint8_t tp = 0; tp < signalledNumTileParts_; ++tp)
   {
     if(tp >= pocLists_.size())
@@ -1198,7 +1201,13 @@ void TileCodingParams::finalizePocs(void)
       ++pos;
     }
   }
-  numpocs_ = pos - 1;
+  // a signalled tile-part count short of the lists read leaves the main header volumes in place
+  if(pos > 0)
+  {
+    numpocs_ = pos - 1;
+    if(firstTilePartReplaces)
+      hasPoc_ = true;
+  }
   pocLists_.clear();
 }
 
@@ -2192,6 +2201,28 @@ uint32_t TileCodingParams::getNumProgressions()
 bool TileCodingParams::hasPoc(void)
 {
   return hasPoc_ || numpocs_ > 0;
+}
+bool TileCodingParams::sameProgressions(TileCodingParams* other, uint16_t numComps)
+{
+  if(hasPoc() != other->hasPoc() || getNumProgressions() != other->getNumProgressions())
+    return false;
+  uint8_t numResolutions = tccps_ ? tccps_->numresolutions_ : 0;
+  for(uint32_t i = 0; i < getNumProgressions(); ++i)
+  {
+    auto& mine = progressionOrderChange_[i];
+    auto& theirs = other->progressionOrderChange_[i];
+    if(mine.res_s != theirs.res_s || mine.comp_s != theirs.comp_s ||
+       mine.specified_compression_poc_prog != theirs.specified_compression_poc_prog)
+      return false;
+    if(std::min<uint16_t>(mine.lay_e, numLayers_) != std::min<uint16_t>(theirs.lay_e, numLayers_))
+      return false;
+    if(std::min<uint8_t>(mine.res_e, numResolutions) !=
+       std::min<uint8_t>(theirs.res_e, numResolutions))
+      return false;
+    if(std::min<uint16_t>(mine.comp_e, numComps) != std::min<uint16_t>(theirs.comp_e, numComps))
+      return false;
+  }
+  return true;
 }
 TileComponentCodingParams::TileComponentCodingParams()
     : csty_(0), numresolutions_(0), cblkw_expn_(0), cblkh_expn_(0), cblkStyle_(0), qmfbid_(0),

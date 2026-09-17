@@ -228,7 +228,13 @@ bool TileProcessorCompress::canWritePocMarker(void)
   bool firstTilePart = (tilePartCounter_ == 0);
 
   // note: DCP standard does not allow POC marker
-  return tcp_->hasPoc() && firstTilePart && !GRK_IS_CINEMA(cp_->rsiz_);
+  if(!tcp_->hasPoc() || !firstTilePart || GRK_IS_CINEMA(cp_->rsiz_))
+    return false;
+
+  // the main header POC carries tile 0's list and applies to every tile,
+  // so only a tile with its own list needs a POC of its own
+  auto mainHeaderTcp = cp_->tcps_.get(0);
+  return !mainHeaderTcp->hasPoc() || !tcp_->sameProgressions(mainHeaderTcp, tile_->numcomps_);
 }
 bool TileProcessorCompress::writeTilePartT2(uint32_t* tileBytesWritten)
 {

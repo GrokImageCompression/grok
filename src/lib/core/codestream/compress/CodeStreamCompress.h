@@ -129,10 +129,10 @@ private:
   bool write_qcc(uint16_t comp_no);
 
   /**
-   * Writes the POC marker (Progression Order Change)
-   *
+   * Writes the POC marker (Progression Order Change) for one tile's progression list
+   * @param tileIndex tile whose list is serialized; the main header uses tile 0
    */
-  bool writePoc();
+  bool writePoc(uint16_t tileIndex);
 
   /**
    * End writing the updated tlm.

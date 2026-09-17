@@ -18,7 +18,9 @@
 // A main-header POC replaces the COD progression with a list of volumes, each
 // with its own order and its own layer, resolution and component ranges. The
 // fast path has to follow that list packet for packet, so these streams decode
-// through mercury and match the classic pipeline bit for bit.
+// through mercury and match the classic pipeline bit for bit. A tile whose own
+// list differs carries a POC in its first tile-part instead, which mercury
+// rejects.
 
 #include <cstdio>
 #include <cstdlib>
@@ -111,7 +113,19 @@ struct Config
   uint32_t precinctSize; // 0 for the default one precinct per resolution
   uint32_t tileSize; // 0 for a single tile
   Volume volumes[MAX_VOLUMES];
+  bool perTileLists = false;
+  bool expectFastPath = true;
 };
+
+// odd tiles swap the two volumes' progression orders, so their packet order is
+// their own while every packet is still covered
+Volume volumeFor(const Config& config, uint32_t tile, uint32_t volumeIndex)
+{
+  Volume volume = config.volumes[volumeIndex];
+  if(config.perTileLists && (tile & 1))
+    volume.order = config.volumes[MAX_VOLUMES - 1 - volumeIndex].order;
+  return volume;
+}
 
 uint32_t tileCount(const Config& config)
 {
@@ -233,17 +247,17 @@ bool compress(const Config& config, const std::string& path)
     parameters.t_width = config.tileSize;
     parameters.t_height = config.tileSize;
   }
-  // every tile gets the same volumes; the entries are laid out volume-major so
-  // one tile's volumes are not adjacent in the list, which the compressor has
-  // to cope with when it picks a tile's entries by tileno
+  // the entries are laid out volume-major so one tile's volumes are not
+  // adjacent in the list, which the compressor has to cope with when it picks a
+  // tile's entries by tileno
   uint32_t numTiles = tileCount(config);
   // numpocs is the entry count minus one
   parameters.numpocs = MAX_VOLUMES * numTiles - 1;
   for(uint32_t v = 0; v < MAX_VOLUMES; ++v)
   {
-    const auto& vol = config.volumes[v];
     for(uint32_t t = 0; t < numTiles; ++t)
     {
+      const Volume vol = volumeFor(config, t, v);
       auto& prog = parameters.progression[v * numTiles + t];
       prog.res_s = vol.res_s;
       prog.comp_s = vol.comp_s;
@@ -302,17 +316,52 @@ uint32_t readPsot(const std::vector<uint8_t>& bytes, size_t sot)
   return psot;
 }
 
-void writePsot(std::vector<uint8_t>& bytes, size_t sot, uint32_t psot)
+// one byte each for CSpoc and CEpoc, which is what three components give
+const size_t POC_VOLUME_BYTES = 7;
+const size_t SOT_SEGMENT_BYTES = 12;
+const size_t SOT_ISOT_OFFSET = 4;
+const size_t SOT_TPSOT_OFFSET = 10;
+
+bool pocEncodesTileList(const Config& config, uint32_t tile, const std::vector<uint8_t>& bytes,
+                        size_t poc)
 {
-  for(size_t i = 0; i < 4; ++i)
-    bytes[sot + 6 + i] = (uint8_t)(psot >> (24 - 8 * i));
+  size_t segment = 2 + ((size_t)bytes[poc + 2] << 8 | bytes[poc + 3]);
+  size_t expected = 4 + POC_VOLUME_BYTES * MAX_VOLUMES;
+  if(segment != expected || poc + segment > bytes.size())
+  {
+    fprintf(stderr, "%s: tile %u POC segment is %zu bytes, expected %zu\n", config.name, tile,
+            segment, expected);
+    return false;
+  }
+  for(uint32_t v = 0; v < MAX_VOLUMES; ++v)
+  {
+    const uint8_t* entry = bytes.data() + poc + 4 + POC_VOLUME_BYTES * v;
+    Volume want = volumeFor(config, tile, v);
+    Volume got;
+    got.res_s = entry[0];
+    got.comp_s = entry[1];
+    got.lay_e = (uint16_t)((uint16_t)entry[2] << 8 | entry[3]);
+    got.res_e = entry[4];
+    got.comp_e = entry[5];
+    got.order = (GRK_PROG_ORDER)entry[6];
+    if(got.res_s != want.res_s || got.comp_s != want.comp_s || got.lay_e != want.lay_e ||
+       got.res_e != want.res_e || got.comp_e != want.comp_e || got.order != want.order)
+    {
+      fprintf(stderr,
+              "%s: tile %u POC volume %u is res %u..%u comp %u..%u layers %u order %d, "
+              "expected res %u..%u comp %u..%u layers %u order %d\n",
+              config.name, tile, v, got.res_s, got.res_e, got.comp_s, got.comp_e, got.lay_e,
+              (int)got.order, want.res_s, want.res_e, want.comp_s, want.comp_e, want.lay_e,
+              (int)want.order);
+      return false;
+    }
+  }
+  return true;
 }
 
-// The compressor repeats the volume list in every tile's first tile-part
-// header, which mercury rejects; the conformance streams carry it in the main
-// header only, so drop the copies. Also checks that the main header really got
-// a POC.
-bool keepOnlyTheMainHeaderPoc(const Config& config, const std::string& path)
+// The main header carries tile 0's volume list and applies to every tile, so a
+// tile-part POC belongs only to a tile whose own list differs.
+bool checkPocPlacement(const Config& config, const std::string& path)
 {
   std::vector<uint8_t> bytes;
   if(!readFile(path, bytes))
@@ -324,31 +373,38 @@ bool keepOnlyTheMainHeaderPoc(const Config& config, const std::string& path)
     fprintf(stderr, "%s: no POC marker in the main header\n", config.name);
     return false;
   }
-  while(sot + 12 <= bytes.size() && bytes[sot] == MARKER_HIGH_BYTE &&
+  if(!pocEncodesTileList(config, 0, bytes, mainPoc))
+    return false;
+  while(sot + SOT_SEGMENT_BYTES <= bytes.size() && bytes[sot] == MARKER_HIGH_BYTE &&
         bytes[sot + 1] == MARKER_SOT_LOW_BYTE)
   {
     uint32_t psot = readPsot(bytes, sot);
     if(psot == 0)
       break;
+    uint32_t tile =
+        (uint32_t)((uint32_t)bytes[sot + SOT_ISOT_OFFSET] << 8 | bytes[sot + SOT_ISOT_OFFSET + 1]);
+    uint8_t tilePart = bytes[sot + SOT_TPSOT_OFFSET];
     // the tile-part header runs from the SOT segment to the SOD marker
     size_t sod = findMarker(bytes, sot, MARKER_SOD_LOW_BYTE);
-    size_t tilePoc = findMarker(bytes, sot, MARKER_POC_LOW_BYTE);
-    if(tilePoc < sod)
+    if(sod == bytes.size())
     {
-      size_t segment = 2 + ((size_t)bytes[tilePoc + 2] << 8 | bytes[tilePoc + 3]);
-      psot -= (uint32_t)segment;
-      writePsot(bytes, sot, psot);
-      bytes.erase(bytes.begin() + (long)tilePoc, bytes.begin() + (long)(tilePoc + segment));
+      fprintf(stderr, "%s: tile %u tile-part %u has no SOD marker\n", config.name, tile, tilePart);
+      return false;
     }
+    size_t tilePoc = findMarker(bytes, sot, MARKER_POC_LOW_BYTE);
+    bool carriesPoc = tilePoc < sod;
+    bool needsPoc = tilePart == 0 && config.perTileLists && (tile & 1);
+    if(carriesPoc != needsPoc)
+    {
+      fprintf(stderr, "%s: tile %u tile-part %u %s POC marker\n", config.name, tile, tilePart,
+              carriesPoc ? "carries an unwanted" : "is missing its");
+      return false;
+    }
+    if(carriesPoc && !pocEncodesTileList(config, tile, bytes, tilePoc))
+      return false;
     sot += psot;
   }
-
-  FILE* file = fopen(path.c_str(), "wb");
-  if(!file)
-    return false;
-  bool ok = fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size();
-  fclose(file);
-  return ok;
+  return true;
 }
 
 bool decode(const Config& config, const std::string& path, bool mercury, Decoded& out)
@@ -451,18 +507,17 @@ bool runConfig(const Config& config)
   bool ok = false;
   Decoded classic;
   Decoded mercury;
-  if(keepOnlyTheMainHeaderPoc(config, path) && decode(config, path, false, classic) &&
+  if(checkPocPlacement(config, path) && decode(config, path, false, classic) &&
      decode(config, path, true, mercury))
   {
     std::string log = takeLog();
-    if(log.find(MERCURY_REJECT_MARKER) != std::string::npos)
-      fprintf(stderr, "%s: mercury rejected the plan.\ncaptured log:\n%s\n", config.name,
-              log.c_str());
-    else if(log.find(MERCURY_SUCCESS_MARKER) == std::string::npos)
-      fprintf(stderr,
-              "%s fell back to the classic pipeline: no \"%s\" in the log.\n"
-              "captured log:\n%s\n",
-              config.name, MERCURY_SUCCESS_MARKER, log.c_str());
+    bool fastPath = log.find(MERCURY_SUCCESS_MARKER) != std::string::npos;
+    bool rejected = log.find(MERCURY_REJECT_MARKER) != std::string::npos;
+    if(fastPath != config.expectFastPath || rejected == config.expectFastPath)
+      fprintf(stderr, "%s: mercury %s, expected it to %s.\ncaptured log:\n%s\n", config.name,
+              fastPath ? "took the fast path"
+                       : (rejected ? "rejected the plan" : "fell back without a reason"),
+              config.expectFastPath ? "decode" : "reject the tile-part POC", log.c_str());
     else
       ok = matchesSource(config, classic) && sameImage(config, classic, mercury);
   }
@@ -538,6 +593,16 @@ int main(void)
        0,
        {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RPCL},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_PCRL}}},
+      // odd tiles get their own volume orders, so they carry a POC in their
+      // first tile-part and mercury has to bail
+      {"per_tile_lists",
+       GRK_LRCP,
+       0,
+       32,
+       {{0, 0, 2, 2, NUM_COMPONENTS, GRK_RLCP},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}},
+       true,
+       false},
   };
 
   int result = 0;
