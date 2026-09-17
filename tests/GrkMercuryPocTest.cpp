@@ -45,6 +45,7 @@ const uint32_t MAX_VOLUMES = 2;
 const uint8_t MARKER_HIGH_BYTE = 0xFF;
 const uint8_t MARKER_POC_LOW_BYTE = 0x5F;
 const uint8_t MARKER_SOT_LOW_BYTE = 0x90;
+const uint8_t MARKER_SOD_LOW_BYTE = 0x93;
 
 std::mutex logMutex;
 std::string logText;
@@ -108,8 +109,23 @@ struct Config
   const char* name;
   GRK_PROG_ORDER codOrder;
   uint32_t precinctSize; // 0 for the default one precinct per resolution
+  uint32_t tileSize; // 0 for a single tile
   Volume volumes[MAX_VOLUMES];
 };
+
+uint32_t tileCount(const Config& config)
+{
+  if(config.tileSize == 0)
+    return 1;
+  uint32_t across = (IMAGE_WIDTH + config.tileSize - 1) / config.tileSize;
+  uint32_t down = (IMAGE_HEIGHT + config.tileSize - 1) / config.tileSize;
+  return across * down;
+}
+
+int32_t sourceSample(uint32_t x, uint32_t y, uint16_t c)
+{
+  return (int32_t)((x * 7 + y * 13 + c * 53 + ((x ^ y) & 31) * 3) & 0xFF);
+}
 
 int32_t sampleAt(const grk_image_comp& comp, uint64_t index)
 {
@@ -175,8 +191,7 @@ grk_image* makeImage(void)
     uint32_t stride = image->comps[c].stride;
     for(uint32_t y = 0; y < IMAGE_HEIGHT; ++y)
       for(uint32_t x = 0; x < IMAGE_WIDTH; ++x)
-        data[(size_t)y * stride + x] =
-            (int32_t)((x * 7 + y * 13 + c * 53 + ((x ^ y) & 31) * 3) & 0xFF);
+        data[(size_t)y * stride + x] = sourceSample(x, y, c);
   }
   return image;
 }
@@ -212,19 +227,32 @@ bool compress(const Config& config, const std::string& path)
       parameters.prch_init[r] = config.precinctSize;
     }
   }
-  // numpocs is the volume count minus one
-  parameters.numpocs = MAX_VOLUMES - 1;
-  for(uint32_t i = 0; i < MAX_VOLUMES; ++i)
+  if(config.tileSize)
   {
-    const auto& vol = config.volumes[i];
-    auto& prog = parameters.progression[i];
-    prog.res_s = vol.res_s;
-    prog.comp_s = vol.comp_s;
-    prog.lay_e = vol.lay_e;
-    prog.res_e = vol.res_e;
-    prog.comp_e = vol.comp_e;
-    prog.specified_compression_poc_prog = vol.order;
-    prog.tileno = 0;
+    parameters.tile_size_on = true;
+    parameters.t_width = config.tileSize;
+    parameters.t_height = config.tileSize;
+  }
+  // every tile gets the same volumes; the entries are laid out volume-major so
+  // one tile's volumes are not adjacent in the list, which the compressor has
+  // to cope with when it picks a tile's entries by tileno
+  uint32_t numTiles = tileCount(config);
+  // numpocs is the entry count minus one
+  parameters.numpocs = MAX_VOLUMES * numTiles - 1;
+  for(uint32_t v = 0; v < MAX_VOLUMES; ++v)
+  {
+    const auto& vol = config.volumes[v];
+    for(uint32_t t = 0; t < numTiles; ++t)
+    {
+      auto& prog = parameters.progression[v * numTiles + t];
+      prog.res_s = vol.res_s;
+      prog.comp_s = vol.comp_s;
+      prog.lay_e = vol.lay_e;
+      prog.res_e = vol.res_e;
+      prog.comp_e = vol.comp_e;
+      prog.specified_compression_poc_prog = vol.order;
+      prog.tileno = t;
+    }
   }
 
   grk_stream_params streamParams = {};
@@ -266,9 +294,24 @@ size_t findMarker(const std::vector<uint8_t>& bytes, size_t from, uint8_t low)
   return bytes.size();
 }
 
-// The compressor repeats the volume list in the first tile-part header, which
-// mercury rejects; the conformance streams carry it in the main header only, so
-// drop the copy. Also checks that the main header really got a POC.
+uint32_t readPsot(const std::vector<uint8_t>& bytes, size_t sot)
+{
+  uint32_t psot = 0;
+  for(size_t i = 0; i < 4; ++i)
+    psot = psot << 8 | bytes[sot + 6 + i];
+  return psot;
+}
+
+void writePsot(std::vector<uint8_t>& bytes, size_t sot, uint32_t psot)
+{
+  for(size_t i = 0; i < 4; ++i)
+    bytes[sot + 6 + i] = (uint8_t)(psot >> (24 - 8 * i));
+}
+
+// The compressor repeats the volume list in every tile's first tile-part
+// header, which mercury rejects; the conformance streams carry it in the main
+// header only, so drop the copies. Also checks that the main header really got
+// a POC.
 bool keepOnlyTheMainHeaderPoc(const Config& config, const std::string& path)
 {
   std::vector<uint8_t> bytes;
@@ -281,18 +324,24 @@ bool keepOnlyTheMainHeaderPoc(const Config& config, const std::string& path)
     fprintf(stderr, "%s: no POC marker in the main header\n", config.name);
     return false;
   }
-  size_t tilePoc = findMarker(bytes, sot, MARKER_POC_LOW_BYTE);
-  if(tilePoc == bytes.size())
-    return true;
-
-  size_t segment = 2 + ((size_t)bytes[tilePoc + 2] << 8 | bytes[tilePoc + 3]);
-  uint32_t psot = 0;
-  for(size_t i = 0; i < 4; ++i)
-    psot = psot << 8 | bytes[sot + 6 + i];
-  psot -= (uint32_t)segment;
-  for(size_t i = 0; i < 4; ++i)
-    bytes[sot + 6 + i] = (uint8_t)(psot >> (24 - 8 * i));
-  bytes.erase(bytes.begin() + (long)tilePoc, bytes.begin() + (long)(tilePoc + segment));
+  while(sot + 12 <= bytes.size() && bytes[sot] == MARKER_HIGH_BYTE &&
+        bytes[sot + 1] == MARKER_SOT_LOW_BYTE)
+  {
+    uint32_t psot = readPsot(bytes, sot);
+    if(psot == 0)
+      break;
+    // the tile-part header runs from the SOT segment to the SOD marker
+    size_t sod = findMarker(bytes, sot, MARKER_SOD_LOW_BYTE);
+    size_t tilePoc = findMarker(bytes, sot, MARKER_POC_LOW_BYTE);
+    if(tilePoc < sod)
+    {
+      size_t segment = 2 + ((size_t)bytes[tilePoc + 2] << 8 | bytes[tilePoc + 3]);
+      psot -= (uint32_t)segment;
+      writePsot(bytes, sot, psot);
+      bytes.erase(bytes.begin() + (long)tilePoc, bytes.begin() + (long)(tilePoc + segment));
+    }
+    sot += psot;
+  }
 
   FILE* file = fopen(path.c_str(), "wb");
   if(!file)
@@ -371,6 +420,28 @@ bool sameImage(const Config& config, const Decoded& classic, const Decoded& merc
   return true;
 }
 
+bool matchesSource(const Config& config, const Decoded& decoded)
+{
+  for(uint16_t c = 0; c < decoded.numcomps; ++c)
+  {
+    const auto& comp = decoded.comps[c];
+    for(uint32_t y = 0; y < comp.h; ++y)
+      for(uint32_t x = 0; x < comp.w; ++x)
+      {
+        int32_t got = comp.samples[(size_t)y * comp.w + x];
+        if(got != sourceSample(x, y, c))
+        {
+          fprintf(stderr,
+                  "%s: classic decode differs from the source at component %u (x %u, y %u): "
+                  "%d vs %d\n",
+                  config.name, c, x, y, got, sourceSample(x, y, c));
+          return false;
+        }
+      }
+  }
+  return true;
+}
+
 bool runConfig(const Config& config)
 {
   std::string path = std::string("mercury_poc_") + config.name + ".j2k";
@@ -393,7 +464,7 @@ bool runConfig(const Config& config)
               "captured log:\n%s\n",
               config.name, MERCURY_SUCCESS_MARKER, log.c_str());
     else
-      ok = sameImage(config, classic, mercury);
+      ok = matchesSource(config, classic) && sameImage(config, classic, mercury);
   }
   remove(path.c_str());
   return ok;
@@ -421,9 +492,25 @@ int main(void)
   // the compressor requires the volume list to cover every packet, so the last
   // volume of each config spans the whole image
   const Config configs[] = {
+      // the first volume stops two layers in, so the second revisits those
+      // precincts for their last layer after skipping the included ones
+      {"partial_layers",
+       GRK_LRCP,
+       0,
+       0,
+       {{0, 0, 2, 2, NUM_COMPONENTS, GRK_RLCP},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}}},
+      // six tiles, each with its own two entries in the progression list
+      {"tiled_volumes",
+       GRK_LRCP,
+       0,
+       32,
+       {{0, 0, 2, 2, NUM_COMPONENTS, GRK_RLCP},
+        {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}}},
       // two orders, and the low resolutions the second volume must skip
       {"two_volumes",
        GRK_LRCP,
+       0,
        0,
        {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RLCP},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}}},
@@ -432,12 +519,14 @@ int main(void)
       {"order_replaces_cod",
        GRK_LRCP,
        0,
+       0,
        {{0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL},
         {0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_LRCP}}},
       // the first volume takes component 0 alone, so the second has to skip a
       // component's worth of packets scattered through its own walk
       {"component_range",
        GRK_RLCP,
+       0,
        0,
        {{0, 0, NUM_LAYERS, NUM_RESOLUTIONS, 1, GRK_CPRL},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_LRCP}}},
@@ -446,6 +535,7 @@ int main(void)
       {"position_orders",
        GRK_RLCP,
        16,
+       0,
        {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RPCL},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_PCRL}}},
   };

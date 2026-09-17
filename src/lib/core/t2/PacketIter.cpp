@@ -1198,16 +1198,14 @@ bool PacketIter::next_cprl(SparseBuffer*)
             continue;
           if(incrementInner)
             layno++;
-          if(layno < prog.lay_e)
+          for(; layno < prog.lay_e; layno++)
           {
             incrementInner = true;
             generatePrecinctIndex();
             if(!packetBudgetRemaining())
               return false;
             if(update_include())
-            {
               return true;
-            }
           }
           layno = prog.lay_s;
           incrementInner = false;
@@ -1262,7 +1260,7 @@ bool PacketIter::next_pcrl()
             continue;
           if(incrementInner)
             layno++;
-          if(layno < prog.lay_e)
+          for(; layno < prog.lay_e; layno++)
           {
             incrementInner = true;
             generatePrecinctIndex();
@@ -1312,7 +1310,7 @@ bool PacketIter::next_prcl()
             continue;
           if(incrementInner)
             layno++;
-          if(layno < prog.lay_e)
+          for(; layno < prog.lay_e; layno++)
           {
             incrementInner = true;
             generatePrecinctIndex();
@@ -1351,7 +1349,7 @@ bool PacketIter::next_lrcp()
         uint64_t prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
         if(incrementInner)
           precinctIndex++;
-        if(precinctIndex < prec_e)
+        for(; precinctIndex < prec_e; precinctIndex++)
         {
           incrementInner = true;
           if(!packetBudgetRemaining())
@@ -1384,7 +1382,7 @@ bool PacketIter::next_rlcp()
         uint64_t prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
         if(incrementInner)
           precinctIndex++;
-        if(precinctIndex < prec_e)
+        for(; precinctIndex < prec_e; precinctIndex++)
         {
           incrementInner = true;
           if(!packetBudgetRemaining())
@@ -1447,7 +1445,7 @@ bool PacketIter::next_rpcl(SparseBuffer*)
             continue;
           if(incrementInner)
             layno++;
-          if(layno < prog.lay_e)
+          for(; layno < prog.lay_e; layno++)
           {
             incrementInner = true;
             generatePrecinctIndex();

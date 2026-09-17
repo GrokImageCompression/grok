@@ -651,14 +651,14 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
         {
           auto tcp_poc = tcp->progressionOrderChange_ + numTileProgressions;
 
-          tcp_poc->res_s = parameters->progression[numTileProgressions].res_s;
-          tcp_poc->comp_s = parameters->progression[numTileProgressions].comp_s;
-          tcp_poc->lay_e = parameters->progression[numTileProgressions].lay_e;
-          tcp_poc->res_e = parameters->progression[numTileProgressions].res_e;
-          tcp_poc->comp_e = parameters->progression[numTileProgressions].comp_e;
+          tcp_poc->res_s = parameters->progression[i].res_s;
+          tcp_poc->comp_s = parameters->progression[i].comp_s;
+          tcp_poc->lay_e = parameters->progression[i].lay_e;
+          tcp_poc->res_e = parameters->progression[i].res_e;
+          tcp_poc->comp_e = parameters->progression[i].comp_e;
           tcp_poc->specified_compression_poc_prog =
-              parameters->progression[numTileProgressions].specified_compression_poc_prog;
-          tcp_poc->tileno = parameters->progression[numTileProgressions].tileno;
+              parameters->progression[i].specified_compression_poc_prog;
+          tcp_poc->tileno = parameters->progression[i].tileno;
           numTileProgressions++;
         }
       }
