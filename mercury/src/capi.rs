@@ -630,7 +630,9 @@ static EXTERN_T1: AtomicUsize = AtomicUsize::new(0);
 unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
     let f: MercuryT1Fn = unsafe { std::mem::transmute(EXTERN_T1.load(Ordering::Relaxed)) };
     let stripes = (blk.num_rows + 3) >> 2;
-    let mut out = vec![0i32; ((stripes << 2) * blk.num_cols) as usize];
+    // widen to usize before multiplying so the sample count can't wrap a 32-bit
+    // multiply and undersize the buffer the substitute T1 writes into
+    let mut out = vec![0i32; ((stripes as usize) << 2) * (blk.num_cols as usize)];
     let ok = f(
         blk.coded_data,
         blk.coded_length,
