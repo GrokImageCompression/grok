@@ -594,9 +594,10 @@ pub fn draft(
             if sot_pos + 2 > codestream_end {
                 break;
             }
+            // classic ignores whatever follows a tile-part if it is not an SOT
             let mut m = [0u8; 2];
             file.draw_at(&mut m, sot_pos).map_err(io_snag)?;
-            if u16::from_be_bytes(m) == 0xFFD9 {
+            if u16::from_be_bytes(m) != 0xFF90 {
                 break;
             }
         }
@@ -2065,6 +2066,25 @@ mod tests {
             panic!("the trailing bytes must not pad the tile's packet bytes");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
+    }
+
+    // issue775.j2k: the last Psot ends 4 bytes short of the codestream end
+    #[test]
+    fn the_walk_ends_at_bytes_that_are_not_an_sot() {
+        let baseline =
+            draft(&synth_stream(), &synth_header(), 0, 0, true, None).expect("baseline must build");
+        for trailing in [4usize, TRAILING_BYTES] {
+            let mut stream = synth_stream();
+            stream.truncate(stream.len() - 2); // drop the EOC
+            stream.extend(std::iter::repeat_n(0x5A, trailing));
+            let mut hdr = synth_header();
+            hdr.codestream_len = stream.len() as u64;
+            let plan = draft(&stream, &hdr, 0, 0, true, None)
+                .unwrap_or_else(|e| panic!("{trailing} trailing bytes: {e:?}"));
+            assert_eq!(block_offsets(&plan), block_offsets(&baseline), "{trailing}");
+            assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "{trailing}");
+            assert_eq!(passes(&plan), passes(&baseline), "{trailing}");
+        }
     }
 
     fn packet_lengths(packets: &[Vec<u8>]) -> Vec<u32> {
