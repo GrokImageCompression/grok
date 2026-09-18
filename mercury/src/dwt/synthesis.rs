@@ -752,7 +752,7 @@ impl Synthesis {
     pub fn hem_row_bytes(&self) -> usize {
         let samples = (self.params.x_max_out + 2 - self.params.x_min_pull).max(2) as usize;
         let bytes = samples * self.fibre_bytes();
-        (bytes + simd_align() - 1) / simd_align() * simd_align() + 2 * simd_align()
+        bytes.div_ceil(simd_align()) * simd_align() + 2 * simd_align()
     }
 
     /// True when the next fresh input row of `parity` can be filled from

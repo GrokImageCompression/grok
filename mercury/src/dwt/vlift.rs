@@ -51,8 +51,8 @@ pub unsafe fn mercury_ply_vlift_16(
     let src_bufs = if advance > 0 {
         let support = st.support_length as usize;
         assert!(support <= MAX_SUPPORT_LENGTH);
-        for k in 0..support {
-            advanced_rows[k] = (*src_bufs.add(k)).add(advance);
+        for (k, row) in advanced_rows.iter_mut().enumerate().take(support) {
+            *row = (*src_bufs.add(k)).add(advance);
         }
         advanced_rows.as_mut_ptr()
     } else {
@@ -159,8 +159,8 @@ pub unsafe fn mercury_ply_vlift_32(
     let src_bufs = if advance > 0 {
         let support = st.support_length as usize;
         assert!(support <= MAX_SUPPORT_LENGTH);
-        for k in 0..support {
-            advanced_rows[k] = (*src_bufs.add(k)).add(advance);
+        for (k, row) in advanced_rows.iter_mut().enumerate().take(support) {
+            *row = (*src_bufs.add(k)).add(advance);
         }
         advanced_rows.as_mut_ptr()
     } else {

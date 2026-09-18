@@ -76,6 +76,8 @@ pub struct BlockRec {
     /// All segment lengths when `num_segments > 1`, else None.
     pub seg_lens: Option<Box<[u32]>>,
     /// Later-layer contributions, in stream order.
+    // the box keeps BlockRec at 40 bytes instead of 56
+    #[allow(clippy::box_collection)]
     pub extra: Option<Box<Vec<Chunk>>>,
     pub num_passes: u8,
     pub missing_msbs: u8,
@@ -1172,8 +1174,7 @@ fn comb_tile(
         let tc = &geom.components[c];
         let q = &quant[c];
         let mut res_plans: Vec<ResPlan> = Vec::with_capacity(n_res(c));
-        for r in 0..n_res(c) {
-            let res = &tc.resolutions[r];
+        for (r, res) in tc.resolutions.iter().enumerate().take(n_res(c)) {
             let (block_w, block_h) = cod.comps[c].block_span(r as u8);
             let bands = res
                 .subbands
@@ -1299,7 +1300,7 @@ fn comb_tile(
     // Nothing after the last contributing packet is ever needed, so the walk
     // ends there: no header parse, no PLT hop, no read. This is the uniform
     // form of classic's per-progression window bail-outs.
-    let last_needed = pkts.iter().rposition(|p| contributes(p));
+    let last_needed = pkts.iter().rposition(&contributes);
     let walk = last_needed.map_or(&pkts[..0], |i| &pkts[..=i]);
 
     let mut vpos: u64 = 0;
@@ -1540,7 +1541,7 @@ fn prec_position(
     tile_origin: u32,
     projection: u64,
 ) -> u64 {
-    if index == first_index && res_origin % prec_span != 0 {
+    if index == first_index && !res_origin.is_multiple_of(prec_span) {
         tile_origin as u64
     } else {
         index as u64 * prec_span as u64 * projection

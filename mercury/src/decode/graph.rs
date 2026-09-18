@@ -143,18 +143,14 @@ impl SubbandDecodeNode {
     ///
     /// # Safety
     /// `dst_lines` pointers must be valid for the slice width in samples.
-    unsafe fn weave_block_row(
-        file: &dyn ReadAt,
-        band: &BandPlan,
-        modes: i32,
-        row: u32,
-        bx0: u32,
-        nbw: u32,
-        path: Path,
-        coder: BlockCoder,
-        dst_lines: &[*mut u8],
-        scratch: &mut Vec<u8>,
-    ) -> Result<(), DecodeError> {
+    unsafe fn weave_block_row(&mut self, dst_lines: &[*mut u8]) -> Result<(), DecodeError> {
+        let file = &*self.file;
+        let band = &*self.band;
+        let modes = self.modes;
+        let row = self.next_block_row;
+        let (bx0, nbw) = (self.bx0, self.nbw);
+        let (path, coder) = (self.path, self.coder);
+        let scratch = &mut self.scratch;
         let stripe_rows = dst_lines.len() as i32;
         let recs = band.block_row(row, bx0, nbw);
 
@@ -302,20 +298,7 @@ impl Node for SubbandDecodeNode {
                     spill_i += 1;
                 }
             }
-            let decoded = unsafe {
-                Self::weave_block_row(
-                    &*self.file,
-                    &self.band,
-                    self.modes,
-                    self.next_block_row,
-                    self.bx0,
-                    self.nbw,
-                    self.path,
-                    self.coder,
-                    &dst_lines,
-                    &mut self.scratch,
-                )
-            };
+            let decoded = unsafe { self.weave_block_row(&dst_lines) };
             if let Err(e) = decoded {
                 // rows in this pass are unusable, so don't hand them on
                 ctx.fail(format!("subband decode failed: {e:?}"));
@@ -1007,9 +990,9 @@ fn weave_sink(
             let headroom = if mct && c < 3 { 5 } else { 4 };
             comp.precision as u32 + headroom <= 16
         });
-        if std::env::var_os("MERCURY_FORCE_I16").is_some() {
-            Path::I16
-        } else if all_i16 && std::env::var_os("MERCURY_FORCE_I32").is_none() {
+        let force_i16 = std::env::var_os("MERCURY_FORCE_I16").is_some();
+        let force_i32 = std::env::var_os("MERCURY_FORCE_I32").is_some();
+        if force_i16 || (all_i16 && !force_i32) {
             Path::I16
         } else {
             Path::I32
@@ -1382,12 +1365,7 @@ fn dress_tile_loom(
             let top = n_lv as usize - 1;
             // LL consumer handed down the chain as levels are built.
             let mut ll_from_child: Option<Consumer<AlignedVec>> = None;
-            for (l, (engine, slices)) in ch
-                .engines
-                .into_iter()
-                .zip(ch.slices.into_iter())
-                .enumerate()
-            {
+            for (l, (engine, slices)) in ch.engines.into_iter().zip(ch.slices).enumerate() {
                 let is_top = l == top;
                 let (out_prod, out_con) = if is_top {
                     // Top level: full-width tile rows to the merge sink. Sized

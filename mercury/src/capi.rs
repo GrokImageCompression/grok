@@ -418,10 +418,7 @@ impl ReadAt for CallbackReader {
         if (self.read_at)(self.ctx, buf.as_mut_ptr(), off, buf.len() as u64) != 0 {
             Ok(())
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "read_at callback failed",
-            ))
+            Err(io::Error::other("read_at callback failed"))
         }
     }
 
@@ -567,8 +564,13 @@ pub struct MercuryImageInfo {
     pub reversible: bool,
 }
 
+/// # Safety
+/// `plan` must come from `mercury_warp_loom` and `out` must be writable.
 #[unsafe(no_mangle)]
-pub extern "C" fn mercury_loom_info(plan: *const MercuryPlan, out: *mut MercuryImageInfo) -> i32 {
+pub unsafe extern "C" fn mercury_loom_info(
+    plan: *const MercuryPlan,
+    out: *mut MercuryImageInfo,
+) -> i32 {
     if plan.is_null() || out.is_null() {
         return MERCURY_EBADARG;
     }
@@ -587,8 +589,11 @@ pub extern "C" fn mercury_loom_info(plan: *const MercuryPlan, out: *mut MercuryI
 /// Per-component output facts: precision, signedness, and the component's own
 /// reduced output dimensions (subsampled components are smaller than the
 /// image-level `MercuryImageInfo` dims). Any out pointer may be null.
+///
+/// # Safety
+/// `plan` must come from `mercury_warp_loom`, non-null out pointers must be writable.
 #[unsafe(no_mangle)]
-pub extern "C" fn mercury_loom_comp_info(
+pub unsafe extern "C" fn mercury_loom_comp_info(
     plan: *const MercuryPlan,
     comp: u32,
     prec: *mut u32,
@@ -621,8 +626,11 @@ pub extern "C" fn mercury_loom_comp_info(
 
 /// Free a plan that will not be decoded. (`mercury_weave` consumes and
 /// frees its plan itself.)
+///
+/// # Safety
+/// `plan` must come from `mercury_warp_loom` and not be used afterwards.
 #[unsafe(no_mangle)]
-pub extern "C" fn mercury_unwarp_loom(plan: *mut MercuryPlan) {
+pub unsafe extern "C" fn mercury_unwarp_loom(plan: *mut MercuryPlan) {
     if !plan.is_null() {
         drop(unsafe { Box::from_raw(plan) });
     }

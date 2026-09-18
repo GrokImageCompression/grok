@@ -271,10 +271,10 @@ pub fn warp_w5x3_prec(spec: &LevelSpec, prec: SamplePrec) -> Result<Synthesis, D
 /// W9X7 irreversible lifting-step table: four float steps, no downshift;
 /// synthesis subtracts these analysis-direction factors.
 pub fn w9x7_draft() -> Vec<StepSpec> {
-    const A: f32 = -1.586134342;
+    const A: f32 = -1.586_134_3;
     const B: f32 = -0.052980118;
-    const C: f32 = 0.882911075;
-    const D: f32 = 0.443506852;
+    const C: f32 = 0.882_911_1;
+    const D: f32 = 0.443_506_87;
     vec![
         treadle_step(0, 0, 0, [A, A], [0, 0], KERNEL_W9X7),
         treadle_step(-1, 0, 0, [B, B], [0, 0], KERNEL_W9X7),
@@ -295,10 +295,10 @@ pub fn warp_w9x7(spec: &LevelSpec) -> Result<Synthesis, DecodeError> {
 /// is hardcoded in kernels keyed on `step_idx`, so the coefficient fields
 /// are informational.
 pub fn w9x7_i16_draft() -> Vec<StepSpec> {
-    const A: f32 = -1.586134342;
+    const A: f32 = -1.586_134_3;
     const B: f32 = -0.052980118;
-    const C: f32 = 0.882911075;
-    const D: f32 = 0.443506852;
+    const C: f32 = 0.882_911_1;
+    const D: f32 = 0.443_506_87;
     vec![
         treadle_step(0, 0, 0, [A, A], [0, 0], KERNEL_W9X7),
         treadle_step(-1, 0, 0, [B, B], [0, 0], KERNEL_W9X7),
@@ -319,7 +319,7 @@ pub fn warp_w9x7_i16(spec: &LevelSpec) -> Result<Synthesis, DecodeError> {
 /// with K = 1.2301741.
 pub fn w9x7_gains() -> (f32, f32) {
     let support_min = [0i32, -1, 0, -1];
-    let factors: [f32; 4] = [-1.586134342, -0.052980118, 0.882911075, 0.443506852];
+    let factors: [f32; 4] = [-1.586_134_3, -0.052980118, 0.882_911_1, 0.443_506_87];
     let num_steps = 4usize;
     const L: i32 = 16; // ample for the 9/7 support
     let idx = |i: i32| (i + L) as usize;
