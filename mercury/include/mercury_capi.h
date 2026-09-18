@@ -97,7 +97,12 @@ typedef struct MercuryQccOverride
 } MercuryQccOverride;
 
 /* One component's coding style (COC), replacing the COD fields below for that
- * component: everything T.800 A.6.2 lets a component carry of its own. */
+ * component: everything T.800 A.6.2 lets a component carry of its own.
+ * mercury_draft_loom rejects a header whose coding style the marker syntax
+ * cannot express: num_levels above 32; a block side not a power of two in
+ * [4, 1024] or a block above 4096 samples; a precinct list shorter or longer
+ * than num_levels + 1; a precinct side not a power of two in [1, 2^15], or
+ * equal to 1 above resolution 0. */
 typedef struct MercuryCocOverride
 {
   uint32_t comp;
@@ -106,7 +111,7 @@ typedef struct MercuryCocOverride
   uint32_t modes;
   bool reversible;
   const MercuryPrecinct* precincts; /* nullptr => default 2^15 x 2^15 */
-  uint32_t num_precincts;
+  uint32_t num_precincts; /* 0 or num_levels + 1, one per resolution */
 } MercuryCocOverride;
 
 /* One POC progression volume (T.800 A.6.6): layers [0, lay_e), resolutions
@@ -140,13 +145,14 @@ typedef struct MercuryMainHeader
   uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
   uint16_t num_layers;
   bool use_ycc;
+  /* Coding style limits: see MercuryCocOverride. */
   uint8_t num_levels;
   uint32_t block_width, block_height;
   uint32_t modes;
   bool reversible;
   bool use_sop, use_eph;
   const MercuryPrecinct* precincts; /* nullptr => default 2^15 x 2^15 */
-  uint32_t num_precincts;
+  uint32_t num_precincts; /* 0 or num_levels + 1, one per resolution */
   MercuryQuant qcd;
   const MercuryQccOverride* qcc;
   uint32_t num_qcc;

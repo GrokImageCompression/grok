@@ -126,6 +126,15 @@ pub struct PrecinctSize {
     pub height: u32,
 }
 
+/// Most decomposition levels a component may carry (T.800 Table A.15).
+pub const MAX_LEVELS: u8 = 32;
+/// Code-block sides are powers of two with at most 4096 samples (T.800 Table A.18).
+const MIN_BLOCK_SIDE: u32 = 4;
+const MAX_BLOCK_SIDE: u32 = 1024;
+const MAX_BLOCK_SAMPLES: u32 = 4096;
+/// Largest precinct exponent a 4-bit PPx/PPy field can hold (T.800 Table A.21).
+const MAX_PRECINCT_SIDE: u32 = 1 << 15;
+
 /// One component's coding style: the COD default, or its COC override
 /// (T.800 A.6.2).
 #[derive(Debug, Clone)]
@@ -146,21 +155,54 @@ pub struct CompCodingStyle {
 }
 
 impl CompCodingStyle {
+    /// Reject a coding style the COD/COC marker syntax cannot express.
+    pub fn check(&self) -> Result<(), String> {
+        if self.num_levels > MAX_LEVELS {
+            return Err(format!("{} decomposition levels", self.num_levels));
+        }
+        let block_side_ok =
+            |side: u32| side.is_power_of_two() && (MIN_BLOCK_SIDE..=MAX_BLOCK_SIDE).contains(&side);
+        if !block_side_ok(self.block_width)
+            || !block_side_ok(self.block_height)
+            || self.block_width * self.block_height > MAX_BLOCK_SAMPLES
+        {
+            return Err(format!(
+                "code-block size {} x {}",
+                self.block_width, self.block_height
+            ));
+        }
+        if !self.precincts.is_empty() && self.precincts.len() != self.num_levels as usize + 1 {
+            return Err(format!(
+                "{} precinct sizes for {} resolutions",
+                self.precincts.len(),
+                self.num_levels as usize + 1
+            ));
+        }
+        for (res, ps) in self.precincts.iter().enumerate() {
+            let min_side = if res == 0 { 1 } else { 2 };
+            let precinct_side_ok = |side: u32| {
+                side.is_power_of_two() && (min_side..=MAX_PRECINCT_SIDE).contains(&side)
+            };
+            if !precinct_side_ok(ps.width) || !precinct_side_ok(ps.height) {
+                return Err(format!(
+                    "precinct {} x {} at resolution {res}",
+                    ps.width, ps.height
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// Precinct size for a resolution level (0=full res); default 2^15×2^15
     /// if no custom precincts.
     pub fn precinct_span(&self, res_level: u8) -> PrecinctSize {
         if self.precincts.is_empty() {
             PrecinctSize {
-                width: 1 << 15,
-                height: 1 << 15,
+                width: MAX_PRECINCT_SIDE,
+                height: MAX_PRECINCT_SIDE,
             }
         } else {
-            let idx = res_level as usize;
-            if idx < self.precincts.len() {
-                self.precincts[idx]
-            } else {
-                *self.precincts.last().unwrap()
-            }
+            self.precincts[res_level as usize]
         }
     }
 
@@ -222,4 +264,108 @@ pub struct QcdParams {
     pub ranges: Vec<u8>,
     /// For irreversible: step sizes, per band.
     pub steps: Vec<f32>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn style() -> CompCodingStyle {
+        CompCodingStyle {
+            num_levels: 2,
+            block_width: 64,
+            block_height: 64,
+            modes: CodingModes(0),
+            reversible: true,
+            precincts: vec![],
+        }
+    }
+
+    #[test]
+    fn spec_conformant_styles_pass() {
+        assert_eq!(style().check(), Ok(()));
+        let mut s = style();
+        s.block_width = 1024;
+        s.block_height = 4;
+        s.precincts = vec![
+            PrecinctSize {
+                width: 1,
+                height: 1,
+            },
+            PrecinctSize {
+                width: 2,
+                height: MAX_PRECINCT_SIDE,
+            },
+            PrecinctSize {
+                width: 256,
+                height: 256,
+            },
+        ];
+        assert_eq!(s.check(), Ok(()));
+    }
+
+    #[test]
+    fn out_of_range_blocks_are_rejected() {
+        for (w, h) in [
+            (1 << 20, 4),
+            (2, 64),
+            (2048, 2),
+            (64, 128),
+            (0, 64),
+            (48, 64),
+        ] {
+            let mut s = style();
+            s.block_width = w;
+            s.block_height = h;
+            let msg = s.check().expect_err("block must be rejected");
+            assert!(msg.contains("code-block"), "{w}x{h}: {msg}");
+        }
+    }
+
+    #[test]
+    fn too_many_levels_are_rejected() {
+        let mut s = style();
+        s.num_levels = MAX_LEVELS + 1;
+        assert!(s.check().is_err());
+    }
+
+    #[test]
+    fn precinct_lists_must_match_resolutions_and_be_powers_of_two() {
+        let one = PrecinctSize {
+            width: 64,
+            height: 64,
+        };
+        let mut s = style();
+        s.precincts = vec![one; 2];
+        assert!(s.check().unwrap_err().contains("precinct sizes"));
+        s.precincts = vec![one; 4];
+        assert!(s.check().unwrap_err().contains("precinct sizes"));
+        s.precincts = vec![
+            one,
+            PrecinctSize {
+                width: 1,
+                height: 64,
+            },
+            one,
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 1"));
+        s.precincts = vec![
+            one,
+            one,
+            PrecinctSize {
+                width: 96,
+                height: 64,
+            },
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 2"));
+        s.precincts = vec![
+            one,
+            one,
+            PrecinctSize {
+                width: MAX_PRECINCT_SIDE * 2,
+                height: 64,
+            },
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 2"));
+    }
 }

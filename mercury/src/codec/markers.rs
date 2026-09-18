@@ -5,7 +5,8 @@
 //! itself.
 
 use crate::codec::params::{
-    CodParams, CodingModes, CompCodingStyle, PrecinctSize, ProgressionOrder, QcdParams, QuantStyle,
+    CodParams, CodingModes, CompCodingStyle, MAX_LEVELS, PrecinctSize, ProgressionOrder, QcdParams,
+    QuantStyle,
 };
 
 /// Scod/Scoc bit 0: the segment carries one precinct size per resolution.
@@ -15,13 +16,11 @@ const CSTY_SOP: u8 = 0x02;
 /// Scod bit 2: an EPH marker terminates every packet header.
 const CSTY_EPH: u8 = 0x04;
 /// Decomposition levels T.800 allows.
-const MAX_LEVELS: u8 = 32;
 /// Sub-bands of a component at `MAX_LEVELS`, the length a derived
 /// quantization segment expands to.
 const MAX_BANDS: usize = 3 * MAX_LEVELS as usize + 1;
-/// Code-block exponents are stored with 2 subtracted, and their sum is capped
-/// so a block holds at most 4096 samples.
-const MAX_BLOCK_EXPONENT: u8 = 8;
+/// Code-block exponents are stored with 2 subtracted (Table A.18).
+const BLOCK_EXPONENT_OFFSET: u8 = 2;
 
 /// Big-endian cursor over one marker segment's payload (the bytes after Lmar).
 struct SegReader<'a> {
@@ -68,18 +67,13 @@ fn comb_sp_cod(r: &mut SegReader, custom_precincts: bool) -> Result<CompCodingSt
     if num_levels > MAX_LEVELS {
         return Err(format!("{num_levels} decomposition levels"));
     }
-    let block_width_exponent = r.byte()?;
-    let block_height_exponent = r.byte()?;
-    if block_width_exponent > MAX_BLOCK_EXPONENT
-        || block_height_exponent > MAX_BLOCK_EXPONENT
-        || block_width_exponent + block_height_exponent > MAX_BLOCK_EXPONENT
-    {
-        return Err(format!(
-            "code-block size 2^{} x 2^{}",
-            block_width_exponent + 2,
-            block_height_exponent + 2
-        ));
-    }
+    // an exponent past u32 becomes 0, which check() rejects
+    let block_side = |exponent: u8| {
+        1u32.checked_shl(exponent as u32 + BLOCK_EXPONENT_OFFSET as u32)
+            .unwrap_or(0)
+    };
+    let block_width = block_side(r.byte()?);
+    let block_height = block_side(r.byte()?);
     let modes = CodingModes(r.byte()? as u32);
     let transform = r.byte()?;
     // above 1 the byte indexes a Part 2 ATK marker, whose kernel mercury has no
@@ -89,29 +83,25 @@ fn comb_sp_cod(r: &mut SegReader, custom_precincts: bool) -> Result<CompCodingSt
     }
     let mut precincts = Vec::new();
     if custom_precincts {
-        for res in 0..=num_levels {
+        for _ in 0..=num_levels {
             let packed = r.byte()?;
             let (width_exponent, height_exponent) = (packed & 0xF, packed >> 4);
-            // Table A.21: only the lowest resolution may use exponent 0
-            if res != 0 && (width_exponent == 0 || height_exponent == 0) {
-                return Err(format!(
-                    "precinct 2^{width_exponent} x 2^{height_exponent} at resolution {res}"
-                ));
-            }
             precincts.push(PrecinctSize {
                 width: 1 << width_exponent,
                 height: 1 << height_exponent,
             });
         }
     }
-    Ok(CompCodingStyle {
+    let style = CompCodingStyle {
         num_levels,
-        block_width: 1 << (block_width_exponent + 2),
-        block_height: 1 << (block_height_exponent + 2),
+        block_width,
+        block_height,
         modes,
         reversible: transform == 1,
         precincts,
-    })
+    };
+    style.check()?;
+    Ok(style)
 }
 
 /// Apply a COD segment to `cod`: the tile-wide fields plus one coding style

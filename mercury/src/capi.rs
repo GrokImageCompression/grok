@@ -311,6 +311,7 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
         reversible: h.reversible,
         precincts: host_precincts(h.precincts, h.num_precincts),
     };
+    default_style.check().map_err(|e| format!("COD: {e}"))?;
     let mut comps = vec![default_style; h.num_comps as usize];
     if !h.coc.is_null() && h.num_coc != 0 {
         let coc_c = unsafe { std::slice::from_raw_parts(h.coc, h.num_coc as usize) };
@@ -321,7 +322,7 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
                     o.comp
                 ));
             };
-            *slot = CompCodingStyle {
+            let style = CompCodingStyle {
                 num_levels: o.num_levels,
                 block_width: o.block_width,
                 block_height: o.block_height,
@@ -329,6 +330,10 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
                 reversible: o.reversible,
                 precincts: host_precincts(o.precincts, o.num_precincts),
             };
+            style
+                .check()
+                .map_err(|e| format!("COC for component {}: {e}", o.comp))?;
+            *slot = style;
         }
     }
     let mut pocs = Vec::new();
@@ -630,7 +635,7 @@ static EXTERN_T1: AtomicUsize = AtomicUsize::new(0);
 unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
     let f: MercuryT1Fn = unsafe { std::mem::transmute(EXTERN_T1.load(Ordering::Relaxed)) };
     let stripes = (blk.num_rows + 3) >> 2;
-    let mut out = vec![0i32; ((stripes << 2) * blk.num_cols) as usize];
+    let mut out = vec![0i32; ((stripes as usize) << 2) * (blk.num_cols as usize)];
     let ok = f(
         blk.coded_data,
         blk.coded_length,
@@ -1218,5 +1223,110 @@ mod tests {
         assert!(!i16::supports(I16_UNSIGNED_PRECISION_BITS + 1, false));
         assert!(i16::supports(I16_SIGNED_PRECISION_BITS, true));
         assert!(!i16::supports(I16_SIGNED_PRECISION_BITS + 1, true));
+    }
+
+    fn host_header(comps: &[MercurySizComp]) -> MercuryMainHeader {
+        let quant = MercuryQuant {
+            guard_bits: 2,
+            style: 0,
+            ranges: std::ptr::null(),
+            num_ranges: 0,
+            steps: std::ptr::null(),
+            num_steps: 0,
+        };
+        MercuryMainHeader {
+            x_siz: 64,
+            y_siz: 64,
+            x_o_siz: 0,
+            y_o_siz: 0,
+            xt_siz: 64,
+            yt_siz: 64,
+            xt_o_siz: 0,
+            yt_o_siz: 0,
+            comps: comps.as_ptr(),
+            num_comps: comps.len() as u32,
+            order: 0,
+            num_layers: 1,
+            use_ycc: false,
+            num_levels: 1,
+            block_width: 64,
+            block_height: 64,
+            modes: 0,
+            reversible: true,
+            use_sop: false,
+            use_eph: false,
+            precincts: std::ptr::null(),
+            num_precincts: 0,
+            qcd: quant,
+            qcc: std::ptr::null(),
+            num_qcc: 0,
+            coc: std::ptr::null(),
+            num_coc: 0,
+            poc: std::ptr::null(),
+            num_poc: 0,
+            codestream_off: 0,
+            codestream_len: 0,
+            first_sot_off: 0,
+            tlm: std::ptr::null(),
+            num_tlm: 0,
+        }
+    }
+
+    #[test]
+    fn host_header_with_oversized_block_is_rejected() {
+        let comps = [MercurySizComp {
+            precision: 8,
+            is_signed: false,
+            xr_siz: 1,
+            yr_siz: 1,
+        }];
+        let mut hdr = host_header(&comps);
+        assert!(unsafe { draft_header_in(&hdr) }.is_ok());
+        hdr.block_width = 1 << 20;
+        let result = unsafe { draft_header_in(&hdr) };
+        let Err(msg) = result else {
+            panic!("2^20 block must be rejected");
+        };
+        assert!(msg.starts_with("COD: code-block"), "{msg}");
+    }
+
+    #[test]
+    fn host_coc_with_short_precinct_list_is_rejected() {
+        let comps = [
+            MercurySizComp {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 1,
+                yr_siz: 1,
+            },
+            MercurySizComp {
+                precision: 8,
+                is_signed: false,
+                xr_siz: 1,
+                yr_siz: 1,
+            },
+        ];
+        let precincts = [MercuryPrecinct {
+            width: 64,
+            height: 64,
+        }];
+        let coc = [MercuryCocOverride {
+            comp: 1,
+            num_levels: 1,
+            block_width: 64,
+            block_height: 64,
+            modes: 0,
+            reversible: true,
+            precincts: precincts.as_ptr(),
+            num_precincts: 1,
+        }];
+        let mut hdr = host_header(&comps);
+        hdr.coc = coc.as_ptr();
+        hdr.num_coc = 1;
+        let result = unsafe { draft_header_in(&hdr) };
+        let Err(msg) = result else {
+            panic!("1 precinct for 2 resolutions must be rejected");
+        };
+        assert!(msg.starts_with("COC for component 1:"), "{msg}");
     }
 }
