@@ -86,7 +86,7 @@ endif()
 
 # mips needs explicit linker flag to disable executable stack
 if (GRK_ARCH MATCHES "mips")
-  target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
+  target_link_options(${GROK_CODEC_NAME} PRIVATE "LINKER:-z,noexecstack")
 endif (GRK_ARCH MATCHES "mips")
 
 # Install library
