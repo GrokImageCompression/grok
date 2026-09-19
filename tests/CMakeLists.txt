@@ -75,6 +75,10 @@ add_executable(grk_rate_control_test GrkRateControlTest.cpp)
 target_link_libraries(grk_rate_control_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_control_test COMMAND grk_rate_control_test)
 
+add_executable(grk_slope_hint_bracket_test GrkSlopeHintBracketTest.cpp)
+target_link_libraries(grk_slope_hint_bracket_test ${GROK_CORE_NAME})
+add_test(NAME grk_slope_hint_bracket_test COMMAND grk_slope_hint_bracket_test)
+
 # synthesizes its own image, so it needs no GRK_DATA_ROOT
 add_executable(grk_progressive_rate_control_test GrkProgressiveRateControlTest.cpp)
 target_link_libraries(grk_progressive_rate_control_test ${GROK_CORE_NAME})
