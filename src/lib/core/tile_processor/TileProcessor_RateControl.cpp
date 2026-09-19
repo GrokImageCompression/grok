@@ -80,6 +80,28 @@ bool TileProcessorCompress::rateAllocate(uint32_t* allPacketBytes, bool disableR
       return pcrdBisectFeasible(allPacketBytes, disableRateControl);
   }
 }
+bool TileProcessorCompress::rateAllocateWithFallback(uint32_t* allPacketBytes)
+{
+  *allPacketBytes = 0;
+  if(rateAllocate(allPacketBytes, false))
+    return true;
+  if(cp_->codingParams_.enc_.rateControlSlopeHint_)
+  {
+    grklog.warn("Rate control failed with slope hint %u on tile %d, retrying without it",
+                cp_->codingParams_.enc_.rateControlSlopeHint_, tileIndex_);
+    ignoreSlopeHint_ = true;
+    *allPacketBytes = 0;
+    if(rateAllocate(allPacketBytes, false))
+      return true;
+  }
+  grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
+  grklog.warn("Rate control will be disabled for this tile");
+  *allPacketBytes = 0;
+  if(rateAllocate(allPacketBytes, true))
+    return true;
+  grklog.error("Unable to perform rate control on tile %d", tileIndex_);
+  return false;
+}
 bool TileProcessorCompress::layerNeedsRateControl(uint16_t layno)
 {
   auto enc_params = &cp_->codingParams_.enc_;
@@ -523,7 +545,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         return false;
       };
 
-      uint16_t hint = cp_->codingParams_.enc_.rateControlSlopeHint_;
+      uint16_t hint = ignoreSlopeHint_ ? 0 : cp_->codingParams_.enc_.rateControlSlopeHint_;
       bool useHint = hint > 1 && tcp->numLayers_ == 1 &&
                      !cp_->codingParams_.enc_.allocationByFixedQuality_ &&
                      hint > min_slope + kHintBracketHalfWidth &&
@@ -542,12 +564,12 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         }
         else if(bracketUpper == narrowUpper)
         {
-          // nothing inside the bracket fit, so the answer is above it
+          // no threshold in the bracket fit, so the answer is above it
           runBisection(lowerBound, upperBound);
         }
-        else if(bracketLower == narrowLower)
+        else if(bracketUpper == narrowLower)
         {
-          // the bracket floor itself fit, so the answer may be below it
+          // every threshold in the bracket fit, so the answer may be below it
           upperBound = narrowLower;
           runBisection(lowerBound, upperBound);
         }

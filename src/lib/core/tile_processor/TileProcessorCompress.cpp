@@ -497,19 +497,10 @@ void TileProcessorCompress::buildCompressDAG(void)
             if(cp_->codingParams_.enc_.writePlt_)
               packetLengthCache_->createMarkers(stream_);
             uint32_t allPacketBytes = 0;
-            bool rc = rateAllocate(&allPacketBytes, false);
-            if(!rc)
+            if(!rateAllocateWithFallback(&allPacketBytes))
             {
-              grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
-              grklog.warn("Rate control will be disabled for this tile");
-              allPacketBytes = 0;
-              rc = rateAllocate(&allPacketBytes, true);
-              if(!rc)
-              {
-                grklog.error("Unable to perform rate control on tile %d", tileIndex_);
-                dagSuccess_ = false;
-                return;
-              }
+              dagSuccess_ = false;
+              return;
             }
             packetTracker_->clear();
             if(canPreCalculateTileLen())
@@ -643,19 +634,8 @@ bool TileProcessorCompress::doCompress(void)
     packetLengthCache_->createMarkers(stream_);
   // 2. rate control
   uint32_t allPacketBytes = 0;
-  bool rc = rateAllocate(&allPacketBytes, false);
-  if(!rc)
-  {
-    grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
-    grklog.warn("Rate control will be disabled for this tile");
-    allPacketBytes = 0;
-    rc = rateAllocate(&allPacketBytes, true);
-    if(!rc)
-    {
-      grklog.error("Unable to perform rate control on tile %d", tileIndex_);
-      return false;
-    }
-  }
+  if(!rateAllocateWithFallback(&allPacketBytes))
+    return false;
   packetTracker_->clear();
 
   if(canPreCalculateTileLen())

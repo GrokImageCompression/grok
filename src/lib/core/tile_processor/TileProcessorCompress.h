@@ -80,6 +80,7 @@ private:
   void scheduleCompressT1();
   bool compressT2(uint32_t* packet_bytes_written);
   bool rateAllocate(uint32_t* allPacketBytes, bool disableRateControl);
+  bool rateAllocateWithFallback(uint32_t* allPacketBytes);
   bool layerNeedsRateControl(uint16_t layno);
   bool makeSingleLosslessLayer();
   void makeLayerFinal(uint16_t layno);
@@ -89,6 +90,7 @@ private:
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
   void syncPluginCodeBlockData();
   uint16_t slopeThreshold_ = 0;
+  bool ignoreSlopeHint_ = false;
   void prepareBlockForFirstLayer(t1::CodeblockCompress* cblk);
 
   uint32_t preCalculatedTileLen_ = 0;
