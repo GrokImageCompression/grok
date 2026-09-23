@@ -12,6 +12,8 @@
 //! its tile its own coding style and quantization. Violations error rather
 //! than produce wrong output.
 
+use std::sync::Arc;
+
 use crate::decode::ReadAt;
 
 use crate::codec::packet::{BlockState, PacketBitReader, TagTree, comb_packet_header};
@@ -165,17 +167,14 @@ pub struct ResPlan {
 
 /// One tile's decode plan.
 pub struct TilePlan {
-    /// [component][resolution]. Empty when the tile misses the decode window.
+    /// [component][resolution].
     pub comps: Vec<Vec<ResPlan>>,
     /// This tile's coding style: the main header's, with its tile-part
     /// header's COD and COC applied.
-    pub cod: CodParams,
+    pub cod: Arc<CodParams>,
     pub geom: TileGeom,
     /// Per-component padded decode windows; None on a whole-tile decode.
     pub win: Option<Vec<TileCompWindow>>,
-    /// False when the decode window misses this tile entirely: nothing of it
-    /// was parsed and the graph must not build it.
-    pub in_window: bool,
 }
 
 pub struct DecodePlan {
@@ -187,8 +186,9 @@ pub struct DecodePlan {
     /// grok's GrkImage::subsampleAndReduce, so `x0`/`y0` are the component's
     /// origin and `width()`/`height()` its sample counts.
     pub comp_dims: Vec<Dims>,
-    /// Tiles in raster order (index = ty * tiles_across + tx).
-    pub tiles: Vec<TilePlan>,
+    /// Tiles in raster order (index = ty * tiles_across + tx). None when the
+    /// decode window misses the tile: nothing of it was parsed.
+    pub tiles: Vec<Option<TilePlan>>,
     pub cod: CodParams,
     pub siz: SizParams,
     /// Resolutions skipped from the top (0 = full resolution).
@@ -605,59 +605,50 @@ pub fn draft(
         }
     }
 
-    // --- per-tile coding parameters ---
-    let mut tile_params: Vec<(CodParams, Vec<QcdParams>)> = Vec::with_capacity(num_tiles);
+    // --- per-tile plans ---
+    let main_cod = Arc::new(hdr.cod.clone());
+    let mut win = StreamWin::warp(file).map_err(io_snag)?;
+    let mut tiles: Vec<Option<TilePlan>> = Vec::with_capacity(num_tiles);
     for (t, segs) in tile_styles.iter().enumerate() {
-        if segs.is_empty() {
-            tile_params.push((hdr.cod.clone(), quant.clone()));
+        if !tile_in_window[t] {
+            tiles.push(None);
             continue;
         }
-        let (mut cod, tile_quant) = comb_tile_params(&hdr.cod, &quant, segs)?;
-        // Classic bounds every tile at the main header's layer count, or at the
-        // caller's limit when it set one: grok copies layersToDecompress_ into
-        // the tile's coding params before reading the tile-part COD, and a
-        // tile-part COD never raises it.
-        let layer_bound = if max_layers != 0 {
-            max_layers
+        let tile_quant_override: Vec<QcdParams>;
+        let (cod, tile_quant) = if segs.is_empty() {
+            (Arc::clone(&main_cod), quant.as_slice())
         } else {
-            hdr.cod.num_layers
+            let (mut cod, tile_quant) = comb_tile_params(&hdr.cod, &quant, segs)?;
+            // Classic bounds every tile at the main header's layer count, or at the
+            // caller's limit when it set one: grok copies layersToDecompress_ into
+            // the tile's coding params before reading the tile-part COD, and a
+            // tile-part COD never raises it.
+            let layer_bound = if max_layers != 0 {
+                max_layers
+            } else {
+                hdr.cod.num_layers
+            };
+            cod.num_layers = cod.num_layers.min(layer_bound);
+            check_coding_style(&cod, num_comps, reduce, &format!(" tile {t}"))?;
+            // The sample path and the color transform are chosen once for the
+            // whole image, in weave_sink, so no tile may move them.
+            if cod.comps[0].reversible != hdr.cod.comps[0].reversible {
+                return Err(DecodeError::Logic(format!(
+                    "plan: tile {t} changes the wavelet kernel"
+                )));
+            }
+            if cod.use_ycc != hdr.cod.use_ycc {
+                return Err(DecodeError::Logic(format!(
+                    "plan: tile {t} changes the component transform"
+                )));
+            }
+            tile_quant_override = tile_quant;
+            (Arc::new(cod), tile_quant_override.as_slice())
         };
-        cod.num_layers = cod.num_layers.min(layer_bound);
-        check_coding_style(&cod, num_comps, reduce, &format!(" tile {t}"))?;
-        // The sample path and the color transform are chosen once for the
-        // whole image, in weave_sink, so no tile may move them.
-        if cod.comps[0].reversible != hdr.cod.comps[0].reversible {
-            return Err(DecodeError::Logic(format!(
-                "plan: tile {t} changes the wavelet kernel"
-            )));
-        }
-        if cod.use_ycc != hdr.cod.use_ycc {
-            return Err(DecodeError::Logic(format!(
-                "plan: tile {t} changes the component transform"
-            )));
-        }
-        tile_params.push((cod, tile_quant));
-    }
-
-    // --- per-tile plans ---
-    let mut win = StreamWin::warp(file).map_err(io_snag)?;
-    let mut tiles: Vec<TilePlan> = Vec::with_capacity(num_tiles);
-    for (t, (cod, tile_quant)) in tile_params.into_iter().enumerate() {
         let geom = chart_tile_geom(&hdr.siz, &cod, t as u16);
-        // Per-component padded windows. A tile the window misses is never
-        // parsed at all; its packet-data segments are simply dropped.
+        // Per-component padded windows.
         let mut tile_wins: Option<Vec<TileCompWindow>> = None;
         if let Some(w) = window {
-            if !tile_in_window[t] {
-                tiles.push(TilePlan {
-                    comps: Vec::new(),
-                    cod,
-                    geom,
-                    win: None,
-                    in_window: false,
-                });
-                continue;
-            }
             let wins = geom
                 .components
                 .iter()
@@ -698,7 +689,7 @@ pub fn draft(
             file,
             &mut win,
             &cod,
-            &tile_quant,
+            tile_quant,
             &hdr.siz,
             &geom,
             TileStream::warp(std::mem::take(&mut tile_segs[t])),
@@ -707,13 +698,12 @@ pub fn draft(
             plt.as_deref(),
             tile_wins.as_deref(),
         )?;
-        tiles.push(TilePlan {
+        tiles.push(Some(TilePlan {
             comps,
             cod,
             geom,
             win: tile_wins,
-            in_window: true,
-        });
+        }));
     }
 
     // Bound then subtract, matching grok's GrkImage::subsampleAndReduce:
@@ -1945,6 +1935,7 @@ mod tests {
     fn coded_bytes(plan: &DecodePlan) -> usize {
         plan.tiles
             .iter()
+            .flatten()
             .flat_map(|t| t.comps.iter().flatten())
             .flat_map(|r| r.bands.iter())
             .flat_map(|b| b.blocks())
@@ -1955,6 +1946,7 @@ mod tests {
     fn block_offsets(plan: &DecodePlan) -> Vec<u64> {
         plan.tiles
             .iter()
+            .flatten()
             .flat_map(|t| t.comps.iter().flatten())
             .flat_map(|r| r.bands.iter())
             .flat_map(|b| b.blocks())
@@ -1965,6 +1957,7 @@ mod tests {
     fn passes(plan: &DecodePlan) -> Vec<u8> {
         plan.tiles
             .iter()
+            .flatten()
             .flat_map(|t| t.comps.iter().flatten())
             .flat_map(|r| r.bands.iter())
             .flat_map(|b| b.blocks())
@@ -2177,7 +2170,7 @@ mod tests {
         assert_eq!(coded_bytes(&windowed), coded_bytes(&full));
         assert_eq!(passes(&windowed), passes(&full));
         assert_eq!((windowed.width, windowed.height), (full.width, full.height));
-        assert!(windowed.tiles[0].in_window);
+        assert!(windowed.tiles[0].is_some());
     }
 
     /// Two tiles, the second one's packet bytes absent from the stream: a
@@ -2343,12 +2336,13 @@ mod tests {
         cut.extend([0xFF, 0xD9]); // EOC where tile 1's packet bytes should be
         let win = Some(d(0, 0, 8, 8));
         let plan = draft(&cut, &hdr, 0, 0, true, win).expect("tile 1 must never be touched");
-        assert!(!plan.tiles[1].in_window);
-        assert!(plan.tiles[1].comps.is_empty());
+        assert!(plan.tiles[1].is_none());
         assert_eq!((plan.width, plan.height), (8, 8));
         // tile 0's records match the whole-image parse
         let tile0_passes = |p: &DecodePlan| -> Vec<u8> {
             p.tiles[0]
+                .as_ref()
+                .unwrap()
                 .comps
                 .iter()
                 .flatten()
@@ -2374,7 +2368,7 @@ mod tests {
         let stream = assemble_stream(&packets, &[]);
         let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)))
             .expect("empty out-of-window packets must not block the plan");
-        assert!(plan.tiles[0].in_window);
+        assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
     }
 
@@ -2385,7 +2379,7 @@ mod tests {
         let stream = assemble_stream(&packets, &[(0, plt)]);
         let plan = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)))
             .expect("PLT must hop the out-of-window packets");
-        assert!(plan.tiles[0].in_window);
+        assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
     }
 
@@ -2446,7 +2440,7 @@ mod tests {
         let baseline =
             draft(&stream, &synth_header(), 0, 0, true, None).expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
-        let spans: Vec<(u32, u32)> = plan.tiles[0].comps[0]
+        let spans: Vec<(u32, u32)> = plan.tiles[0].as_ref().unwrap().comps[0]
             .iter()
             .flat_map(|r| r.bands.iter())
             .map(|b| (b.block_w, b.block_h))
@@ -2496,7 +2490,7 @@ mod tests {
         );
         assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS]);
 
-        let comps = &plan.tiles[0].comps;
+        let comps = &plan.tiles[0].as_ref().unwrap().comps;
         assert_eq!(comps[0].len(), 2);
         assert_eq!(comps[1].len(), 3);
         let spans = |c: usize| -> Vec<(u32, u32)> {
@@ -2815,7 +2809,7 @@ mod tests {
     }
 
     fn k_max_primes(plan: &DecodePlan, comp: usize) -> Vec<i32> {
-        plan.tiles[0].comps[comp]
+        plan.tiles[0].as_ref().unwrap().comps[comp]
             .iter()
             .flat_map(|r| r.bands.iter())
             .map(|b| b.k_max_prime)
@@ -2830,10 +2824,10 @@ mod tests {
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(TILE_LAYERS, 1, 0)], &synth_packets());
         let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
-        assert_eq!(plan.tiles[0].cod.num_layers, TILE_LAYERS);
-        assert_eq!(plan.tiles[0].cod.comps[0].block_width, 4);
-        assert_eq!(plan.tiles[0].cod.comps[0].block_height, 4);
-        let spans: Vec<(u32, u32)> = plan.tiles[0].comps[0]
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, TILE_LAYERS);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 4);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_height, 4);
+        let spans: Vec<(u32, u32)> = plan.tiles[0].as_ref().unwrap().comps[0]
             .iter()
             .flat_map(|r| r.bands.iter())
             .map(|b| (b.block_w, b.block_h))
@@ -2855,7 +2849,7 @@ mod tests {
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(LAYERS + 4, 1, 4)], &synth_packets());
         let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
-        assert_eq!(plan.tiles[0].cod.num_layers, LAYERS);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, LAYERS);
         let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -2914,12 +2908,12 @@ mod tests {
         let stream = marked_stream(&[coc_segment(1, 2, 0)], &packets);
         let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
 
-        assert_eq!(plan.tiles[0].cod.comps[0].num_levels, 1);
-        assert_eq!(plan.tiles[0].cod.comps[0].block_width, 64);
-        assert_eq!(plan.tiles[0].cod.comps[1].num_levels, 2);
-        assert_eq!(plan.tiles[0].cod.comps[1].block_width, 4);
-        assert_eq!(plan.tiles[0].comps[0].len(), 2);
-        assert_eq!(plan.tiles[0].comps[1].len(), 3);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].num_levels, 1);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 64);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[1].num_levels, 2);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[1].block_width, 4);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().comps[0].len(), 2);
+        assert_eq!(plan.tiles[0].as_ref().unwrap().comps[1].len(), 3);
 
         const BLOCKS: usize = 11; // comp 0: 1 + 3, comp 1: 1 + 3 + 3
         assert_eq!(

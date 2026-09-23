@@ -160,6 +160,14 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/oom-a7167864c261ba3ab1e31def07c9e813d725c92e)
 endif()
 
+# OSS-Fuzz OOM: 65535 tiles of 257 components
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_many_tiles_mercury_memory_test
+    COMMAND grk_decode_peak_memory_test
+            ${GRK_DATA_ROOT}/input/nonregression/oom-14c02d51a36e10efc2ec1b6e2bed5912daa81cba
+            --decode-may-fail)
+endif()
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util

@@ -1001,10 +1001,10 @@ fn weave_sink(
     let mut tiles = std::collections::VecDeque::from(std::mem::take(&mut plan.tiles));
     let mut emitted = vec![0u64; plan.siz.comp_count()];
     for _ty in 0..nty {
-        let row_tiles: Vec<TilePlan> = tiles.drain(..ntx).collect();
+        let row_tiles: Vec<TilePlan> = tiles.drain(..ntx).flatten().collect();
         // A tile row the decode window misses entirely was never parsed and
         // is never decoded.
-        if row_tiles.iter().all(|t| !t.in_window) {
+        if row_tiles.is_empty() {
             continue;
         }
         let dec = dress_tile_loom(
@@ -1101,9 +1101,6 @@ fn dress_tile_loom(
     let mut first_tile = vec![true; num_comps];
 
     for tile in row_tiles.into_iter() {
-        if !tile.in_window {
-            continue;
-        }
         // Per component, since a COC gives a component its own level count,
         // and per tile, since a tile-part COD or COC replaces it.
         let tile_cod = &tile.cod;

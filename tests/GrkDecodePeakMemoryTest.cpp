@@ -26,6 +26,8 @@ namespace
 const uint32_t WINDOW_SIZE = 1024;
 // well above the ~600MB the 257 component case legitimately needs
 const long PEAK_RSS_LIMIT_KB = 1500L * 1024;
+// a corrupt stream only has to stay under the memory limit
+const char* DECODE_MAY_FAIL_FLAG = "--decode-may-fail";
 
 #ifdef __linux__
 long peakRssKb()
@@ -50,9 +52,10 @@ int main(int argc, char** argv)
 {
   if(argc < 2)
   {
-    fprintf(stderr, "usage: %s <codestream>\n", argv[0]);
+    fprintf(stderr, "usage: %s <codestream> [%s]\n", argv[0], DECODE_MAY_FAIL_FLAG);
     return 1;
   }
+  bool decodeMayFail = argc > 2 && strcmp(argv[2], DECODE_MAY_FAIL_FLAG) == 0;
 
   grk_initialize(nullptr, 0, nullptr);
 
@@ -95,6 +98,8 @@ int main(int argc, char** argv)
   }
   grk_object_unref(codec);
   grk_deinitialize();
+  if(decodeMayFail)
+    rc = 0;
 
 #ifdef __linux__
   long kb = peakRssKb();
