@@ -49,6 +49,8 @@ struct grk_plugin_debug_mqc
 
 typedef uint32_t (*PLUGIN_GET_DEBUG_STATE)(void);
 
+typedef const char* (*PLUGIN_BUILD_INFO)(void);
+
 typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(grk_plugin_debug_mqc* mqc, uint32_t d);
 
 typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(grk_plugin_debug_mqc* mqc);

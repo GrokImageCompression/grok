@@ -2391,6 +2391,18 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
  */
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
+/**
+ * @brief Returns the build info of the loaded plugin.
+ *
+ * The string names the GPU backend and the build target, for example
+ * "CUDA sm_86". It is valid until grk_plugin_cleanup().
+ *
+ * Returns NULL if no plugin is loaded.
+ *
+ * @return plugin build info string, or NULL
+ */
+GRK_API const char* GRK_CALLCONV grk_plugin_build_info(void);
+
 /*
  * @struct grk_plugin_init_info
  * @brief Plugin init info

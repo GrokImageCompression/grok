@@ -1175,6 +1175,7 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
  ***********************************************************************/
 
 static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
+static const char* plugin_build_info_method_name = "plugin_build_info";
 static const char* plugin_init_method_name = "plugin_init";
 static const char* plugin_encode_method_name = "plugin_encode";
 static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
@@ -1264,6 +1265,19 @@ uint32_t grk_plugin_get_debug_state()
       rc = func();
   }
   return rc;
+}
+const char* grk_plugin_build_info(void)
+{
+  if(!pluginLoaded)
+    return nullptr;
+  auto mgr = minpf_get_plugin_manager();
+  if(!mgr || mgr->num_libraries == 0)
+    return nullptr;
+  auto func =
+      (PLUGIN_BUILD_INFO)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_build_info_method_name);
+  if(!func)
+    return nullptr;
+  return func();
 }
 void grk_plugin_cleanup(void)
 {
