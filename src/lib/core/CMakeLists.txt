@@ -285,8 +285,8 @@ endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
 
 # mercury streaming fast path — compile mercury's DWT kernels against grok's
-# Highway and link the extern-kernels mercury staticlib (built in-tree by
-# cargo). requires cargo: when it is absent the fast path is dropped and
+# Highway and link the extern-kernels mercury staticlib (built by cargo
+# into the build tree, so read-only sources and several build trees work). requires cargo: when it is absent the fast path is dropped and
 # mercury_fastpath.cpp compiles to a no-op fallback. run cargo --version
 # rather than trusting find_program: the oss-fuzz base-builder image puts a
 # cargo wrapper on PATH without a rust toolchain behind it.
@@ -309,7 +309,7 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PRO
 if(GRK_ENABLE_MERCURY)
   # an explicit cargo target (CARGO_BUILD_TARGET) keeps RUSTFLAGS off build
   # scripts and proc macros, and moves the artifact under a triple subdir
-  set(MERCURY_TARGET_ROOT ${MERCURY_DIR}/target-grok)
+  set(MERCURY_TARGET_ROOT ${CMAKE_BINARY_DIR}/mercury-target)
   if(DEFINED ENV{CARGO_BUILD_TARGET})
     set(MERCURY_TARGET_ROOT ${MERCURY_TARGET_ROOT}/$ENV{CARGO_BUILD_TARGET})
   endif()
@@ -323,7 +323,7 @@ if(GRK_ENABLE_MERCURY)
     OUTPUT ${MERCURY_LIB}
     COMMAND ${CARGO_EXECUTABLE} build --release --lib
             --no-default-features --features extern-kernels
-            --target-dir ${MERCURY_DIR}/target-grok
+            --target-dir ${CMAKE_BINARY_DIR}/mercury-target
     WORKING_DIRECTORY ${MERCURY_DIR}
     DEPENDS ${MERCURY_RUST_SRCS}
             ${MERCURY_DIR}/Cargo.toml ${MERCURY_DIR}/Cargo.lock ${MERCURY_DIR}/build.rs
