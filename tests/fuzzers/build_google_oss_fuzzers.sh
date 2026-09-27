@@ -34,7 +34,7 @@ fi
 
 # static links must resolve grokj2k -> mercury -> kernels -> hwy, and
 # -ldl is for rust's std. CARGO_BUILD_TARGET adds a triple subdir.
-mercuryLib="$SRC/grok/mercury/target-grok/${CARGO_BUILD_TARGET:+$CARGO_BUILD_TARGET/}release/libmercury.a"
+mercuryLib="$SRC/grok/build/mercury-target/${CARGO_BUILD_TARGET:+$CARGO_BUILD_TARGET/}release/libmercury.a"
 mercuryLibs=""
 if [ -f "$mercuryLib" ]; then
     mercuryLibs="$mercuryLib $SRC/grok/build/bin/libmercury_kernels.a"
