@@ -406,6 +406,7 @@ typedef struct _gpup_init_info
   bool verbose;
   const char* license;
   const char* server;
+  uint32_t numThreads; /* threads for host-side work, 0 means std::thread::hardware_concurrency() */
 } gpup_init_info;
 
 /* ═══════════════════════════════════════════════════════════════

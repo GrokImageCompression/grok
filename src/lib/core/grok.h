@@ -2413,6 +2413,7 @@ typedef struct _grk_plugin_init_info
   bool verbose; /* enable diagnostic logging */
   const char* license; /* license */
   const char* server; /* server */
+  uint32_t num_threads; /* threads for host-side plugin work, 0 means automatic */
 } grk_plugin_init_info;
 
 /**

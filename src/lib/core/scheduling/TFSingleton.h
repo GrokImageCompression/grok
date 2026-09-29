@@ -26,6 +26,7 @@
 #include <atomic>
 
 #include "grk_taskflow.h"
+#include "UsableThreadCount.h"
 
 /**
  * @class TFSingleton
@@ -42,7 +43,7 @@ public:
   static void create(size_t numThreads)
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    numThreads = numThreads ? numThreads : std::thread::hardware_concurrency();
+    numThreads = numThreads ? numThreads : grk::usableThreadCount();
     if(numThreads_ == numThreads)
       return;
     numThreads_ = numThreads;
@@ -68,7 +69,7 @@ public:
     if(!instance_)
     {
       if(!numThreads_)
-        numThreads_ = std::thread::hardware_concurrency();
+        numThreads_ = grk::usableThreadCount();
       // numThreads == 1 => inline executor (0 workers): all work runs on the
       // calling thread, keeping the process truly single-threaded.
       instance_ = std::make_shared<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);

@@ -32,6 +32,7 @@
 
 #include "grk_fseek.h"
 #include "TFSingleton.h"
+#include "UsableThreadCount.h"
 
 #include "MinHeap.h"
 #include "SequentialCache.h"
@@ -1371,6 +1372,7 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
       gpup_info.verbose = initInfo.verbose;
       gpup_info.license = initInfo.license;
       gpup_info.server = initInfo.server;
+      gpup_info.numThreads = initInfo.num_threads ? initInfo.num_threads : usableThreadCount();
       bool result = func(gpup_info);
       if(!result)
         Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, license='%s')",
