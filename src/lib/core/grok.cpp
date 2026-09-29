@@ -1008,18 +1008,17 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
 
   auto codec = Codec::getImpl(codecWrapper);
   bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)image) : false;
-  if(rc)
-  {
-    rc = grkStartCompress(codecWrapper);
-  }
-  else
-  {
+  if(!rc)
     grklog.error("Failed to initialize codec.");
+  else
+    rc = grkStartCompress(codecWrapper);
+  if(!rc)
+  {
     grk_object_unref(codecWrapper);
-    codecWrapper = nullptr;
+    return nullptr;
   }
 
-  return rc ? codecWrapper : nullptr;
+  return codecWrapper;
 }
 
 uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)

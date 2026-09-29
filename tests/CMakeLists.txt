@@ -690,6 +690,11 @@ add_executable(grk_rate_allocation_test GrkRateAllocationTest.cpp)
 target_link_libraries(grk_rate_allocation_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_allocation_test COMMAND grk_rate_allocation_test)
 
+# synthesizes its own image, so it needs no GRK_DATA_ROOT
+add_executable(grk_icc_rate_control_test GrkIccRateControlTest.cpp)
+target_link_libraries(grk_icc_rate_control_test ${GROK_CORE_NAME})
+add_test(NAME grk_icc_rate_control_test COMMAND grk_icc_rate_control_test)
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_ht_band_bit_planes_test GrkHTBandBitPlanesTest.cpp)
 target_link_libraries(grk_ht_band_bit_planes_test ${GROK_CORE_NAME} spdlog::spdlog)

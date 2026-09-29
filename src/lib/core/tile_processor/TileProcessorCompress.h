@@ -81,6 +81,7 @@ private:
   bool compressT2(uint32_t* packet_bytes_written);
   bool rateAllocate(uint32_t* allPacketBytes, bool disableRateControl);
   bool rateAllocateWithFallback(uint32_t* allPacketBytes);
+  void resetRateControlInclusion(void);
   bool layerNeedsRateControl(uint16_t layno);
   bool makeSingleLosslessLayer();
   void makeLayerFinal(uint16_t layno);

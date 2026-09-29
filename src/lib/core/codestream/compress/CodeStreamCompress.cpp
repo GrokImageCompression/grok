@@ -1204,6 +1204,8 @@ bool CodeStreamCompress::updateRates(void)
   uint32_t bits_empty = 8 * (uint32_t)image->comps->dx * image->comps->dy;
   uint32_t size_pixel = (uint32_t)image->numcomps * image->comps->prec;
   auto headerSize = (double)stream_->tell();
+  // a non-positive target is treated as no rate constraint
+  bool enforceRate = cp->codingParams_.enc_.allocationByRateDistortion_;
 
   for(uint16_t tile_y = 0; tile_y < cp->t_grid_height_; ++tile_y)
   {
@@ -1221,9 +1223,19 @@ bool CodeStreamCompress::updateRates(void)
         double* rates = tcp->rates_ + k;
         // convert to target bytes for layer
         if(*rates > 0.0f)
-          *rates = ((((double)size_pixel * (double)numTilePixels)) /
-                    ((double)*rates * (double)bits_empty)) -
-                   offset;
+        {
+          double rawBudget =
+              ((double)size_pixel * (double)numTilePixels) / ((double)*rates * (double)bits_empty);
+          double byteTarget = rawBudget - offset;
+          if(enforceRate && byteTarget <= 0.0)
+          {
+            grklog.error("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                         "budget does not cover the %.0f byte tile-part overhead",
+                         k, tileId, rawBudget, offset);
+            return false;
+          }
+          *rates = byteTarget;
+        }
       }
     }
   }
@@ -1238,14 +1250,25 @@ bool CodeStreamCompress::updateRates(void)
       uint64_t numTilePixels = tileBounds.area();
       // correction for header size is distributed amongst all tiles
       double sot_adjust = ((double)numTilePixels * (double)headerSize) / ((double)width * height);
-      for(uint16_t k = 0; k < (uint16_t)(tcp->numLayers_ - 1); ++k)
+      for(uint16_t k = 0; k < tcp->numLayers_; ++k)
       {
-        if(*rates > 0.0)
-          *rates -= sot_adjust;
-        ++rates;
+        double overhead = sot_adjust;
+        if(k + 1 == tcp->numLayers_)
+          overhead += 2.0;
+        if(rates[k] > 0.0)
+        {
+          if(enforceRate && rates[k] <= overhead)
+          {
+            grklog.error(
+                "Layer %u of tile %u cannot meet its compression ratio: its %.0f byte budget "
+                "does not cover its %.0f byte share of the %.0f byte file header. The header "
+                "counts toward the ratio, and for a JP2 file it includes the ICC profile",
+                k, tileId, rates[k], overhead, headerSize);
+            return false;
+          }
+          rates[k] -= overhead;
+        }
       }
-      if(*rates > 0.0)
-        *rates -= (sot_adjust + 2.0);
     }
   }
 

@@ -69,8 +69,41 @@ uint16_t TileProcessorCompress::getSlopeThreshold(void) const
   return slopeThreshold_;
 }
 
+void TileProcessorCompress::resetRateControlInclusion(void)
+{
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+  {
+    auto tilec = tile_->comps_ + compno;
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; ++resno)
+    {
+      auto res = tilec->resolutions_ + resno;
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
+      {
+        auto band = res->band + bandIndex;
+        for(auto prc : band->precincts_)
+        {
+          for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
+          {
+            auto cblk = prc->getCompressBlock(cblkno);
+            cblk->setNumPassesInPreviousLayers(0);
+            for(uint16_t layno = 0; layno < tcp_->numLayers_; ++layno)
+            {
+              auto layer = cblk->getLayer(layno);
+              layer->totalPasses_ = 0;
+              layer->len = 0;
+              layer->distortion = 0;
+              layer->data = nullptr;
+            }
+          }
+        }
+      }
+    }
+  }
+}
 bool TileProcessorCompress::rateAllocate(uint32_t* allPacketBytes, bool disableRateControl)
 {
+  // a failed attempt leaves every pass marked included
+  resetRateControlInclusion();
   // rate control by rate/distortion or fixed quality
   switch(cp_->codingParams_.enc_.rateControlAlgorithm_)
   {
