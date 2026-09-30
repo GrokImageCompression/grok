@@ -757,7 +757,17 @@ bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
-    return codec->decompressor_ ? codec->decompressor_->decompress(tile) : false;
+    if(!codec->decompressor_)
+      return false;
+    try
+    {
+      return codec->decompressor_->decompress(tile);
+    }
+    // the plugin calls from its own threads, where nothing catches it
+    catch(const grk::PluginDecodeUnsupportedException&)
+    {
+      return false;
+    }
   }
   return false;
 }

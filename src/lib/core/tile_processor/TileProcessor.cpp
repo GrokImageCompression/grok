@@ -199,8 +199,9 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
                             "segments. Image will be decompressed on CPU.");
                 throw PluginDecodeUnsupportedException();
               }
+              // the plugin's decode buffers hold prec + GRK_BIBO_EXTRA_BITS bit planes
               uint32_t maxPasses =
-                  3 * (uint32_t)((headerImage_->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2);
+                  3 * (uint32_t)(headerImage_->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2;
               if(cblk->getSegment(0)->totalPasses_ > maxPasses)
               {
                 grklog.info("Number of passes %u in segment exceeds BIBO maximum %u. "
