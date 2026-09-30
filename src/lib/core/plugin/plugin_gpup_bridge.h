@@ -213,6 +213,15 @@ inline void gpup_to_grk_image_shallow(const gpup_image* src, grk_image* dst)
   // comps must be allocated by caller
 }
 
+static_assert(sizeof(gpup_pass) == sizeof(grk_plugin_pass));
+static_assert(offsetof(gpup_pass, distortionDecrease) ==
+              offsetof(grk_plugin_pass, distortion_decrease));
+static_assert(offsetof(gpup_pass, rate) == offsetof(grk_plugin_pass, rate));
+static_assert(offsetof(gpup_pass, length) == offsetof(grk_plugin_pass, length));
+static_assert(offsetof(gpup_pass, term) == offsetof(grk_plugin_pass, term));
+static_assert(offsetof(gpup_pass, slope) == offsetof(grk_plugin_pass, slope));
+static_assert(GPUP_MAX_PASSES == GRK_MAX_PASSES);
+
 /* ── gpup_tile → grk_plugin_tile (deep wrapper — shares data pointers) ── */
 /*
  * Creates a grk_plugin_tile tree that mirrors a gpup_tile tree.
@@ -269,12 +278,7 @@ inline grk_plugin_tile* gpup_tile_to_grk(gpup_tile* src)
             dkb->compressed_data_length = skb->compressedDataLength;
             dkb->num_bit_planes = skb->numBitPlanes;
             dkb->num_passes = (uint8_t)skb->numPasses;
-            for(size_t ps = 0; ps < skb->numPasses && ps < GRK_MAX_PASSES; ++ps)
-            {
-              dkb->passes[ps].distortion_decrease = skb->passes[ps].distortionDecrease;
-              dkb->passes[ps].rate = skb->passes[ps].rate;
-              dkb->passes[ps].length = skb->passes[ps].length;
-            }
+            dkb->passes = reinterpret_cast<grk_plugin_pass*>(skb->passes); // shared
             dkb->sorted_index = skb->sortedIndex;
             dp->blocks[k] = dkb;
           }
@@ -341,13 +345,7 @@ inline void gpup_tile_update_grk(grk_plugin_tile* dst, gpup_tile* src)
             dkb->compressed_data_length = skb->compressedDataLength;
             dkb->num_bit_planes = skb->numBitPlanes;
             dkb->num_passes = (uint8_t)skb->numPasses;
-            // T2 writes the packet lengths from the passes, and each frame has its own
-            for(size_t ps = 0; ps < skb->numPasses && ps < GRK_MAX_PASSES; ++ps)
-            {
-              dkb->passes[ps].distortion_decrease = skb->passes[ps].distortionDecrease;
-              dkb->passes[ps].rate = skb->passes[ps].rate;
-              dkb->passes[ps].length = skb->passes[ps].length;
-            }
+            dkb->passes = reinterpret_cast<grk_plugin_pass*>(skb->passes);
             dkb->sorted_index = skb->sortedIndex;
           }
         }
@@ -507,11 +505,7 @@ inline gpup_tile* grk_tile_to_gpup(grk_plugin_tile* src)
             dkb->numBitPlanes = skb->num_bit_planes;
             dkb->numPasses = skb->num_passes;
             for(uint8_t ps = 0; ps < skb->num_passes && ps < GRK_MAX_PASSES; ++ps)
-            {
-              dkb->passes[ps].distortionDecrease = skb->passes[ps].distortion_decrease;
-              dkb->passes[ps].rate = skb->passes[ps].rate;
-              dkb->passes[ps].length = skb->passes[ps].length;
-            }
+              dkb->passes[ps] = reinterpret_cast<const gpup_pass&>(skb->passes[ps]);
             dkb->sortedIndex = skb->sorted_index;
             dp->blocks[k] = dkb;
           }

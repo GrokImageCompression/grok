@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <vector>
+
 namespace grk
 {
 struct Precinct;
@@ -82,11 +84,9 @@ struct PrecinctImpl
    */
   TagTreeU8* getIMsbTagTree(void);
 
-  /**
-   * @brief Cache of @ref CodeblockCompress
-   *
-   */
-  BlockCache<t1::CodeblockCompress, PrecinctImpl>* enc_;
+  // every block of a compressed precinct is coded
+  t1::CodeblockCompress* enc_;
+  uint32_t numEnc_;
 
   /**
    * @brief Cache of @ref CodeblockDecompress
@@ -119,7 +119,7 @@ private:
 
 struct PrecinctImplCompress : public PrecinctImpl
 {
-  PrecinctImplCompress(Precinct* prec, uint16_t numLayers);
+  PrecinctImplCompress(Precinct* prec, uint16_t numLayers, uint8_t maxPasses);
 };
 
 struct PrecinctImplDecompress : public PrecinctImpl

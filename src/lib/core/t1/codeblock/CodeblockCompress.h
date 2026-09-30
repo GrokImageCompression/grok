@@ -115,6 +115,10 @@ struct CodeblockCompress : public Codeblock
   {
     return getImpl()->getPass(passno);
   }
+  void setPasses(CodePass* externalPasses)
+  {
+    getImpl()->setPasses(externalPasses);
+  }
   uint8_t getNumPasses(void)
   {
     return getImpl()->getNumPasses();
@@ -134,6 +138,10 @@ struct CodeblockCompress : public Codeblock
   uint8_t* getPaddedCompressedStream(void)
   {
     return getImpl()->getPaddedCompressedStream();
+  }
+  uint8_t maxPasses(void)
+  {
+    return getImpl()->maxPasses();
   }
   void setPaddedCompressedStream(uint8_t* stream)
   {

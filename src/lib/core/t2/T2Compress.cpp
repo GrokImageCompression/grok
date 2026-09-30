@@ -70,7 +70,7 @@ T2Compress::T2Compress(ITileProcessorCompress* tileProc) : tileProcessor(tilePro
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
                                          uint32_t* allPacketBytes, uint32_t maxBytes,
                                          uint8_t newTilePartProgressionPosition, PLMarker* markers,
-                                         bool isFinal, bool debug)
+                                         bool isFinal, bool debug, uint64_t* tilePartBytes)
 {
   assert(allPacketBytes);
   auto cp = tileProcessor->getCodingParams();
@@ -129,12 +129,15 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
             maxBytes -= bytesInLayer;
           }
           *allPacketBytes += bytesInLayer;
-          if(cp->codingParams_.enc_.maxComponentRate_ &&
+          // a caller counting the parts applies the component cap itself
+          if(!tilePartBytes && cp->codingParams_.enc_.maxComponentRate_ &&
              componentBytes > cp->codingParams_.enc_.maxComponentRate_)
             return false;
         }
       }
     }
+    if(tilePartBytes)
+      tilePartBytes[compno] = componentBytes;
   }
 
   return true;

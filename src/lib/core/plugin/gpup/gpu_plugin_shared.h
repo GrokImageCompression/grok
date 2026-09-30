@@ -239,9 +239,11 @@ typedef struct _gpup_image
 
 typedef struct _gpup_pass
 {
+  uint16_t rate;
   double distortionDecrease;
-  size_t rate;
-  size_t length;
+  uint16_t length;
+  uint8_t term;
+  uint16_t slope;
 } gpup_pass;
 
 typedef struct _gpup_code_block

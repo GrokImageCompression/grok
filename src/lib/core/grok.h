@@ -1153,9 +1153,11 @@ typedef struct grk_wait_swath
  */
 typedef struct _grk_plugin_pass
 {
+  uint16_t rate; /* rate up to and including this pass */
   double distortion_decrease; /* distortion decrease up to and including this pass */
-  size_t rate; /* rate up to and including this pass */
-  size_t length; /* stream length for this pass */
+  uint16_t length; /* stream length for this pass */
+  uint8_t term; /* nonzero if this pass terminates a segment */
+  uint16_t slope; /* ln(slope) in 8.8 fixed point */
 } grk_plugin_pass;
 
 /**
@@ -1176,7 +1178,7 @@ typedef struct _grk_plugin_code_block
   uint32_t compressed_data_length; /* compressed data length */
   uint8_t num_bit_planes; /* number of bit planes */
   uint8_t num_passes; /* number of passes */
-  grk_plugin_pass passes[GRK_MAX_PASSES]; /* passes */
+  grk_plugin_pass* passes; /* passes */
   unsigned int sorted_index; /* sorted index */
 } grk_plugin_code_block;
 

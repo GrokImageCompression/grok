@@ -138,6 +138,12 @@ void compress_synch_with_plugin(ITileProcessorCompress* tileProcessor, uint16_t 
                     bandIndex, cblkno);
     }
 
+    if(plugin_cblk->num_passes > cblk->maxPasses())
+    {
+      grklog.error("plugin code block has %u passes, over the %u the band allows",
+                   (uint32_t)plugin_cblk->num_passes, (uint32_t)cblk->maxPasses());
+      plugin_cblk->num_passes = cblk->maxPasses();
+    }
     cblk->setNumPasses(plugin_cblk->num_passes);
     *num_pix = (uint32_t)plugin_cblk->num_pix;
 
@@ -195,50 +201,36 @@ void compress_synch_with_plugin(ITileProcessorCompress* tileProcessor, uint16_t 
       {
         grklog.error("CPU code block bounding box differs from plugin code block");
       }
-    }
-    uint32_t lastRate = 0;
-    for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
-    {
-      auto pass = cblk->getPass(passno);
-      auto pluginPass = plugin_cblk->passes + passno;
-
-      // synch distortion, if applicable
-      if(tileProcessor->needsRateControl())
+      bool needsRateControl = tileProcessor->needsRateControl();
+      for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
       {
-        if(debugPlugin)
+        auto pass = cblk->getPass(passno);
+        auto pluginPass = plugin_cblk->passes + passno;
+        if(needsRateControl && fabs(pass->distortiondec_ - pluginPass->distortion_decrease) /
+                                       fabs(pass->distortiondec_) >
+                                   0.01)
         {
-          if(fabs(pass->distortiondec_ - pluginPass->distortion_decrease) /
-                 fabs(pass->distortiondec_) >
-             0.01)
-          {
-            grklog.warn("distortion decrease for pass %u differs between plugin and CPU:  "
-                        "plugin: %u, CPU : %u",
-                        passno, pluginPass->distortion_decrease, pass->distortiondec_);
-          }
+          grklog.warn("distortion decrease for pass %u differs between plugin and CPU:  "
+                      "plugin: %u, CPU : %u",
+                      passno, pluginPass->distortion_decrease, pass->distortiondec_);
         }
-        pass->distortiondec_ = pluginPass->distortion_decrease;
-      }
-      uint16_t pluginRate = (uint16_t)(pluginPass->rate + 1);
-      if(pluginRate > totalRatePlugin)
-        pluginRate = totalRatePlugin;
-
-      // Preventing generation of FF as last data byte of a pass
-      if((pluginRate > 1) && (plugin_cblk->compressed_data[pluginRate - 1] == 0xFF))
-        pluginRate--;
-      if(debugPlugin)
-      {
-        if(pluginRate != pass->rate_)
+        if(pluginPass->rate != pass->rate_)
         {
           grklog.warn("CPU rate %u differs from plugin rate %u,pass=%u, "
                       "component=%u,res=%u,band=%u, "
                       "block=%u",
-                      pass->rate_, pluginRate, passno, compno, resno, bandIndex, cblkno);
+                      pass->rate_, pluginPass->rate, passno, compno, resno, bandIndex, cblkno);
         }
       }
-      pass->rate_ = pluginRate;
-      pass->len_ = (uint16_t)(pass->rate_ - lastRate);
-      lastRate = pass->rate_;
     }
+    static_assert(sizeof(t1::CodePass) == sizeof(grk_plugin_pass));
+    static_assert(offsetof(t1::CodePass, rate_) == offsetof(grk_plugin_pass, rate));
+    static_assert(offsetof(t1::CodePass, distortiondec_) ==
+                  offsetof(grk_plugin_pass, distortion_decrease));
+    static_assert(offsetof(t1::CodePass, len_) == offsetof(grk_plugin_pass, length));
+    static_assert(offsetof(t1::CodePass, term_) == offsetof(grk_plugin_pass, term));
+    static_assert(offsetof(t1::CodePass, slope_) == offsetof(grk_plugin_pass, slope));
+    cblk->setPasses(reinterpret_cast<t1::CodePass*>(plugin_cblk->passes));
   }
 }
 

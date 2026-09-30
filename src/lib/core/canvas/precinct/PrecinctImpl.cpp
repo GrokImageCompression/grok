@@ -1,3 +1,4 @@
+#include <new>
 /*
  *    Copyright (C) 2016-2026 Grok Image Compression Inc.
  *
@@ -28,8 +29,8 @@ namespace grk
 {
 
 PrecinctImpl::PrecinctImpl(Precinct* prec)
-    : enc_(nullptr), dec_(nullptr), blockStorage_(nullptr), prec_(prec), incltree_(nullptr),
-      imsbtree_(nullptr)
+    : enc_(nullptr), numEnc_(0), dec_(nullptr), blockStorage_(nullptr), prec_(prec),
+      incltree_(nullptr), imsbtree_(nullptr)
 {
   if(!genCodeBlockGrid())
     throw std::runtime_error("PrecinctImpl: unable to generate code block grid");
@@ -37,7 +38,9 @@ PrecinctImpl::PrecinctImpl(Precinct* prec)
 PrecinctImpl::~PrecinctImpl()
 {
   deleteTagTrees();
-  delete enc_;
+  for(uint32_t cblkno = 0; cblkno < numEnc_; ++cblkno)
+    enc_[cblkno].~CodeblockCompress();
+  ::operator delete(enc_, std::align_val_t(alignof(t1::CodeblockCompress)));
   delete dec_;
   delete blockStorage_;
 }
@@ -128,14 +131,23 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
   return imsbtree_;
 }
 
-PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers) : PrecinctImpl(prec)
+PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers, uint8_t maxPasses)
+    : PrecinctImpl(prec)
 {
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
     blockStorage_ = new t1::PrecinctCodeblockStorage((uint32_t)num_blocks, numLayers,
-                                                     prec->getNominalBlockSize());
-    enc_ = new BlockCache<t1::CodeblockCompress, PrecinctImpl>(numLayers, num_blocks, this);
+                                                     prec->getNominalBlockSize(), maxPasses);
+    enc_ = static_cast<t1::CodeblockCompress*>(
+        ::operator new(sizeof(t1::CodeblockCompress) * num_blocks,
+                       std::align_val_t(alignof(t1::CodeblockCompress))));
+    for(uint32_t cblkno = 0; cblkno < num_blocks; ++cblkno)
+    {
+      new(enc_ + cblkno) t1::CodeblockCompress(numLayers);
+      numEnc_ = cblkno + 1;
+      initCodeBlock(enc_ + cblkno, cblkno);
+    }
   }
 }
 PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayers)

@@ -93,7 +93,12 @@ Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_
   }
   Precinct* currPrec;
   if(isCompressor)
-    currPrec = new PrecinctCompress(numLayers, bounds, cblk_expn);
+  {
+    // three passes a bit plane, two short on the first
+    uint32_t maxPasses = 3U * ((uint32_t)maxBitPlanes_ + 1U) - 2U;
+    currPrec = new PrecinctCompress(numLayers, bounds, cblk_expn,
+                                    (uint8_t)std::min<uint32_t>(maxPasses, maxCodePassesPerBlock));
+  }
   else
     currPrec = new PrecinctDecompress(numLayers, bounds, cblk_expn);
   precincts_.push_back(currPrec);

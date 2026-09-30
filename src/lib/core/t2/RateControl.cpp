@@ -15,6 +15,7 @@
  *
  */
 
+#include <cassert>
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -34,7 +35,8 @@ namespace grk
  */
 void RateControl::convexHull(t1::CodePass* pass, uint32_t num_passes)
 {
-  double* slope_cache = new double[num_passes];
+  double slope_cache[maxCodePassesPerBlock];
+  assert(num_passes <= maxCodePassesPerBlock);
 
   // search for feasible truncation points
   for(auto p = 0U; p < num_passes; p++)
@@ -126,7 +128,6 @@ void RateControl::convexHull(t1::CodePass* pass, uint32_t num_passes)
       }
     }
   }
-  delete[] slope_cache;
 }
 
 /*
@@ -172,7 +173,8 @@ uint16_t RateControl::slopeToLog(double slope)
 {
   if(slope > slopeCutoff)
     slope = slopeCutoff;
-  double logSlope = log(slope) * scale - log(slopeCutoff) * scale + shift;
+  static const double cutoffTerm = log(slopeCutoff) * scale - shift;
+  double logSlope = log(slope) * scale - cutoffTerm;
   if(logSlope < 1)
     logSlope = 1;
   if(logSlope > 0xFFFF)

@@ -156,10 +156,13 @@ private:
 
 struct PrecinctCompress : public Precinct
 {
-  using Precinct::Precinct;
+  PrecinctCompress(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn, uint8_t maxPasses)
+      : Precinct(numLayers, bounds, cblk_expn), maxPasses_(maxPasses)
+  {}
 
 private:
   PrecinctImpl* makeImpl(void) override;
+  uint8_t maxPasses_;
 };
 
 struct PrecinctDecompress : public Precinct

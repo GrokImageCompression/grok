@@ -61,7 +61,7 @@ uint32_t Precinct::getNumCblks(void)
 }
 t1::CodeblockCompress* Precinct::getCompressBlock(uint32_t cblkno)
 {
-  return getImpl()->enc_->get(cblkno);
+  return getImpl()->enc_ + cblkno;
 }
 t1::CodeblockDecompress* Precinct::getDecompressBlock(uint32_t cblkno)
 {
@@ -89,7 +89,7 @@ PrecinctImpl* Precinct::getImpl(void)
 
 PrecinctImpl* PrecinctCompress::makeImpl(void)
 {
-  return new PrecinctImplCompress(this, numLayers_);
+  return new PrecinctImplCompress(this, numLayers_, maxPasses_);
 }
 PrecinctImpl* PrecinctDecompress::makeImpl(void)
 {

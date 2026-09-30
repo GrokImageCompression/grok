@@ -63,6 +63,8 @@ namespace grk
 {
 // two octaves either side of the hint
 static constexpr uint32_t kHintBracketHalfWidth = 512;
+static constexpr uint32_t kSlopeBuckets = USHRT_MAX + 1;
+static constexpr uint32_t kMaxMeasurements = 12;
 
 uint16_t TileProcessorCompress::getSlopeThreshold(void) const
 {
@@ -359,6 +361,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
 
   // Build flat codeblock vector for parallel makeLayer
   std::vector<t1::CodeblockCompress*> flatCodeblocks;
+  std::vector<uint16_t> blockComponent;
   for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
   {
     auto tilec = tile_->comps_ + compno;
@@ -371,7 +374,10 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         for(auto prc : band->precincts_)
         {
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+          {
             flatCodeblocks.push_back(prc->getCompressBlock(cblkno));
+            blockComponent.push_back(compno);
+          }
         }
       }
     }
@@ -381,16 +387,12 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
   const size_t numWorkers = TFSingleton::num_threads();
   const bool useParallel = numBlocks >= 256 && numWorkers > 1;
 
-  auto runMakeLayerFeasible = [&](uint16_t layno, uint16_t thresh, bool finalAttempt,
-                                  uint64_t* bodyBytesOut) -> bool {
-    if(bodyBytesOut)
-      *bodyBytesOut = 0;
+  auto runMakeLayerFeasible = [&](uint16_t layno, uint16_t thresh, bool finalAttempt) -> bool {
     if(!useParallel)
       return makeLayerFeasible(layno, thresh, finalAttempt);
 
     std::atomic<double> totalDistortion{0.0};
     std::atomic<bool> allocationChanged{false};
-    std::atomic<uint64_t> totalBodyBytes{0};
     std::atomic<size_t> blockIdx{0};
 
     tf::Taskflow taskflow;
@@ -398,7 +400,6 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
     {
       taskflow.emplace([&]() {
         double localDistortion = 0.0;
-        uint64_t localBodyBytes = 0;
         bool localChanged = false;
         while(true)
         {
@@ -453,14 +454,11 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
                 cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->distortiondec_;
           }
           localDistortion += layer->distortion;
-          localBodyBytes += layer->len;
           if(finalAttempt)
             cblk->setNumPassesInPreviousLayers(cumulative_included_passes_in_block);
         }
         if(localDistortion != 0.0)
           totalDistortion.fetch_add(localDistortion, std::memory_order_relaxed);
-        if(localBodyBytes != 0)
-          totalBodyBytes.fetch_add(localBodyBytes, std::memory_order_relaxed);
         if(localChanged)
           allocationChanged.store(true, std::memory_order_relaxed);
       });
@@ -473,8 +471,6 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
       executor.run(taskflow).wait();
 
     tile_->setLayerDistortion(layno, totalDistortion.load(std::memory_order_relaxed));
-    if(bodyBytesOut)
-      *bodyBytesOut = totalBodyBytes.load(std::memory_order_relaxed);
     return allocationChanged.load(std::memory_order_relaxed);
   };
 
@@ -482,6 +478,11 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
   double cumulativeDistortion[maxCompressLayersGRK];
   uint32_t upperBound = max_slope;
   uint32_t maxLayerLength = UINT_MAX;
+  // a measured single layer already has its packet lengths
+  uint32_t lastMeasuredThresh = UINT_MAX;
+  uint64_t lastMeasuredBytes = 0;
+  bool lastMeasuredFits = false;
+  bool finalLayoutMeasured = false;
   for(uint16_t layno = 0; layno < tcp->numLayers_; layno++)
   {
     maxLayerLength = (!disableRateControl && tcp->rates_[layno] > 0.0f)
@@ -489,10 +490,6 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
                          : UINT_MAX;
     if(layerNeedsRateControl(layno))
     {
-      std::vector<uint8_t> lastSimulatedPassCounts(numBlocks);
-      bool hasSimulatedAllocation = false;
-      bool lastSimulationSucceeded = false;
-      uint32_t lastSimulatedPacketBytes = 0;
       double distortionTarget =
           tile_->distortion_ - ((K * maxSE) / pow(10.0, tcp->distortion_[layno] / 10.0));
       uint32_t lowerBound = min_slope;
@@ -500,20 +497,124 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
                              ? 0.0
                              : cp_->codingParams_.enc_.rateControlTolerance_;
 
-      auto runBisection = [&](uint32_t& searchLower, uint32_t& searchUpper) {
-        // thresh from previous iteration - starts off uninitialized
-        // used to bail out if difference with current thresh is small enough
-        uint32_t prevthresh = 0;
-        for(auto i = 0U; i < 128; ++i)
+      const bool fixedQuality = cp_->codingParams_.enc_.allocationByFixedQuality_;
+      const uint16_t numComps = tile_->numcomps_;
+      const uint64_t componentCap = cp_->codingParams_.enc_.maxComponentRate_;
+      static thread_local std::vector<uint32_t> bodyBytesAbove;
+      static thread_local std::vector<uint32_t> passesAbove;
+      if(!fixedQuality)
+      {
+        bodyBytesAbove.assign((size_t)numComps * (kSlopeBuckets + 1), 0);
+        passesAbove.assign(kSlopeBuckets + 1, 0);
+        for(size_t i = 0; i < numBlocks; ++i)
         {
-          uint32_t thresh = (searchLower + searchUpper) >> 1;
-          if(prevthresh != 0 && prevthresh == thresh)
-            break;
-          uint64_t bodyBytes = 0;
-          bool allocationChanged = runMakeLayerFeasible(layno, (uint16_t)thresh, false, &bodyBytes);
-          prevthresh = thresh;
-          if(cp_->codingParams_.enc_.allocationByFixedQuality_)
+          auto cblk = flatCodeblocks[i];
+          auto bytesAbove = bodyBytesAbove.data() + (size_t)blockComponent[i] * (kSlopeBuckets + 1);
+          uint32_t base = layno == 0 ? 0 : cblk->getNumPassesInPreviousLayers();
+          uint32_t previousRate = base ? cblk->getPass(base - 1)->rate_ : 0;
+          uint32_t effectiveSlope = USHRT_MAX;
+          for(uint32_t passno = base; passno < cblk->getNumPasses(); ++passno)
           {
+            auto pass = cblk->getPass(passno);
+            if(!pass->slope_)
+              continue;
+            // makeLayerFeasible stops at the first hull pass at or under the threshold
+            effectiveSlope = std::min<uint32_t>(effectiveSlope, pass->slope_);
+            bytesAbove[effectiveSlope] += pass->rate_ - previousRate;
+            passesAbove[effectiveSlope]++;
+            previousRate = pass->rate_;
+          }
+        }
+        for(int slope = kSlopeBuckets - 1; slope >= 0; --slope)
+        {
+          passesAbove[slope] += passesAbove[slope + 1];
+          for(uint16_t compno = 0; compno < numComps; ++compno)
+          {
+            auto bytesAbove = bodyBytesAbove.data() + (size_t)compno * (kSlopeBuckets + 1);
+            bytesAbove[slope] += bytesAbove[slope + 1];
+          }
+        }
+      }
+      auto bodyBytesAt = [&](uint16_t compno, uint32_t thresh) -> uint64_t {
+        return bodyBytesAbove[(size_t)compno * (kSlopeBuckets + 1) + thresh + 1];
+      };
+      // one header total unless the packets are walked per component
+      std::vector<uint64_t> tilePartBytes(numComps, 0);
+      std::vector<uint64_t> measuredHeaders(numComps, 0);
+      uint64_t measuredPasses = 0;
+      bool haveEstimate = false;
+      auto estimatedHeaders = [&](uint16_t compno, uint32_t thresh) -> uint64_t {
+        if(!measuredPasses)
+          return measuredHeaders[compno];
+        return measuredHeaders[compno] * passesAbove[thresh + 1] / measuredPasses;
+      };
+      auto fitsEstimated = [&](uint32_t thresh) -> bool {
+        uint64_t total = 0;
+        for(uint16_t compno = 0; compno < numComps; ++compno)
+        {
+          uint64_t bytes = bodyBytesAt(compno, thresh) + estimatedHeaders(compno, thresh);
+          if(componentCap && bytes > componentCap)
+            return false;
+          total += bytes;
+        }
+        return total <= maxLayerLength;
+      };
+      // without a budget a count over the cap comes back whole
+      auto measure = [&](uint32_t thresh, uint64_t& totalBytes) -> bool {
+        runMakeLayerFeasible(layno, (uint16_t)thresh, false);
+        uint32_t packetBytes = 0;
+        std::fill(tilePartBytes.begin(), tilePartBytes.end(), 0);
+        bool ok = t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), &packetBytes,
+                                             UINT_MAX, newTilePartProgressionPosition_,
+                                             packetLengthCache_->getMarkers(), true, false,
+                                             tilePartBytes.data());
+        totalBytes = packetBytes;
+        lastMeasuredThresh = thresh;
+        lastMeasuredBytes = totalBytes;
+        lastMeasuredFits = false;
+        if(!ok)
+          return false;
+        measuredPasses = passesAbove[thresh + 1];
+        if(componentCap)
+        {
+          for(uint16_t compno = 0; compno < numComps; ++compno)
+            measuredHeaders[compno] = tilePartBytes[compno] - bodyBytesAt(compno, thresh);
+        }
+        else
+        {
+          uint64_t body = 0;
+          for(uint16_t compno = 0; compno < numComps; ++compno)
+            body += bodyBytesAt(compno, thresh);
+          measuredHeaders[0] = totalBytes - body;
+        }
+        haveEstimate = true;
+        if(totalBytes > maxLayerLength)
+          return false;
+        if(componentCap)
+          for(uint16_t compno = 0; compno < numComps; ++compno)
+            if(tilePartBytes[compno] > componentCap)
+              return false;
+        lastMeasuredFits = true;
+        return true;
+      };
+      auto withinTolerance = [&](uint64_t achieved) -> bool {
+        return tolerance > 0.0 && maxLayerLength != UINT_MAX &&
+               (double)achieved >= (double)maxLayerLength * (1.0 - tolerance);
+      };
+
+      auto runBisection = [&](uint32_t& searchLower, uint32_t& searchUpper) {
+        if(fixedQuality)
+        {
+          // thresh from previous iteration - starts off uninitialized
+          // used to bail out if difference with current thresh is small enough
+          uint32_t prevthresh = 0;
+          for(auto i = 0U; i < 128; ++i)
+          {
+            uint32_t thresh = (searchLower + searchUpper) >> 1;
+            if(prevthresh != 0 && prevthresh == thresh)
+              break;
+            runMakeLayerFeasible(layno, (uint16_t)thresh, false);
+            prevthresh = thresh;
             double distoachieved =
                 layno == 0 ? tile_->getLayerDistortion(0)
                            : cumulativeDistortion[layno - 1] + tile_->getLayerDistortion(layno);
@@ -524,58 +625,83 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
             }
             searchLower = thresh;
           }
-          else
+          return false;
+        }
+        // the answer is a measured fit with a measured failure one below it
+        const uint32_t untested = UINT_MAX;
+        uint32_t verifiedUpper = untested;
+        uint64_t verifiedBytes = 0;
+        // the lower bound is untested like any other threshold
+        uint32_t measuredLower = untested;
+        uint32_t upper = searchUpper;
+        uint32_t measurements = 0;
+        auto measureAt = [&](uint32_t thresh) -> bool {
+          uint64_t totalBytes = 0;
+          bool fits = measure(thresh, totalBytes);
+          measurements++;
+          if(fits)
           {
-            bool allocationMatchesLastSimulation = hasSimulatedAllocation;
-            for(size_t blockIndex = 0; allocationMatchesLastSimulation && blockIndex < numBlocks;
-                ++blockIndex)
+            verifiedUpper = thresh;
+            verifiedBytes = totalBytes;
+          }
+          else if(measuredLower == untested || thresh > measuredLower)
+          {
+            measuredLower = thresh;
+          }
+          return fits;
+        };
+        while(measurements < kMaxMeasurements)
+        {
+          uint32_t lower = measuredLower == untested ? searchLower : measuredLower;
+          uint32_t prevthresh = 0;
+          while(true)
+          {
+            uint32_t thresh = (lower + upper) >> 1;
+            if(prevthresh != 0 && prevthresh == thresh)
+              break;
+            prevthresh = thresh;
+            if(!passesAbove[thresh + 1])
             {
-              allocationMatchesLastSimulation =
-                  flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_ ==
-                  lastSimulatedPassCounts[blockIndex];
-            }
-
-            bool simulationSucceeded = true;
-            if(allocationChanged && bodyBytes <= maxLayerLength)
-            {
-              if(allocationMatchesLastSimulation)
-              {
-                simulationSucceeded = lastSimulationSucceeded;
-                *allPacketBytes = lastSimulatedPacketBytes;
-              }
-              else
-              {
-                simulationSucceeded =
-                    t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), allPacketBytes,
-                                               maxLayerLength, newTilePartProgressionPosition_,
-                                               packetLengthCache_->getMarkers(), false, false);
-                for(size_t blockIndex = 0; blockIndex < numBlocks; ++blockIndex)
-                {
-                  lastSimulatedPassCounts[blockIndex] =
-                      flatCodeblocks[blockIndex]->getLayer(layno)->totalPasses_;
-                }
-                hasSimulatedAllocation = true;
-                lastSimulationSucceeded = simulationSucceeded;
-                lastSimulatedPacketBytes = *allPacketBytes;
-              }
-            }
-
-            if(allocationChanged && (bodyBytes > maxLayerLength || !simulationSucceeded))
-            {
-              searchLower = thresh;
+              upper = thresh;
               continue;
             }
-            searchUpper = thresh;
-
-            if(tolerance > 0.0 && maxLayerLength != UINT_MAX)
+            if(!haveEstimate)
             {
-              uint64_t achieved = allocationChanged ? (uint64_t)*allPacketBytes : bodyBytes;
-              if((double)achieved >= (double)maxLayerLength * (1.0 - tolerance))
-                return true;
+              if(measureAt(thresh))
+                upper = thresh;
+              else
+                lower = thresh;
+              continue;
             }
+            if(fitsEstimated(thresh))
+              upper = thresh;
+            else
+              lower = thresh;
           }
+          if(upper == searchUpper || !passesAbove[upper + 1])
+            break;
+          if(upper != verifiedUpper && !measureAt(upper))
+          {
+            upper = verifiedUpper == untested ? searchUpper : verifiedUpper;
+            continue;
+          }
+          if(withinTolerance(verifiedBytes))
+            break;
+          if(upper <= searchLower)
+            break;
+          if(measuredLower != untested && upper - 1 <= measuredLower)
+            break;
+          if(!measureAt(upper - 1))
+            break;
+          upper = upper - 1;
         }
-        return false;
+        if(measuredLower != untested)
+          searchLower = measuredLower;
+        if(verifiedUpper != untested)
+          searchUpper = verifiedUpper;
+        else if(!passesAbove[upper + 1])
+          searchUpper = upper;
+        return verifiedUpper != untested && withinTolerance(verifiedBytes);
       };
 
       uint16_t hint = ignoreSlopeHint_ ? 0 : cp_->codingParams_.enc_.rateControlSlopeHint_;
@@ -638,7 +764,8 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
             flatCodeblocks[i]->setNumPassesInPreviousLayers(passesBefore[i]);
       }
       if(!tookEveryPass)
-        runMakeLayerFeasible(layno, (uint16_t)goodthresh, true, nullptr);
+        runMakeLayerFeasible(layno, (uint16_t)goodthresh, true);
+      finalLayoutMeasured = !tookEveryPass && lastMeasuredFits && lastMeasuredThresh == goodthresh;
       // a layer that took every pass had no binding budget
       slopeThreshold_ = tookEveryPass ? 0 : (uint16_t)goodthresh;
       if(cp_->codingParams_.enc_.allocationByFixedQuality_)
@@ -656,6 +783,11 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
     }
   }
 
+  if(tcp->numLayers_ == 1 && finalLayoutMeasured)
+  {
+    *allPacketBytes = (uint32_t)lastMeasuredBytes;
+    return true;
+  }
   // final simulation will generate correct PLT lengths
   // and correct tile length
   bool rc = t2.compressPacketsSimulate(tileIndex_, tcp->numLayers_, allPacketBytes, maxLayerLength,
