@@ -1562,6 +1562,12 @@ typedef bool (*GPUP_BATCH_MEMORY_END)(void);
 
 namespace
 {
+struct BatchMemoryCodec
+{
+  grk_object* codec = nullptr;
+  // the codec's stream points into this buffer
+  std::vector<uint8_t> codestream;
+};
 struct BatchMemoryState
 {
   bool running = false;
@@ -1580,6 +1586,8 @@ struct BatchMemoryState
   grk_cparameters t2Parameters = {};
   GRK_PLUGIN_BATCH_FRAME_CALLBACK callback = nullptr;
   void* user = nullptr;
+  std::mutex idleCodecsMutex;
+  std::vector<BatchMemoryCodec> idleCodecs;
 };
 BatchMemoryState batchMemory;
 // the rate control threshold of whichever frame finished last narrows the next search
@@ -1631,38 +1639,72 @@ void* batchMemorySymbol(const char* name)
 }
 } // namespace
 
+namespace
+{
+BatchMemoryCodec takeIdleBatchMemoryCodec()
+{
+  std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+  if(batchMemory.idleCodecs.empty())
+    return {};
+  auto entry = std::move(batchMemory.idleCodecs.back());
+  batchMemory.idleCodecs.pop_back();
+  return entry;
+}
+
+void releaseBatchMemoryCodec(BatchMemoryCodec& entry)
+{
+  grk_object_unref(entry.codec);
+  entry.codec = nullptr;
+}
+
+grk_object* createBatchMemoryCodec(const gpup_image* image, std::vector<uint8_t>& codestream,
+                                   uint16_t slopeHint)
+{
+  grk_image headerImage;
+  grk_image_comp headerComponents[maxWrappedComponents];
+  wrapPluginImage(image, &headerImage, headerComponents);
+  grk_stream_params stream = {};
+  stream.buf = codestream.data();
+  stream.buf_len = codestream.size();
+  grk_cparameters parameters = batchMemory.t2Parameters;
+  parameters.rate_control_slope_hint = slopeHint;
+  return grk_compress_init(&stream, &parameters, &headerImage);
+}
+} // namespace
+
 /* runs T2 on one frame's code blocks, on whichever plugin thread finished it */
 static uint64_t batchMemoryEncodeCallback(gpup_compress_callback_info* info)
 {
   if(!batchMemory.callback)
     return 0;
-  // callbacks run concurrently, so each thread compresses into its own buffer
-  static thread_local std::vector<uint8_t> codestream;
-  auto bound = codestreamBound(batchMemory);
-  if(codestream.size() < bound)
-    codestream.resize(bound);
+  // callbacks run concurrently
+  auto entry = takeIdleBatchMemoryCodec();
+  if(entry.codestream.empty())
+    entry.codestream.resize(codestreamBound(batchMemory));
 
   uint64_t length = 0;
   if(info->image && info->tile)
   {
-    grk_image headerImage;
-    grk_image_comp headerComponents[maxWrappedComponents];
-    wrapPluginImage(info->image, &headerImage, headerComponents);
-    grk_stream_params stream = {};
-    stream.buf = codestream.data();
-    stream.buf_len = codestream.size();
-    grk_cparameters parameters = batchMemory.t2Parameters;
-    parameters.rate_control_slope_hint = batchMemorySlopeHint.load(std::memory_order_relaxed);
-    auto codec = grk_compress_init(&stream, &parameters, &headerImage);
-    if(codec)
+    auto slopeHint = batchMemorySlopeHint.load(std::memory_order_relaxed);
+    if(!entry.codec)
+      entry.codec = createBatchMemoryCodec(info->image, entry.codestream, slopeHint);
+    else if(!Codec::getImpl(entry.codec)->compressor_->prepareNextFrame(slopeHint))
+      releaseBatchMemoryCodec(entry);
+    if(entry.codec)
     {
-      length = grk_compress(codec, wrapPluginTile(info->tile));
-      batchMemorySlopeHint.store(grk_compress_get_slope_threshold(codec),
+      length = grk_compress(entry.codec, wrapPluginTile(info->tile));
+      batchMemorySlopeHint.store(grk_compress_get_slope_threshold(entry.codec),
                                  std::memory_order_relaxed);
+      if(!length)
+        releaseBatchMemoryCodec(entry);
     }
-    grk_object_unref(codec);
   }
-  batchMemory.callback(batchMemory.user, info->host_data, codestream.data(), length);
+  batchMemory.callback(batchMemory.user, info->host_data, entry.codestream.data(), length);
+  if(entry.codec)
+  {
+    std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+    batchMemory.idleCodecs.push_back(std::move(entry));
+  }
 
   return length;
 }
@@ -1862,10 +1904,13 @@ GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void)
     return false;
   batchMemory.running = false;
   auto end = (GPUP_BATCH_MEMORY_END)batchMemorySymbol(gpup_batch_memory_end_method_name);
-  if(!end)
-    return false;
+  bool ended = end && end();
+  std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+  for(auto& entry : batchMemory.idleCodecs)
+    releaseBatchMemoryCodec(entry);
+  batchMemory.idleCodecs.clear();
 
-  return end();
+  return ended;
 }
 
 /*******************

@@ -122,6 +122,7 @@ static prog_order prog_order_list[] = {{GRK_CPRL, "CPRL"}, {GRK_LRCP, "LRCP"},
                                        {GRK_RPCL, "RPCL"}, {(GRK_PROG_ORDER)-1, ""}};
 
 CodeStreamCompress::CodeStreamCompress(IStream* stream) : CodeStream(stream), totalTileParts_(0) {}
+CodeStreamCompress::~CodeStreamCompress() = default;
 
 char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
 {
@@ -183,7 +184,22 @@ bool CodeStreamCompress::start(void)
     return false;
 
   /* write header */
-  return exec(procedureList_);
+  if(!exec(procedureList_))
+    return false;
+  headerEndPosition_ = stream_->tell();
+
+  return true;
+}
+bool CodeStreamCompress::prepareNextFrame(uint16_t rateControlSlopeHint)
+{
+  if(!stream_->seek(headerEndPosition_))
+    return false;
+  slopeThreshold_.store(0, std::memory_order_relaxed);
+  cp_.codingParams_.enc_.rateControlSlopeHint_ = rateControlSlopeHint;
+  if(cp_.tlmMarkers_)
+    cp_.tlmMarkers_->clearTilePartLengths();
+
+  return true;
 }
 // round-to-nearest right shift of unsigned int32 samples to targetPrec
 static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
@@ -908,11 +924,14 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
   if(numTiles == 1)
   {
     // Single-tile fast path: no DAG needed
-    auto tileProcessor = new TileProcessorCompress(0, cp_.tcps_.get(0), this, stream_);
+    if(!singleTileProcessor_)
+      singleTileProcessor_ =
+          std::make_unique<TileProcessorCompress>(0, cp_.tcps_.get(0), this, stream_);
+    auto tileProcessor = singleTileProcessor_.get();
     tileProcessor->setCurrentPluginTile(tile);
+    tileProcessor->resetForNextFrame();
     if(!tileProcessor->preCompressTile(0) || !tileProcessor->doCompress())
     {
-      delete tileProcessor;
       success = false;
     }
     else
@@ -920,10 +939,11 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
       if(!writeTileParts(tileProcessor))
         success = false;
       recordSlopeThreshold(tileProcessor->getSlopeThreshold());
-      delete tileProcessor;
     }
     if(success)
       success = end();
+    if(!success)
+      singleTileProcessor_.reset();
     return success ? stream_->tell() : 0;
   }
 

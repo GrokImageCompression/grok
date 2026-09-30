@@ -73,6 +73,7 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   void runCompressionTasks(void);
   bool compressDAGSuccess(void) const;
   uint16_t getSlopeThreshold(void) const;
+  void resetForNextFrame(void);
 
 private:
   void transferTileDataFromImage(void);

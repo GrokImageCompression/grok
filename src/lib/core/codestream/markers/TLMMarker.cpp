@@ -367,6 +367,11 @@ void TLMMarker::add(uint16_t tile_index, uint32_t tile_part_size) noexcept
   markerManager_->push_back(TilePartLength<uint32_t>(tile_index, tile_part_size));
 }
 
+void TLMMarker::clearTilePartLengths() noexcept
+{
+  markerManager_ = std::make_unique<TLMMarkerManager>();
+}
+
 /**
  * @brief Finalizes writing of TLM marker by updating tile part lengths
  * @return true if successful, false on fatal error

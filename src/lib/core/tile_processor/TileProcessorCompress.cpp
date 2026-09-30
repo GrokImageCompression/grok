@@ -83,6 +83,9 @@ TileProcessorCompress::~TileProcessorCompress()
 
 bool TileProcessorCompress::init(void)
 {
+  // a tile processor reused across frames keeps its tree
+  if(isInitialized())
+    return true;
   if(!TileProcessor::init())
     return false;
 
@@ -100,6 +103,14 @@ bool TileProcessorCompress::init(void)
                                      max_precincts, getTCP()->numLayers_);
 
   return true;
+}
+void TileProcessorCompress::resetForNextFrame(void)
+{
+  tileIndex_ = 0;
+  ignoreSlopeHint_ = false;
+  slopeThreshold_ = 0;
+  preCalculatedTileLen_ = 0;
+  prog_iter_num = 0;
 }
 bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
 {

@@ -255,6 +255,8 @@ struct TLMMarker
    */
   bool writeEnd();
 
+  void clearTilePartLengths() noexcept;
+
   /**
    * @brief Completes calculations such as absolute tile part start position
    * for all tile parts in tilePartsPerTile_

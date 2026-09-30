@@ -21,12 +21,13 @@
 
 namespace grk
 {
+struct TileProcessorCompress;
 
 class CodeStreamCompress : public CodeStream, public ICompressor
 {
 public:
   explicit CodeStreamCompress(IStream* stream);
-  virtual ~CodeStreamCompress() = default;
+  ~CodeStreamCompress() override;
 
   static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
   static uint16_t getPocSize(uint16_t num_components, uint32_t l_nb_poc);
@@ -35,12 +36,15 @@ public:
   bool init(grk_cparameters* param, GrkImage* image) override;
   uint64_t compress(grk_plugin_tile* tile) override;
   uint16_t getSlopeThreshold(void) const override;
+  bool prepareNextFrame(uint16_t rateControlSlopeHint) override;
 
 private:
   void recordSlopeThreshold(uint16_t tileThreshold);
   std::atomic<uint16_t> slopeThreshold_{0};
   // the parameters the plugin compresses with, copied at init
   std::unique_ptr<grk_cparameters> pluginParameters_;
+  uint64_t headerEndPosition_ = 0;
+  std::unique_ptr<TileProcessorCompress> singleTileProcessor_;
   bool init_header_writing(void);
   bool end(void);
   bool writeTilePart(ITileProcessorCompress* tileProcessor);

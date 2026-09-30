@@ -40,6 +40,11 @@ struct ICompressor
   {
     return 0;
   }
+  virtual bool prepareNextFrame(uint16_t rateControlSlopeHint)
+  {
+    (void)rateControlSlopeHint;
+    return false;
+  }
 };
 
 } // namespace grk
