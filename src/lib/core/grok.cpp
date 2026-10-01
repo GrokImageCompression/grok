@@ -1261,19 +1261,22 @@ bool grk_plugin_load(grk_plugin_load_info info)
   minpf_cleanup_plugin_manager();
   return false;
 }
+// looked up once, the callers ask per code block and dlsym takes the loader lock
+static PLUGIN_GET_DEBUG_STATE funcPluginGetDebugState = nullptr;
 uint32_t grk_plugin_get_debug_state()
 {
   uint32_t rc = GRK_PLUGIN_STATE_NO_DEBUG;
   if(!pluginLoaded)
     return rc;
-  auto mgr = minpf_get_plugin_manager();
-  if(mgr && mgr->num_libraries > 0)
+  if(!funcPluginGetDebugState)
   {
-    auto func = (PLUGIN_GET_DEBUG_STATE)minpf_get_symbol(mgr->dynamic_libraries[0],
-                                                         plugin_get_debug_state_method_name);
-    if(func)
-      rc = func();
+    auto mgr = minpf_get_plugin_manager();
+    if(mgr && mgr->num_libraries > 0)
+      funcPluginGetDebugState = (PLUGIN_GET_DEBUG_STATE)minpf_get_symbol(
+          mgr->dynamic_libraries[0], plugin_get_debug_state_method_name);
   }
+  if(funcPluginGetDebugState)
+    rc = funcPluginGetDebugState();
   return rc;
 }
 const char* grk_plugin_build_info(void)
@@ -1294,6 +1297,7 @@ void grk_plugin_cleanup(void)
   minpf_cleanup_plugin_manager();
   pluginLoaded = false;
   pluginInitialized = false;
+  funcPluginGetDebugState = nullptr;
 }
 GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled)
 {
