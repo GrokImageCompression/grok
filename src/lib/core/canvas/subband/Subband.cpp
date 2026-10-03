@@ -55,13 +55,17 @@ Precinct* Subband::tryGetPrecinct(uint64_t precinctIndex)
 
   return precincts_[index];
 }
-static Rect32_16 intersect(const Rect32* lhs, const Rect32_16& rhs)
+static Rect32_16 intersect(const Rect32* bandBounds, const Rect32_16& precinctBounds)
 {
-  uint32_t x = std::max<uint32_t>(lhs->x0, rhs.x0());
-  uint32_t y = std::max<uint32_t>(lhs->y0, rhs.y0());
-  uint16_t w = uint16_t(std::min<uint32_t>(lhs->x1, rhs.x1()) - x);
-  uint16_t h = uint16_t(std::min<uint32_t>(lhs->y1, rhs.y1()) - y);
-  return Rect32_16(x, y, w, h);
+  const uint32_t intersectionLeft = std::max<uint32_t>(bandBounds->x0, precinctBounds.x0());
+  const uint32_t intersectionTop = std::max<uint32_t>(bandBounds->y0, precinctBounds.y0());
+  const uint32_t intersectionRight = std::min<uint32_t>(bandBounds->x1, precinctBounds.x1());
+  const uint32_t intersectionBottom = std::min<uint32_t>(bandBounds->y1, precinctBounds.y1());
+  if(intersectionLeft >= intersectionRight || intersectionTop >= intersectionBottom)
+    return {};
+  return Rect32_16(intersectionLeft, intersectionTop,
+                   static_cast<uint16_t>(intersectionRight - intersectionLeft),
+                   static_cast<uint16_t>(intersectionBottom - intersectionTop));
 }
 Rect32_16 Subband::generateBandPrecinctBounds(uint64_t precinctIndex, Rect32 bandPrecinctPartition,
                                               Point8 bandPrecinctExpn, uint32_t precinctGridWidth)
@@ -71,10 +75,10 @@ Rect32_16 Subband::generateBandPrecinctBounds(uint64_t precinctIndex, Rect32 ban
                   (uint32_t)((precinctIndex % precinctGridWidth) << bandPrecinctExpn.x),
               bandPrecinctPartition.y0 +
                   (uint32_t)((precinctIndex / precinctGridWidth) << bandPrecinctExpn.y));
-  Rect32_16 bds =
+  Rect32_16 bounds =
       Rect32_16(bandPrecinctTopLeft.x, bandPrecinctTopLeft.y, (uint16_t)(1U << bandPrecinctExpn.x),
                 (uint16_t)(1U << bandPrecinctExpn.y));
-  return intersect(this, bds);
+  return intersect(this, bounds);
 }
 Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_t precinctIndex,
                                   Rect32 bandPrecinctPartition, Point8 bandPrecinctExpn,

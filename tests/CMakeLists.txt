@@ -58,6 +58,16 @@ target_include_directories(grk_per_layer_values_test PRIVATE
 target_link_libraries(grk_per_layer_values_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_per_layer_values_test COMMAND grk_per_layer_values_test)
 
+add_executable(grk_subband_precinct_bounds_test GrkSubbandPrecinctBoundsTest.cpp)
+target_link_libraries(grk_subband_precinct_bounds_test ${GROK_CORE_NAME})
+if(WIN32)
+  target_link_libraries(grk_subband_precinct_bounds_test psapi)
+endif()
+add_test(NAME grk_subband_precinct_bounds_test
+  COMMAND grk_subband_precinct_bounds_test
+          ${CMAKE_CURRENT_SOURCE_DIR}/data/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-6604709025349632)
+set_tests_properties(grk_subband_precinct_bounds_test PROPERTIES TIMEOUT 60)
+
 add_executable(grk_dwt_bench grk_dwt_bench.cpp)
 target_link_libraries(grk_dwt_bench ${GROK_CORE_NAME})
 
