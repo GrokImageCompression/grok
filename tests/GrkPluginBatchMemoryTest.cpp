@@ -14,6 +14,7 @@
 #include <mutex>
 #include <thread>
 #include <algorithm>
+#include <atomic>
 #include <vector>
 #include "grok.h"
 
@@ -26,6 +27,8 @@ GRK_API bool applyXYZTransform(grk_image* image, uint8_t targetPrec);
 namespace
 {
 int g_failures = 0;
+// frames submitted plus frames delivered
+std::atomic<uint64_t> g_progress{0};
 constexpr uint16_t kNumComps = 3;
 constexpr uint8_t kPrecision = 12;
 constexpr uint8_t kSourcePrecision16 = 16;
@@ -238,6 +241,7 @@ void collect(void* user, void* frame, const uint8_t* codestream, size_t length)
     ++collector->emptyStreams;
     return;
   }
+  ++g_progress;
   auto frameId = (size_t)frame;
   if(collector->codestreams.count(frameId))
     ++collector->duplicates;
@@ -253,10 +257,10 @@ struct BatchShape
   uint8_t framePrec;
 };
 
-// runs kNumFrames pattern frames through one batch. Reports the seconds spent in
+// runs numFrames pattern frames through one batch. Reports the seconds spent in
 // submit and end, so synthesizing the frames does not count against the pipeline.
 bool runBatch(grk_cparameters& params, BatchShape shape, Collector& collector, double* seconds,
-              bool* xyzOnDevice)
+              bool* xyzOnDevice, uint32_t numFrames = kNumFrames, bool lastFrameFirst = false)
 {
   *xyzOnDevice = false;
   grk_plugin_batch_memory_info info = {};
@@ -276,8 +280,9 @@ bool runBatch(grk_cparameters& params, BatchShape shape, Collector& collector, d
     return false;
   }
   double submitSeconds = 0;
-  for(uint32_t i = 0; i < kNumFrames; ++i)
+  for(uint32_t submitted = 0; submitted < numFrames; ++submitted)
   {
+    uint32_t i = lastFrameFirst ? numFrames - 1 - submitted : submitted;
     auto frame = patternFrame(i, shape.framePrec);
     if(!frame)
     {
@@ -287,10 +292,11 @@ bool runBatch(grk_cparameters& params, BatchShape shape, Collector& collector, d
     // the frame identity starts at 1: it travels to the callback as a pointer
     // and a frame numbered 0 would be indistinguishable from no frame at all
     auto submitStart = std::chrono::steady_clock::now();
-    bool submitted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
+    bool accepted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
     submitSeconds += secondsSince(submitStart);
+    ++g_progress;
     grk_object_unref(&frame->obj);
-    if(!submitted)
+    if(!accepted)
     {
       fail("grk_plugin_batch_memory_submit");
       break;
@@ -304,7 +310,7 @@ bool runBatch(grk_cparameters& params, BatchShape shape, Collector& collector, d
   return ended;
 }
 
-void checkCollector(const Collector& collector, const char* what)
+void checkCollector(const Collector& collector, const char* what, uint32_t numFrames = kNumFrames)
 {
   if(collector.emptyStreams)
   {
@@ -316,9 +322,9 @@ void checkCollector(const Collector& collector, const char* what)
     std::printf("  %d frame identity(s) arrived twice\n", collector.duplicates);
     fail(what);
   }
-  if(collector.codestreams.size() != kNumFrames)
+  if(collector.codestreams.size() != numFrames)
   {
-    std::printf("  %u of %u frames arrived\n", (unsigned)collector.codestreams.size(), kNumFrames);
+    std::printf("  %u of %u frames arrived\n", (unsigned)collector.codestreams.size(), numFrames);
     fail(what);
   }
 }
@@ -1007,6 +1013,136 @@ void checkDeterminism()
               kYuvNumFrames);
   if(cinemaIdentical != kYuvNumFrames)
     fail("a rate controlled batch encoded twice does not give the same code streams");
+}
+
+// a number of rounds, replaces the checks
+constexpr const char* kStressRoundsVariable = "GRK_PLUGIN_BATCH_STRESS";
+constexpr int kStressStallSeconds = 60;
+constexpr int kStressStallExitCode = 2;
+// batches of different lengths end with different numbers of frames in flight
+constexpr uint32_t kStressFrameCounts[] = {kNumFrames, 1, 2, 3, 5, 16, 17, 31};
+
+// a hung batch never returns
+void exitWhenStalled()
+{
+  uint64_t lastProgress = g_progress;
+  int stalledSeconds = 0;
+  for(;;)
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    uint64_t progress = g_progress;
+    stalledSeconds = progress == lastProgress ? stalledSeconds + 1 : 0;
+    lastProgress = progress;
+    if(stalledSeconds < kStressStallSeconds)
+      continue;
+    std::fprintf(stderr, "FAIL: no frame submitted or delivered for %d seconds\n",
+                 kStressStallSeconds);
+    std::_Exit(kStressStallExitCode);
+  }
+}
+
+void checkStressLossless(uint32_t numFrames, bool lastFrameFirst,
+                         std::map<size_t, std::vector<uint8_t>>& firstStreams, double* seconds)
+{
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  Collector collector;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, seconds, &xyzOnDevice, numFrames,
+               lastFrameFirst))
+  {
+    fail("stress lossless batch");
+    return;
+  }
+  checkCollector(collector, "stress lossless batch delivery", numFrames);
+  for(const auto& entry : collector.codestreams)
+  {
+    auto first = firstStreams.find(entry.first);
+    bool repeats = first != firstStreams.end() && first->second == entry.second;
+    if(repeats)
+      continue;
+    if(first != firstStreams.end())
+    {
+      std::printf("  frame %u: %zu bytes, %zu the first time\n", (unsigned)(entry.first - 1),
+                  entry.second.size(), first->second.size());
+      fail("a lossless stress frame does not repeat its first code stream");
+    }
+    auto source = patternFrame((uint32_t)(entry.first - 1), kPrecision);
+    if(!source)
+    {
+      fail("stress source frame allocation");
+      return;
+    }
+    int32_t difference = 0;
+    if(!samplesEqual(source, decodeOnCpu(entry.second), 0, &difference))
+    {
+      std::printf("  frame %u: max difference %d\n", (unsigned)(entry.first - 1), difference);
+      fail("a lossless stress frame does not decode to its own source");
+    }
+    grk_object_unref(&source->obj);
+    firstStreams.emplace(entry.first, entry.second);
+  }
+}
+
+void checkStressRateControlled(std::unique_ptr<Collector>& first)
+{
+  auto collector = std::make_unique<Collector>();
+  if(!runReferenceBatch(kDeterminismSource, *collector))
+  {
+    fail("stress rate controlled batch");
+    return;
+  }
+  checkCollector(*collector, "stress rate controlled batch delivery", kYuvNumFrames);
+  if(!first)
+    first = std::move(collector);
+  else if(countIdenticalStreams(*first, *collector, "rate controlled") != kYuvNumFrames)
+    fail("a rate controlled stress frame does not repeat its first code stream");
+}
+
+constexpr uint64_t kFnvOffsetBasis = 14695981039346656037ull;
+constexpr uint64_t kFnvPrime = 1099511628211ull;
+
+// compared between two plugin builds
+uint64_t streamsChecksum(const std::map<size_t, std::vector<uint8_t>>& streams, uint64_t checksum)
+{
+  for(const auto& entry : streams)
+    for(uint8_t byte : entry.second)
+      checksum = (checksum ^ byte) * kFnvPrime;
+  return checksum;
+}
+
+void runStress(int rounds)
+{
+  std::thread(exitWhenStalled).detach();
+  std::map<size_t, std::vector<uint8_t>> firstLossless;
+  std::unique_ptr<Collector> firstRateControlled;
+  int failedRounds = 0;
+  double losslessSeconds = 0;
+  uint64_t losslessFrames = 0;
+  for(int round = 0; round < rounds; ++round)
+  {
+    int failuresBefore = g_failures;
+    uint32_t numFrames = kStressFrameCounts[round % std::size(kStressFrameCounts)];
+    // a frame's code stream must not depend on the frames encoded before it
+    bool lastFrameFirst = (round / std::size(kStressFrameCounts)) % 2 == 1;
+    double seconds = 0;
+    checkStressLossless(numFrames, lastFrameFirst, firstLossless, &seconds);
+    losslessSeconds += seconds;
+    losslessFrames += numFrames;
+    checkStressRateControlled(firstRateControlled);
+    if(g_failures != failuresBefore)
+    {
+      ++failedRounds;
+      std::printf("stress round %d failed, %u lossless frames\n", round, numFrames);
+    }
+  }
+  std::printf("stress: %d of %d rounds failed, lossless %.1f frames per second\n", failedRounds,
+              rounds, losslessSeconds > 0 ? losslessFrames / losslessSeconds : 0.0);
+  auto checksum = streamsChecksum(firstLossless, kFnvOffsetBasis);
+  if(firstRateControlled)
+    checksum = streamsChecksum(firstRateControlled->codestreams, checksum);
+  std::printf("stress: code stream checksum %016llx\n", (unsigned long long)checksum);
 }
 
 // grk_decompress consults the plugin flag, so this one runs on the device
@@ -1974,6 +2110,12 @@ int main()
   // every check decodes on the CPU. The batch API does not consult this flag,
   // so it only steers grk_decompress.
   grk_plugin_set_enabled(false);
+  if(auto stressRounds = std::getenv(kStressRoundsVariable))
+  {
+    runStress(std::atoi(stressRounds));
+    grk_deinitialize();
+    return g_failures ? 1 : 0;
+  }
   // first, before any batch has loaded a kernel: a player opens this cold
   checkBatchDecompress();
   checkLossless();
