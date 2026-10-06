@@ -2094,8 +2094,9 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
  In-memory batch decompress
  ********************/
 
+// the suffix changes with the layout of gpup_batch_decompress_memory_info and what it points at
 static const char* plugin_batch_decode_memory_begin_method_name =
-    "plugin_batch_decompress_memory_begin";
+    "plugin_batch_decompress_memory_begin_v2";
 static const char* plugin_batch_decode_memory_end_method_name =
     "plugin_batch_decompress_memory_end";
 
@@ -2111,6 +2112,22 @@ struct BatchDecompressMemoryState
   void* user = nullptr;
 };
 BatchDecompressMemoryState batchDecompress;
+
+const size_t displayChannels = 3;
+const size_t outputThresholdsPerChannel = 256;
+
+// NaN fails the comparison too
+bool outputThresholdsNeverDecrease(const float* thresholds)
+{
+  for(size_t channel = 0; channel < displayChannels; ++channel)
+  {
+    auto channelThresholds = thresholds + channel * outputThresholdsPerChannel;
+    for(size_t code = 1; code < outputThresholdsPerChannel; ++code)
+      if(!(channelThresholds[code] >= channelThresholds[code - 1]))
+        return false;
+  }
+  return true;
+}
 
 // the plugin's workers ask here, the caller answers
 bool batchDecompressMemoryPull(void*, const uint8_t** codestream, size_t* length, void** frameUser)
@@ -2176,6 +2193,9 @@ GRK_API int32_t GRK_CALLCONV
     return -1;
   if(info.display_transform && !info.display_transform->transfer)
     return -1;
+  if(info.display_transform && info.display_transform->output_thresholds &&
+     !outputThresholdsNeverDecrease(info.display_transform->output_thresholds))
+    return -1;
   if(!pluginAccelerates())
     return 1;
   auto begin = (PLUGIN_BATCH_DECODE_MEMORY_BEGIN)batchMemorySymbol(
@@ -2217,6 +2237,7 @@ GRK_API int32_t GRK_CALLCONV
   {
     displayTransform.transfer = info.display_transform->transfer;
     displayTransform.matrix = info.display_transform->matrix;
+    displayTransform.output_thresholds = info.display_transform->output_thresholds;
     gpupInfo.display_transform = &displayTransform;
   }
   gpupInfo.rgb8_on_device = false;

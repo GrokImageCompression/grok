@@ -488,6 +488,8 @@ typedef struct _gpup_display_transform
   const float* transfer;
   /* 9 entries, row major, linear source RGB to linear display RGB, NULL for none */
   const float* matrix;
+  /* 3 x 256 entries, channel major: the light each 8 bit code starts at, NULL for the 2.2 encode */
+  const float* output_thresholds;
 } gpup_display_transform;
 
 /* one code stream shape for a whole in-memory decode batch: the host reads the

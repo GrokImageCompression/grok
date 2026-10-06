@@ -2727,6 +2727,9 @@ typedef struct grk_plugin_display_transform
                             display peak */
   const float* matrix; /* 9 entries, row major, linear source RGB to linear display RGB; NULL for
                           none */
+  const float* output_thresholds; /* 768 entries, 256 per channel in red, green, blue order: the
+                                     light at which each 8 bit code starts, NULL for the 2.2
+                                     gamma encode */
 } grk_plugin_display_transform;
 
 /**
@@ -2769,15 +2772,22 @@ typedef struct grk_plugin_batch_decompress_memory_info
  * @p info.display_transform asks for the same layout through the caller's own
  * tables: each channel's 12 bit code becomes display linear light through
  * @p transfer, then optionally goes through @p matrix, then becomes an 8 bit
- * code as the inverse of a 2.2 gamma at 12 bits with the low four bits dropped,
- * which is the largest code c in 0 to 255 whose threshold ((c * 16) / 4095) to
- * the power 2.2, evaluated in single precision, is at or below the light. The
- * @p transfer and @p matrix memory only has to outlive this call. Setting
- * @p info.srgb8_output and @p info.display_transform together returns -1.
+ * code: the largest code c in 0 to 255 whose threshold is at or below the
+ * light, 0 when none is. With @p output_thresholds NULL every channel's
+ * threshold for c is ((c * 16) / 4095) to the power 2.2, evaluated in single
+ * precision, the inverse of a 2.2 gamma at 12 bits with the low four bits
+ * dropped. Otherwise the threshold for c on channel k, 0 red, 1 green, 2 blue,
+ * is @p output_thresholds[k * 256 + c], and each channel's 256 values must not
+ * decrease: a monitor profile's per channel output curve. The @p transfer,
+ * @p matrix and @p output_thresholds memory only has to outlive this call.
+ * Setting @p info.srgb8_output and @p info.display_transform together, or
+ * thresholds that decrease or are NaN, returns -1.
  *
  * Either request needs the same shape, three component unsigned 12 bit;
- * anything else comes back as planes as usual. @p info.rgb8_on_device, when
- * given, says whether this batch got the 8 bit RGB layout.
+ * anything else comes back as planes as usual, and so does a display transform
+ * with @p output_thresholds on a device that only runs the 2.2 encode.
+ * @p info.rgb8_on_device, when given, says whether this batch got the 8 bit RGB
+ * layout.
  *
  * Requires grk_plugin_init() to have succeeded. While the batch runs, an ordinary
  * grk_decompress() call decompresses on the CPU.

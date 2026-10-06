@@ -58,6 +58,9 @@ constexpr float kDisplayTransferScale = 0.9f;
 constexpr float kDisplayEncodeGamma = 2.2f;
 constexpr int kDisplayEncodeCodeStep = 16;
 constexpr int kDisplayEncodeLevels = 256;
+// a monitor profile's output curves: the sRGB curve under a different peak per channel
+constexpr float kMonitorChannelPeak[kNumComps] = {1.0f, 0.95f, 0.9f};
+constexpr float kSrgbCodeMax = 255.0f;
 
 void fail(const char* what)
 {
@@ -1366,13 +1369,30 @@ struct DisplayTransform
     for(int code = 0; code <= kMaxSample; ++code)
       transfer[code] =
           std::pow((float)code / 4095.0f, kDisplayTransferGamma) * kDisplayTransferScale;
-    for(int code = 0; code < kDisplayEncodeLevels; ++code)
-      threshold[code] =
-          std::pow((float)(code * kDisplayEncodeCodeStep) / 4095.0f, kDisplayEncodeGamma);
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+      for(int code = 0; code < kDisplayEncodeLevels; ++code)
+        threshold[channelNum][code] =
+            std::pow((float)(code * kDisplayEncodeCodeStep) / 4095.0f, kDisplayEncodeGamma);
   }
-  uint8_t channel(float light) const
+  // each code starts halfway between its own light and the one below
+  void useMonitorCurves()
   {
-    auto above = std::upper_bound(threshold, threshold + kDisplayEncodeLevels, light) - threshold;
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+    {
+      threshold[channelNum][0] = 0.0f;
+      for(int code = 1; code < kDisplayEncodeLevels; ++code)
+      {
+        float encoded = ((float)code - 0.5f) / kSrgbCodeMax;
+        float light =
+            encoded <= 0.04045f ? encoded / 12.92f : std::pow((encoded + 0.055f) / 1.055f, 2.4f);
+        threshold[channelNum][code] = light * kMonitorChannelPeak[channelNum];
+      }
+    }
+  }
+  uint8_t channel(float light, int channelNum) const
+  {
+    auto first = threshold[channelNum];
+    auto above = std::upper_bound(first, first + kDisplayEncodeLevels, light) - first;
     return (uint8_t)(above ? above - 1 : 0);
   }
   void pixel(int32_t redCode, int32_t greenCode, int32_t blueCode, uint8_t* out) const
@@ -1388,14 +1408,14 @@ struct DisplayTransform
         rgb[channelNum] = mixed[channelNum];
     }
     for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
-      out[channelNum] = channel(rgb[channelNum]);
+      out[channelNum] = channel(rgb[channelNum], channelNum);
   }
   // made up, rows summing to about 1 so a frame keeps its brightness
   static constexpr float kMatrix[9] = {1.2f,   -0.15f, -0.05f, -0.1f, 1.15f,
                                        -0.05f, 0.0f,   -0.1f,  1.1f};
   bool matrixOn;
   float transfer[kMaxSample + 1];
-  float threshold[kDisplayEncodeLevels];
+  float threshold[kNumComps][kDisplayEncodeLevels];
 };
 
 // the same planes the device transforms, run through the host reference
@@ -1692,9 +1712,9 @@ void checkBatchDecompress()
   // the same code streams through the caller's own tables, with and without the matrix
   DisplayTransform matrixTransform(true);
   DisplayTransform plainTransform(false);
-  grk_plugin_display_transform matrixRequest = {matrixTransform.transfer,
-                                                DisplayTransform::kMatrix};
-  grk_plugin_display_transform plainRequest = {plainTransform.transfer, nullptr};
+  grk_plugin_display_transform matrixRequest = {matrixTransform.transfer, DisplayTransform::kMatrix,
+                                                nullptr};
+  grk_plugin_display_transform plainRequest = {plainTransform.transfer, nullptr, nullptr};
   Rgb8Collector matrixFrames;
   Rgb8Collector plainFrames;
   double matrixSeconds = 0;
@@ -1797,6 +1817,113 @@ void checkBatchDecompress()
   else if(!grk_plugin_batch_decompress_memory_end())
   {
     fail("end after the rejected begin");
+  }
+  grk_plugin_set_enabled(false);
+}
+
+// lossless frames, so the device transforms exactly the samples the host reference does
+void checkDisplayOutputThresholds()
+{
+  std::printf("display transform output thresholds, lossless 12 bit, %ux%u, %u frames\n", kWidth,
+              kHeight, kNumFrames);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  Collector encoded;
+  if(!compressOnCpu(params, encoded))
+  {
+    fail("output thresholds: source frames");
+    return;
+  }
+  const auto& shapeStream = encoded.codestreams.begin()->second;
+
+  DisplayTransform gammaTransform(false);
+  grk_plugin_display_transform withoutThresholds = {gammaTransform.transfer, nullptr, nullptr};
+  grk_plugin_display_transform gammaThresholds = {gammaTransform.transfer, nullptr,
+                                                  &gammaTransform.threshold[0][0]};
+  Rgb8Collector withoutFrames;
+  Rgb8Collector gammaFrames;
+  double seconds = 0;
+  if(!runDisplayBatch(encoded, shapeStream, withoutThresholds, withoutFrames, &seconds) ||
+     !runDisplayBatch(encoded, shapeStream, gammaThresholds, gammaFrames, &seconds))
+  {
+    fail("output thresholds: 2.2 batches");
+    return;
+  }
+  if(withoutFrames.frames.size() != kNumFrames || withoutFrames.frames != gammaFrames.frames)
+    fail("2.2 output thresholds give different frames from none");
+  else
+    std::printf("output thresholds: the 2.2 thresholds give the same %u frames as none\n",
+                kNumFrames);
+
+  DisplayTransform monitorTransform(true);
+  monitorTransform.useMonitorCurves();
+  grk_plugin_display_transform monitorRequest = {
+      monitorTransform.transfer, DisplayTransform::kMatrix, &monitorTransform.threshold[0][0]};
+  Rgb8Collector monitorFrames;
+  if(!runDisplayBatch(encoded, shapeStream, monitorRequest, monitorFrames, &seconds))
+  {
+    fail("output thresholds: monitor curve batch");
+    return;
+  }
+  if(monitorFrames.frames.size() != kNumFrames || monitorFrames.failed || monitorFrames.wrongShape)
+  {
+    fail("output thresholds: monitor curve batch delivery");
+    return;
+  }
+  size_t mismatches = 0;
+  for(const auto& entry : encoded.codestreams)
+  {
+    auto expected = displayReference(monitorTransform, decodeOnCpu(entry.second));
+    const auto& fromDevice = monitorFrames.frames[entry.first];
+    if(expected.size() != fromDevice.size())
+    {
+      fail("output thresholds: frame size");
+      return;
+    }
+    for(size_t i = 0; i < expected.size(); ++i)
+    {
+      if(fromDevice[i] == expected[i])
+        continue;
+      if(mismatches++ < 4)
+        std::printf("  frame %u sample %u: device %d, reference %d\n", (unsigned)(entry.first - 1),
+                    (unsigned)i, (int)fromDevice[i], (int)expected[i]);
+    }
+  }
+  std::printf("output thresholds: %u monitor curve frames in %.2f s, %u samples differ from the "
+              "host reference\n",
+              kNumFrames, seconds, (unsigned)mismatches);
+  if(mismatches)
+    fail("a monitor curve frame differs from the host reference");
+
+  // a decreasing pair or a NaN in the last channel is a caller error that starts nothing
+  Rgb8Collector noFrames;
+  PullSource emptySource;
+  emptySource.rgb8 = &noFrames;
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledRgb8;
+  info.user = &emptySource;
+  DisplayTransform badTransform(false);
+  grk_plugin_display_transform badRequest = {badTransform.transfer, nullptr,
+                                             &badTransform.threshold[0][0]};
+  info.display_transform = &badRequest;
+  auto& lastChannel = badTransform.threshold[kNumComps - 1];
+  std::swap(lastChannel[100], lastChannel[101]);
+  grk_plugin_set_enabled(true);
+  if(grk_plugin_batch_decompress_memory_begin(info) != -1)
+  {
+    fail("a begin with decreasing output thresholds");
+    grk_plugin_batch_decompress_memory_end();
+  }
+  std::swap(lastChannel[100], lastChannel[101]);
+  lastChannel[kDisplayEncodeLevels - 1] = std::nanf("");
+  if(grk_plugin_batch_decompress_memory_begin(info) != -1)
+  {
+    fail("a begin with a NaN output threshold");
+    grk_plugin_batch_decompress_memory_end();
   }
   grk_plugin_set_enabled(false);
 }
@@ -2118,6 +2245,7 @@ int main()
   }
   // first, before any batch has loaded a kernel: a player opens this cold
   checkBatchDecompress();
+  checkDisplayOutputThresholds();
   checkLossless();
   checkCinema();
   checkCinemaSource16();
