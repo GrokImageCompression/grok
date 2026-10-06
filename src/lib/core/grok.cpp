@@ -1388,9 +1388,11 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
       gpup_info.server = initInfo.server;
       gpup_info.numThreads = initInfo.num_threads ? initInfo.num_threads : usableThreadCount();
       bool result = func(gpup_info);
+      bool licenseGiven = initInfo.license && *initInfo.license;
+      // the key itself never goes to the log
       if(!result)
-        Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, license='%s')",
-                             initInfo.device_id, initInfo.license ? initInfo.license : "");
+        Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, %s)", initInfo.device_id,
+                             licenseGiven ? "license given" : "no license given");
       pluginInitialized = result;
       return result;
     }
