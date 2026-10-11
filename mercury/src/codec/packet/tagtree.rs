@@ -2,11 +2,8 @@
 //!
 //! A tag tree hierarchically codes integer values per code-block in a precinct.
 //! Two per precinct-band: one for inclusion layer, one for missing MSBs.
-//!
-//! Layout: flat array, leaves first, then internal levels bottom-up to root.
-//! Parent index = `(y/2) * parent_width + (x/2)` relative to each level's start.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use super::PacketError;
 use super::bitread::PacketBitReader;
@@ -23,21 +20,53 @@ struct TagNode {
 /// One tree level.
 #[derive(Debug, Clone, Copy)]
 struct LevelDesc {
-    /// Offset into the nodes array where this level starts.
-    start: usize,
     /// Columns.
     width: u32,
     /// Rows.
     height: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct NodeId {
+    level: u32,
+    x: u32,
+    y: u32,
+}
+
+#[derive(Debug, Clone, Default)]
+struct NodeStore {
+    nodes: HashMap<NodeId, TagNode>,
+}
+
+impl NodeStore {
+    fn get(&self, level: usize, x: u32, y: u32) -> TagNode {
+        self.nodes
+            .get(&NodeId {
+                level: level as u32,
+                x,
+                y,
+            })
+            .copied()
+            .unwrap_or_default()
+    }
+
+    fn get_mut(&mut self, level: usize, x: u32, y: u32) -> &mut TagNode {
+        self.nodes
+            .entry(NodeId {
+                level: level as u32,
+                x,
+                y,
+            })
+            .or_default()
+    }
+}
+
 /// Tag tree holding persistent state across quality layers; one instance per
 /// precinct-band carries both the inclusion and MSBs trees.
 #[derive(Debug, Clone)]
 pub struct TagTree {
-    /// Nodes: leaves first, then internal levels bottom-up to root.
-    inclusion_nodes: Vec<TagNode>,
-    msbs_nodes: Vec<TagNode>,
+    inclusion: NodeStore,
+    msbs: NodeStore,
     /// Level descriptors (level 0 = leaves).
     levels: Vec<LevelDesc>,
     /// Leaf-level width.
@@ -49,26 +78,22 @@ impl TagTree {
     pub fn warp(width: u32, height: u32) -> Self {
         if width == 0 || height == 0 {
             return Self {
-                inclusion_nodes: Vec::new(),
-                msbs_nodes: Vec::new(),
+                inclusion: NodeStore::default(),
+                msbs: NodeStore::default(),
                 levels: Vec::new(),
                 leaf_width: 0,
             };
         }
 
         let mut levels = Vec::new();
-        let mut total_nodes: usize = 0;
         let mut lw = width;
         let mut lh = height;
 
         loop {
-            let count = (lw as usize) * (lh as usize);
             levels.push(LevelDesc {
-                start: total_nodes,
                 width: lw,
                 height: lh,
             });
-            total_nodes += count;
             if lw == 1 && lh == 1 {
                 break;
             }
@@ -77,11 +102,20 @@ impl TagTree {
         }
 
         Self {
-            inclusion_nodes: vec![TagNode::default(); total_nodes],
-            msbs_nodes: vec![TagNode::default(); total_nodes],
+            inclusion: NodeStore::default(),
+            msbs: NodeStore::default(),
             levels,
             leaf_width: width,
         }
+    }
+
+    fn coords_on_level(&self, blk_idx: usize, level: usize) -> (u32, u32) {
+        let (mut x, mut y) = self.leaf_coords(blk_idx);
+        for _ in 0..level {
+            x >>= 1;
+            y >>= 1;
+        }
+        (x, y)
     }
 
     /// (x, y) of a leaf from its linear index.
@@ -92,21 +126,9 @@ impl TagTree {
         (x, y)
     }
 
-    fn node_on_level(&self, blk_idx: usize, level: usize) -> usize {
-        let (mut x, mut y) = self.leaf_coords(blk_idx);
-        for _ in 0..level {
-            x >>= 1;
-            y >>= 1;
-        }
-        let desc = &self.levels[level];
-        desc.start + y as usize * desc.width as usize + x as usize
-    }
-
     // `w < wbar` means a 1 bit has fixed the value.
-    fn inclusion_known(&self, level: usize, row: u32, column: u32) -> bool {
-        let desc = &self.levels[level];
-        let idx = desc.start + row as usize * desc.width as usize + column as usize;
-        let node = &self.inclusion_nodes[idx];
+    fn inclusion_known(&self, level: usize, x: u32, y: u32) -> bool {
+        let node = self.inclusion.get(level, x, y);
         node.w < node.wbar
     }
 
@@ -144,7 +166,7 @@ impl TagTree {
             if self.first_leaf(level, row, column) != leaf {
                 break;
             }
-            if level != 0 && self.inclusion_known(level, row, column) {
+            if level != 0 && self.inclusion_known(level, column, row) {
                 let child = &self.levels[level - 1];
                 let row_end = (row * 2 + 2).min(child.height);
                 let col_end = (column * 2 + 2).min(child.width);
@@ -177,7 +199,8 @@ impl TagTree {
 
         if n == 1 {
             // Single-node tree (1x1 grid): leaf is root.
-            let node = &mut self.inclusion_nodes[blk_idx];
+            let (x, y) = self.leaf_coords(blk_idx);
+            let node = self.inclusion.get_mut(0, x, y);
             while node.w == node.wbar && node.wbar < threshold {
                 node.wbar += 1;
                 if reader.pluck_bit()? == 0 {
@@ -193,8 +216,8 @@ impl TagTree {
 
         // Root down to (but not including) the leaf.
         for level in (1..n).rev() {
-            let node_idx = self.node_on_level(blk_idx, level);
-            let node = &mut self.inclusion_nodes[node_idx];
+            let (x, y) = self.coords_on_level(blk_idx, level);
+            let node = self.inclusion.get_mut(level, x, y);
             if node.wbar < wbar_min {
                 node.wbar = wbar_min;
                 node.w = wbar_min;
@@ -217,7 +240,8 @@ impl TagTree {
         }
 
         // The leaf itself.
-        let node = &mut self.inclusion_nodes[blk_idx];
+        let (x, y) = self.leaf_coords(blk_idx);
+        let node = self.inclusion.get_mut(0, x, y);
         if node.wbar < wbar_min {
             node.wbar = wbar_min;
             node.w = wbar_min;
@@ -255,7 +279,8 @@ impl TagTree {
 
         if n == 1 {
             // Single-node tree.
-            let node = &mut self.msbs_nodes[blk_idx];
+            let (x, y) = self.leaf_coords(blk_idx);
+            let node = self.msbs.get_mut(0, x, y);
             loop {
                 node.wbar += 1;
                 if reader.pluck_bit()? != 0 {
@@ -270,16 +295,17 @@ impl TagTree {
         }
 
         // Multi-level: root toward leaf.
+        let (leaf_x, leaf_y) = self.leaf_coords(blk_idx);
         loop {
             // Read leaf's wbar for the threshold BEFORE mutating internal
             // nodes (threshold = msbs_wbar + 1).
-            let threshold = self.msbs_nodes[blk_idx].wbar + 1;
+            let threshold = self.msbs.get(0, leaf_x, leaf_y).wbar + 1;
             let mut wbar_min: u16 = 0;
 
             // Internal nodes only.
             for level in (1..n).rev() {
-                let node_idx = self.node_on_level(blk_idx, level);
-                let node = &mut self.msbs_nodes[node_idx];
+                let (x, y) = self.coords_on_level(blk_idx, level);
+                let node = self.msbs.get_mut(level, x, y);
                 if node.wbar < wbar_min {
                     node.wbar = wbar_min;
                     node.w = wbar_min;
@@ -301,7 +327,7 @@ impl TagTree {
             }
 
             // The leaf node.
-            let leaf = &mut self.msbs_nodes[blk_idx];
+            let leaf = self.msbs.get_mut(0, leaf_x, leaf_y);
             if leaf.wbar < wbar_min {
                 // Parent's minimum already covers this: update and loop back.
                 leaf.wbar = wbar_min;
@@ -327,16 +353,33 @@ mod tests {
     #[test]
     fn one_leaf_tree() {
         let tree = TagTree::warp(1, 1);
-        assert_eq!(tree.inclusion_nodes.len(), 1);
+        assert!(tree.inclusion.nodes.is_empty());
         assert_eq!(tree.levels.len(), 1);
     }
 
     #[test]
     fn two_by_two_grid() {
         let tree = TagTree::warp(2, 2);
-        // 4 leaves + 1 root
-        assert_eq!(tree.inclusion_nodes.len(), 5);
+        assert!(tree.inclusion.nodes.is_empty());
         assert_eq!(tree.levels.len(), 2);
+    }
+
+    #[test]
+    fn a_wide_grid_allocates_no_nodes_until_a_decode() {
+        let tree = TagTree::warp(8192, 8192);
+        assert!(tree.inclusion.nodes.is_empty());
+        assert!(tree.msbs.nodes.is_empty());
+        assert!(tree.levels.len() > 1);
+    }
+
+    #[test]
+    fn one_excluded_leaf_allocates_only_the_path() {
+        let mut tree = TagTree::warp(64, 64);
+        let mut reader = PacketBitReader::warp(&[0x00]);
+        assert!(!tree.comb_inclusion(&mut reader, 0, 1).unwrap());
+        assert!(tree.inclusion.nodes.len() <= tree.levels.len());
+        assert!(tree.inclusion.nodes.len() < 64 * 64);
+        assert!(tree.msbs.nodes.is_empty());
     }
 
     #[test]
@@ -393,9 +436,8 @@ mod tests {
             (3, 3, vec![0, 2, 6, 8]),
         ] {
             let mut tree = TagTree::warp(width, height);
-            let root = tree.levels.last().unwrap().start;
-            tree.inclusion_nodes[root].w = 0;
-            tree.inclusion_nodes[root].wbar = 1;
+            let root = tree.levels.len() - 1;
+            *tree.inclusion.get_mut(root, 0, 0) = TagNode { w: 0, wbar: 1 };
             let mut seen = Vec::new();
             tree.comb_live_leaves((width * height) as usize, |_, leaf| {
                 seen.push(leaf);
