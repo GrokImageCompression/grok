@@ -6,6 +6,8 @@
 //! Layout: flat array, leaves first, then internal levels bottom-up to root.
 //! Parent index = `(y/2) * parent_width + (x/2)` relative to each level's start.
 
+use std::collections::BTreeSet;
+
 use super::PacketError;
 use super::bitread::PacketBitReader;
 
@@ -26,7 +28,6 @@ struct LevelDesc {
     /// Columns.
     width: u32,
     /// Rows.
-    #[allow(dead_code)]
     height: u32,
 }
 
@@ -83,12 +84,6 @@ impl TagTree {
         }
     }
 
-    /// Node index of a leaf (leaves are in raster order at the array start).
-    #[inline]
-    fn leaf_at(&self, blk_idx: usize) -> usize {
-        blk_idx
-    }
-
     /// (x, y) of a leaf from its linear index.
     #[inline]
     fn leaf_coords(&self, blk_idx: usize) -> (u32, u32) {
@@ -97,29 +92,74 @@ impl TagTree {
         (x, y)
     }
 
-    /// Parent index of a node at (x, y) in a given level.
-    #[inline]
-    fn parent_at(&self, level: usize, x: u32, y: u32) -> usize {
-        let parent_level = &self.levels[level + 1];
-        parent_level.start + (y / 2) as usize * parent_level.width as usize + (x / 2) as usize
-    }
-
-    /// Node indices from root to leaf (inclusive).
-    fn climb_to_root(&self, blk_idx: usize) -> Vec<usize> {
-        let mut path = Vec::with_capacity(self.levels.len());
+    fn node_on_level(&self, blk_idx: usize, level: usize) -> usize {
         let (mut x, mut y) = self.leaf_coords(blk_idx);
-        let leaf_idx = self.leaf_at(blk_idx);
-        path.push(leaf_idx);
-
-        for level in 0..self.levels.len() - 1 {
-            let parent_idx = self.parent_at(level, x, y);
-            path.push(parent_idx);
+        for _ in 0..level {
             x >>= 1;
             y >>= 1;
         }
+        let desc = &self.levels[level];
+        desc.start + y as usize * desc.width as usize + x as usize
+    }
 
-        path.reverse(); // root first
-        path
+    // `w < wbar` means a 1 bit has fixed the value.
+    fn inclusion_known(&self, level: usize, row: u32, column: u32) -> bool {
+        let desc = &self.levels[level];
+        let idx = desc.start + row as usize * desc.width as usize + column as usize;
+        let node = &self.inclusion_nodes[idx];
+        node.w < node.wbar
+    }
+
+    fn first_leaf(&self, level: usize, row: u32, column: u32) -> usize {
+        (((row as u64) << level) * self.leaf_width as u64 + ((column as u64) << level)) as usize
+    }
+
+    pub(super) fn comb_live_leaves(
+        &mut self,
+        leaf_count: usize,
+        mut visit: impl FnMut(&mut Self, usize) -> Result<(), PacketError>,
+    ) -> Result<(), PacketError> {
+        if leaf_count == 0 {
+            return Ok(());
+        }
+        if self.levels.is_empty() || self.leaf_width == 0 {
+            return Err(PacketError::TagTreeError);
+        }
+        let mut pending = BTreeSet::new();
+        pending.insert(0usize);
+        while let Some(leaf) = pending.pop_first() {
+            if leaf >= leaf_count {
+                continue;
+            }
+            visit(self, leaf)?;
+            self.enqueue_sibling_leaves(leaf, &mut pending);
+        }
+        Ok(())
+    }
+
+    fn enqueue_sibling_leaves(&self, leaf: usize, pending: &mut BTreeSet<usize>) {
+        let mut row = (leaf as u32) / self.leaf_width;
+        let mut column = (leaf as u32) % self.leaf_width;
+        for level in 0..self.levels.len() {
+            if self.first_leaf(level, row, column) != leaf {
+                break;
+            }
+            if level != 0 && self.inclusion_known(level, row, column) {
+                let child = &self.levels[level - 1];
+                let row_end = (row * 2 + 2).min(child.height);
+                let col_end = (column * 2 + 2).min(child.width);
+                for child_row in (row * 2)..row_end {
+                    for child_col in (column * 2)..col_end {
+                        if child_row == row * 2 && child_col == column * 2 {
+                            continue;
+                        }
+                        pending.insert(self.first_leaf(level - 1, child_row, child_col));
+                    }
+                }
+            }
+            row >>= 1;
+            column >>= 1;
+        }
     }
 
     /// Decode inclusion; true if the block is included in the current packet
@@ -130,15 +170,14 @@ impl TagTree {
         blk_idx: usize,
         threshold: u16,
     ) -> Result<bool, PacketError> {
-        if self.levels.is_empty() {
+        let n = self.levels.len();
+        if n == 0 {
             return Err(PacketError::TagTreeError);
         }
 
-        let path = self.climb_to_root(blk_idx);
-
-        if path.len() == 1 {
+        if n == 1 {
             // Single-node tree (1x1 grid): leaf is root.
-            let node = &mut self.inclusion_nodes[path[0]];
+            let node = &mut self.inclusion_nodes[blk_idx];
             while node.w == node.wbar && node.wbar < threshold {
                 node.wbar += 1;
                 if reader.pluck_bit()? == 0 {
@@ -153,7 +192,8 @@ impl TagTree {
         let mut wbar_min: u16 = 0;
 
         // Root down to (but not including) the leaf.
-        for &node_idx in &path[..path.len() - 1] {
+        for level in (1..n).rev() {
+            let node_idx = self.node_on_level(blk_idx, level);
             let node = &mut self.inclusion_nodes[node_idx];
             if node.wbar < wbar_min {
                 node.wbar = wbar_min;
@@ -177,8 +217,7 @@ impl TagTree {
         }
 
         // The leaf itself.
-        let leaf_idx = *path.last().unwrap();
-        let node = &mut self.inclusion_nodes[leaf_idx];
+        let node = &mut self.inclusion_nodes[blk_idx];
         if node.wbar < wbar_min {
             node.wbar = wbar_min;
             node.w = wbar_min;
@@ -209,15 +248,14 @@ impl TagTree {
         reader: &mut PacketBitReader,
         blk_idx: usize,
     ) -> Result<u8, PacketError> {
-        if self.levels.is_empty() {
+        let n = self.levels.len();
+        if n == 0 {
             return Err(PacketError::TagTreeError);
         }
 
-        let path = self.climb_to_root(blk_idx);
-
-        if path.len() == 1 {
+        if n == 1 {
             // Single-node tree.
-            let node = &mut self.msbs_nodes[path[0]];
+            let node = &mut self.msbs_nodes[blk_idx];
             loop {
                 node.wbar += 1;
                 if reader.pluck_bit()? != 0 {
@@ -232,16 +270,15 @@ impl TagTree {
         }
 
         // Multi-level: root toward leaf.
-        let leaf_idx = *path.last().unwrap();
-
         loop {
             // Read leaf's wbar for the threshold BEFORE mutating internal
             // nodes (threshold = msbs_wbar + 1).
-            let threshold = self.msbs_nodes[leaf_idx].wbar + 1;
+            let threshold = self.msbs_nodes[blk_idx].wbar + 1;
             let mut wbar_min: u16 = 0;
 
             // Internal nodes only.
-            for &node_idx in &path[..path.len() - 1] {
+            for level in (1..n).rev() {
+                let node_idx = self.node_on_level(blk_idx, level);
                 let node = &mut self.msbs_nodes[node_idx];
                 if node.wbar < wbar_min {
                     node.wbar = wbar_min;
@@ -264,7 +301,7 @@ impl TagTree {
             }
 
             // The leaf node.
-            let leaf = &mut self.msbs_nodes[leaf_idx];
+            let leaf = &mut self.msbs_nodes[blk_idx];
             if leaf.wbar < wbar_min {
                 // Parent's minimum already covers this: update and loop back.
                 leaf.wbar = wbar_min;
@@ -320,6 +357,53 @@ mod tests {
         let mut reader = PacketBitReader::warp(&data);
         let result = tree.comb_inclusion(&mut reader, 0, 1).unwrap();
         assert!(!result);
+    }
+
+    #[test]
+    fn an_unknown_root_visits_only_the_first_leaf() {
+        let mut tree = TagTree::warp(32, 17);
+        let mut seen = Vec::new();
+        tree.comb_live_leaves(32 * 17, |_, leaf| {
+            seen.push(leaf);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(seen, vec![0]);
+    }
+
+    #[test]
+    fn a_raised_root_bound_still_skips_other_leaves() {
+        let mut tree = TagTree::warp(8, 8);
+        let data = [0x00u8];
+        let mut reader = PacketBitReader::warp(&data);
+        assert!(!tree.comb_inclusion(&mut reader, 0, 1).unwrap());
+        let mut seen = Vec::new();
+        tree.comb_live_leaves(64, |_, leaf| {
+            seen.push(leaf);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(seen, vec![0]);
+    }
+
+    #[test]
+    fn a_known_root_visits_each_child_first_leaf_only() {
+        for (width, height, expect) in [
+            (4u32, 4u32, vec![0usize, 2, 8, 10]),
+            (3, 3, vec![0, 2, 6, 8]),
+        ] {
+            let mut tree = TagTree::warp(width, height);
+            let root = tree.levels.last().unwrap().start;
+            tree.inclusion_nodes[root].w = 0;
+            tree.inclusion_nodes[root].wbar = 1;
+            let mut seen = Vec::new();
+            tree.comb_live_leaves((width * height) as usize, |_, leaf| {
+                seen.push(leaf);
+                Ok(())
+            })
+            .unwrap();
+            assert_eq!(seen, expect, "{width}x{height}");
+        }
     }
 
     #[test]

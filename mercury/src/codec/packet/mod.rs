@@ -12,7 +12,7 @@ pub use bitread::PacketBitReader;
 pub use tagtree::TagTree;
 
 /// Descriptor for a single code-block's contribution in one packet.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BlockContribution {
     /// New coding passes in this packet (0 = not included).
     pub new_passes: u8,
@@ -26,7 +26,7 @@ pub struct BlockContribution {
 }
 
 /// Persistent state for a code-block across quality layers.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockState {
     /// Total accumulated coding passes.
     pub num_passes: u16,
@@ -52,8 +52,8 @@ impl BlockState {
 /// Result of parsing one packet for an entire precinct.
 #[derive(Debug, Clone)]
 pub struct PacketParseResult {
-    /// Per-block contributions [subband][block]; inner vec in raster order.
-    pub contributions: Vec<Vec<BlockContribution>>,
+    /// Included blocks per subband, `(raster index, contribution)`, raster order.
+    pub contributions: Vec<Vec<(u32, BlockContribution)>>,
     /// Body bytes to read after the packet header.
     pub body_bytes: u64,
     /// Header bytes consumed (for accounting).
@@ -81,10 +81,7 @@ pub fn comb_packet_header(
 
     if !non_empty {
         // Empty packet — no contributions.
-        let contributions = block_states
-            .iter()
-            .map(|bs| vec![BlockContribution::default(); bs.len()])
-            .collect();
+        let contributions = (0..block_states.len()).map(|_| Vec::new()).collect();
         let header_bytes = reader.fasten_off()?;
         return Ok(PacketParseResult {
             contributions,
@@ -96,19 +93,20 @@ pub fn comb_packet_header(
 
     let mut total_body_bytes: u64 = 0;
     let num_subbands = block_states.len();
-    let mut contributions: Vec<Vec<BlockContribution>> = Vec::with_capacity(num_subbands);
+    let mut contributions: Vec<Vec<(u32, BlockContribution)>> = Vec::with_capacity(num_subbands);
 
     for sb in 0..num_subbands {
         let tree = &mut tagtrees[sb];
         let blocks = &mut block_states[sb];
         let num_blocks = blocks.len();
-        let mut sb_contribs = Vec::with_capacity(num_blocks);
+        let mut sb_contribs = Vec::new();
 
-        for (blk_idx, block) in blocks.iter_mut().enumerate() {
+        // A node reads bits only at its first leaf under a known parent.
+        tree.comb_live_leaves(num_blocks, |tree, blk_idx| {
             let contrib = comb_block_contribution(
                 reader,
                 tree,
-                block,
+                &mut blocks[blk_idx],
                 blk_idx,
                 layer_idx,
                 empty_packets_before,
@@ -119,8 +117,11 @@ pub fn comb_packet_header(
                 .take(contrib.num_segments as usize)
                 .map(|&l| l as u64)
                 .sum::<u64>();
-            sb_contribs.push(contrib);
-        }
+            if contrib.new_passes != 0 {
+                sb_contribs.push((blk_idx as u32, contrib));
+            }
+            Ok(())
+        })?;
         contributions.push(sb_contribs);
     }
 
@@ -223,7 +224,7 @@ fn tally_passes(reader: &mut PacketBitReader) -> Result<u8, PacketError> {
 }
 
 /// Errors during packet parsing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PacketError {
     /// Ran out of data in the packet header.
     Truncated,
@@ -249,3 +250,156 @@ impl std::fmt::Display for PacketError {
 }
 
 impl std::error::Error for PacketError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scan_every_block(
+        reader: &mut PacketBitReader,
+        tagtrees: &mut [TagTree],
+        block_states: &mut [Vec<BlockState>],
+        layer_idx: u16,
+    ) -> Result<PacketParseResult, PacketError> {
+        let non_empty = reader.pluck_bit()? != 0;
+        if !non_empty {
+            let contributions = (0..block_states.len()).map(|_| Vec::new()).collect();
+            return Ok(PacketParseResult {
+                contributions,
+                body_bytes: 0,
+                header_bytes: reader.fasten_off()?,
+                non_empty: false,
+            });
+        }
+        let mut total_body_bytes = 0u64;
+        let mut contributions = Vec::with_capacity(block_states.len());
+        for sb in 0..block_states.len() {
+            let mut sb_contribs = Vec::with_capacity(block_states[sb].len());
+            for blk_idx in 0..block_states[sb].len() {
+                let contrib = comb_block_contribution(
+                    reader,
+                    &mut tagtrees[sb],
+                    &mut block_states[sb][blk_idx],
+                    blk_idx,
+                    layer_idx,
+                    0,
+                )?;
+                total_body_bytes += contrib
+                    .segment_lengths
+                    .iter()
+                    .take(contrib.num_segments as usize)
+                    .map(|&l| l as u64)
+                    .sum::<u64>();
+                if contrib.new_passes != 0 {
+                    sb_contribs.push((blk_idx as u32, contrib));
+                }
+            }
+            contributions.push(sb_contribs);
+        }
+        Ok(PacketParseResult {
+            contributions,
+            body_bytes: total_body_bytes,
+            header_bytes: reader.fasten_off()?,
+            non_empty: true,
+        })
+    }
+
+    struct Rng(u64);
+    impl Rng {
+        fn next(&mut self) -> u32 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1);
+            (self.0 >> 32) as u32
+        }
+    }
+
+    #[test]
+    fn live_leaves_match_a_full_block_scan() {
+        let mut rng = Rng(0x5A17_7A9_u64);
+        let shapes = [(1u32, 1u32), (1, 5), (5, 1), (3, 3), (3, 5), (8, 3), (7, 7)];
+        for (w, h) in shapes {
+            check_shapes(&mut rng, &[(w, h)]);
+        }
+        for _ in 0..40 {
+            let bands = 1 + (rng.next() % 2) as usize;
+            let shapes: Vec<(u32, u32)> = (0..bands)
+                .map(|_| (1 + rng.next() % 8, 1 + rng.next() % 8))
+                .collect();
+            check_shapes(&mut rng, &shapes);
+        }
+    }
+
+    fn check_shapes(rng: &mut Rng, shapes: &[(u32, u32)]) {
+        let nbytes = 1 + (rng.next() % 64) as usize;
+        let data: Vec<u8> = (0..nbytes).map(|_| rng.next() as u8).collect();
+        let mut trees_a: Vec<TagTree> = shapes.iter().map(|&(w, h)| TagTree::warp(w, h)).collect();
+        let mut trees_b = trees_a.clone();
+        let mut states_a: Vec<Vec<BlockState>> = shapes
+            .iter()
+            .map(|&(w, h)| vec![BlockState::warp(); (w * h) as usize])
+            .collect();
+        let mut states_b = states_a.clone();
+        for layer in 0..3u16 {
+            let live = comb_packet_header(
+                &mut PacketBitReader::warp(&data),
+                &mut trees_a,
+                &mut states_a,
+                layer,
+                0,
+            );
+            let full = scan_every_block(
+                &mut PacketBitReader::warp(&data),
+                &mut trees_b,
+                &mut states_b,
+                layer,
+            );
+            match (live, full) {
+                (Ok(live), Ok(full)) => {
+                    assert_eq!(live.non_empty, full.non_empty, "layer {layer} {shapes:?}");
+                    assert_eq!(
+                        live.header_bytes, full.header_bytes,
+                        "layer {layer} {shapes:?}"
+                    );
+                    assert_eq!(live.body_bytes, full.body_bytes, "layer {layer} {shapes:?}");
+                    assert_eq!(
+                        live.contributions, full.contributions,
+                        "layer {layer} {shapes:?}"
+                    );
+                    assert_eq!(states_a, states_b, "layer {layer} {shapes:?}");
+                }
+                (Err(a), Err(b)) => {
+                    assert_eq!(a, b, "layer {layer} {shapes:?}");
+                    break;
+                }
+                (live, full) => panic!("layer {layer} {shapes:?}: {live:?} vs {full:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn root_exclusion_does_not_scan_the_grid() {
+        let side = 2048u32;
+        let blocks = (side * side) as usize;
+        let mut trees = vec![TagTree::warp(side, side)];
+        let mut states = vec![vec![BlockState::warp(); blocks]];
+        // Non-empty packet, then a 0 bit.
+        let data = [0x80u8];
+        let started = std::time::Instant::now();
+        for layer in 0..4u16 {
+            let parsed = comb_packet_header(
+                &mut PacketBitReader::warp(&data),
+                &mut trees,
+                &mut states,
+                layer,
+                0,
+            )
+            .expect("header parses");
+            assert_eq!(parsed.body_bytes, 0);
+            assert!(parsed.contributions[0].is_empty());
+        }
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_millis(50),
+            "excluded {blocks} blocks took {elapsed:?}"
+        );
+    }
+}

@@ -1366,7 +1366,7 @@ fn comb_tile(
                 pkt.prec, pkt.layer, parsed.body_bytes, parsed.non_empty
             );
             for (band_idx, contribs) in parsed.contributions.iter().enumerate() {
-                for (li, ct) in contribs.iter().enumerate() {
+                for &(li, ct) in contribs {
                     if ct.new_passes != 0 {
                         eprintln!(
                             "  band={band_idx} blk={li} passes={} msbs={} len={}",
@@ -1392,7 +1392,7 @@ fn comb_tile(
         for (band_idx, pb) in bands_to_fill.iter().enumerate() {
             let contribs = &parsed.contributions[band_idx];
             let band = &mut comps[c][r].bands[band_idx];
-            for (li, contrib) in contribs.iter().enumerate() {
+            for &(li, contrib) in contribs {
                 if contrib.new_passes == 0 {
                     continue;
                 }
@@ -1401,8 +1401,8 @@ fn comb_tile(
                     .iter()
                     .take(contrib.num_segments as usize)
                     .sum();
-                let lx = li as u32 % pb.nbw;
-                let ly = li as u32 / pb.nbw;
+                let lx = li % pb.nbw;
+                let ly = li / pb.nbw;
                 // classic abandons the tile at a block claiming more missing
                 // bit planes than its band has, so a plan that kept parsing
                 // would decode bytes classic never reads
