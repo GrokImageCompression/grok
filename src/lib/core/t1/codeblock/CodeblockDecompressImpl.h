@@ -299,11 +299,6 @@ struct CodeblockDecompressImpl : public CodeblockImpl
         newSegment(cblk_sty);
 
     } while(remainingPassesInLayer > 0);
-    // LOCAL-ONLY debug: mirror mercury's MERCURY_PKT_DEBUG block dump
-    static const bool pktDebug = std::getenv("GRK_PKT_DEBUG") != nullptr;
-    if(pktDebug)
-      fprintf(stderr, "  GBLK passes=%u numbps=%u len=%u\n", getNumPassesInLayer(layno), numbps(),
-              segs_.back()->signalledBytesInLayer_.get(layno));
   }
 
   /**

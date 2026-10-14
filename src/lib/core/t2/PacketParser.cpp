@@ -149,11 +149,6 @@ uint32_t PacketParser::readHeader(void)
   try
   {
     tagBitsPresent_ = bio->read();
-    // LOCAL-ONLY debug: mirror mercury's MERCURY_PKT_DEBUG packet dump
-    static const bool pktDebug = std::getenv("GRK_PKT_DEBUG") != nullptr;
-    if(pktDebug)
-      fprintf(stderr, "GPKT comp=%u res=%u prec=%lu layer=%u nonempty=%u\n", compno_, resno_,
-              (unsigned long)precinctIndex_, layno_, (unsigned)tagBitsPresent_);
     // grklog.info("present=%u ", present);
     if(tagBitsPresent_)
     {

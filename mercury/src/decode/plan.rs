@@ -997,7 +997,6 @@ fn comb_tile(
     plt: Option<&[u32]>,
     wins: Option<&[TileCompWindow]>,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
-    let pkt_debug = std::env::var_os("MERCURY_PKT_DEBUG").is_some();
     let num_comps = geom.components.len();
     // Resolution counts and the reduce target are per component (COC).
     let n_res = |c: usize| cod.comps[c].num_levels as usize + 1;
@@ -1363,22 +1362,6 @@ fn comb_tile(
         )
         .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
         let mut hdr_len = parsed.header_bytes as u64;
-        if pkt_debug {
-            eprintln!(
-                "PKT c={c} r={r} prec={} layer={} vpos={vpos} hdr={hdr_len} body={} nonempty={}",
-                pkt.prec, pkt.layer, parsed.body_bytes, parsed.non_empty
-            );
-            for (band_idx, contribs) in parsed.contributions.iter().enumerate() {
-                for &(li, ct) in contribs {
-                    if ct.new_passes != 0 {
-                        eprintln!(
-                            "  band={band_idx} blk={li} passes={} msbs={} len={}",
-                            ct.new_passes, ct.missing_msbs, ct.segment_lengths[0]
-                        );
-                    }
-                }
-            }
-        }
 
         // EPH marker (2 bytes) terminates the packet header, if signalled.
         if cod.use_eph {

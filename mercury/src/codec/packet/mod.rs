@@ -91,8 +91,6 @@ pub struct PacketParseResult {
     pub body_bytes: u64,
     /// Header bytes consumed (for accounting).
     pub header_bytes: u32,
-    /// Packet non-empty (first bit was 1).
-    pub non_empty: bool,
 }
 
 /// Parse a single packet header for a precinct.
@@ -120,7 +118,6 @@ pub fn comb_packet_header<S: HeaderBytes>(
             contributions,
             body_bytes: 0,
             header_bytes,
-            non_empty: false,
         });
     }
 
@@ -165,7 +162,6 @@ pub fn comb_packet_header<S: HeaderBytes>(
         contributions,
         body_bytes: total_body_bytes,
         header_bytes,
-        non_empty: true,
     })
 }
 
@@ -305,7 +301,6 @@ mod tests {
                 contributions,
                 body_bytes: 0,
                 header_bytes: reader.fasten_off()?,
-                non_empty: false,
             });
         }
         let mut total_body_bytes = 0u64;
@@ -333,7 +328,6 @@ mod tests {
             contributions,
             body_bytes: total_body_bytes,
             header_bytes: reader.fasten_off()?,
-            non_empty: true,
         })
     }
 
@@ -387,7 +381,6 @@ mod tests {
             );
             match (live, full) {
                 (Ok(live), Ok(full)) => {
-                    assert_eq!(live.non_empty, full.non_empty, "layer {layer} {shapes:?}");
                     assert_eq!(
                         live.header_bytes, full.header_bytes,
                         "layer {layer} {shapes:?}"
