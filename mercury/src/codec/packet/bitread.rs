@@ -5,9 +5,22 @@
 
 use super::PacketError;
 
-/// Bit reader over a byte slice with JPEG 2000 byte-stuffing rules.
-pub struct PacketBitReader<'a> {
-    data: &'a [u8],
+pub trait HeaderBytes {
+    fn byte(&mut self, index: usize) -> Result<u8, PacketError>;
+}
+
+impl<T: AsRef<[u8]> + ?Sized> HeaderBytes for &T {
+    fn byte(&mut self, index: usize) -> Result<u8, PacketError> {
+        self.as_ref()
+            .get(index)
+            .copied()
+            .ok_or(PacketError::Truncated)
+    }
+}
+
+/// Bit reader over packet-header bytes with JPEG 2000 byte-stuffing rules.
+pub struct PacketBitReader<S> {
+    src: S,
     pos: usize,
     /// Current byte being consumed.
     byte: u8,
@@ -18,11 +31,11 @@ pub struct PacketBitReader<'a> {
     header_bytes: u32,
 }
 
-impl<'a> PacketBitReader<'a> {
-    /// New reader over the slice.
-    pub fn warp(data: &'a [u8]) -> Self {
+impl<S: HeaderBytes> PacketBitReader<S> {
+    /// New reader over `src`.
+    pub fn warp(src: S) -> Self {
         Self {
-            data,
+            src,
             pos: 0,
             byte: 0,
             bits_left: 0,
@@ -36,13 +49,18 @@ impl<'a> PacketBitReader<'a> {
         if self.prev_ff && self.byte >= 0x90 {
             return Err(PacketError::InvalidMarker);
         }
-        if self.pos >= self.data.len() {
-            self.bits_left = 0;
-            return Err(PacketError::Truncated);
-        }
+        let next = match self.src.byte(self.pos) {
+            Ok(b) => b,
+            Err(PacketError::Truncated) => {
+                self.bits_left = 0;
+                return Err(PacketError::Truncated);
+            }
+            Err(e) => return Err(e),
+        };
+        // the marker check runs on the next load
         self.prev_ff = self.byte == 0xFF;
         self.bits_left = if self.prev_ff { 7 } else { 8 };
-        self.byte = self.data[self.pos];
+        self.byte = next;
         self.pos += 1;
         self.header_bytes += 1;
         Ok(())

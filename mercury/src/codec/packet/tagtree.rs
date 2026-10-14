@@ -6,7 +6,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use super::PacketError;
-use super::bitread::PacketBitReader;
+use super::bitread::{HeaderBytes, PacketBitReader};
 
 /// One node's persistent state.
 #[derive(Debug, Clone, Copy, Default)]
@@ -186,9 +186,9 @@ impl TagTree {
 
     /// Decode inclusion; true if the block is included in the current packet
     /// (inclusion value equals layer_idx). `threshold` = layer_idx + 1.
-    pub fn comb_inclusion(
+    pub fn comb_inclusion<S: HeaderBytes>(
         &mut self,
-        reader: &mut PacketBitReader,
+        reader: &mut PacketBitReader<S>,
         blk_idx: usize,
         threshold: u16,
     ) -> Result<bool, PacketError> {
@@ -267,9 +267,9 @@ impl TagTree {
     /// Decode missing MSBs for a block (after first inclusion). Repeatedly
     /// walks root→leaf with threshold = leaf.wbar + 1, decoding internal nodes
     /// then one leaf bit; leaf '1' bit ends it. Returns missing-MSB plane count.
-    pub fn comb_msbs(
+    pub fn comb_msbs<S: HeaderBytes>(
         &mut self,
-        reader: &mut PacketBitReader,
+        reader: &mut PacketBitReader<S>,
         blk_idx: usize,
     ) -> Result<u8, PacketError> {
         let n = self.levels.len();

@@ -8,7 +8,7 @@
 mod bitread;
 mod tagtree;
 
-pub use bitread::PacketBitReader;
+pub use bitread::{HeaderBytes, PacketBitReader};
 pub use tagtree::TagTree;
 
 /// Descriptor for a single code-block's contribution in one packet.
@@ -69,8 +69,8 @@ pub struct PacketParseResult {
 /// `block_states` — per-subband block states (persistent across layers).
 /// `layer_idx` — current quality layer index.
 /// `empty_packets_before` — consecutive empty packets before this one.
-pub fn comb_packet_header(
-    reader: &mut PacketBitReader,
+pub fn comb_packet_header<S: HeaderBytes>(
+    reader: &mut PacketBitReader<S>,
     tagtrees: &mut [TagTree],
     block_states: &mut [Vec<BlockState>],
     layer_idx: u16,
@@ -135,8 +135,8 @@ pub fn comb_packet_header(
 }
 
 /// Parse a single block's contribution in a packet header.
-fn comb_block_contribution(
-    reader: &mut PacketBitReader,
+fn comb_block_contribution<S: HeaderBytes>(
+    reader: &mut PacketBitReader<S>,
     tree: &mut TagTree,
     block: &mut BlockState,
     blk_idx: usize,
@@ -205,7 +205,7 @@ fn comb_block_contribution(
 
 /// Decode number of new coding passes (standard variable-length code):
 /// 1 → 1, 01 → 2, 0000..0(5 bits) → 3-6, 00000..0(7 bits) → 6-37, etc.
-fn tally_passes(reader: &mut PacketBitReader) -> Result<u8, PacketError> {
+fn tally_passes<S: HeaderBytes>(reader: &mut PacketBitReader<S>) -> Result<u8, PacketError> {
     let mut passes: u32 = 1;
     passes += reader.pluck_bit()?;
     if passes >= 2 {
@@ -235,6 +235,7 @@ pub enum PacketError {
     IllegalMissingMsbs,
     /// Tag tree decoding error.
     TagTreeError,
+    Read(String),
 }
 
 impl std::fmt::Display for PacketError {
@@ -245,6 +246,7 @@ impl std::fmt::Display for PacketError {
             Self::PrecisionOverflow => write!(f, "precision overflow"),
             Self::IllegalMissingMsbs => write!(f, "illegal missing MSBs (>74)"),
             Self::TagTreeError => write!(f, "tag tree decoding error"),
+            Self::Read(msg) => write!(f, "reading packet header: {msg}"),
         }
     }
 }
@@ -255,8 +257,8 @@ impl std::error::Error for PacketError {}
 mod tests {
     use super::*;
 
-    fn scan_every_block(
-        reader: &mut PacketBitReader,
+    fn scan_every_block<S: HeaderBytes>(
+        reader: &mut PacketBitReader<S>,
         tagtrees: &mut [TagTree],
         block_states: &mut [Vec<BlockState>],
         layer_idx: u16,

@@ -16,7 +16,9 @@ use std::sync::Arc;
 
 use crate::decode::ReadAt;
 
-use crate::codec::packet::{BlockState, PacketBitReader, TagTree, comb_packet_header};
+use crate::codec::packet::{
+    BlockState, HeaderBytes, PacketBitReader, PacketError, TagTree, comb_packet_header,
+};
 use crate::codec::params::{CodParams, ProgressionOrder, ProgressionVolume, QcdParams, SizParams};
 use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
 use crate::decode::DecodeError;
@@ -229,8 +231,6 @@ struct StreamWin<'f> {
 }
 
 const WIN_SIZE: usize = 4 << 20;
-/// Max bytes handed to one packet-header parse.
-const MAX_HDR: usize = 256 << 10;
 
 impl<'f> StreamWin<'f> {
     fn warp(file: &'f dyn ReadAt) -> std::io::Result<Self> {
@@ -244,20 +244,39 @@ impl<'f> StreamWin<'f> {
         })
     }
 
-    /// A slice starting at absolute offset `off`, as long as available up to
-    /// `limit`, refilling the window if needed.
-    fn strand_at(&mut self, off: u64, limit: usize) -> std::io::Result<&[u8]> {
-        let want = limit.min(MAX_HDR).min((self.file_len - off) as usize);
-        let in_window =
-            off >= self.buf_off && off + want as u64 <= self.buf_off + self.valid as u64;
-        if !in_window {
+    fn byte_at(&mut self, off: u64) -> std::io::Result<u8> {
+        if off >= self.file_len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "packet header read past end of file",
+            ));
+        }
+        let covered = off >= self.buf_off && off < self.buf_off + self.valid as u64;
+        if !covered {
             let n = WIN_SIZE.min((self.file_len - off) as usize);
             self.file.draw_at(&mut self.buf[..n], off)?;
             self.buf_off = off;
             self.valid = n;
         }
-        let start = (off - self.buf_off) as usize;
-        Ok(&self.buf[start..start + want])
+        Ok(self.buf[(off - self.buf_off) as usize])
+    }
+}
+
+struct TilePartBytes<'a, 'f> {
+    win: &'a mut StreamWin<'f>,
+    origin: u64,
+    limit: u64,
+}
+
+impl HeaderBytes for TilePartBytes<'_, '_> {
+    fn byte(&mut self, index: usize) -> Result<u8, PacketError> {
+        let index = index as u64;
+        if index >= self.limit {
+            return Err(PacketError::Truncated);
+        }
+        self.win
+            .byte_at(self.origin + index)
+            .map_err(|e| PacketError::Read(e.to_string()))
     }
 }
 
@@ -1006,10 +1025,7 @@ fn comb_tile(
         grids.push(g);
     }
 
-    // Every packet spends at least one bit of packet data, so a tile whose
-    // declared packet count needs more than eight bits per byte it has cannot
-    // be real. Checked before the enumeration below so neither that loop nor
-    // `pkts` ever scales with a hostile precinct count.
+    // Each packet takes at least one byte (T.800 B.10).
     let declared_packets = grids
         .iter()
         .flatten()
@@ -1020,7 +1036,7 @@ fn comb_tile(
                     .saturating_mul(cod.num_layers as u64),
             )
         });
-    if declared_packets / 8 > stream.total {
+    if declared_packets > stream.total {
         return Err(DecodeError::Logic(format!(
             "plan: {declared_packets} declared packets in a tile of {} packet bytes",
             stream.total
@@ -1066,20 +1082,7 @@ fn comb_tile(
                     let xpos =
                         prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
                     let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
-                    // every code-block spends at least one header bit, so a
-                    // precinct needing more than eight header bits per byte the
-                    // tile has cannot be real (classic's PacketParser check)
-                    let prec_blocks: u64 = prec_bands
-                        .iter()
-                        .map(|pb| pb.nbw as u64 * pb.nbh as u64)
-                        .sum();
-                    if prec_blocks / 8 > stream.total {
-                        return Err(DecodeError::Logic(format!(
-                            "plan: precinct with {prec_blocks} code-blocks in a tile of {} \
-                             packet bytes",
-                            stream.total
-                        )));
-                    }
+                    // A tag tree can exclude every code-block in a few bits.
                     let in_win = wins
                         .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
                         .unwrap_or(true);
@@ -1347,10 +1350,11 @@ fn comb_tile(
         }
 
         let (real_pos, seg_avail) = stream.unspool(vpos)?;
-        let slice = win
-            .strand_at(real_pos, seg_avail as usize)
-            .map_err(io_snag)?;
-        let mut reader = PacketBitReader::warp(slice);
+        let mut reader = PacketBitReader::warp(TilePartBytes {
+            win: &mut *win,
+            origin: real_pos,
+            limit: seg_avail,
+        });
         let parsed = comb_packet_header(
             &mut reader,
             &mut state.trees,
@@ -1998,13 +2002,10 @@ mod tests {
         }
     }
 
-    /// Layer count high enough that the 8x8 stream's two precincts declare more
-    /// packets than eight per byte the tile carries.
+    /// Layers past the bytes the 8x8 tile has for its two precincts.
     const OVERSIZED_LAYERS: u16 = 10_000;
 
-    /// A packet costs at least one bit of packet data, so a tile declaring more
-    /// packets than its bytes can hold is rejected before the packet schedule
-    /// is enumerated.
+    /// One byte per packet.
     #[test]
     fn more_declared_packets_than_the_tile_bytes_is_rejected() {
         let stream = synth_stream();
@@ -2053,9 +2054,8 @@ mod tests {
 
         // SOT (12) + SOD (2) ahead of the packets, EOC (2) behind them
         let packet_bytes = hdr.codestream_len as usize - 16;
-        // two packets per layer, each needing at least one bit of the tile's
-        // packet bytes: one layer too many unless the trailing bytes count
-        hdr.cod.num_layers = (4 * packet_bytes + 4) as u16;
+        // one layer past two packets per layer
+        hdr.cod.num_layers = ((packet_bytes / 2) + 1) as u16;
         let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
             panic!("the trailing bytes must not pad the tile's packet bytes");
         };
@@ -2079,6 +2079,50 @@ mod tests {
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "{trailing}");
             assert_eq!(passes(&plan), passes(&baseline), "{trailing}");
         }
+    }
+
+    #[test]
+    fn a_header_byte_past_the_window_is_read_from_the_file() {
+        let past = WIN_SIZE + 3;
+        let mut file = vec![0u8; past + 1];
+        file[0] = 0x11;
+        file[WIN_SIZE - 1] = 0x22;
+        file[WIN_SIZE] = 0x33;
+        file[past] = 0x44;
+        let mut win = StreamWin::warp(&file).unwrap();
+        assert_eq!(win.byte_at(0).unwrap(), 0x11);
+        assert_eq!(win.byte_at((WIN_SIZE - 1) as u64).unwrap(), 0x22);
+        assert_eq!(win.byte_at(WIN_SIZE as u64).unwrap(), 0x33);
+        assert_eq!(win.byte_at(past as u64).unwrap(), 0x44);
+        // still the file byte after the window slid forward
+        assert_eq!(win.byte_at(0).unwrap(), 0x11);
+        assert!(win.byte_at(file.len() as u64).is_err());
+    }
+
+    #[test]
+    fn a_packet_header_reads_past_a_quarter_megabyte_and_stops_at_the_tile_part() {
+        const AT: usize = (256 << 10) + 7;
+        let mut file = vec![0u8; AT + 1];
+        file[AT] = 0b1010_0000;
+        let mut win = StreamWin::warp(&file).unwrap();
+        let mut reader = PacketBitReader::warp(TilePartBytes {
+            win: &mut win,
+            origin: 0,
+            limit: file.len() as u64,
+        });
+        for _ in 0..AT {
+            assert_eq!(reader.pluck_bits(8).unwrap(), 0);
+        }
+        assert_eq!(reader.pluck_bits(4).unwrap(), 0b1010);
+
+        let mut win = StreamWin::warp(&file).unwrap();
+        let mut reader = PacketBitReader::warp(TilePartBytes {
+            win: &mut win,
+            origin: 0,
+            limit: 1,
+        });
+        assert_eq!(reader.pluck_bits(8).unwrap(), 0);
+        assert!(matches!(reader.pluck_bit(), Err(PacketError::Truncated)));
     }
 
     fn packet_lengths(packets: &[Vec<u8>]) -> Vec<u32> {
