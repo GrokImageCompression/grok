@@ -209,6 +209,18 @@ if(GRK_ENABLE_MERCURY)
               --irreversible)
   endif()
 
+  add_executable(grk_mercury_forward_dwt_test GrkMercuryForwardDwtTest.cpp)
+  target_link_libraries(grk_mercury_forward_dwt_test ${GROK_CORE_NAME})
+  add_test(NAME grk_mercury_forward_dwt_test COMMAND grk_mercury_forward_dwt_test)
+
+  add_executable(grk_mercury_forward_ict_test GrkMercuryForwardIctTest.cpp)
+  target_link_libraries(grk_mercury_forward_ict_test ${GROK_CORE_NAME})
+  add_test(NAME grk_mercury_forward_ict_test COMMAND grk_mercury_forward_ict_test)
+
+  add_executable(grk_mercury_dci_encode_test GrkMercuryDciEncodeTest.cpp)
+  target_link_libraries(grk_mercury_dci_encode_test ${GROK_CORE_NAME})
+  add_test(NAME grk_mercury_dci_encode_test COMMAND grk_mercury_dci_encode_test)
+
   # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
   add_executable(grk_mercury_progressions_test GrkMercuryProgressionsTest.cpp)
   target_link_libraries(grk_mercury_progressions_test ${GROK_CORE_NAME} spdlog::spdlog)

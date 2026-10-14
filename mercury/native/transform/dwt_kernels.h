@@ -25,9 +25,9 @@ struct merc_lifting_step
 };
 
 // Highway-dispatched DWT lifting/interleave kernels (multi-target, runtime-
-// selected). Defined in hwy_dwt.cpp; the C bridge in mercury_dwt_bridge.cpp
-// forwards the mercury_* FFI surface to these. Only the kernels the decoder
-// dispatches to are declared.
+// selected). Defined in hwy_dwt.cpp and hwy_dwt_analysis.cpp. The C bridge in
+// mercury_dwt_bridge.cpp forwards the mercury_* FFI surface to these. Only the
+// kernels mercury dispatches to are declared.
 
 extern int hwy_lanes_32();
 extern void hwy_interleave_16(int16_t*, int16_t*, int16_t*, int);
@@ -50,5 +50,7 @@ extern void hwy_hlift_16_97_s3(int16_t*, int16_t*, int);
 extern void hwy_hlift_32_5x3_synth_s0(int32_t*, int32_t*, int, merc_lifting_step*);
 extern void hwy_hlift_32_5x3_synth_s1(int32_t*, int32_t*, int, merc_lifting_step*);
 extern void hwy_hlift_32_2tap_irrev(int32_t*, int32_t*, int, merc_lifting_step*);
+extern void hwy_analysis_lift_97(int, float*, const float*, const float*, int);
+extern void hwy_analysis_deinterleave_32(const uint32_t*, uint32_t*, uint32_t*, int);
 
 } // namespace mercury_native

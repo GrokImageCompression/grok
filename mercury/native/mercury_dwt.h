@@ -67,6 +67,39 @@ void mercury_hwy_hply_32_5x3_weave_s0(int32_t* src, int32_t* dst, int samples,
 void mercury_hwy_hply_32_5x3_weave_s1(int32_t* src, int32_t* dst, int samples,
                                       MercuryLiftingStep* step);
 
+/* forward 9/7 lifting, one step over one row */
+void mercury_hwy_analysis_lift_97(int step, float* target, const float* left, const float* right,
+                                  int samples);
+
+/* split `pairs` sample pairs into even and odd samples */
+void mercury_hwy_analysis_deinterleave_32(const uint32_t* row, uint32_t* even, uint32_t* odd,
+                                          int pairs);
+
+/* grok's irreversible quantization into sign-magnitude with six fraction bits */
+uint32_t mercury_hwy_quantize_97(const float* stripe, int stride, int columns, int rows,
+                                 double quant, int32_t* block);
+
+/* grok's part-1 block coder for code-block style 0; returns the pass count */
+int32_t mercury_t1_encode_block(const int32_t* samples, int32_t num_cols, int32_t num_rows,
+                                uint32_t max_magnitude, int32_t orientation, int32_t compno,
+                                int32_t level, double stepsize, int32_t mct,
+                                const uint8_t** coded_data, uint16_t* pass_rates,
+                                double* pass_distortions, uint8_t* pass_terminated,
+                                int32_t* numbps);
+
+/* grok's forward irreversible colour transform over one row, `dc_shift` added first */
+void mercury_hwy_forward_ict(const int32_t* red, const int32_t* green, const int32_t* blue,
+                             int32_t dc_shift, float* luma, float* chroma_blue, float* chroma_red,
+                             int samples);
+
+/* grok's Quantizer::generate step exponent and mantissa for one irreversible band */
+void mercury_t1_band_step(uint8_t numresolutions, uint8_t max_bit_depth, uint8_t bandno,
+                          double stepScale, uint8_t* exponent, uint16_t* mantissa);
+
+/* grok's RateControl::convexHull over one block's passes */
+void mercury_rate_convex_hull(const uint16_t* lens, const double* distortions, uint16_t* slopes,
+                              uint32_t num_passes);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

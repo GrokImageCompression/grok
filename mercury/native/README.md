@@ -11,6 +11,9 @@ kernel symbols at the final C++ link, so [build.rs](../build.rs) emits no C++.
 |------|------|
 | `transform/mercury_dwt_bridge.cpp` | `extern "C"` bridge forwarding the `mercury_*` FFI surface to the kernels |
 | `transform/hwy_dwt.cpp` | The vlift/hlift/interleave SIMD kernels (Highway `foreach_target` dynamic dispatch) |
+| `transform/hwy_dwt_analysis.cpp` | The forward 9/7 lifting and deinterleave kernels for the encoder, bit-identical to grok's `WaveletFwd.cpp` |
+| `transform/hwy_quantize.cpp` | The encoder's irreversible code-block quantization, bit-identical to grok's `Coder::preCompress` |
+| `transform/hwy_ict.cpp` | The encoder's forward irreversible colour transform, bit-identical to grok's `CompressIrrev` |
 | `transform/dwt_kernels.h` | The `merc_lifting_step` struct + `extern` decls of the dispatched kernels, used by the bridge |
 | `mercury_dwt.h` | C prototypes matching `ffi_dwt.rs` |
 

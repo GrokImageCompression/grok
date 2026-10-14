@@ -337,6 +337,13 @@ if(GRK_ENABLE_MERCURY)
   # left to right as grokj2k -> mercury -> kernels -> hwy.
   add_library(mercury_kernels STATIC
     ${MERCURY_DIR}/native/transform/hwy_dwt.cpp
+    ${MERCURY_DIR}/native/transform/hwy_dwt_analysis.cpp
+    ${MERCURY_DIR}/native/transform/hwy_quantize.cpp
+    ${MERCURY_DIR}/native/transform/hwy_ict.cpp
+    ${MERCURY_DIR}/native/t1enc/block_encoder.cpp
+    ${MERCURY_DIR}/native/t1enc/mqc.cpp
+    ${MERCURY_DIR}/native/t1enc/mqc_state.cpp
+    ${MERCURY_DIR}/native/t1enc/rate_hull.cpp
     ${MERCURY_DIR}/native/transform/mercury_dwt_bridge.cpp)
   set_target_properties(mercury_kernels PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -352,6 +359,13 @@ if(GRK_ENABLE_MERCURY)
     endif()
   endif()
   target_compile_options(mercury_kernels PRIVATE ${MERCURY_KERNEL_OPTS})
+  # the T1 encoder and the ICT are grok's code, built like grok's own
+  if(NOT MSVC)
+    set_source_files_properties(${MERCURY_DIR}/native/t1enc/block_encoder.cpp
+      ${MERCURY_DIR}/native/t1enc/mqc.cpp ${MERCURY_DIR}/native/t1enc/rate_hull.cpp
+      ${MERCURY_DIR}/native/transform/hwy_ict.cpp
+      PROPERTIES COMPILE_OPTIONS "-O3")
+  endif()
   target_compile_definitions(mercury_kernels PRIVATE
     HWY_STATIC_DEFINE TOOLCHAIN_MISS_ASM_HWCAP_H NDEBUG)
   target_include_directories(mercury_kernels PRIVATE
@@ -359,7 +373,9 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(mercury_kernels PRIVATE hwy)
 
   target_sources(${GROK_CORE_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_encode_shim.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mercury_encode_oracle.cpp)
 
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
     COMPILE_DEFINITIONS GRK_MERCURY_BUILD)

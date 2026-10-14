@@ -18,5 +18,6 @@ pub mod capi;
 pub(crate) mod codec;
 pub(crate) mod decode;
 pub(crate) mod dwt;
+pub(crate) mod encode;
 pub(crate) mod ffi_dwt;
 pub(crate) mod weft;

@@ -19,7 +19,10 @@ use crate::decode::ReadAt;
 use crate::codec::packet::{
     BandBlocks, HeaderBytes, PacketBitReader, PacketError, TagTree, comb_packet_header,
 };
-use crate::codec::params::{CodParams, ProgressionOrder, ProgressionVolume, QcdParams, SizParams};
+use crate::codec::packet_order::{
+    PrecBand, chart_prec_bands, chart_precinct_grids, chart_precinct_positions, order_packets,
+};
+use crate::codec::params::{CodParams, QcdParams, SizParams};
 use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
 use crate::decode::DecodeError;
 use crate::decode::window::comp_window;
@@ -362,15 +365,6 @@ struct PrecState {
     states: Vec<BandBlocks>,
 }
 
-/// Per-band block range of one precinct (band-global grid indices).
-#[derive(Clone)]
-struct PrecBand {
-    bx0: u32,
-    by0: u32,
-    nbw: u32,
-    nbh: u32,
-}
-
 /// Half-open block rectangle in the band-global block grid.
 #[derive(Clone, Copy)]
 struct BlockRect {
@@ -409,53 +403,6 @@ fn unite_block_rect(rect: &mut Option<BlockRect>, pb: &PrecBand) {
             y1: had.y1.max(add.y1),
         },
     });
-}
-
-/// Per-band block ranges of the precinct at grid position (px, py). Both the
-/// precinct and code-block grids are anchored at the canvas origin, so a block
-/// never straddles two precincts.
-fn chart_prec_bands(
-    res: &crate::codec::tile_geom::ResolutionGeom,
-    px: u32,
-    py: u32,
-    ps: crate::codec::params::PrecinctSize,
-    r: usize,
-    block_w: u32,
-    block_h: u32,
-) -> Vec<PrecBand> {
-    // for r > 0 the precinct halves into the band domain
-    let band_scale = if r == 0 { 1 } else { 2 };
-    let bpw = ps.width / band_scale;
-    let bph = ps.height / band_scale;
-    res.subbands
-        .iter()
-        .map(|sb| {
-            let rx0 = (px * bpw).max(sb.dims.x0);
-            let ry0 = (py * bph).max(sb.dims.y0);
-            let rx1 = ((px + 1) * bpw).min(sb.dims.x1);
-            let ry1 = ((py + 1) * bph).min(sb.dims.y1);
-            if rx0 >= rx1 || ry0 >= ry1 {
-                return PrecBand {
-                    bx0: 0,
-                    by0: 0,
-                    nbw: 0,
-                    nbh: 0,
-                };
-            }
-            let first_bx = sb.dims.x0 / block_w;
-            let first_by = sb.dims.y0 / block_h;
-            let bx0 = rx0 / block_w - first_bx;
-            let by0 = ry0 / block_h - first_by;
-            let bx1 = (rx1 - 1) / block_w - first_bx;
-            let by1 = (ry1 - 1) / block_h - first_by;
-            PrecBand {
-                bx0,
-                by0,
-                nbw: bx1 - bx0 + 1,
-                nbh: by1 - by0 + 1,
-            }
-        })
-        .collect()
 }
 
 /// `max_layers` keeps only the first that many quality layers (0 = all),
@@ -1002,27 +949,7 @@ fn comb_tile(
     let n_res = |c: usize| cod.comps[c].num_levels as usize + 1;
     let target_res = |c: usize| cod.comps[c].num_levels as usize - reduce as usize;
 
-    // --- precinct grids per (comp, res) ---
-    // grid[c][r] = (px0, py0, npx, npy); raster index = (py-py0)*npx + (px-px0).
-    let mut grids: Vec<Vec<(u32, u32, u32, u32)>> = Vec::with_capacity(num_comps);
-    for c in 0..num_comps {
-        let tc = &geom.components[c];
-        let mut g = Vec::with_capacity(n_res(c));
-        for r in 0..n_res(c) {
-            let res = &tc.resolutions[r];
-            if res.dims.is_empty() {
-                g.push((0, 0, 0, 0));
-                continue;
-            }
-            let ps = cod.comps[c].precinct_span(r as u8);
-            let px0 = res.dims.x0 / ps.width;
-            let py0 = res.dims.y0 / ps.height;
-            let px1 = (res.dims.x1 - 1) / ps.width;
-            let py1 = (res.dims.y1 - 1) / ps.height;
-            g.push((px0, py0, px1 - px0 + 1, py1 - py0 + 1));
-        }
-        grids.push(g);
-    }
+    let grids = chart_precinct_grids(cod, geom);
 
     // Each packet takes at least one byte (T.800 B.10).
     let declared_packets = grids
@@ -1043,9 +970,7 @@ fn comb_tile(
     }
 
     // --- per-precinct facts every progression volume reuses ---
-    // Position (for RPCL/PCRL/CPRL) is the precinct grid line at res r
-    // projected onto the reference grid, see prec_position.
-    // This walk also collects the block rectangle each band stores: the writer
+    // This walk collects the block rectangle each band stores: the writer
     // below fills every band of a precinct that passes the any-band window
     // predicate, so a band's rectangle unions its own range over all those
     // precincts, not just the ones whose slice of it is in the window.
@@ -1056,13 +981,11 @@ fn comb_tile(
                 .collect()
         })
         .collect();
-    // (ypos, xpos, in_win) per precinct, in raster index order.
-    let mut prec_info: Vec<Vec<Vec<(u64, u64, bool)>>> = (0..num_comps)
+    // in_win per precinct, in raster index order.
+    let mut prec_in_win: Vec<Vec<Vec<bool>>> = (0..num_comps)
         .map(|c| (0..n_res(c)).map(|_| Vec::new()).collect())
         .collect();
     for c in 0..num_comps {
-        let dx = siz.components[c].xr_siz as u64;
-        let dy = siz.components[c].yr_siz as u64;
         let tc = &geom.components[c];
         let style = &cod.comps[c];
         for r in 0..n_res(c) {
@@ -1073,13 +996,8 @@ fn comb_tile(
             let res = &tc.resolutions[r];
             let ps = style.precinct_span(r as u8);
             let (block_w, block_h) = style.block_span(r as u8);
-            let scale = 1u64 << (style.num_levels as u32 - r as u32);
             for py in py0..py0 + npy {
                 for px in px0..px0 + npx {
-                    let ypos =
-                        prec_position(py, py0, ps.height, res.dims.y0, geom.tile_y0, scale * dy);
-                    let xpos =
-                        prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
                     let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
                     let in_win = wins
                         .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
@@ -1089,75 +1007,23 @@ fn comb_tile(
                             unite_block_rect(&mut band_rects[c][r][band_idx], pb);
                         }
                     }
-                    prec_info[c][r].push((ypos, xpos, in_win));
+                    prec_in_win[c][r].push(in_win);
                 }
             }
         }
     }
 
-    // --- packet schedule, one progression volume at a time ---
-    let volumes = chart_volumes(cod, num_comps, (0..num_comps).map(n_res).max().unwrap_or(0))?;
-    // Volumes overlap, so a packet an earlier one already emitted is skipped
-    // (T.800 A.6.6); with a single volume nothing can repeat.
-    let mut emitted: Vec<Vec<Vec<bool>>> = if volumes.len() > 1 {
-        (0..num_comps)
-            .map(|c| {
-                (0..n_res(c))
-                    .map(|r| {
-                        let (_, _, npx, npy) = grids[c][r];
-                        vec![false; (npx * npy) as usize * cod.num_layers as usize]
-                    })
-                    .collect()
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-    let mut pkts: Vec<Pkt> = Vec::new();
-    let mut vol_pkts: Vec<([u64; 5], Pkt)> = Vec::new();
-    for vol in &volumes {
-        vol_pkts.clear();
-        for c in vol.comp_s as usize..vol.comp_e as usize {
-            for r in vol.res_s as usize..(vol.res_e as usize).min(n_res(c)) {
-                let (px0, py0, npx, _) = grids[c][r];
-                if npx == 0 {
-                    continue;
-                }
-                for (prec, &(ypos, xpos, in_win)) in prec_info[c][r].iter().enumerate() {
-                    let py = py0 + prec as u32 / npx;
-                    let px = px0 + prec as u32 % npx;
-                    for l in 0..vol.lay_e {
-                        let key = progression_key(
-                            vol.order, c as u64, r as u64, l as u64, py as u64, px as u64, ypos,
-                            xpos,
-                        );
-                        vol_pkts.push((
-                            key,
-                            Pkt {
-                                comp: c as u16,
-                                res: r as u8,
-                                layer: l,
-                                prec: prec as u32,
-                                in_win,
-                            },
-                        ));
-                    }
-                }
-            }
-        }
-        vol_pkts.sort_by_key(|p| p.0);
-        for (_, pkt) in vol_pkts.drain(..) {
-            if !emitted.is_empty() {
-                let slot = &mut emitted[pkt.comp as usize][pkt.res as usize]
-                    [pkt.prec as usize * cod.num_layers as usize + pkt.layer as usize];
-                if *slot {
-                    continue;
-                }
-                *slot = true;
-            }
-            pkts.push(pkt);
-        }
-    }
+    let positions = chart_precinct_positions(cod, siz, geom, &grids);
+    let pkts: Vec<Pkt> = order_packets(cod, &grids, &positions)?
+        .into_iter()
+        .map(|slot| Pkt {
+            comp: slot.comp,
+            res: slot.res,
+            layer: slot.layer,
+            prec: slot.prec,
+            in_win: prec_in_win[slot.comp as usize][slot.res as usize][slot.prec as usize],
+        })
+        .collect();
 
     // --- band plans, sized to the block rectangle the walk will fill ---
     let mut comps: Vec<Vec<ResPlan>> = Vec::with_capacity(num_comps);
@@ -1448,82 +1314,6 @@ fn comb_tile(
     Ok(comps)
 }
 
-/// The tile's progression volume list, clamped and rejected the way classic
-/// grok's `finalizePocs` does at the end of the main header. No POC is one
-/// volume covering every layer, resolution and component in the COD order.
-fn chart_volumes(
-    cod: &CodParams,
-    num_comps: usize,
-    max_res: usize,
-) -> Result<Vec<ProgressionVolume>, DecodeError> {
-    if cod.pocs.is_empty() {
-        return Ok(vec![ProgressionVolume {
-            res_s: 0,
-            comp_s: 0,
-            lay_e: cod.num_layers,
-            res_e: max_res as u8,
-            comp_e: num_comps as u16,
-            order: cod.order,
-        }]);
-    }
-    let mut volumes = Vec::with_capacity(cod.pocs.len());
-    for vol in &cod.pocs {
-        let mut vol = *vol;
-        vol.lay_e = vol.lay_e.min(cod.num_layers);
-        vol.res_e = vol.res_e.min(max_res as u8);
-        vol.comp_e = vol.comp_e.min(num_comps as u16);
-        if vol.res_s >= vol.res_e || vol.comp_s >= vol.comp_e || vol.lay_e == 0 {
-            return Err(DecodeError::Logic(format!(
-                "plan: empty POC volume, res {}..{} comp {}..{} layers {}",
-                vol.res_s, vol.res_e, vol.comp_s, vol.comp_e, vol.lay_e
-            )));
-        }
-        volumes.push(vol);
-    }
-    Ok(volumes)
-}
-
-/// Sort key of one packet under a progression order (T.800 B.12.1.1-5).
-#[allow(clippy::too_many_arguments)]
-fn progression_key(
-    order: ProgressionOrder,
-    comp: u64,
-    res: u64,
-    layer: u64,
-    py: u64,
-    px: u64,
-    ypos: u64,
-    xpos: u64,
-) -> [u64; 5] {
-    match order {
-        ProgressionOrder::Lrcp => [layer, res, comp, py, px],
-        ProgressionOrder::Rlcp => [res, layer, comp, py, px],
-        ProgressionOrder::Rpcl => [res, ypos, xpos, comp, layer],
-        ProgressionOrder::Pcrl => [ypos, xpos, comp, res, layer],
-        ProgressionOrder::Cprl => [comp, ypos, xpos, res, layer],
-    }
-}
-
-/// Reference-grid position of one precinct along an axis, the sort key of the
-/// position-ordered progressions. A first row or column the tile edge clips
-/// keys on the tile origin (T.800 B.12, the "y = ty0" case), which is what puts
-/// every resolution's first precinct on one key; the resolution origin misses
-/// the precinct grid exactly when it is clipped.
-fn prec_position(
-    index: u32,
-    first_index: u32,
-    prec_span: u32,
-    res_origin: u32,
-    tile_origin: u32,
-    projection: u64,
-) -> u64 {
-    if index == first_index && !res_origin.is_multiple_of(prec_span) {
-        tile_origin as u64
-    } else {
-        index as u64 * prec_span as u64 * projection
-    }
-}
-
 /// Ranging exponent epsilon_b for band `qcd_idx`.
 fn band_ranging(q: &QcdParams, qcd_idx: usize) -> Result<i32, DecodeError> {
     use crate::codec::params::QuantStyle;
@@ -1558,8 +1348,10 @@ fn io_snag(e: std::io::Error) -> DecodeError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codec::packet_order::prec_position;
     use crate::codec::params::{
-        CodingModes, CompCodingStyle, ProgressionOrder, QuantStyle, SizComponent, SizParams,
+        CodingModes, CompCodingStyle, ProgressionOrder, ProgressionVolume, QuantStyle,
+        SizComponent, SizParams,
     };
 
     const NUM_LEVELS: u8 = 5;

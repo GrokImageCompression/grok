@@ -132,4 +132,16 @@ void mercury_hwy_hply_32_5x3_weave_s1(int32_t* src, int32_t* dst, int samples,
   hwy_hlift_32_5x3_synth_s1(src, dst, samples, cast_step(step));
 }
 
+void mercury_hwy_analysis_lift_97(int step, float* target, const float* left, const float* right,
+                                  int samples)
+{
+  hwy_analysis_lift_97(step, target, left, right, samples);
+}
+
+void mercury_hwy_analysis_deinterleave_32(const uint32_t* row, uint32_t* even, uint32_t* odd,
+                                          int pairs)
+{
+  hwy_analysis_deinterleave_32(row, even, odd, pairs);
+}
+
 } /* extern "C" */

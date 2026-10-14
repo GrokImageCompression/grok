@@ -61,6 +61,24 @@ pub type MercuryT1Fn = extern "C" fn(
     out: *mut i32,
 ) -> i32;
 
+// a tier-1 block encoder with mercury_t1_encode_block's contract
+pub type MercuryT1EncodeFn = unsafe extern "C" fn(
+    samples: *const i32,
+    num_cols: i32,
+    num_rows: i32,
+    max_magnitude: u32,
+    orientation: i32,
+    compno: i32,
+    level: i32,
+    stepsize: f64,
+    mct: i32,
+    coded_data: *mut *const u8,
+    pass_rates: *mut u16,
+    pass_distortions: *mut f64,
+    pass_terminated: *mut u8,
+    numbps: *mut i32,
+) -> i32;
+
 /// Row delivery: `comps` points at `num_comps` row pointers, each `width`
 /// i32 samples. Pointers are valid only for the duration of the call.
 pub type MercuryRowFn =
@@ -1146,6 +1164,297 @@ pub extern "C" fn mercury_weave_comps_i16(
     threads: u32,
 ) -> i32 {
     weave_comp_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+// ─── Forward DWT check ───────────────────────────────────────────────────────
+
+struct MallatPyramid<'a, T: crate::dwt::analysis::AnalysisSample> {
+    levels: Vec<crate::dwt::analysis::LevelAnalysis<T>>,
+    low_rows_emitted: Vec<usize>,
+    high_rows_emitted: Vec<usize>,
+    output: &'a mut [T],
+    stride: usize,
+}
+
+impl<T: crate::dwt::analysis::AnalysisSample> MallatPyramid<'_, T> {
+    fn drain(&mut self, level: usize) {
+        while let Some(band) = self.levels[level].ready() {
+            let columns = self.levels[level].columns();
+            let row_index = match band {
+                crate::dwt::analysis::VerticalBand::Low => {
+                    self.low_rows_emitted[level] += 1;
+                    self.low_rows_emitted[level] - 1
+                }
+                crate::dwt::analysis::VerticalBand::High => {
+                    self.high_rows_emitted[level] += 1;
+                    self.levels[level].rows_split().low + self.high_rows_emitted[level] - 1
+                }
+            };
+            let start = row_index * self.stride;
+            let (low, high) =
+                self.output[start..start + columns.low + columns.high].split_at_mut(columns.low);
+            let deeper_level = level + 1;
+            if band == crate::dwt::analysis::VerticalBand::High || deeper_level == self.levels.len()
+            {
+                self.levels[level].emit(low, high);
+                continue;
+            }
+            let (current, deeper) = self.levels.split_at_mut(deeper_level);
+            deeper[0].feed(|target| current[level].emit(target, high));
+            self.drain(deeper_level);
+        }
+    }
+}
+
+fn forward_dwt_mallat<S: Copy, T: crate::dwt::analysis::AnalysisSample>(
+    input: &[S],
+    output: &mut [T],
+    stride: usize,
+    bounds: [u32; 4],
+    levels: u32,
+    convert: impl Fn(S) -> T,
+) {
+    let [x0, y0, x1, y1] = bounds;
+    let scaled = |coordinate: u32, level: u32| coordinate.div_ceil(1 << level);
+    let engines = (0..levels)
+        .map(|level| {
+            let (rx0, ry0) = (scaled(x0, level), scaled(y0, level));
+            let width = (scaled(x1, level) - rx0) as usize;
+            let height = (scaled(y1, level) - ry0) as usize;
+            crate::dwt::analysis::LevelAnalysis::warp(rx0, ry0, width, height)
+        })
+        .collect();
+    let mut pyramid = MallatPyramid {
+        levels: engines,
+        low_rows_emitted: vec![0; levels as usize],
+        high_rows_emitted: vec![0; levels as usize],
+        output,
+        stride,
+    };
+    let width = (x1 - x0) as usize;
+    for y in 0..(y1 - y0) as usize {
+        let row = &input[y * stride..y * stride + width];
+        pyramid.levels[0].feed(|target| {
+            for (sample, &source) in target.iter_mut().zip(row) {
+                *sample = convert(source);
+            }
+        });
+        pyramid.drain(0);
+    }
+}
+
+/// # Safety
+/// `input` and `output` hold the tile's rows `stride` samples apart and do not overlap,
+/// and `bounds` points to x0, y0, x1, y1.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_forward_dwt_tile(
+    reversible: bool,
+    input: *const c_void,
+    output: *mut c_void,
+    stride: u32,
+    bounds: *const u32,
+    levels: u32,
+    dc_shift: i32,
+    int_input: bool,
+) -> i32 {
+    if input.is_null() || output.is_null() || bounds.is_null() || levels == 0 {
+        return MERCURY_EBADARG;
+    }
+    let bounds: [u32; 4] = unsafe { std::ptr::read(bounds.cast()) };
+    let [x0, y0, x1, y1] = bounds;
+    if x1 < x0 || y1 < y0 || ((x1 - x0) as usize) > stride as usize {
+        return MERCURY_EBADARG;
+    }
+    let (width, height, stride) = ((x1 - x0) as usize, (y1 - y0) as usize, stride as usize);
+    let samples = if height == 0 {
+        0
+    } else {
+        (height - 1) * stride + width
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if reversible || int_input {
+            let input = unsafe { std::slice::from_raw_parts(input.cast::<i32>(), samples) };
+            if reversible {
+                let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
+                forward_dwt_mallat(input, output, stride, bounds, levels, |s| s - dc_shift);
+            } else {
+                let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
+                forward_dwt_mallat(input, output, stride, bounds, levels, |s| {
+                    s as f32 - dc_shift as f32
+                });
+            }
+        } else {
+            let input = unsafe { std::slice::from_raw_parts(input.cast::<f32>(), samples) };
+            let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
+            forward_dwt_mallat(input, output, stride, bounds, levels, |s| {
+                s - dc_shift as f32
+            });
+        }
+    }));
+    match r {
+        Ok(()) => MERCURY_OK,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
+/// # Safety
+/// `planes` points to `num_comps` planes of unsigned samples, rows `stride` samples apart,
+/// `bounds` to x0, y0, x1, y1, `band_stepsizes` to 3 * levels + 1 step sizes in classic band
+/// order, `t1` null for mercury's own block encoder, and `stats` to 3 counters: coded bytes,
+/// coding passes, code-blocks.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_encode_tile_blocks(
+    planes: *const *const i32,
+    num_comps: u32,
+    stride: u32,
+    bounds: *const u32,
+    levels: u32,
+    precision: u32,
+    precision_shift: u32,
+    block_width: u32,
+    block_height: u32,
+    band_stepsizes: *const f32,
+    t1: Option<MercuryT1EncodeFn>,
+    stats: *mut u64,
+) -> i32 {
+    let t1 = t1.unwrap_or(crate::ffi_dwt::mercury_t1_encode_block);
+    if planes.is_null() || bounds.is_null() || band_stepsizes.is_null() || stats.is_null() {
+        return MERCURY_EBADARG;
+    }
+    if levels == 0 || precision_shift >= 31 || !(num_comps == 1 || num_comps == 3) {
+        return MERCURY_EBADARG;
+    }
+    let bounds: [u32; 4] = unsafe { std::ptr::read(bounds.cast()) };
+    let [x0, y0, x1, y1] = bounds;
+    if x1 <= x0 || y1 <= y0 || ((x1 - x0) as usize) > stride as usize {
+        return MERCURY_EBADARG;
+    }
+    let (width, height, stride) = ((x1 - x0) as usize, (y1 - y0) as usize, stride as usize);
+    let comps = num_comps as usize;
+    let planes: Vec<&[i32]> = (0..comps)
+        .map(|c| unsafe {
+            std::slice::from_raw_parts(*planes.add(c), (height - 1) * stride + width)
+        })
+        .collect();
+    let band_stepsizes =
+        unsafe { std::slice::from_raw_parts(band_stepsizes, 3 * levels as usize + 1) };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mct = comps == 3;
+        let mut encoders: Vec<crate::encode::component::ComponentEncoder> = (0..comps)
+            .map(|c| {
+                crate::encode::component::ComponentEncoder::warp(
+                    &crate::encode::component::ComponentParams {
+                        compno: c as i32,
+                        bounds,
+                        levels,
+                        block_width,
+                        block_height,
+                        band_stepsizes,
+                        mct,
+                        t1,
+                    },
+                )
+            })
+            .collect();
+        crate::encode::component::feed_tile_rows(
+            &mut encoders,
+            &planes,
+            stride,
+            width,
+            height,
+            precision,
+            precision_shift,
+        );
+        let mut total = crate::encode::band_coder::CodingStats::default();
+        for encoder in &encoders {
+            total.add(encoder.stats());
+        }
+        unsafe {
+            *stats = total.coded_bytes;
+            *stats.add(1) = total.coding_passes;
+            *stats.add(2) = total.blocks;
+        }
+    }));
+    match r {
+        Ok(()) => MERCURY_OK,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
+/// # Safety
+/// `planes` points to 3 planes of unsigned samples, rows `stride` samples apart, `comment`
+/// to `comment_len` bytes, `out` to `out_capacity` bytes, and `out_len` and
+/// `slope_threshold` to one value each.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_encode_dci(
+    planes: *const *const i32,
+    stride: u32,
+    width: u32,
+    height: u32,
+    four_k: bool,
+    precision_shift: u32,
+    max_cs_size: u64,
+    max_comp_size: u64,
+    slope_hint: u16,
+    rate_tolerance: f64,
+    write_tlm: bool,
+    comment: *const u8,
+    comment_len: u32,
+    out: *mut u8,
+    out_capacity: u64,
+    out_len: *mut u64,
+    slope_threshold: *mut u16,
+) -> i32 {
+    if planes.is_null() || comment.is_null() || out.is_null() || out_len.is_null() {
+        return MERCURY_EBADARG;
+    }
+    if slope_threshold.is_null() || width == 0 || height == 0 || width > stride {
+        return MERCURY_EBADARG;
+    }
+    if precision_shift >= 31 || max_cs_size == 0 {
+        return MERCURY_EBADARG;
+    }
+    let samples = (height as usize - 1) * stride as usize + width as usize;
+    let planes: Vec<&[i32]> = (0..3)
+        .map(|c| unsafe { std::slice::from_raw_parts(*planes.add(c), samples) })
+        .collect();
+    let comment = unsafe { std::slice::from_raw_parts(comment, comment_len as usize) };
+    let params = crate::encode::dci::DciParams {
+        profile: if four_k {
+            crate::encode::dci::CinemaProfile::FourK
+        } else {
+            crate::encode::dci::CinemaProfile::TwoK
+        },
+        width,
+        height,
+        max_cs_size,
+        max_comp_size,
+        slope_hint,
+        tolerance: rate_tolerance,
+        write_tlm,
+        comment,
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        crate::encode::dci::encode_dci_frame(
+            &planes,
+            stride as usize,
+            precision_shift,
+            &params,
+            crate::ffi_dwt::mercury_t1_encode_block,
+        )
+    }));
+    let Ok(frame) = r else {
+        return MERCURY_EPANIC;
+    };
+    if frame.codestream.len() as u64 > out_capacity {
+        return MERCURY_EBADARG;
+    }
+    unsafe {
+        std::ptr::copy_nonoverlapping(frame.codestream.as_ptr(), out, frame.codestream.len());
+        *out_len = frame.codestream.len() as u64;
+        *slope_threshold = frame.slope_threshold;
+    }
+    MERCURY_OK
 }
 
 #[cfg(test)]

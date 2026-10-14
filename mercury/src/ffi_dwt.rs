@@ -127,4 +127,74 @@ unsafe extern "C" {
         samples: i32,
         step: *mut MercuryLiftingStep,
     );
+
+    // Forward 9/7 lifting step 0 to 3 over one row, matching grok's WaveletFwd
+    pub fn mercury_hwy_analysis_lift_97(
+        step: i32,
+        target: *mut f32,
+        left: *const f32,
+        right: *const f32,
+        samples: i32,
+    );
+
+    // grok's Coder::preCompress for one irreversible code-block
+    pub fn mercury_hwy_quantize_97(
+        stripe: *const f32,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        quant: f64,
+        block: *mut i32,
+    ) -> u32;
+
+    pub fn mercury_t1_encode_block(
+        samples: *const i32,
+        num_cols: i32,
+        num_rows: i32,
+        max_magnitude: u32,
+        orientation: i32,
+        compno: i32,
+        level: i32,
+        stepsize: f64,
+        mct: i32,
+        coded_data: *mut *const u8,
+        pass_rates: *mut u16,
+        pass_distortions: *mut f64,
+        pass_terminated: *mut u8,
+        numbps: *mut i32,
+    ) -> i32;
+
+    pub fn mercury_hwy_forward_ict(
+        red: *const i32,
+        green: *const i32,
+        blue: *const i32,
+        dc_shift: i32,
+        luma: *mut f32,
+        chroma_blue: *mut f32,
+        chroma_red: *mut f32,
+        samples: i32,
+    );
+
+    pub fn mercury_t1_band_step(
+        numresolutions: u8,
+        max_bit_depth: u8,
+        bandno: u8,
+        step_scale: f64,
+        exponent: *mut u8,
+        mantissa: *mut u16,
+    );
+
+    pub fn mercury_rate_convex_hull(
+        lens: *const u16,
+        distortions: *const f64,
+        slopes: *mut u16,
+        num_passes: u32,
+    );
+
+    pub fn mercury_hwy_analysis_deinterleave_32(
+        row: *const u32,
+        even: *mut u32,
+        odd: *mut u32,
+        pairs: i32,
+    );
 }
