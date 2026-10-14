@@ -5,6 +5,8 @@
 //! state machine, per-block state persistent across quality layers, and a
 //! byte-stuffed bit reader (after 0xFF, only 7 bits used).
 
+use std::collections::HashMap;
+
 mod bitread;
 mod tagtree;
 
@@ -49,6 +51,34 @@ impl BlockState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BandBlocks {
+    count: usize,
+    states: HashMap<usize, BlockState>,
+}
+
+impl BandBlocks {
+    pub fn warp(count: usize) -> Self {
+        Self {
+            count,
+            states: HashMap::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.count
+    }
+
+    fn update<R>(&mut self, idx: usize, f: impl FnOnce(&mut BlockState) -> R) -> R {
+        let mut block = self.states.remove(&idx).unwrap_or_else(BlockState::warp);
+        let result = f(&mut block);
+        if block.included {
+            self.states.insert(idx, block);
+        }
+        result
+    }
+}
+
 /// Result of parsing one packet for an entire precinct.
 #[derive(Debug, Clone)]
 pub struct PacketParseResult {
@@ -72,7 +102,7 @@ pub struct PacketParseResult {
 pub fn comb_packet_header<S: HeaderBytes>(
     reader: &mut PacketBitReader<S>,
     tagtrees: &mut [TagTree],
-    block_states: &mut [Vec<BlockState>],
+    block_states: &mut [BandBlocks],
     layer_idx: u16,
     empty_packets_before: u16,
 ) -> Result<PacketParseResult, PacketError> {
@@ -103,14 +133,16 @@ pub fn comb_packet_header<S: HeaderBytes>(
 
         // A node reads bits only at its first leaf under a known parent.
         tree.comb_live_leaves(num_blocks, |tree, blk_idx| {
-            let contrib = comb_block_contribution(
-                reader,
-                tree,
-                &mut blocks[blk_idx],
-                blk_idx,
-                layer_idx,
-                empty_packets_before,
-            )?;
+            let contrib = blocks.update(blk_idx, |block| {
+                comb_block_contribution(
+                    reader,
+                    tree,
+                    block,
+                    blk_idx,
+                    layer_idx,
+                    empty_packets_before,
+                )
+            })?;
             total_body_bytes += contrib
                 .segment_lengths
                 .iter()
@@ -260,7 +292,7 @@ mod tests {
     fn scan_every_block<S: HeaderBytes>(
         reader: &mut PacketBitReader<S>,
         tagtrees: &mut [TagTree],
-        block_states: &mut [Vec<BlockState>],
+        block_states: &mut [BandBlocks],
         layer_idx: u16,
     ) -> Result<PacketParseResult, PacketError> {
         let non_empty = reader.pluck_bit()? != 0;
@@ -276,16 +308,12 @@ mod tests {
         let mut total_body_bytes = 0u64;
         let mut contributions = Vec::with_capacity(block_states.len());
         for sb in 0..block_states.len() {
-            let mut sb_contribs = Vec::with_capacity(block_states[sb].len());
-            for blk_idx in 0..block_states[sb].len() {
-                let contrib = comb_block_contribution(
-                    reader,
-                    &mut tagtrees[sb],
-                    &mut block_states[sb][blk_idx],
-                    blk_idx,
-                    layer_idx,
-                    0,
-                )?;
+            let num_blocks = block_states[sb].len();
+            let mut sb_contribs = Vec::with_capacity(num_blocks);
+            for blk_idx in 0..num_blocks {
+                let contrib = block_states[sb].update(blk_idx, |block| {
+                    comb_block_contribution(reader, &mut tagtrees[sb], block, blk_idx, layer_idx, 0)
+                })?;
                 total_body_bytes += contrib
                     .segment_lengths
                     .iter()
@@ -335,9 +363,9 @@ mod tests {
         let data: Vec<u8> = (0..nbytes).map(|_| rng.next() as u8).collect();
         let mut trees_a: Vec<TagTree> = shapes.iter().map(|&(w, h)| TagTree::warp(w, h)).collect();
         let mut trees_b = trees_a.clone();
-        let mut states_a: Vec<Vec<BlockState>> = shapes
+        let mut states_a: Vec<BandBlocks> = shapes
             .iter()
-            .map(|&(w, h)| vec![BlockState::warp(); (w * h) as usize])
+            .map(|&(w, h)| BandBlocks::warp((w * h) as usize))
             .collect();
         let mut states_b = states_a.clone();
         for layer in 0..3u16 {
@@ -367,6 +395,9 @@ mod tests {
                         "layer {layer} {shapes:?}"
                     );
                     assert_eq!(states_a, states_b, "layer {layer} {shapes:?}");
+                    for band in &states_a {
+                        assert!(band.states.values().all(|block| block.included));
+                    }
                 }
                 (Err(a), Err(b)) => {
                     assert_eq!(a, b, "layer {layer} {shapes:?}");
@@ -382,7 +413,7 @@ mod tests {
         let side = 2048u32;
         let blocks = (side * side) as usize;
         let mut trees = vec![TagTree::warp(side, side)];
-        let mut states = vec![vec![BlockState::warp(); blocks]];
+        let mut states = vec![BandBlocks::warp(blocks)];
         // Non-empty packet, then a 0 bit.
         let data = [0x80u8];
         let started = std::time::Instant::now();
@@ -397,6 +428,7 @@ mod tests {
             .expect("header parses");
             assert_eq!(parsed.body_bytes, 0);
             assert!(parsed.contributions[0].is_empty());
+            assert!(states[0].states.is_empty());
         }
         let elapsed = started.elapsed();
         assert!(

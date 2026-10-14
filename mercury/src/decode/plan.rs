@@ -17,7 +17,7 @@ use std::sync::Arc;
 use crate::decode::ReadAt;
 
 use crate::codec::packet::{
-    BlockState, HeaderBytes, PacketBitReader, PacketError, TagTree, comb_packet_header,
+    BandBlocks, HeaderBytes, PacketBitReader, PacketError, TagTree, comb_packet_header,
 };
 use crate::codec::params::{CodParams, ProgressionOrder, ProgressionVolume, QcdParams, SizParams};
 use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
@@ -359,7 +359,7 @@ fn precinct_in_window(
 /// Persistent per-precinct parse state (tag trees survive across layers).
 struct PrecState {
     trees: Vec<TagTree>,
-    states: Vec<Vec<BlockState>>,
+    states: Vec<BandBlocks>,
 }
 
 /// Per-band block range of one precinct (band-global grid indices).
@@ -1333,7 +1333,7 @@ fn comb_tile(
                 .collect(),
             states: prec_bands
                 .iter()
-                .map(|pb| vec![BlockState::warp(); (pb.nbw * pb.nbh) as usize])
+                .map(|pb| BandBlocks::warp((pb.nbw * pb.nbh) as usize))
                 .collect(),
         });
 
