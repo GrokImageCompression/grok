@@ -1082,7 +1082,6 @@ fn comb_tile(
                     let xpos =
                         prec_position(px, px0, ps.width, res.dims.x0, geom.tile_x0, scale * dx);
                     let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
-                    // A tag tree can exclude every code-block in a few bits.
                     let in_win = wins
                         .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
                         .unwrap_or(true);

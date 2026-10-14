@@ -70,7 +70,10 @@ impl BandBlocks {
     }
 
     fn update<R>(&mut self, idx: usize, f: impl FnOnce(&mut BlockState) -> R) -> R {
-        let mut block = self.states.remove(&idx).unwrap_or_else(BlockState::warp);
+        if let Some(block) = self.states.get_mut(&idx) {
+            return f(block);
+        }
+        let mut block = BlockState::warp();
         let result = f(&mut block);
         if block.included {
             self.states.insert(idx, block);
