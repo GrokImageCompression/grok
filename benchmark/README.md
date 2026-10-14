@@ -15,6 +15,43 @@ uv run --no-project benchmark/mercury_decode.py \
 The script requires Linux and GNU `time` at `/usr/bin/time`. A Mercury plan
 rejection fails the run instead of recording a classic fallback.
 
+## DCI Encode
+
+`dci_encode.py` batch-encodes a directory of frames with a cinema profile and
+records wall time, frames per second and peak RSS. 24 symlinks to the DCI
+frames in grok-test-data make one second of footage:
+
+```bash
+D=../grok-test-data/input/nonregression
+mkdir -p frames-2k frames-4k
+for i in $(seq -w 1 24); do
+  n=$(( (10#$i % 3) + 4 ))
+  ln -s $(realpath $D/X_${n}_2K_24_*_000.tif) frames-2k/f$i.tif
+  ln -s $(realpath $D/ElephantDream_4K.tif) frames-4k/f$i.tif
+done
+uv run --no-project benchmark/dci_encode.py build-bench/bin dci-work frames-2k \
+    --profile cinema-2k --threads 1 0 > dci-2k.csv
+```
+
+The 2K frames are 2048x857 and the 4K frame is 4096x2160.
+
+To profile, build with symbols. Release links with `--strip-all`, so use
+RelWithDebInfo with the Release optimization level:
+
+```bash
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG" \
+    "-DCMAKE_C_FLAGS_RELWITHDEBINFO=-O3 -g -DNDEBUG" \
+    -DGRK_BUILD_CORE_SWIG_BINDINGS=OFF -DGRK_BUILD_JPEG=OFF
+cmake --build build-bench --target grk_compress -j
+perf record -e cpu-clock -F 1000 -o 4k.data build-bench/bin/grk_compress \
+    -i $D/ElephantDream_4K.tif -o out.j2k --cinema-4k 24 -H 1
+perf report -i 4k.data --no-children --sort dso,sym --stdio
+```
+
+Use `cpu-clock`. On a Ryzen 9 6900HX the default `cycles` event is capped at
+1000 Hz and attributes most samples to kernel interrupt entry.
+
 ## Windows Benchmarks
 
 powershell
