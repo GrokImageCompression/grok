@@ -76,9 +76,9 @@ namespace HWY_NAMESPACE
    * LUTs (pre-built for the given precision), while the 3×3 matrix multiply
    * uses Highway SIMD float vectors.
    */
-  static void Hwy_rgb_to_xyz(int32_t* HWY_RESTRICT rBuf, int32_t* HWY_RESTRICT gBuf,
-                             int32_t* HWY_RESTRICT bBuf, uint64_t numPixels, uint32_t prec,
-                             uint32_t outPrec)
+  static void Hwy_rgb_to_xyz(int32_t* HWY_RESTRICT rData, int32_t* HWY_RESTRICT gData,
+                             int32_t* HWY_RESTRICT bData, uint32_t w, uint32_t h, uint32_t rStride,
+                             uint32_t gStride, uint32_t bStride, uint32_t prec, uint32_t outPrec)
   {
     const uint32_t maxVal = (1u << prec) - 1;
     const float scale = 1.0f / (float)maxVal;
@@ -102,40 +102,46 @@ namespace HWY_NAMESPACE
 
     // Fused single-pass: linearize → matrix → gamma → quantize per pixel
     // This avoids intermediate float buffers and keeps everything in L1
-    for(uint64_t i = 0; i < numPixels; ++i)
+    for(uint32_t row = 0; row < h; ++row)
     {
-      // Linearize via LUT
-      uint32_t rv = (uint32_t)rBuf[i];
-      uint32_t gv = (uint32_t)gBuf[i];
-      uint32_t bv = (uint32_t)bBuf[i];
-      if(rv > maxVal)
-        rv = maxVal;
-      if(gv > maxVal)
-        gv = maxVal;
-      if(bv > maxVal)
-        bv = maxVal;
+      auto rBuf = rData + (uint64_t)row * rStride;
+      auto gBuf = gData + (uint64_t)row * gStride;
+      auto bBuf = bData + (uint64_t)row * bStride;
+      for(uint32_t i = 0; i < w; ++i)
+      {
+        // Linearize via LUT
+        uint32_t rv = (uint32_t)rBuf[i];
+        uint32_t gv = (uint32_t)gBuf[i];
+        uint32_t bv = (uint32_t)bBuf[i];
+        if(rv > maxVal)
+          rv = maxVal;
+        if(gv > maxVal)
+          gv = maxVal;
+        if(bv > maxVal)
+          bv = maxVal;
 
-      float r = linLut[rv];
-      float g = linLut[gv];
-      float b = linLut[bv];
+        float r = linLut[rv];
+        float g = linLut[gv];
+        float b = linLut[bv];
 
-      // Matrix multiply (scalar — 9 FMAs)
-      float x = M00 * r + M01 * g + M02 * b;
-      float y = M10 * r + M11 * g + M12 * b;
-      float z = M20 * r + M21 * g + M22 * b;
+        // Matrix multiply (scalar — 9 FMAs)
+        float x = M00 * r + M01 * g + M02 * b;
+        float y = M10 * r + M11 * g + M12 * b;
+        float z = M20 * r + M21 * g + M22 * b;
 
-      // Gamma via LUT (quantize linear to output precision for indexing)
-      auto quantize = [gammaLutMax, gammaScale](float v) -> uint32_t {
-        if(v <= 0.0f)
-          return 0;
-        if(v >= 1.0f)
-          return gammaLutMax;
-        return (uint32_t)(v * gammaScale + 0.5f);
-      };
+        // Gamma via LUT (quantize linear to output precision for indexing)
+        auto quantize = [gammaLutMax, gammaScale](float v) -> uint32_t {
+          if(v <= 0.0f)
+            return 0;
+          if(v >= 1.0f)
+            return gammaLutMax;
+          return (uint32_t)(v * gammaScale + 0.5f);
+        };
 
-      rBuf[i] = (int32_t)(gammaLut[quantize(x)] * outScale + 0.5f);
-      gBuf[i] = (int32_t)(gammaLut[quantize(y)] * outScale + 0.5f);
-      bBuf[i] = (int32_t)(gammaLut[quantize(z)] * outScale + 0.5f);
+        rBuf[i] = (int32_t)(gammaLut[quantize(x)] * outScale + 0.5f);
+        gBuf[i] = (int32_t)(gammaLut[quantize(y)] * outScale + 0.5f);
+        bBuf[i] = (int32_t)(gammaLut[quantize(z)] * outScale + 0.5f);
+      }
     }
   }
 
@@ -184,45 +190,9 @@ bool applyXYZTransform(grk_image* image, uint8_t targetPrec)
               h, prec, compR.stride, compG.stride, compB.stride, (int)compR.data_type,
               (int)compG.data_type, (int)compB.data_type);
 
-  // If data is stored with stride, we need to process row-by-row
-  // For contiguous data (stride == w), we can process in one shot
-  bool contiguous = (compR.stride == w) && (compG.stride == w) && (compB.stride == w);
-
-  if(contiguous)
-  {
-    uint64_t numPixels = (uint64_t)w * h;
-    auto rBuf = (int32_t*)compR.data;
-    auto gBuf = (int32_t*)compG.data;
-    auto bBuf = (int32_t*)compB.data;
-    HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rBuf, gBuf, bBuf, numPixels, prec, outPrec);
-  }
-  else
-  {
-    // Row-by-row processing for strided data
-    // Allocate temporary contiguous buffers
-    auto rRow = std::make_unique<int32_t[]>(w);
-    auto gRow = std::make_unique<int32_t[]>(w);
-    auto bRow = std::make_unique<int32_t[]>(w);
-
-    for(uint32_t y = 0; y < h; ++y)
-    {
-      auto rPtr = (int32_t*)compR.data + (uint64_t)y * compR.stride;
-      auto gPtr = (int32_t*)compG.data + (uint64_t)y * compG.stride;
-      auto bPtr = (int32_t*)compB.data + (uint64_t)y * compB.stride;
-
-      // Copy row to contiguous buffer
-      memcpy(rRow.get(), rPtr, w * sizeof(int32_t));
-      memcpy(gRow.get(), gPtr, w * sizeof(int32_t));
-      memcpy(bRow.get(), bPtr, w * sizeof(int32_t));
-
-      HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)(rRow.get(), gRow.get(), bRow.get(), w, prec, outPrec);
-
-      // Copy back
-      memcpy(rPtr, rRow.get(), w * sizeof(int32_t));
-      memcpy(gPtr, gRow.get(), w * sizeof(int32_t));
-      memcpy(bPtr, bRow.get(), w * sizeof(int32_t));
-    }
-  }
+  HWY_DYNAMIC_DISPATCH(Hwy_rgb_to_xyz)
+  ((int32_t*)compR.data, (int32_t*)compG.data, (int32_t*)compB.data, w, h, compR.stride,
+   compG.stride, compB.stride, prec, outPrec);
 
   // Update colour space to XYZ
   image->color_space = GRK_CLRSPC_CUSTOM_CIE;
