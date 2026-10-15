@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use crate::capi::MercuryT1EncodeFn;
 use crate::ffi_dwt::{mercury_hwy_quantize_97, mercury_rate_convex_hull};
+
+use super::stripe_queue::{StripeJob, StripeQueue, StripeResults};
 
 // classic's maxCodePassesPerBlock
 const MAX_CODING_PASSES: usize = 94;
@@ -54,6 +58,18 @@ impl CodedBand {
         &self.bytes[first..first + length as usize]
     }
 
+    pub fn append(&mut self, mut other: CodedBand) {
+        let pass_offset = self.passes.len() as u32;
+        let byte_offset = self.bytes.len() as u32;
+        for block in &mut other.blocks {
+            block.first_pass += pass_offset;
+            block.first_byte += byte_offset;
+        }
+        self.blocks.append(&mut other.blocks);
+        self.passes.append(&mut other.passes);
+        self.bytes.append(&mut other.bytes);
+    }
+
     pub fn stats(&self) -> CodingStats {
         CodingStats {
             coded_bytes: self.bytes.len() as u64,
@@ -70,6 +86,7 @@ pub(crate) struct BandGeometry {
     pub height: usize,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct BandT1Params {
     pub orientation: i32,
     pub compno: i32,
@@ -78,17 +95,129 @@ pub(crate) struct BandT1Params {
     pub mct: bool,
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct StripeLayout {
+    pub width: usize,
+    pub x0: usize,
+    pub block_width: usize,
+    pub t1_params: BandT1Params,
+    pub t1: MercuryT1EncodeFn,
+}
+
+pub(crate) fn code_stripe(
+    layout: &StripeLayout,
+    stripe: &[f32],
+    rows: usize,
+    block: &mut Vec<i32>,
+    coded: &mut CodedBand,
+) {
+    let width = layout.width;
+    let block_width = layout.block_width;
+    let quant = 1.0 / layout.t1_params.stepsize as f64;
+    block.resize(block_width * rows, 0);
+    let mut column = 0;
+    while column < width {
+        let boundary = ((layout.x0 + column) / block_width + 1) * block_width;
+        let columns = boundary.min(layout.x0 + width) - (layout.x0 + column);
+        let max_magnitude = unsafe {
+            mercury_hwy_quantize_97(
+                stripe[column..].as_ptr(),
+                width as i32,
+                columns as i32,
+                rows as i32,
+                quant,
+                block.as_mut_ptr(),
+            )
+        };
+        code_block(layout, block, columns, rows, max_magnitude, coded);
+        column += columns;
+    }
+}
+
+fn code_block(
+    layout: &StripeLayout,
+    block: &[i32],
+    columns: usize,
+    rows: usize,
+    max_magnitude: u32,
+    coded_band: &mut CodedBand,
+) {
+    let mut coded: *const u8 = std::ptr::null();
+    let mut rates = [0u16; MAX_CODING_PASSES];
+    let mut distortions = [0f64; MAX_CODING_PASSES];
+    let mut terminated = [0u8; MAX_CODING_PASSES];
+    let mut numbps = 0i32;
+    let params = &layout.t1_params;
+    let passes = unsafe {
+        (layout.t1)(
+            block.as_ptr(),
+            columns as i32,
+            rows as i32,
+            max_magnitude,
+            params.orientation,
+            params.compno,
+            params.level,
+            params.stepsize as f64,
+            params.mct as i32,
+            &mut coded,
+            rates.as_mut_ptr(),
+            distortions.as_mut_ptr(),
+            terminated.as_mut_ptr(),
+            &mut numbps,
+        )
+    };
+    assert!(passes >= 0, "T1 encode failed on a {columns}x{rows} block");
+    let passes = passes as usize;
+    let mut lengths = [0u16; MAX_CODING_PASSES];
+    let mut previous_rate = 0;
+    for (length, &rate) in lengths.iter_mut().zip(&rates[..passes]) {
+        *length = rate - previous_rate;
+        previous_rate = rate;
+    }
+    let mut slopes = [0u16; MAX_CODING_PASSES];
+    unsafe {
+        mercury_rate_convex_hull(
+            lengths.as_ptr(),
+            distortions.as_ptr(),
+            slopes.as_mut_ptr(),
+            passes as u32,
+        );
+    }
+    coded_band.blocks.push(CodedBlock {
+        numbps: numbps as u8,
+        first_pass: coded_band.passes.len() as u32,
+        passes: passes as u8,
+        first_byte: coded_band.bytes.len() as u32,
+    });
+    coded_band.passes.extend((0..passes).map(|p| CodedPass {
+        rate: rates[p],
+        slope: slopes[p],
+    }));
+    if passes > 0 {
+        let length = rates[passes - 1] as usize;
+        coded_band
+            .bytes
+            .extend_from_slice(unsafe { std::slice::from_raw_parts(coded, length) });
+    }
+}
+
+struct PooledStripes {
+    queue: Arc<StripeQueue>,
+    results: Arc<StripeResults>,
+    stripes_sent: usize,
+}
+
 // one irreversible subband: collects a block row of rows, then quantizes and codes its blocks
 pub(crate) struct BandCoder {
-    geometry: BandGeometry,
-    t1_params: BandT1Params,
-    block_width: u32,
-    block_height: u32,
-    t1: MercuryT1EncodeFn,
+    layout: StripeLayout,
+    y0: usize,
+    height: usize,
+    block_height: usize,
     stripe: Vec<f32>,
     stripe_first_row: usize,
     rows_in_stripe: usize,
     block: Vec<i32>,
+    pooled: Option<PooledStripes>,
     pub coded: CodedBand,
 }
 
@@ -99,23 +228,34 @@ impl BandCoder {
         block_width: u32,
         block_height: u32,
         t1: MercuryT1EncodeFn,
+        stripe_queue: Option<Arc<StripeQueue>>,
     ) -> Self {
         Self {
+            layout: StripeLayout {
+                width: geometry.width,
+                x0: geometry.x0 as usize,
+                block_width: block_width as usize,
+                t1_params,
+                t1,
+            },
+            y0: geometry.y0 as usize,
+            height: geometry.height,
+            block_height: block_height as usize,
             stripe: vec![0.0; geometry.width * block_height as usize],
-            block: vec![0; (block_width * block_height) as usize],
-            geometry,
-            t1_params,
-            block_width,
-            block_height,
-            t1,
             stripe_first_row: 0,
             rows_in_stripe: 0,
+            block: Vec::new(),
+            pooled: stripe_queue.map(|queue| PooledStripes {
+                queue,
+                results: Arc::default(),
+                stripes_sent: 0,
+            }),
             coded: CodedBand::default(),
         }
     }
 
     pub fn next_row(&mut self) -> &mut [f32] {
-        let width = self.geometry.width;
+        let width = self.layout.width;
         let start = self.rows_in_stripe * width;
         &mut self.stripe[start..start + width]
     }
@@ -131,95 +271,46 @@ impl BandCoder {
 
     // rows from the stripe's first row to the next block boundary or the band end
     fn stripe_height(&self) -> usize {
-        let band_end = self.geometry.y0 as usize + self.geometry.height;
-        let first = self.geometry.y0 as usize + self.stripe_first_row;
-        let boundary = (first / self.block_height as usize + 1) * self.block_height as usize;
+        let band_end = self.y0 + self.height;
+        let first = self.y0 + self.stripe_first_row;
+        let boundary = (first / self.block_height + 1) * self.block_height;
         boundary.min(band_end) - first
     }
 
     fn code_stripe(&mut self) {
-        let width = self.geometry.width;
-        let block_width = self.block_width as usize;
-        let quant = 1.0 / self.t1_params.stepsize as f64;
         let rows = self.rows_in_stripe;
-        let band_x0 = self.geometry.x0 as usize;
-        let mut column = 0;
-        while column < width {
-            let boundary = ((band_x0 + column) / block_width + 1) * block_width;
-            let columns = boundary.min(band_x0 + width) - (band_x0 + column);
-            let max_magnitude = unsafe {
-                mercury_hwy_quantize_97(
-                    self.stripe[column..].as_ptr(),
-                    width as i32,
-                    columns as i32,
-                    rows as i32,
-                    quant,
-                    self.block.as_mut_ptr(),
-                )
-            };
-            self.code_block(columns, rows, max_magnitude);
-            column += columns;
+        let Some(pooled) = &mut self.pooled else {
+            code_stripe(
+                &self.layout,
+                &self.stripe,
+                rows,
+                &mut self.block,
+                &mut self.coded,
+            );
+            return;
+        };
+        let next = pooled.queue.spare_buffer(self.stripe.len());
+        let job = StripeJob {
+            samples: std::mem::replace(&mut self.stripe, next),
+            rows,
+            layout: self.layout,
+            results: pooled.results.clone(),
+            index: pooled.stripes_sent,
+        };
+        pooled.stripes_sent += 1;
+        // a full queue means the workers are behind
+        if let Err(job) = pooled.queue.try_push(job) {
+            pooled.queue.recycle(job.code(&mut self.block));
         }
     }
 
-    fn code_block(&mut self, columns: usize, rows: usize, max_magnitude: u32) {
-        let mut coded: *const u8 = std::ptr::null();
-        let mut rates = [0u16; MAX_CODING_PASSES];
-        let mut distortions = [0f64; MAX_CODING_PASSES];
-        let mut terminated = [0u8; MAX_CODING_PASSES];
-        let mut numbps = 0i32;
-        let params = &self.t1_params;
-        let passes = unsafe {
-            (self.t1)(
-                self.block.as_ptr(),
-                columns as i32,
-                rows as i32,
-                max_magnitude,
-                params.orientation,
-                params.compno,
-                params.level,
-                params.stepsize as f64,
-                params.mct as i32,
-                &mut coded,
-                rates.as_mut_ptr(),
-                distortions.as_mut_ptr(),
-                terminated.as_mut_ptr(),
-                &mut numbps,
-            )
+    // after the workers have finished
+    pub fn collect_stripes(&mut self) {
+        let Some(pooled) = self.pooled.take() else {
+            return;
         };
-        assert!(passes >= 0, "T1 encode failed on a {columns}x{rows} block");
-        let passes = passes as usize;
-        let mut lengths = [0u16; MAX_CODING_PASSES];
-        let mut previous_rate = 0;
-        for (length, &rate) in lengths.iter_mut().zip(&rates[..passes]) {
-            *length = rate - previous_rate;
-            previous_rate = rate;
-        }
-        let mut slopes = [0u16; MAX_CODING_PASSES];
-        unsafe {
-            mercury_rate_convex_hull(
-                lengths.as_ptr(),
-                distortions.as_ptr(),
-                slopes.as_mut_ptr(),
-                passes as u32,
-            );
-        }
-        let coded_band = &mut self.coded;
-        coded_band.blocks.push(CodedBlock {
-            numbps: numbps as u8,
-            first_pass: coded_band.passes.len() as u32,
-            passes: passes as u8,
-            first_byte: coded_band.bytes.len() as u32,
-        });
-        coded_band.passes.extend((0..passes).map(|p| CodedPass {
-            rate: rates[p],
-            slope: slopes[p],
-        }));
-        if passes > 0 {
-            let length = rates[passes - 1] as usize;
-            coded_band
-                .bytes
-                .extend_from_slice(unsafe { std::slice::from_raw_parts(coded, length) });
+        for stripe in pooled.results.take() {
+            self.coded.append(stripe);
         }
     }
 }

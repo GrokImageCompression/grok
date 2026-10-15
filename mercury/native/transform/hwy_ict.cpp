@@ -89,6 +89,17 @@ namespace HWY_NAMESPACE
   static constexpr float M21 = 0.1191920f * DCI_COEFFICIENT;
   static constexpr float M22 = 0.9503041f * DCI_COEFFICIENT;
 
+  // gcc and clang fuse classic's scalar a * b + c, MSVC does not
+  template<class V>
+  HWY_INLINE V classic_mul_add(V a, V b, V c)
+  {
+#if defined(_MSC_VER) && !defined(__clang__)
+    return Add(Mul(a, b), c);
+#else
+    return MulAdd(a, b, c);
+#endif
+  }
+
   template<class DF, class DI, class VI>
   HWY_INLINE VI xyz_component(DF df, DI di, const MercuryXyzTables& tables, VI r, VI g, VI b,
                               float m0, float m1, float m2)
@@ -96,14 +107,15 @@ namespace HWY_NAMESPACE
     auto rl = GatherIndex(df, tables.linear.data(), r);
     auto gl = GatherIndex(df, tables.linear.data(), g);
     auto bl = GatherIndex(df, tables.linear.data(), b);
-    auto linear = MulAdd(Set(df, m2), bl, MulAdd(Set(df, m0), rl, Mul(Set(df, m1), gl)));
+    auto linear =
+        classic_mul_add(Set(df, m2), bl, classic_mul_add(Set(df, m0), rl, Mul(Set(df, m1), gl)));
     auto half = Set(df, 0.5f);
-    auto index = ConvertTo(di, MulAdd(linear, Set(df, tables.gammaScale), half));
+    auto index = ConvertTo(di, classic_mul_add(linear, Set(df, tables.gammaScale), half));
     index = IfThenElse(RebindMask(di, Ge(linear, Set(df, 1.0f))),
                        Set(di, (int32_t)tables.gammaLutMax), index);
     index = IfThenZeroElse(RebindMask(di, Le(linear, Zero(df))), index);
     auto gamma = GatherIndex(df, tables.gamma.data(), index);
-    return ConvertTo(di, MulAdd(gamma, Set(df, tables.outScale), half));
+    return ConvertTo(di, classic_mul_add(gamma, Set(df, tables.outScale), half));
   }
 
   template<class DF, class DI, class VI>
@@ -185,7 +197,7 @@ extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict(const int32_t* red, cons
 }
 
 extern "C" MERCURY_ICT_API MercuryXyzTables* mercury_xyz_tables_new(uint32_t precision,
-                                                                     uint32_t out_precision)
+                                                                    uint32_t out_precision)
 {
   auto tables = new MercuryXyzTables;
   tables->maxValue = (1u << precision) - 1;
@@ -219,8 +231,7 @@ extern "C" MERCURY_ICT_API void
                                 const int32_t* green, const int32_t* blue, int32_t dc_shift,
                                 float* luma, float* chroma_blue, float* chroma_red, int samples)
 {
-  HWY_DYNAMIC_DISPATCH(mercury_native::Impl_forward_xyz_ict)(tables, red, green, blue, dc_shift,
-                                                             luma, chroma_blue, chroma_red,
-                                                             samples);
+  HWY_DYNAMIC_DISPATCH(mercury_native::Impl_forward_xyz_ict)(
+      tables, red, green, blue, dc_shift, luma, chroma_blue, chroma_red, samples);
 }
 #endif

@@ -242,8 +242,17 @@ int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_f
  * that, and mercury_weave_comps* then return MERCURY_EDECODE). */
 int32_t mercury_weave_comps(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_fn row_fn,
                             void* row_ctx, uint32_t threads);
-int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1,
-                                mercury_comp_row_i16_fn row_fn, void* row_ctx, uint32_t threads);
+int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_i16_fn row_fn,
+                                void* row_ctx, uint32_t threads);
+
+/* layer_rate 0 derives the rate from max_cs_size */
+int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
+                           uint32_t height, bool four_k, uint32_t precision_shift,
+                           uint64_t max_cs_size, double layer_rate, uint64_t max_comp_size,
+                           uint16_t slope_hint, double rate_tolerance, bool apply_xyz,
+                           bool write_tlm, uint32_t threads, const uint8_t* comment,
+                           uint32_t comment_len, uint8_t* out, uint64_t out_capacity,
+                           uint64_t* out_len, uint16_t* slope_threshold);
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::capi::MercuryT1EncodeFn;
 use crate::codec::params::{
     CodParams, CodingModes, CompCodingStyle, PrecinctSize, ProgressionOrder, ProgressionVolume,
@@ -8,6 +10,7 @@ use crate::ffi_dwt::mercury_t1_band_step;
 
 use super::component::{ComponentEncoder, ComponentParams, XyzTables, feed_tile_rows};
 use super::rate_control::{RateTargets, allocate_rate};
+use super::stripe_queue::{StripeQueue, run_stripe_workers};
 use super::tile_packets::{TileBand, TileBands, TilePacketWriter};
 
 const COMPONENTS: usize = 3;
@@ -26,6 +29,7 @@ const STEP_SCALE: f64 = 1.0;
 const SCALAR_EXPOUNDED: u8 = 2;
 const ORDER_CPRL: u8 = 4;
 const SOT_SOD_BYTES: u64 = 14;
+const STRIPES_QUEUED_PER_WORKER: usize = 2;
 const LAST_LAYER_EOC_BYTES: f64 = 2.0;
 const STLM_TILE16_PSOT32: u8 = 0x60;
 const SCOD_PRECINCTS_DECLARED: u8 = 0x01;
@@ -56,12 +60,15 @@ pub(crate) struct DciParams<'a> {
     pub width: u32,
     pub height: u32,
     pub max_cs_size: u64,
+    // 0 derives the rate from max_cs_size
+    pub layer_rate: f64,
     pub max_comp_size: u64,
     pub slope_hint: u16,
     pub tolerance: f64,
     // RGB at PRECISION + precision_shift bits, converted like classic's applyXYZTransform
     pub apply_xyz: bool,
     pub write_tlm: bool,
+    pub threads: usize,
     pub comment: &'a [u8],
 }
 
@@ -213,14 +220,11 @@ fn max_layer_length(params: &DciParams, tile_parts: usize, header_bytes: usize) 
     let (width, height) = (params.width as f64, params.height as f64);
     let samples_bits = COMPONENTS as f64 * width * height * PRECISION as f64;
     let image_bytes = samples_bits / 8.0;
-    let mut layer_rate = 0.0;
-    let min_rate = image_bytes / params.max_cs_size as f64;
-    if layer_rate < min_rate {
-        layer_rate = min_rate;
-    }
-    let cap_rate = samples_bits / (params.max_cs_size as f64 * 8.0);
-    if layer_rate < cap_rate {
-        layer_rate = cap_rate;
+    let mut layer_rate = params.layer_rate;
+    if layer_rate <= 0.0 {
+        let min_rate = image_bytes / params.max_cs_size as f64;
+        let cap_rate = samples_bits / (params.max_cs_size as f64 * 8.0);
+        layer_rate = min_rate.max(cap_rate);
     }
     let size_pixel = (COMPONENTS as u32 * PRECISION as u32) as f64;
     let bits_empty = 8.0;
@@ -249,6 +253,10 @@ pub(crate) fn encode_dci_frame(
     let band_stepsizes: Vec<f32> = quantization.iter().map(|band| band.stepsize).collect();
 
     let bounds = [0, 0, params.width, params.height];
+    // the thread feeding rows codes stripes too whenever the queue is full
+    let workers = params.threads.saturating_sub(1);
+    let stripe_queue =
+        (workers > 0).then(|| Arc::new(StripeQueue::warp(STRIPES_QUEUED_PER_WORKER * workers)));
     let mut encoders: Vec<ComponentEncoder> = (0..COMPONENTS)
         .map(|c| {
             ComponentEncoder::warp(&ComponentParams {
@@ -260,22 +268,32 @@ pub(crate) fn encode_dci_frame(
                 band_stepsizes: &band_stepsizes,
                 mct: true,
                 t1,
+                stripe_queue: stripe_queue.clone(),
             })
         })
         .collect();
     let xyz = params
         .apply_xyz
         .then(|| XyzTables::warp(PRECISION as u32 + precision_shift, PRECISION as u32));
-    feed_tile_rows(
-        &mut encoders,
-        planes,
-        stride,
-        params.width as usize,
-        params.height as usize,
-        PRECISION as u32,
-        precision_shift,
-        xyz.as_ref(),
-    );
+    let feed = |encoders: &mut [ComponentEncoder]| {
+        feed_tile_rows(
+            encoders,
+            planes,
+            stride,
+            params.width as usize,
+            params.height as usize,
+            PRECISION as u32,
+            precision_shift,
+            xyz.as_ref(),
+        )
+    };
+    match &stripe_queue {
+        Some(queue) => run_stripe_workers(queue, workers, || feed(&mut encoders)),
+        None => feed(&mut encoders),
+    }
+    for encoder in &mut encoders {
+        encoder.collect_stripes();
+    }
 
     let mut bands = Vec::new();
     let mut first_band = Vec::with_capacity(COMPONENTS);

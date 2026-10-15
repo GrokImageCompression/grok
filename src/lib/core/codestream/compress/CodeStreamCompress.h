@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 namespace grk
 {
@@ -43,7 +44,17 @@ private:
   std::atomic<uint16_t> slopeThreshold_{0};
   // the parameters the plugin compresses with, copied at init
   std::unique_ptr<grk_cparameters> pluginParameters_;
+  uint64_t headerStartPosition_ = 0;
   uint64_t headerEndPosition_ = 0;
+  struct MercuryEncodeSettings
+  {
+    double layerRate;
+    uint64_t maxCodestreamSize;
+  };
+  // set when GRK_MERCURY_ENCODE=1 and mercury writes the same codestream as classic
+  std::optional<MercuryEncodeSettings> mercuryEncode_;
+  void selectMercuryEncode(const grk_cparameters* parameters);
+  uint64_t compressWithMercury(void);
   std::unique_ptr<TileProcessorCompress> singleTileProcessor_;
   bool init_header_writing(void);
   bool end(void);

@@ -183,6 +183,7 @@ bool CodeStreamCompress::start(void)
   if(!init_header_writing())
     return false;
 
+  headerStartPosition_ = stream_->tell();
   /* write header */
   if(!exec(procedureList_))
     return false;
@@ -853,6 +854,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       }
     }
   }
+  selectMercuryEncode(parameters);
   grk_free(parameters->mct_data);
   parameters->mct_data = nullptr;
 
@@ -910,6 +912,9 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
       pluginCountAcceleratedFrame();
     }
   }
+
+  if(!tile && mercuryEncode_)
+    return compressWithMercury();
 
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)

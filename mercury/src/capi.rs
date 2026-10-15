@@ -1352,6 +1352,7 @@ pub unsafe extern "C" fn mercury_encode_tile_blocks(
                         band_stepsizes,
                         mct,
                         t1,
+                        stripe_queue: None,
                     },
                 )
             })
@@ -1395,11 +1396,13 @@ pub unsafe extern "C" fn mercury_encode_dci(
     four_k: bool,
     precision_shift: u32,
     max_cs_size: u64,
+    layer_rate: f64,
     max_comp_size: u64,
     slope_hint: u16,
     rate_tolerance: f64,
     apply_xyz: bool,
     write_tlm: bool,
+    threads: u32,
     comment: *const u8,
     comment_len: u32,
     out: *mut u8,
@@ -1430,11 +1433,16 @@ pub unsafe extern "C" fn mercury_encode_dci(
         width,
         height,
         max_cs_size,
+        layer_rate,
         max_comp_size,
         slope_hint,
         tolerance: rate_tolerance,
         apply_xyz,
         write_tlm,
+        threads: match threads {
+            0 => std::thread::available_parallelism().map_or(1, |count| count.get()),
+            count => count as usize,
+        },
         comment,
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

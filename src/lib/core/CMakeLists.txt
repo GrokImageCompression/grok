@@ -302,8 +302,10 @@ if(CARGO_EXECUTABLE AND EXISTS ${MERCURY_DIR}/Cargo.toml)
 endif()
 set(GRK_ENABLE_MERCURY ${GRK_ENABLE_MERCURY} PARENT_SCOPE)
 
-target_sources(${GROK_CORE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
+set(MERCURY_HOOK_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mercury_compress.cpp)
+target_sources(${GROK_CORE_NAME} PRIVATE ${MERCURY_HOOK_SOURCES})
+set_source_files_properties(${MERCURY_HOOK_SOURCES} PROPERTIES
   INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
 
 if(GRK_ENABLE_MERCURY)
@@ -377,7 +379,7 @@ if(GRK_ENABLE_MERCURY)
     ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_encode_shim.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mercury_encode_oracle.cpp)
 
-  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
+  set_source_files_properties(${MERCURY_HOOK_SOURCES} PROPERTIES
     COMPILE_DEFINITIONS GRK_MERCURY_BUILD)
   if(WIN32)
     # system libs rust's std needs (rustc --print native-static-libs)

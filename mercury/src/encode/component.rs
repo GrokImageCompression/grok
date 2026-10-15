@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::capi::MercuryT1EncodeFn;
 use crate::dwt::analysis::{BandSplit, LevelAnalysis, VerticalBand};
 use crate::ffi_dwt::{
@@ -5,6 +7,7 @@ use crate::ffi_dwt::{
 };
 
 use super::band_coder::{BandCoder, BandGeometry, BandT1Params, CodedBand, CodingStats};
+use super::stripe_queue::StripeQueue;
 
 pub(crate) struct ComponentParams<'a> {
     pub compno: i32,
@@ -16,6 +19,8 @@ pub(crate) struct ComponentParams<'a> {
     pub band_stepsizes: &'a [f32],
     pub mct: bool,
     pub t1: MercuryT1EncodeFn,
+    // None codes each stripe on the thread that feeds the rows
+    pub stripe_queue: Option<Arc<StripeQueue>>,
 }
 
 // one tile component: rows in, every code-block of every subband coded
@@ -58,6 +63,7 @@ impl ComponentEncoder {
                 params.block_width,
                 params.block_height,
                 params.t1,
+                params.stripe_queue.clone(),
             )
         };
         let geometry = |columns: BandSplit, rows: BandSplit, x0: u32, y0: u32, high_x, high_y| {
@@ -143,6 +149,13 @@ impl ComponentEncoder {
             &self.lowest.coded
         } else {
             &self.details[self.levels.len() - res][band].coded
+        }
+    }
+
+    pub fn collect_stripes(&mut self) {
+        self.lowest.collect_stripes();
+        for band in self.details.iter_mut().flatten() {
+            band.collect_stripes();
         }
     }
 

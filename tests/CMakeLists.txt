@@ -219,6 +219,7 @@ if(GRK_ENABLE_MERCURY)
 
   add_executable(grk_mercury_dci_encode_test GrkMercuryDciEncodeTest.cpp)
   target_link_libraries(grk_mercury_dci_encode_test ${GROK_CORE_NAME})
+  target_include_directories(grk_mercury_dci_encode_test PRIVATE ${CMAKE_SOURCE_DIR}/mercury/include)
   add_test(NAME grk_mercury_dci_encode_test COMMAND grk_mercury_dci_encode_test)
 
   # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
