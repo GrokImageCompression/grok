@@ -57,6 +57,8 @@ struct ITileProcessor;
 #include "ITileProcessorCompress.h"
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
+#include "XYZTransform.h"
+#include "plugin_accelerate.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -73,11 +75,12 @@ namespace
   const uint8_t cinemaPrecision = 12;
   const uint8_t cinema2kResolutions = 6;
   const uint8_t cinema4kResolutions = 7;
+  const uint8_t maxXyzSourcePrecision = 16;
 
-  bool mercuryEncodeRequested()
+  bool mercuryEncodeDisabled()
   {
     const char* value = std::getenv("GRK_MERCURY_ENCODE");
-    return value && std::strcmp(value, "1") == 0;
+    return value && std::strcmp(value, "0") == 0;
   }
 
   // checked after Profile::setCinemaParams has forced the rest of the cinema setup
@@ -97,7 +100,8 @@ namespace
            parameters->tx0 == 0 && parameters->ty0 == 0;
   }
 
-  bool imageMatchesMercury(const GrkImage* image)
+  // precision is left to the callers
+  bool imagePlanesMatchMercury(const GrkImage* image)
   {
     if(image->numcomps != cinemaComponents || image->x0 != 0 || image->y0 != 0)
       return false;
@@ -105,7 +109,7 @@ namespace
     for(uint16_t c = 0; c < image->numcomps; ++c)
     {
       auto comp = image->comps + c;
-      if(comp->prec != cinemaPrecision || comp->sgnd || comp->dx != 1 || comp->dy != 1 ||
+      if(comp->prec != first->prec || comp->sgnd || comp->dx != 1 || comp->dy != 1 ||
          comp->w != first->w || comp->h != first->h || comp->stride != first->stride ||
          comp->data_type != GRK_INT_32 || !comp->data)
         return false;
@@ -114,14 +118,40 @@ namespace
   }
 } // namespace
 
-void CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
+bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image)
 {
-  if(!mercuryEncodeRequested() || !parametersMatchMercury(parameters) ||
-     !imageMatchesMercury(headerImage_))
-    return;
-  if(cp_.numComments_ != 1 || cp_.isBinaryComment_[0])
-    return;
-  mercuryEncode_ = MercuryEncodeSettings{parameters->layer_rate[0], parameters->max_cs_size};
+  bool cinema =
+      parameters->rsiz == GRK_PROFILE_CINEMA_2K || parameters->rsiz == GRK_PROFILE_CINEMA_4K;
+  if(mercuryEncodeDisabled() || pluginAccelerates() || !cinema || !imagePlanesMatchMercury(image) ||
+     image->comps[0].prec > maxXyzSourcePrecision)
+    return false;
+  mercuryXyzSourcePrecision_ = image->comps[0].prec;
+  for(uint16_t c = 0; c < image->numcomps; ++c)
+    image->comps[c].prec = cinemaPrecision;
+  image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+  return true;
+}
+
+bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
+{
+  bool eligible = !mercuryEncodeDisabled() && parametersMatchMercury(parameters) &&
+                  imagePlanesMatchMercury(headerImage_) &&
+                  headerImage_->comps[0].prec == cinemaPrecision && cp_.numComments_ == 1 &&
+                  !cp_.isBinaryComment_[0];
+  if(eligible)
+  {
+    mercuryEncode_ = MercuryEncodeSettings{parameters->layer_rate[0], parameters->max_cs_size};
+    return true;
+  }
+  if(!mercuryXyzSourcePrecision_)
+    return true;
+  for(uint16_t c = 0; c < headerImage_->numcomps; ++c)
+    headerImage_->comps[c].prec = *mercuryXyzSourcePrecision_;
+  mercuryXyzSourcePrecision_.reset();
+  if(applyXYZTransform(headerImage_, cinemaPrecision))
+    return true;
+  grklog.error("Failed to apply XYZ colour transform");
+  return false;
 }
 
 uint64_t CodeStreamCompress::compressWithMercury(void)
@@ -137,13 +167,13 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
   uint64_t length = 0;
   uint16_t threshold = 0;
   const auto& enc = cp_.codingParams_.enc_;
-  int32_t rc =
-      mercury_encode_dci(planes, image->comps[0].stride, image->comps[0].w, image->comps[0].h,
-                         cp_.rsiz_ == GRK_PROFILE_CINEMA_4K, 0, mercuryEncode_->maxCodestreamSize,
-                         mercuryEncode_->layerRate, enc.maxComponentRate_,
-                         enc.rateControlSlopeHint_, enc.rateControlTolerance_, false, enc.writeTlm_,
-                         (uint32_t)TFSingleton::num_threads(), (const uint8_t*)cp_.comment_[0],
-                         cp_.commentLength_[0], codestream.data(), capacity, &length, &threshold);
+  int32_t rc = mercury_encode_dci(
+      planes, image->comps[0].stride, image->comps[0].w, image->comps[0].h,
+      cp_.rsiz_ == GRK_PROFILE_CINEMA_4K, mercuryXyzSourcePrecision_.value_or(cinemaPrecision),
+      mercuryEncode_->maxCodestreamSize, mercuryEncode_->layerRate, enc.maxComponentRate_,
+      enc.rateControlSlopeHint_, enc.rateControlTolerance_, mercuryXyzSourcePrecision_.has_value(),
+      enc.writeTlm_, (uint32_t)TFSingleton::num_threads(), (const uint8_t*)cp_.comment_[0],
+      cp_.commentLength_[0], codestream.data(), capacity, &length, &threshold);
   if(rc != MERCURY_OK)
   {
     grklog.error("mercury failed to compress the image, error %d", rc);
@@ -163,7 +193,14 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
 
 namespace grk
 {
-void CodeStreamCompress::selectMercuryEncode(const grk_cparameters*) {}
+bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters*, GrkImage*)
+{
+  return false;
+}
+bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters*)
+{
+  return true;
+}
 uint64_t CodeStreamCompress::compressWithMercury(void)
 {
   return 0;

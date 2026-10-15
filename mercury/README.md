@@ -177,6 +177,9 @@ single-threaded node tests. Exhaustive, around 70 s.
 graphs. `GRK_MERCURY_DEBUG=1` (host side) logs why a stream fell back to the
 classic pipeline.
 
+Grok compresses DCI 2K and 4K frames with mercury's encoder by default, and
+`GRK_MERCURY_ENCODE=0` forces classic.
+
 ## Scope
 
 - Full-resolution, full-image decode only. No `-reduce` / decode-window /

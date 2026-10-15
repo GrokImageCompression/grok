@@ -247,7 +247,7 @@ int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_com
 
 /* layer_rate 0 derives the rate from max_cs_size */
 int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
-                           uint32_t height, bool four_k, uint32_t precision_shift,
+                           uint32_t height, bool four_k, uint32_t source_precision,
                            uint64_t max_cs_size, double layer_rate, uint64_t max_comp_size,
                            uint16_t slope_hint, double rate_tolerance, bool apply_xyz,
                            bool write_tlm, uint32_t threads, const uint8_t* comment,

@@ -51,9 +51,13 @@ private:
     double layerRate;
     uint64_t maxCodestreamSize;
   };
-  // set when GRK_MERCURY_ENCODE=1 and mercury writes the same codestream as classic
+  // set unless GRK_MERCURY_ENCODE=0, when mercury writes the same codestream as classic
   std::optional<MercuryEncodeSettings> mercuryEncode_;
-  void selectMercuryEncode(const grk_cparameters* parameters);
+  // RGB depth of a frame whose XYZ transform mercury runs
+  std::optional<uint8_t> mercuryXyzSourcePrecision_;
+  bool deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image);
+  // runs the deferred XYZ transform when mercury turns the frame down
+  bool selectMercuryEncode(const grk_cparameters* parameters);
   uint64_t compressWithMercury(void);
   std::unique_ptr<TileProcessorCompress> singleTileProcessor_;
   bool init_header_writing(void);

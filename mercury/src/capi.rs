@@ -1383,6 +1383,10 @@ pub unsafe extern "C" fn mercury_encode_tile_blocks(
     }
 }
 
+// the XYZ table holds 2^precision floats
+const MAX_XYZ_SOURCE_PRECISION: u32 = 16;
+const DCI_PRECISION: u32 = crate::encode::dci::PRECISION as u32;
+
 /// # Safety
 /// `planes` points to 3 planes of unsigned samples, rows `stride` samples apart, `comment`
 /// to `comment_len` bytes, `out` to `out_capacity` bytes, and `out_len` and
@@ -1394,7 +1398,7 @@ pub unsafe extern "C" fn mercury_encode_dci(
     width: u32,
     height: u32,
     four_k: bool,
-    precision_shift: u32,
+    source_precision: u32,
     max_cs_size: u64,
     layer_rate: f64,
     max_comp_size: u64,
@@ -1416,7 +1420,12 @@ pub unsafe extern "C" fn mercury_encode_dci(
     if slope_threshold.is_null() || width == 0 || height == 0 || width > stride {
         return MERCURY_EBADARG;
     }
-    if precision_shift >= 31 || max_cs_size == 0 {
+    let precision_supported = if apply_xyz {
+        (1..=MAX_XYZ_SOURCE_PRECISION).contains(&source_precision)
+    } else {
+        (DCI_PRECISION..DCI_PRECISION + 31).contains(&source_precision)
+    };
+    if !precision_supported || max_cs_size == 0 {
         return MERCURY_EBADARG;
     }
     let samples = (height as usize - 1) * stride as usize + width as usize;
@@ -1449,7 +1458,7 @@ pub unsafe extern "C" fn mercury_encode_dci(
         crate::encode::dci::encode_dci_frame(
             &planes,
             stride as usize,
-            precision_shift,
+            source_precision,
             &params,
             crate::ffi_dwt::mercury_t1_encode_block,
         )

@@ -305,7 +305,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     // whether the source is 8 or 16
     uint8_t xyzTargetPrec = xyzTargetPrecision(parameters->rsiz);
     // skip when the caller (e.g. the CLI) already transformed this image
-    if(image->color_space != GRK_CLRSPC_CUSTOM_CIE && !applyXYZTransform(image, xyzTargetPrec))
+    bool transformed = image->color_space == GRK_CLRSPC_CUSTOM_CIE ||
+                       deferXyzToMercury(parameters, image) ||
+                       applyXYZTransform(image, xyzTargetPrec);
+    if(!transformed)
     {
       grklog.error("Failed to apply XYZ colour transform");
       return false;
@@ -854,7 +857,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       }
     }
   }
-  selectMercuryEncode(parameters);
+  if(!selectMercuryEncode(parameters))
+    return false;
   grk_free(parameters->mct_data);
   parameters->mct_data = nullptr;
 

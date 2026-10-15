@@ -2199,16 +2199,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       goto cleanup;
     }
 
-    // Apply RGB → X'Y'Z' colour transform if requested
-    if(parameters->apply_xyz_transform)
-    {
-      if(!grk::applyXYZTransform(image, grk::xyzTargetPrecision(parameters->rsiz)))
-      {
-        spdlog::error("Failed to apply XYZ colour transform");
-        goto cleanup;
-      }
-    }
-
     /* Can happen if input file is TIFF or PNG
      * and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
      */

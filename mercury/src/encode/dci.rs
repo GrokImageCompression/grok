@@ -14,7 +14,7 @@ use super::stripe_queue::{StripeQueue, run_stripe_workers};
 use super::tile_packets::{TileBand, TileBands, TilePacketWriter};
 
 const COMPONENTS: usize = 3;
-const PRECISION: u8 = 12;
+pub(crate) const PRECISION: u8 = 12;
 const BLOCK_SIDE: u32 = 32;
 const PRECINCT_SIDE: u32 = 256;
 // classic's cinema setup signals 128 at resolution 0
@@ -65,7 +65,7 @@ pub(crate) struct DciParams<'a> {
     pub max_comp_size: u64,
     pub slope_hint: u16,
     pub tolerance: f64,
-    // RGB at PRECISION + precision_shift bits, converted like classic's applyXYZTransform
+    // RGB at the source precision, converted like classic's applyXYZTransform
     pub apply_xyz: bool,
     pub write_tlm: bool,
     pub threads: usize,
@@ -239,7 +239,7 @@ fn max_layer_length(params: &DciParams, tile_parts: usize, header_bytes: usize) 
 pub(crate) fn encode_dci_frame(
     planes: &[&[i32]],
     stride: usize,
-    precision_shift: u32,
+    source_precision: u32,
     params: &DciParams,
     t1: MercuryT1EncodeFn,
 ) -> EncodedFrame {
@@ -274,7 +274,8 @@ pub(crate) fn encode_dci_frame(
         .collect();
     let xyz = params
         .apply_xyz
-        .then(|| XyzTables::warp(PRECISION as u32 + precision_shift, PRECISION as u32));
+        .then(|| XyzTables::warp(source_precision, PRECISION as u32));
+    let precision_shift = source_precision.saturating_sub(PRECISION as u32);
     let feed = |encoders: &mut [ComponentEncoder]| {
         feed_tile_rows(
             encoders,
