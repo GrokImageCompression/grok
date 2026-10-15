@@ -1364,6 +1364,7 @@ pub unsafe extern "C" fn mercury_encode_tile_blocks(
             height,
             precision,
             precision_shift,
+            None,
         );
         let mut total = crate::encode::band_coder::CodingStats::default();
         for encoder in &encoders {
@@ -1397,6 +1398,7 @@ pub unsafe extern "C" fn mercury_encode_dci(
     max_comp_size: u64,
     slope_hint: u16,
     rate_tolerance: f64,
+    apply_xyz: bool,
     write_tlm: bool,
     comment: *const u8,
     comment_len: u32,
@@ -1431,6 +1433,7 @@ pub unsafe extern "C" fn mercury_encode_dci(
         max_comp_size,
         slope_hint,
         tolerance: rate_tolerance,
+        apply_xyz,
         write_tlm,
         comment,
     };

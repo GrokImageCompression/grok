@@ -23,10 +23,16 @@
 
 #include "grok.h"
 
+namespace grk
+{
+bool applyXYZTransform(grk_image* image, uint8_t targetPrec);
+}
+
 extern "C" int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
                                       uint32_t height, bool four_k, uint32_t precision_shift,
                                       uint64_t max_cs_size, uint64_t max_comp_size,
-                                      uint16_t slope_hint, double rate_tolerance, bool write_tlm,
+                                      uint16_t slope_hint, double rate_tolerance, bool apply_xyz,
+                                      bool write_tlm,
                                       const uint8_t* comment, uint32_t comment_len, uint8_t* out,
                                       uint64_t out_capacity, uint64_t* out_len,
                                       uint16_t* slope_threshold);
@@ -35,6 +41,7 @@ namespace
 {
 const uint32_t COMPONENTS = 3;
 const uint8_t CODED_PRECISION = 12;
+const uint8_t SOURCE_PRECISION = 16;
 const uint32_t SIXTEEN_TO_TWELVE_SHIFT = 4;
 const size_t OUTPUT_CAPACITY = 8u << 20;
 const uint32_t RESOLUTIONS_2K = 6;
@@ -54,6 +61,7 @@ struct Case
   // added to the threshold an unhinted encode finds, 0 for no hint
   int32_t hintOffset;
   double tolerance;
+  bool applyXyz;
 };
 
 uint64_t nextRandom(uint64_t& state)
@@ -102,17 +110,23 @@ std::vector<uint8_t> classicEncode(const Case& test, const std::vector<std::vect
     comp.h = test.height;
     comp.dx = 1;
     comp.dy = 1;
-    comp.prec = CODED_PRECISION;
+    comp.prec = test.applyXyz ? SOURCE_PRECISION : CODED_PRECISION;
     comp.sgnd = false;
   }
   auto image = grk_image_new(COMPONENTS, comps, GRK_CLRSPC_SRGB, true);
+  uint32_t shift = test.applyXyz ? 0 : SIXTEEN_TO_TWELVE_SHIFT;
   for(uint32_t c = 0; c < COMPONENTS; ++c)
   {
     auto data = (int32_t*)image->comps[c].data;
     for(uint32_t y = 0; y < test.height; ++y)
       for(uint32_t x = 0; x < test.width; ++x)
-        data[(size_t)y * image->comps[c].stride + x] =
-            planes[c][(size_t)y * test.width + x] >> SIXTEEN_TO_TWELVE_SHIFT;
+        data[(size_t)y * image->comps[c].stride + x] = planes[c][(size_t)y * test.width + x] >> shift;
+  }
+  // classic library order: X'Y'Z' from 16 bits, then compress
+  if(test.applyXyz && !grk::applyXYZTransform(image, CODED_PRECISION))
+  {
+    grk_object_unref(&image->obj);
+    return {};
   }
   grk_cparameters params;
   grk_compress_set_default_params(&params);
@@ -147,7 +161,8 @@ std::vector<uint8_t> mercuryEncode(const Case& test, const std::vector<std::vect
   uint64_t length = 0;
   int32_t rc = mercury_encode_dci(pointers, test.width, test.width, test.height, test.fourK,
                                   SIXTEEN_TO_TWELVE_SHIFT, GRK_CINEMA_24_CS, GRK_CINEMA_24_COMP,
-                                  slopeHint, test.tolerance, true, (const uint8_t*)comment.data(),
+                                  slopeHint, test.tolerance, test.applyXyz, true,
+                                  (const uint8_t*)comment.data(),
                                   (uint32_t)comment.size(), out.data(), out.size(), &length,
                                   threshold);
   if(rc != 0)
@@ -193,13 +208,15 @@ int main()
 {
   grk_initialize(nullptr, 0, nullptr);
   const Case cases[] = {
-      {"2k noisy", false, 1024, 540, 20000, 0, 0.0},
-      {"2k smooth", false, 1024, 540, 0, 0, 0.0},
-      {"2k odd size", false, 999, 317, 30000, 0, 0.0},
-      {"4k noisy", true, 1500, 800, 20000, 0, 0.0},
-      {"4k odd size", true, 1283, 611, 30000, 0, 0.0},
-      {"2k hint above", false, 1024, 540, 20000, 2100, 0.1},
-      {"4k hint below", true, 1500, 800, 20000, -2100, 0.02},
+      {"2k noisy", false, 1024, 540, 20000, 0, 0.0, false},
+      {"2k smooth", false, 1024, 540, 0, 0, 0.0, false},
+      {"2k odd size", false, 999, 317, 30000, 0, 0.0, false},
+      {"4k noisy", true, 1500, 800, 20000, 0, 0.0, false},
+      {"4k odd size", true, 1283, 611, 30000, 0, 0.0, false},
+      {"2k hint above", false, 1024, 540, 20000, 2100, 0.1, false},
+      {"4k hint below", true, 1500, 800, 20000, -2100, 0.02, false},
+      {"2k xyz", false, 999, 317, 30000, 0, 0.0, true},
+      {"4k xyz", true, 1500, 800, 20000, 0, 0.0, true},
   };
   bool ok = true;
   for(const auto& test : cases)

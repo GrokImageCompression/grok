@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 #include <vector>
 
 extern "C" int32_t grk_classic_forward_dwt_tile(bool reversible, void* data, uint32_t stride,
@@ -57,12 +58,12 @@ struct AlignedBuffer
   explicit AlignedBuffer(size_t samples)
   {
     size_t bytes = (samples * 4 + BUFFER_ALIGNMENT - 1) / BUFFER_ALIGNMENT * BUFFER_ALIGNMENT;
-    data = std::aligned_alloc(BUFFER_ALIGNMENT, bytes);
+    data = ::operator new(bytes, std::align_val_t(BUFFER_ALIGNMENT));
     std::memset(data, 0, bytes);
   }
   ~AlignedBuffer()
   {
-    std::free(data);
+    ::operator delete(data, std::align_val_t(BUFFER_ALIGNMENT));
   }
   void* data;
 };

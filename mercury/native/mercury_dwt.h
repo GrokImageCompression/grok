@@ -92,6 +92,15 @@ void mercury_hwy_forward_ict(const int32_t* red, const int32_t* green, const int
                              int32_t dc_shift, float* luma, float* chroma_blue, float* chroma_red,
                              int samples);
 
+typedef struct MercuryXyzTables MercuryXyzTables;
+MercuryXyzTables* mercury_xyz_tables_new(uint32_t precision, uint32_t out_precision);
+void mercury_xyz_tables_free(MercuryXyzTables* tables);
+
+/* grok's applyXYZTransform to `out_precision` bits, then the forward ICT */
+void mercury_hwy_forward_xyz_ict(const MercuryXyzTables* tables, const int32_t* red,
+                                 const int32_t* green, const int32_t* blue, int32_t dc_shift,
+                                 float* luma, float* chroma_blue, float* chroma_red, int samples);
+
 /* grok's Quantizer::generate step exponent and mantissa for one irreversible band */
 void mercury_t1_band_step(uint8_t numresolutions, uint8_t max_bit_depth, uint8_t bandno,
                           double stepScale, uint8_t* exponent, uint16_t* mantissa);

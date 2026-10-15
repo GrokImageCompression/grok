@@ -1,5 +1,8 @@
 use crate::capi::MercuryT1EncodeFn;
 use crate::dwt::analysis::{BandSplit, LevelAnalysis, VerticalBand};
+use crate::ffi_dwt::{
+    MercuryXyzTables, mercury_hwy_forward_xyz_ict, mercury_xyz_tables_free, mercury_xyz_tables_new,
+};
 
 use super::band_coder::{BandCoder, BandGeometry, BandT1Params, CodedBand, CodingStats};
 
@@ -152,6 +155,23 @@ impl ComponentEncoder {
     }
 }
 
+// grok's RGB to X'Y'Z' lookup tables for one source precision
+pub(crate) struct XyzTables(*mut MercuryXyzTables);
+
+impl XyzTables {
+    pub fn warp(source_precision: u32, coded_precision: u32) -> Self {
+        Self(unsafe { mercury_xyz_tables_new(source_precision, coded_precision) })
+    }
+}
+
+impl Drop for XyzTables {
+    fn drop(&mut self) {
+        unsafe { mercury_xyz_tables_free(self.0) };
+    }
+}
+
+// with `xyz`, samples are at the source precision
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn feed_tile_rows(
     encoders: &mut [ComponentEncoder],
     planes: &[&[i32]],
@@ -160,6 +180,7 @@ pub(crate) fn feed_tile_rows(
     height: usize,
     precision: u32,
     precision_shift: u32,
+    xyz: Option<&XyzTables>,
 ) {
     let comps = planes.len();
     // classic adds a negative DC shift
@@ -167,6 +188,29 @@ pub(crate) fn feed_tile_rows(
     let mut cut = vec![vec![0i32; width]; comps];
     let mut shifted = vec![vec![0f32; width]; comps];
     for y in 0..height {
+        if let Some(tables) = xyz {
+            let row = |c: usize| planes[c][y * stride..].as_ptr();
+            let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
+                unreachable!("three components");
+            };
+            unsafe {
+                mercury_hwy_forward_xyz_ict(
+                    tables.0,
+                    row(0),
+                    row(1),
+                    row(2),
+                    dc_shift,
+                    luma.as_mut_ptr(),
+                    chroma_blue.as_mut_ptr(),
+                    chroma_red.as_mut_ptr(),
+                    width as i32,
+                );
+            }
+            for (encoder, row) in encoders.iter_mut().zip(&shifted) {
+                encoder.push_row(|target| target.copy_from_slice(row));
+            }
+            continue;
+        }
         for (row, plane) in cut.iter_mut().zip(planes) {
             let source = &plane[y * stride..y * stride + width];
             for (sample, &value) in row.iter_mut().zip(source) {

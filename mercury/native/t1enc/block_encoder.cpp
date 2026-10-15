@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <bit>
 #include <cstring>
 
 #include "block_encoder.h"
@@ -514,7 +515,7 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
   uint8_t numbps = 0;
   if(maxMagnitude)
   {
-    uint8_t bits = (uint8_t)(32 - __builtin_clz(maxMagnitude));
+    uint8_t bits = (uint8_t)std::bit_width(maxMagnitude);
     numbps = bits <= T1_NMSEDEC_FRACBITS ? 0 : (uint8_t)(bits - T1_NMSEDEC_FRACBITS);
   }
   *out.numbps = numbps;
@@ -597,7 +598,7 @@ extern "C" MERCURY_T1ENC_API void mercury_t1_band_step(uint8_t numresolutions,
 {
   using namespace mercury_native::t1enc;
   const bool isReversible = false;
-  auto floorlog2Step = [](uint32_t step) { return 31 - __builtin_clz(step); };
+  auto floorlog2Step = [](uint32_t step) { return (int32_t)std::bit_width(step) - 1; };
   uint8_t resno = (bandno == 0) ? 0 : (uint8_t)(((bandno - 1) / 3 + 1));
   uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
   uint8_t level = (uint8_t)(numresolutions - 1 - resno);

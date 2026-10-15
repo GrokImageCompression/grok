@@ -6,7 +6,7 @@ use crate::codec::params::{
 use crate::codec::tile_geom::chart_tile_geom;
 use crate::ffi_dwt::mercury_t1_band_step;
 
-use super::component::{ComponentEncoder, ComponentParams, feed_tile_rows};
+use super::component::{ComponentEncoder, ComponentParams, XyzTables, feed_tile_rows};
 use super::rate_control::{RateTargets, allocate_rate};
 use super::tile_packets::{TileBand, TileBands, TilePacketWriter};
 
@@ -59,6 +59,8 @@ pub(crate) struct DciParams<'a> {
     pub max_comp_size: u64,
     pub slope_hint: u16,
     pub tolerance: f64,
+    // RGB at PRECISION + precision_shift bits, converted like classic's applyXYZTransform
+    pub apply_xyz: bool,
     pub write_tlm: bool,
     pub comment: &'a [u8],
 }
@@ -261,6 +263,9 @@ pub(crate) fn encode_dci_frame(
             })
         })
         .collect();
+    let xyz = params
+        .apply_xyz
+        .then(|| XyzTables::warp(PRECISION as u32 + precision_shift, PRECISION as u32));
     feed_tile_rows(
         &mut encoders,
         planes,
@@ -269,6 +274,7 @@ pub(crate) fn encode_dci_frame(
         params.height as usize,
         PRECISION as u32,
         precision_shift,
+        xyz.as_ref(),
     );
 
     let mut bands = Vec::new();

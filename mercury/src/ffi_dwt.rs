@@ -22,6 +22,11 @@ pub struct MercuryLiftingStep {
     pub kernel_id: u8,
 }
 
+#[repr(C)]
+pub struct MercuryXyzTables {
+    _opaque: [u8; 0],
+}
+
 unsafe extern "C" {
     // i32 lane count of the dispatched kernels' vectors
     pub fn mercury_hwy_lanes_32() -> i32;
@@ -163,6 +168,23 @@ unsafe extern "C" {
         pass_terminated: *mut u8,
         numbps: *mut i32,
     ) -> i32;
+
+    pub fn mercury_xyz_tables_new(precision: u32, out_precision: u32) -> *mut MercuryXyzTables;
+
+    pub fn mercury_xyz_tables_free(tables: *mut MercuryXyzTables);
+
+    // grok's applyXYZTransform to 12 bits, then the forward ICT
+    pub fn mercury_hwy_forward_xyz_ict(
+        tables: *const MercuryXyzTables,
+        red: *const i32,
+        green: *const i32,
+        blue: *const i32,
+        dc_shift: i32,
+        luma: *mut f32,
+        chroma_blue: *mut f32,
+        chroma_red: *mut f32,
+        samples: i32,
+    );
 
     pub fn mercury_hwy_forward_ict(
         red: *const i32,
