@@ -491,6 +491,18 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_region_window_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
+add_executable(grk_single_tile_window_oom_test GrkSingleTileWindowOomTest.cpp)
+target_link_libraries(grk_single_tile_window_oom_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(grk_single_tile_window_oom_test psapi)
+endif()
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_single_tile_window_oom_test
+    COMMAND grk_single_tile_window_oom_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6561996741607424)
+  set_tests_properties(grk_single_tile_window_oom_test PROPERTIES TIMEOUT 60)
+endif()
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring a canvas
 # 0x2020ff20 samples wide made the mercury plan size its block-record tables
 # from the declared geometry instead of the decode window.
