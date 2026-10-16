@@ -1,5 +1,5 @@
 //! Full-image T2 parse plan: stream the codestream's packet headers once and
-//! build, per tile and subband, a table of every code-block's compressed
+//! build, per tile and subband, a table of each decoded code-block's compressed
 //! bytes (absolute file offset + length) and decode parameters.
 //!
 //! The T2 "feeder" (docs/weft-design.md §2): headers are parsed with a small
@@ -122,8 +122,8 @@ pub struct BandPlan {
     /// synthesis-gain normalization (0.0 for reversible).
     pub delta: f32,
     /// Stored block rectangle in the band-global block grid. A windowed decode
-    /// keeps only the blocks its in-window precincts fill, so the origin is
-    /// not the band's first block.
+    /// keeps only the blocks its padded band window needs, so the origin is not
+    /// the band's first block.
     stored_block_x0: u32,
     stored_block_y0: u32,
     stored_blocks_wide: u32,
@@ -146,9 +146,14 @@ impl BandPlan {
         y as usize * self.stored_blocks_wide as usize + x as usize
     }
 
-    fn block_mut(&mut self, block_x: u32, block_y: u32) -> &mut BlockRec {
-        let i = self.stored_index(block_x, block_y);
-        &mut self.blocks[i]
+    fn stored_block_mut(&mut self, block_x: u32, block_y: u32) -> Option<&mut BlockRec> {
+        let x = block_x.checked_sub(self.stored_block_x0)?;
+        let y = block_y.checked_sub(self.stored_block_y0)?;
+        if x >= self.stored_blocks_wide || y >= self.stored_blocks_high {
+            return None;
+        }
+        let i = y as usize * self.stored_blocks_wide as usize + x as usize;
+        self.blocks.get_mut(i)
     }
 
     /// The `count` blocks from band-global block column `block_x` of block row
@@ -383,26 +388,19 @@ impl BlockRect {
     };
 }
 
-/// Grow `rect` to cover one precinct's block range in one band.
-fn unite_block_rect(rect: &mut Option<BlockRect>, pb: &PrecBand) {
-    if pb.nbw == 0 || pb.nbh == 0 {
-        return;
+fn window_block_rect(bounds: Dims, window: Dims, block_w: u32, block_h: u32) -> BlockRect {
+    let window = intersect(bounds, window);
+    if window.is_empty() {
+        return BlockRect::EMPTY;
     }
-    let add = BlockRect {
-        x0: pb.bx0,
-        y0: pb.by0,
-        x1: pb.bx0 + pb.nbw,
-        y1: pb.by0 + pb.nbh,
-    };
-    *rect = Some(match *rect {
-        None => add,
-        Some(had) => BlockRect {
-            x0: had.x0.min(add.x0),
-            y0: had.y0.min(add.y0),
-            x1: had.x1.max(add.x1),
-            y1: had.y1.max(add.y1),
-        },
-    });
+    let first_block_x = bounds.x0 / block_w;
+    let first_block_y = bounds.y0 / block_h;
+    BlockRect {
+        x0: window.x0 / block_w - first_block_x,
+        y0: window.y0 / block_h - first_block_y,
+        x1: (window.x1 - 1) / block_w - first_block_x + 1,
+        y1: (window.y1 - 1) / block_h - first_block_y + 1,
+    }
 }
 
 /// `max_layers` keeps only the first that many quality layers (0 = all),
@@ -970,17 +968,6 @@ fn comb_tile(
     }
 
     // --- per-precinct facts every progression volume reuses ---
-    // This walk collects the block rectangle each band stores: the writer
-    // below fills every band of a precinct that passes the any-band window
-    // predicate, so a band's rectangle unions its own range over all those
-    // precincts, not just the ones whose slice of it is in the window.
-    let mut band_rects: Vec<Vec<Vec<Option<BlockRect>>>> = (0..num_comps)
-        .map(|c| {
-            (0..n_res(c))
-                .map(|r| vec![None; geom.components[c].resolutions[r].subbands.len()])
-                .collect()
-        })
-        .collect();
     // in_win per precinct, in raster index order.
     let mut prec_in_win: Vec<Vec<Vec<bool>>> = (0..num_comps)
         .map(|c| (0..n_res(c)).map(|_| Vec::new()).collect())
@@ -995,18 +982,11 @@ fn comb_tile(
             }
             let res = &tc.resolutions[r];
             let ps = style.precinct_span(r as u8);
-            let (block_w, block_h) = style.block_span(r as u8);
             for py in py0..py0 + npy {
                 for px in px0..px0 + npx {
-                    let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
                     let in_win = wins
                         .map(|ws| precinct_in_window(res, &ws[c].bands[r], px, py, ps, r))
                         .unwrap_or(true);
-                    if wins.is_some() && in_win {
-                        for (band_idx, pb) in prec_bands.iter().enumerate() {
-                            unite_block_rect(&mut band_rects[c][r][band_idx], pb);
-                        }
-                    }
                     prec_in_win[c][r].push(in_win);
                 }
             }
@@ -1044,8 +1024,8 @@ fn comb_tile(
                     // only come from the headers) but never decoded
                     let rect = if r > target_res(c) {
                         BlockRect::EMPTY
-                    } else if wins.is_some() {
-                        band_rects[c][r][i].unwrap_or(BlockRect::EMPTY)
+                    } else if let Some(wins) = wins {
+                        window_block_rect(sb.dims, wins[c].bands[r][i], block_w, block_h)
                     } else {
                         BlockRect {
                             x0: 0,
@@ -1255,6 +1235,8 @@ fn comb_tile(
                     .sum();
                 let lx = li % pb.nbw;
                 let ly = li / pb.nbw;
+                let block_body = body;
+                body += total as u64;
                 // classic abandons the tile at a block claiming more missing
                 // bit planes than its band has, so a plan that kept parsing
                 // would decode bytes classic never reads
@@ -1264,10 +1246,12 @@ fn comb_tile(
                         contrib.missing_msbs, band.k_max_prime
                     )));
                 }
-                let rec = band.block_mut(pb.bx0 + lx, pb.by0 + ly);
+                let Some(rec) = band.stored_block_mut(pb.bx0 + lx, pb.by0 + ly) else {
+                    continue;
+                };
                 if rec.num_passes == 0 {
                     // First contribution (inclusion always adds ≥1 pass).
-                    rec.file_off = body;
+                    rec.file_off = block_body;
                     rec.len = total;
                     rec.num_passes = contrib.new_passes;
                     rec.missing_msbs = contrib.missing_msbs;
@@ -1285,11 +1269,10 @@ fn comb_tile(
                     }
                     rec.num_passes = rec.num_passes.saturating_add(contrib.new_passes);
                     rec.extra.get_or_insert_with(Default::default).push(Chunk {
-                        file_off: body,
+                        file_off: block_body,
                         len: total,
                     });
                 }
-                body += total as u64;
             }
         }
         // Single-layer streams never revisit a precinct: free its state now
@@ -1440,6 +1423,27 @@ mod tests {
             };
             assert!(!msg.contains("no decomposition level"), "got {msg}");
         }
+    }
+
+    #[test]
+    fn window_block_storage_uses_the_window_rectangle() {
+        const BAND_WIDTH: u32 = 32_640;
+        const BAND_HEIGHT: u32 = 32_576;
+        const WINDOW_SIZE: u32 = 1_024;
+        const BLOCK_SIZE: u32 = 4;
+        const WINDOW_BLOCKS: u32 = WINDOW_SIZE / BLOCK_SIZE;
+
+        let rect = window_block_rect(
+            d(0, 0, BAND_WIDTH, BAND_HEIGHT),
+            d(0, 0, WINDOW_SIZE, WINDOW_SIZE),
+            BLOCK_SIZE,
+            BLOCK_SIZE,
+        );
+
+        assert_eq!(rect.x0, 0);
+        assert_eq!(rect.y0, 0);
+        assert_eq!(rect.x1, WINDOW_BLOCKS);
+        assert_eq!(rect.y1, WINDOW_BLOCKS);
     }
 
     /// The reported output dims must equal the extent of the tile geometry the

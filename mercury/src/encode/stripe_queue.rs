@@ -102,7 +102,7 @@ impl StripeQueue {
     }
 }
 
-// without this a panicking feed leaves the workers waiting forever
+// without this a panicking feed or a failed spawn leaves the workers waiting forever
 struct CloseOnDrop<'a>(&'a StripeQueue);
 
 impl Drop for CloseOnDrop<'_> {
@@ -117,6 +117,7 @@ pub(crate) fn run_stripe_workers<R>(
     feed: impl FnOnce() -> R,
 ) -> R {
     std::thread::scope(|scope| {
+        let _close = CloseOnDrop(queue);
         for _ in 0..workers {
             scope.spawn(|| {
                 let mut block = Vec::new();
@@ -125,7 +126,70 @@ pub(crate) fn run_stripe_workers<R>(
                 }
             });
         }
-        let _close = CloseOnDrop(queue);
         feed()
     })
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    const CHILD_ENV: &str = "MERCURY_STRIPE_SPAWN_FAILURE_CHILD";
+    const WORKER_STACK_KB: usize = 256 << 10;
+    const ADDRESS_SPACE_KB: usize = 1536 << 10;
+    const CHILD_TIMEOUT: Duration = Duration::from_secs(30);
+    const WORKERS: usize = 8;
+
+    fn address_space_kb() -> usize {
+        let status = std::fs::read_to_string("/proc/self/status").unwrap();
+        let line = status
+            .lines()
+            .find(|line| line.starts_with("VmSize:"))
+            .unwrap();
+        line.split_whitespace().nth(1).unwrap().parse().unwrap()
+    }
+
+    // the child's address space limit lets a few workers spawn before one fails
+    #[test]
+    fn failed_worker_spawn_closes_the_queue() {
+        if std::env::var_os(CHILD_ENV).is_some() {
+            assert!(
+                address_space_kb() + 2 * WORKER_STACK_KB <= ADDRESS_SPACE_KB,
+                "no room for a worker to spawn before the failure"
+            );
+            let queue = StripeQueue::warp(1);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                run_stripe_workers(&queue, WORKERS, || ())
+            }));
+            assert!(result.is_err(), "every worker spawned, no failure to test");
+            return;
+        }
+        let script = format!(
+            "ulimit -v {ADDRESS_SPACE_KB} && exec \"$0\" failed_worker_spawn_closes_the_queue --test-threads=1"
+        );
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg(script)
+            .arg(std::env::current_exe().unwrap())
+            .env(CHILD_ENV, "1")
+            .env("RUST_MIN_STACK", (WORKER_STACK_KB << 10).to_string())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let started = Instant::now();
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                assert!(status.success(), "child exited with {status}");
+                return;
+            }
+            if started.elapsed() > CHILD_TIMEOUT {
+                child.kill().unwrap();
+                panic!("workers hung after a failed spawn");
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
 }

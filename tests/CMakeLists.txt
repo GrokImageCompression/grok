@@ -507,6 +507,15 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_mercury_plan_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
+if(GRK_ENABLE_MERCURY)
+  add_executable(grk_mercury_window_block_storage_test GrkMercuryWindowBlockStorageTest.cpp)
+  target_link_libraries(grk_mercury_window_block_storage_test ${GROK_CORE_NAME} spdlog::spdlog)
+  add_test(NAME grk_mercury_window_block_storage_test
+    COMMAND grk_mercury_window_block_storage_test
+            ${CMAKE_CURRENT_SOURCE_DIR}/data/clusterfuzz-testcase-minimized-grk_decompress_mercury_fuzzer-4668610069725184)
+  set_tests_properties(grk_mercury_window_block_storage_test PROPERTIES TIMEOUT 60)
+endif()
+
 # Regression for an OSS-Fuzz signed overflow in load_h_p0_53.
 add_executable(grk_wavelet_53_overflow_test GrkWavelet53OverflowTest.cpp)
 target_link_libraries(grk_wavelet_53_overflow_test ${GROK_CORE_NAME} spdlog::spdlog)
