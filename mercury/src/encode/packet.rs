@@ -469,6 +469,7 @@ mod tests {
                     &mut states,
                     layer,
                     0,
+                    crate::codec::params::CodingModes(0),
                 )
                 .expect("decoder parses the header");
                 let header_length = parsed.header_bytes as usize;
@@ -508,7 +509,14 @@ mod tests {
                     }
                     let got: Vec<(u32, u8, u8, u32)> = parsed.contributions[b]
                         .iter()
-                        .map(|(i, c)| (*i, c.new_passes, c.missing_msbs, c.segment_lengths[0]))
+                        .map(|(i, c)| {
+                            (
+                                *i,
+                                c.new_passes,
+                                c.missing_msbs,
+                                *c.segment_lengths().next().unwrap(),
+                            )
+                        })
                         .collect();
                     assert_eq!(got, expected, "band {b} layer {layer}");
                 }

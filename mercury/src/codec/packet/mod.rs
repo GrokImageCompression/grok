@@ -7,6 +7,8 @@
 
 use std::collections::HashMap;
 
+use crate::codec::params::CodingModes;
+
 mod bitread;
 mod tagtree;
 
@@ -14,17 +16,58 @@ pub use bitread::{HeaderBytes, PacketBitReader};
 pub use tagtree::TagTree;
 
 /// Descriptor for a single code-block's contribution in one packet.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BlockContribution {
     /// New coding passes in this packet (0 = not included).
     pub new_passes: u8,
     /// Missing MSBs (only valid on first inclusion).
     pub missing_msbs: u8,
-    /// Code-segment lengths; single segment in standard
-    /// (non-HT/bypass/restart) mode.
-    pub segment_lengths: [u32; 4],
-    /// Valid entries in segment_lengths.
-    pub num_segments: u8,
+    segment_lengths: [u32; 4],
+    extra_segment_lengths: Vec<u32>,
+    num_segments: u8,
+    pub first_segment_continues: bool,
+}
+
+impl BlockContribution {
+    fn push_segment_length(&mut self, length: u32) {
+        let index = self.num_segments as usize;
+        if index < self.segment_lengths.len() {
+            self.segment_lengths[index] = length;
+        } else {
+            self.extra_segment_lengths.push(length);
+        }
+        self.num_segments += 1;
+    }
+
+    pub fn segment_lengths(&self) -> impl Iterator<Item = &u32> {
+        let inline = usize::from(self.num_segments).min(self.segment_lengths.len());
+        self.segment_lengths[..inline]
+            .iter()
+            .chain(self.extra_segment_lengths.iter())
+    }
+
+    pub fn num_segments(&self) -> u8 {
+        self.num_segments
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_segment_lengths(
+        new_passes: u8,
+        missing_msbs: u8,
+        lengths: &[u32],
+        first_segment_continues: bool,
+    ) -> Self {
+        let mut contribution = Self {
+            new_passes,
+            missing_msbs,
+            first_segment_continues,
+            ..Self::default()
+        };
+        for length in lengths {
+            contribution.push_segment_length(*length);
+        }
+        contribution
+    }
 }
 
 /// Persistent state for a code-block across quality layers.
@@ -38,6 +81,8 @@ pub struct BlockState {
     pub missing_msbs: u8,
     /// True once included in at least one packet.
     pub included: bool,
+    pub segment_passes: u8,
+    pub segment_max_passes: u8,
 }
 
 impl BlockState {
@@ -47,6 +92,8 @@ impl BlockState {
             beta: 0,
             missing_msbs: 0,
             included: false,
+            segment_passes: 0,
+            segment_max_passes: 0,
         }
     }
 }
@@ -106,6 +153,7 @@ pub fn comb_packet_header<S: HeaderBytes>(
     block_states: &mut [BandBlocks],
     layer_idx: u16,
     empty_packets_before: u16,
+    modes: CodingModes,
 ) -> Result<PacketParseResult, PacketError> {
     // First bit: packet non-empty flag.
     let non_empty = reader.pluck_bit()? != 0;
@@ -141,14 +189,10 @@ pub fn comb_packet_header<S: HeaderBytes>(
                     blk_idx,
                     layer_idx,
                     empty_packets_before,
+                    modes,
                 )
             })?;
-            total_body_bytes += contrib
-                .segment_lengths
-                .iter()
-                .take(contrib.num_segments as usize)
-                .map(|&l| l as u64)
-                .sum::<u64>();
+            total_body_bytes += contrib.segment_lengths().map(|&l| l as u64).sum::<u64>();
             if contrib.new_passes != 0 {
                 sb_contribs.push((blk_idx as u32, contrib));
             }
@@ -173,6 +217,7 @@ fn comb_block_contribution<S: HeaderBytes>(
     blk_idx: usize,
     layer_idx: u16,
     _empty_packets_before: u16,
+    modes: CodingModes,
 ) -> Result<BlockContribution, PacketError> {
     if !block.included {
         // First inclusion — tag-tree decode the inclusion layer.
@@ -204,34 +249,78 @@ fn comb_block_contribution<S: HeaderBytes>(
         block.beta += 1;
     }
 
-    // Segment length (standard mode: single segment, no bypass/restart/HT).
-    // length_bits = beta + ceil_log2(new_passes)
-    let mut length_bits = block.beta as u32;
-    {
-        let mut pass_bound = 2u32;
-        while pass_bound <= new_passes as u32 {
-            length_bits += 1;
-            pass_bound *= 2;
+    let segmented = modes.0 & (CodingModes::BYPASS | CodingModes::TERMALL) != 0;
+    if !segmented {
+        let segment_bytes = read_segment_length(reader, block.beta, new_passes)?;
+        let mut contribution = BlockContribution {
+            new_passes,
+            missing_msbs: block.missing_msbs,
+            first_segment_continues: block.num_passes != 0,
+            ..BlockContribution::default()
+        };
+        contribution.push_segment_length(segment_bytes);
+        block.num_passes += new_passes as u16;
+        return Ok(contribution);
+    }
+
+    let first_segment_continues =
+        block.segment_passes != 0 && block.segment_passes < block.segment_max_passes;
+    let mut remaining_passes = new_passes;
+    let mut contribution = BlockContribution {
+        new_passes,
+        missing_msbs: block.missing_msbs,
+        first_segment_continues,
+        ..BlockContribution::default()
+    };
+    while remaining_passes != 0 {
+        if block.segment_max_passes == 0 || block.segment_passes == block.segment_max_passes {
+            block.segment_max_passes = next_segment_max_passes(modes, block.segment_max_passes);
+            block.segment_passes = 0;
         }
-    }
-
-    if length_bits > 31 {
-        return Err(PacketError::PrecisionOverflow);
-    }
-
-    let segment_bytes = reader.pluck_bits(length_bits)?;
-    if segment_bytes >= (1 << 15) {
-        return Err(PacketError::PrecisionOverflow);
+        let segment_passes = remaining_passes.min(block.segment_max_passes - block.segment_passes);
+        let segment_bytes = read_segment_length(reader, block.beta, segment_passes)?;
+        contribution.push_segment_length(segment_bytes);
+        block.segment_passes += segment_passes;
+        remaining_passes -= segment_passes;
     }
 
     block.num_passes += new_passes as u16;
 
-    Ok(BlockContribution {
-        new_passes,
-        missing_msbs: block.missing_msbs,
-        segment_lengths: [segment_bytes, 0, 0, 0],
-        num_segments: 1,
-    })
+    Ok(contribution)
+}
+
+fn next_segment_max_passes(modes: CodingModes, previous_max_passes: u8) -> u8 {
+    if modes.0 & CodingModes::TERMALL != 0 {
+        return 1;
+    }
+    if previous_max_passes == 0 {
+        return 10;
+    }
+    if previous_max_passes == 1 || previous_max_passes == 10 {
+        2
+    } else {
+        1
+    }
+}
+
+fn floor_log2(value: u32) -> u32 {
+    u32::BITS - 1 - value.leading_zeros()
+}
+
+fn read_segment_length<S: HeaderBytes>(
+    reader: &mut PacketBitReader<S>,
+    beta: u8,
+    passes: u8,
+) -> Result<u32, PacketError> {
+    let length_bits = beta as u32 + floor_log2(passes as u32);
+    if length_bits > 31 {
+        return Err(PacketError::PrecisionOverflow);
+    }
+    let segment_bytes = reader.pluck_bits(length_bits)?;
+    if segment_bytes >= (1 << 15) {
+        return Err(PacketError::PrecisionOverflow);
+    }
+    Ok(segment_bytes)
 }
 
 /// Decode number of new coding passes (standard variable-length code):
@@ -288,11 +377,96 @@ impl std::error::Error for PacketError {}
 mod tests {
     use super::*;
 
+    fn pack_header_bits(bits: &str) -> Vec<u8> {
+        bits.as_bytes()
+            .chunks(8)
+            .map(|chunk| {
+                let mut byte = 0u8;
+                for bit in chunk {
+                    byte = (byte << 1) | u8::from(*bit == b'1');
+                }
+                byte << (8 - chunk.len())
+            })
+            .collect()
+    }
+
+    fn parse_existing_block(
+        bits: &str,
+        block: &mut BlockState,
+        modes: CodingModes,
+    ) -> BlockContribution {
+        let data = pack_header_bits(bits);
+        assert!(!data.contains(&0xFF));
+        comb_block_contribution(
+            &mut PacketBitReader::warp(&data),
+            &mut TagTree::warp(1, 1),
+            block,
+            0,
+            0,
+            0,
+            modes,
+        )
+        .expect("block contribution parses")
+    }
+
+    #[test]
+    fn bypass_segments_continue_and_split_across_layers() {
+        let mut block = BlockState {
+            num_passes: 9,
+            beta: 3,
+            missing_msbs: 2,
+            included: true,
+            segment_passes: 9,
+            segment_max_passes: 10,
+        };
+        let modes = CodingModes(CodingModes::BYPASS);
+
+        let crossing = parse_existing_block("1110001011001", &mut block, modes);
+        assert_eq!(crossing.new_passes, 3);
+        assert_eq!(
+            crossing.segment_lengths().copied().collect::<Vec<_>>(),
+            [5, 9]
+        );
+        assert!(crossing.first_segment_continues);
+        assert_eq!(block.segment_passes, 2);
+        assert_eq!(block.segment_max_passes, 2);
+
+        let next = parse_existing_block("100110", &mut block, modes);
+        assert_eq!(next.segment_lengths().copied().collect::<Vec<_>>(), [6]);
+        assert!(!next.first_segment_continues);
+        assert_eq!(block.segment_passes, 1);
+        assert_eq!(block.segment_max_passes, 1);
+    }
+
+    #[test]
+    fn termall_reads_one_length_per_pass() {
+        let mut block = BlockState {
+            num_passes: 4,
+            beta: 3,
+            missing_msbs: 1,
+            included: true,
+            segment_passes: 1,
+            segment_max_passes: 1,
+        };
+        let modes = CodingModes(CodingModes::TERMALL);
+
+        let contribution = parse_existing_block("111000001010011", &mut block, modes);
+        assert_eq!(contribution.new_passes, 3);
+        assert_eq!(
+            contribution.segment_lengths().copied().collect::<Vec<_>>(),
+            [1, 2, 3]
+        );
+        assert!(!contribution.first_segment_continues);
+        assert_eq!(block.segment_passes, 1);
+        assert_eq!(block.segment_max_passes, 1);
+    }
+
     fn scan_every_block<S: HeaderBytes>(
         reader: &mut PacketBitReader<S>,
         tagtrees: &mut [TagTree],
         block_states: &mut [BandBlocks],
         layer_idx: u16,
+        modes: CodingModes,
     ) -> Result<PacketParseResult, PacketError> {
         let non_empty = reader.pluck_bit()? != 0;
         if !non_empty {
@@ -310,14 +484,17 @@ mod tests {
             let mut sb_contribs = Vec::with_capacity(num_blocks);
             for blk_idx in 0..num_blocks {
                 let contrib = block_states[sb].update(blk_idx, |block| {
-                    comb_block_contribution(reader, &mut tagtrees[sb], block, blk_idx, layer_idx, 0)
+                    comb_block_contribution(
+                        reader,
+                        &mut tagtrees[sb],
+                        block,
+                        blk_idx,
+                        layer_idx,
+                        0,
+                        modes,
+                    )
                 })?;
-                total_body_bytes += contrib
-                    .segment_lengths
-                    .iter()
-                    .take(contrib.num_segments as usize)
-                    .map(|&l| l as u64)
-                    .sum::<u64>();
+                total_body_bytes += contrib.segment_lengths().map(|&l| l as u64).sum::<u64>();
                 if contrib.new_passes != 0 {
                     sb_contribs.push((blk_idx as u32, contrib));
                 }
@@ -372,12 +549,14 @@ mod tests {
                 &mut states_a,
                 layer,
                 0,
+                CodingModes(0),
             );
             let full = scan_every_block(
                 &mut PacketBitReader::warp(&data),
                 &mut trees_b,
                 &mut states_b,
                 layer,
+                CodingModes(0),
             );
             match (live, full) {
                 (Ok(live), Ok(full)) => {
@@ -420,6 +599,7 @@ mod tests {
                 &mut states,
                 layer,
                 0,
+                CodingModes(0),
             )
             .expect("header parses");
             assert_eq!(parsed.body_bytes, 0);

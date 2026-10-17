@@ -50,9 +50,9 @@ pub struct ProgressionVolume {
 pub struct CodingModes(pub u32);
 
 impl CodingModes {
-    // draft whitelists exactly these four; others (BYPASS/RESTART, HT)
-    // would misparse and are rejected as leftover bits.
+    pub const BYPASS: u32 = 1;
     pub const RESET: u32 = 2;
+    pub const TERMALL: u32 = 4;
     pub const CAUSAL: u32 = 8;
     pub const ERTERM: u32 = 16;
     pub const SEGMARK: u32 = 32;

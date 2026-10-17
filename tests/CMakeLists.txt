@@ -273,6 +273,20 @@ if(GRK_ENABLE_MERCURY)
       COMMAND grk_mercury_coc_test ${GRK_DATA_ROOT}/input/conformance/p0_08.j2k)
   endif()
 
+  add_executable(grk_mercury_part_one_modes_test GrkMercuryCocTest.cpp)
+  target_link_libraries(grk_mercury_part_one_modes_test ${GROK_CORE_NAME} spdlog::spdlog)
+  if(GRK_DATA_ROOT)
+    foreach(part_one_modes_stream
+            c1_mono.j2c
+            c2_mono.j2c
+            p0_02.j2k
+            p0_12.j2k)
+      add_test(NAME grk_mercury_part_one_modes_test_${part_one_modes_stream}
+        COMMAND grk_mercury_part_one_modes_test
+                ${GRK_DATA_ROOT}/input/conformance/${part_one_modes_stream})
+    endforeach()
+  endif()
+
   # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
   add_executable(grk_mercury_poc_test GrkMercuryPocTest.cpp)
   target_link_libraries(grk_mercury_poc_test ${GROK_CORE_NAME} spdlog::spdlog)

@@ -17,7 +17,8 @@ use std::sync::Arc;
 use crate::decode::ReadAt;
 
 use crate::codec::packet::{
-    BandBlocks, HeaderBytes, PacketBitReader, PacketError, TagTree, comb_packet_header,
+    BandBlocks, BlockContribution, HeaderBytes, PacketBitReader, PacketError, TagTree,
+    comb_packet_header,
 };
 use crate::codec::packet_order::{
     PrecBand, chart_prec_bands, chart_precinct_grids, chart_precinct_positions, order_packets,
@@ -100,6 +101,35 @@ impl BlockRec {
                 .as_ref()
                 .map_or(0, |v| v.iter().map(|c| c.len as usize).sum())
     }
+}
+
+fn append_segment_lengths(
+    block: &mut BlockRec,
+    contribution: &BlockContribution,
+) -> Result<(), DecodeError> {
+    let previous_bytes = u32::try_from(block.bolt_len())
+        .map_err(|_| DecodeError::Logic("plan: code-block length exceeds u32".into()))?;
+    let mut lengths = block
+        .seg_lens
+        .take()
+        .map_or_else(|| vec![previous_bytes], |lengths| lengths.into_vec());
+    let mut new_lengths = contribution.segment_lengths();
+    if contribution.first_segment_continues {
+        let previous = lengths.last_mut().ok_or_else(|| {
+            DecodeError::Logic("plan: continued code-block segment is missing".into())
+        })?;
+        let added = new_lengths.next().ok_or_else(|| {
+            DecodeError::Logic("plan: continued code-block segment is empty".into())
+        })?;
+        *previous = previous
+            .checked_add(*added)
+            .ok_or_else(|| DecodeError::Logic("plan: code-block segment length overflow".into()))?;
+    }
+    lengths.extend(new_lengths.copied());
+    block.num_segments = u8::try_from(lengths.len())
+        .map_err(|_| DecodeError::Logic("plan: too many code-block segments".into()))?;
+    block.seg_lens = (lengths.len() > 1).then(|| lengths.into_boxed_slice());
+    Ok(())
 }
 
 /// Everything needed to decode one subband independently.
@@ -712,14 +742,14 @@ fn check_coding_style(
     reduce: u8,
     label: &str,
 ) -> Result<(), DecodeError> {
-    // Whitelist code-block modes: RESET/CAUSAL/ERTERM/SEGMARK are handled by
-    // the T1 and verified bit-exact. BYPASS/RESTART split codewords into
-    // multiple segments (the packet parser reads one length per contribution)
-    // and HT/HTMIX use part-15 packet-length signalling — all would misparse,
-    // not just misdecode, so reject at plan time and let the host fall back.
+    // HT and HTMIX use Part 15 packet-length signalling.
     use crate::codec::params::CodingModes;
-    let supported =
-        CodingModes::RESET | CodingModes::CAUSAL | CodingModes::ERTERM | CodingModes::SEGMARK;
+    let supported = CodingModes::BYPASS
+        | CodingModes::RESET
+        | CodingModes::TERMALL
+        | CodingModes::CAUSAL
+        | CodingModes::ERTERM
+        | CodingModes::SEGMARK;
     for style in &cod.comps {
         let m = style.modes.0;
         if m & !supported != 0 {
@@ -1205,6 +1235,7 @@ fn comb_tile(
             &mut state.states,
             pkt.layer,
             0,
+            cod.comps[c].modes,
         )
         .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
         let mut hdr_len = parsed.header_bytes as u64;
@@ -1224,17 +1255,13 @@ fn comb_tile(
         for (band_idx, pb) in bands_to_fill.iter().enumerate() {
             let contribs = &parsed.contributions[band_idx];
             let band = &mut comps[c][r].bands[band_idx];
-            for &(li, contrib) in contribs {
+            for (li, contrib) in contribs {
                 if contrib.new_passes == 0 {
                     continue;
                 }
-                let total: u32 = contrib
-                    .segment_lengths
-                    .iter()
-                    .take(contrib.num_segments as usize)
-                    .sum();
-                let lx = li % pb.nbw;
-                let ly = li / pb.nbw;
+                let total: u32 = contrib.segment_lengths().sum();
+                let lx = *li % pb.nbw;
+                let ly = *li / pb.nbw;
                 let block_body = body;
                 body += total as u64;
                 // classic abandons the tile at a block claiming more missing
@@ -1255,18 +1282,18 @@ fn comb_tile(
                     rec.len = total;
                     rec.num_passes = contrib.new_passes;
                     rec.missing_msbs = contrib.missing_msbs;
-                    rec.num_segments = contrib.num_segments;
-                    if contrib.num_segments > 1 {
-                        rec.seg_lens =
-                            Some(contrib.segment_lengths[..contrib.num_segments as usize].into());
+                    rec.num_segments = contrib.num_segments();
+                    if contrib.num_segments() > 1 {
+                        rec.seg_lens = Some(
+                            contrib
+                                .segment_lengths()
+                                .copied()
+                                .collect::<Vec<_>>()
+                                .into_boxed_slice(),
+                        );
                     }
                 } else {
-                    // Later layer: append bytes, accumulate passes.
-                    if rec.num_segments > 1 || contrib.num_segments > 1 {
-                        return Err(DecodeError::Logic(
-                            "plan: multi-segment multi-layer block not supported".into(),
-                        ));
-                    }
+                    append_segment_lengths(rec, contrib)?;
                     rec.num_passes = rec.num_passes.saturating_add(contrib.new_passes);
                     rec.extra.get_or_insert_with(Default::default).push(Chunk {
                         file_off: block_body,
@@ -1338,6 +1365,52 @@ mod tests {
     };
 
     const NUM_LEVELS: u8 = 5;
+
+    #[test]
+    fn part_one_modes_are_supported_and_ht_is_rejected() {
+        const HT_ONLY: u32 = 1 << 6;
+        let mut coding = cod();
+        coding.comps[0].modes = CodingModes(
+            CodingModes::BYPASS
+                | CodingModes::RESET
+                | CodingModes::TERMALL
+                | CodingModes::CAUSAL
+                | CodingModes::ERTERM
+                | CodingModes::SEGMARK,
+        );
+        check_coding_style(&coding, 1, 0, "").expect("Part 1 modes are supported");
+
+        coding.comps[0].modes = CodingModes(HT_ONLY);
+        let Err(DecodeError::Logic(message)) = check_coding_style(&coding, 1, 0, "") else {
+            panic!("HT must be rejected");
+        };
+        assert!(message.contains("unsupported code-block modes"));
+    }
+
+    #[test]
+    fn later_layers_merge_continued_segment_lengths() {
+        let mut block = BlockRec {
+            file_off: 100,
+            len: 5,
+            num_passes: 9,
+            missing_msbs: 2,
+            num_segments: 1,
+            ..BlockRec::default()
+        };
+        let crossing = BlockContribution::with_segment_lengths(3, 2, &[7, 11], true);
+        append_segment_lengths(&mut block, &crossing).expect("segment lengths merge");
+        assert_eq!(block.seg_lens.as_deref(), Some(&[12, 11][..]));
+        assert_eq!(block.num_segments, 2);
+
+        block.extra = Some(Box::new(vec![Chunk {
+            file_off: 200,
+            len: 18,
+        }]));
+        let next = BlockContribution::with_segment_lengths(1, 2, &[3], false);
+        append_segment_lengths(&mut block, &next).expect("new segment appends");
+        assert_eq!(block.seg_lens.as_deref(), Some(&[12, 11, 3][..]));
+        assert_eq!(block.num_segments, 3);
+    }
 
     fn siz() -> SizParams {
         SizParams {
