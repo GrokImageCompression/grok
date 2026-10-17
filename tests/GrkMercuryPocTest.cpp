@@ -19,8 +19,7 @@
 // with its own order and its own layer, resolution and component ranges. The
 // fast path has to follow that list packet for packet, so these streams decode
 // through mercury and match the classic pipeline bit for bit. A tile whose own
-// list differs carries a POC in its first tile-part instead, which mercury
-// rejects.
+// list differs carries a POC in its first tile-part instead.
 
 #include <cstdio>
 #include <cstdlib>
@@ -517,7 +516,7 @@ bool runConfig(const Config& config)
       fprintf(stderr, "%s: mercury %s, expected it to %s.\ncaptured log:\n%s\n", config.name,
               fastPath ? "took the fast path"
                        : (rejected ? "rejected the plan" : "fell back without a reason"),
-              config.expectFastPath ? "decode" : "reject the tile-part POC", log.c_str());
+              config.expectFastPath ? "decode" : "reject the plan", log.c_str());
     else
       ok = matchesSource(config, classic) && sameImage(config, classic, mercury);
   }
@@ -593,8 +592,7 @@ int main(void)
        0,
        {{0, 0, NUM_LAYERS, 2, NUM_COMPONENTS, GRK_RPCL},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_PCRL}}},
-      // odd tiles get their own volume orders, so they carry a POC in their
-      // first tile-part and mercury has to bail
+      // odd tiles get their own volume orders in their first tile-part
       {"per_tile_lists",
        GRK_LRCP,
        0,
@@ -602,7 +600,7 @@ int main(void)
        {{0, 0, 2, 2, NUM_COMPONENTS, GRK_RLCP},
         {0, 0, NUM_LAYERS, NUM_RESOLUTIONS, NUM_COMPONENTS, GRK_CPRL}},
        true,
-       false},
+       true},
   };
 
   int result = 0;

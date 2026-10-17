@@ -501,6 +501,7 @@ pub fn draft(
     // Each tile's first tile-part header's COD/COC/QCD/QCC segments, in header
     // order: (marker code, payload after Lmar).
     let mut tile_styles: Vec<Vec<(u16, Vec<u8>)>> = vec![Vec::new(); num_tiles];
+    let mut tile_pocs: Vec<Vec<(u8, Vec<u8>)>> = vec![Vec::new(); num_tiles];
     // A tile's coding style has to be known before its first packet, so only
     // the tile-part that opens a tile may carry those markers. TPsot names it,
     // but streams with a wrong TPsot decode anyway, so stream order decides.
@@ -535,8 +536,13 @@ pub fn draft(
                 codestream_end,
                 e.offset,
                 e.length as u64,
-                use_plt.then(|| &mut tile_plt[t]),
-                (!std::mem::replace(&mut tile_opened[t], true)).then(|| &mut tile_styles[t]),
+                sot[10],
+                TilePartMarkerSinks {
+                    packet_lengths: use_plt.then(|| &mut tile_plt[t]),
+                    coding_parameters: (!std::mem::replace(&mut tile_opened[t], true))
+                        .then(|| &mut tile_styles[t]),
+                    progression_changes: &mut tile_pocs[t],
+                },
             )?;
             tile_segs[t].push(seg);
         }
@@ -577,9 +583,13 @@ pub fn draft(
                     codestream_end,
                     sot_pos,
                     psot,
-                    use_plt.then(|| &mut tile_plt[isot]),
-                    (!std::mem::replace(&mut tile_opened[isot], true))
-                        .then(|| &mut tile_styles[isot]),
+                    sot[10],
+                    TilePartMarkerSinks {
+                        packet_lengths: use_plt.then(|| &mut tile_plt[isot]),
+                        coding_parameters: (!std::mem::replace(&mut tile_opened[isot], true))
+                            .then(|| &mut tile_styles[isot]),
+                        progression_changes: &mut tile_pocs[isot],
+                    },
                 )?;
                 tile_segs[isot].push(seg);
             }
@@ -609,20 +619,13 @@ pub fn draft(
             continue;
         }
         let tile_quant_override: Vec<QcdParams>;
-        let (cod, tile_quant) = if segs.is_empty() {
+        let (cod, tile_quant) = if segs.is_empty() && tile_pocs[t].is_empty() {
             (Arc::clone(&main_cod), quant.as_slice())
         } else {
             let (mut cod, tile_quant) = comb_tile_params(&hdr.cod, &quant, segs)?;
-            // Classic bounds every tile at the main header's layer count, or at the
-            // caller's limit when it set one: grok copies layersToDecompress_ into
-            // the tile's coding params before reading the tile-part COD, and a
-            // tile-part COD never raises it.
-            let layer_bound = if max_layers != 0 {
-                max_layers
-            } else {
-                hdr.cod.num_layers
-            };
-            cod.num_layers = cod.num_layers.min(layer_bound);
+            comb_tile_pocs(&mut cod, &tile_pocs[t])?;
+            // A tile-part COD cannot raise the main header's layer count.
+            cod.num_layers = cod.num_layers.min(hdr.cod.num_layers);
             check_coding_style(&cod, num_comps, reduce, &format!(" tile {t}"))?;
             // The sample path and the color transform are chosen once for the
             // whole image, in weave_sink, so no tile may move them.
@@ -856,6 +859,29 @@ fn comb_tile_params(
     Ok((cod, quant))
 }
 
+fn comb_tile_pocs(cod: &mut CodParams, segs: &[(u8, Vec<u8>)]) -> Result<(), DecodeError> {
+    use crate::codec::markers;
+    let mut by_tile_part = std::collections::BTreeMap::new();
+    for (tile_part, payload) in segs {
+        let volumes = markers::comb_poc(payload, cod.comps.len())
+            .map_err(|why| DecodeError::Logic(format!("plan: tile-part 0xff5f: {why}")))?;
+        by_tile_part.insert(*tile_part, volumes);
+    }
+    if by_tile_part.contains_key(&0) {
+        cod.pocs.clear();
+    }
+    for volumes in by_tile_part.into_values() {
+        cod.pocs.extend(volumes);
+    }
+    Ok(())
+}
+
+struct TilePartMarkerSinks<'a> {
+    packet_lengths: Option<&'a mut Vec<(u8, Vec<u8>)>>,
+    coding_parameters: Option<&'a mut Vec<(u16, Vec<u8>)>>,
+    progression_changes: &'a mut Vec<(u8, Vec<u8>)>,
+}
+
 /// Scan one tile-part's header markers to SOD, collecting PLT payloads on the
 /// way when a sink is given. Returns the packet-data segment (absolute
 /// offset, length), clipped to the codestream end: a Psot reaching past it
@@ -865,8 +891,8 @@ fn comb_tile_part(
     codestream_end: u64,
     sot_pos: u64,
     psot: u64,
-    mut plt_sink: Option<&mut Vec<(u8, Vec<u8>)>>,
-    mut style_sink: Option<&mut Vec<(u16, Vec<u8>)>>,
+    tile_part_index: u8,
+    mut sinks: TilePartMarkerSinks,
 ) -> Result<(u64, u64), DecodeError> {
     let mut mp = sot_pos + 12;
     loop {
@@ -878,10 +904,9 @@ fn comb_tile_part(
             break;
         }
         match code {
-            // PPT means packed headers elsewhere, a POC reorders the tile's
-            // packets away from the COD progression, and an RGN upshifts the
-            // tile's coefficients.
-            0xFF5E | 0xFF5F | 0xFF61 => {
+            // PPT means packed headers elsewhere, and RGN upshifts the tile's
+            // coefficients.
+            0xFF5E | 0xFF61 => {
                 return Err(DecodeError::Logic(format!(
                     "plan: tile-part marker {code:#x} not supported"
                 )));
@@ -893,7 +918,7 @@ fn comb_tile_part(
         // (A.6); only the first tile-part of a tile may carry them, which is
         // the one the sink is given for.
         if matches!(code, 0xFF52 | 0xFF53 | 0xFF5C | 0xFF5D) {
-            let Some(sink) = style_sink.as_deref_mut() else {
+            let Some(sink) = sinks.coding_parameters.as_deref_mut() else {
                 return Err(DecodeError::Logic(format!(
                     "plan: tile-part marker {code:#x} outside the first tile-part"
                 )));
@@ -907,9 +932,19 @@ fn comb_tile_part(
             file.draw_at(&mut payload, mp + 4).map_err(io_snag)?;
             sink.push((code, payload));
         }
+        if code == 0xFF5F {
+            if l < 3 {
+                return Err(DecodeError::Logic(
+                    "plan: tile-part marker 0xff5f carries no payload".into(),
+                ));
+            }
+            let mut payload = vec![0u8; (l - 2) as usize];
+            file.draw_at(&mut payload, mp + 4).map_err(io_snag)?;
+            sinks.progression_changes.push((tile_part_index, payload));
+        }
         // PLT (A.7.1): Zplt byte then comma-coded packet lengths.
         if code == 0xFF58 && l >= 3 {
-            if let Some(sink) = plt_sink.as_deref_mut() {
+            if let Some(sink) = sinks.packet_lengths.as_deref_mut() {
                 let mut payload = vec![0u8; (l - 2) as usize];
                 file.draw_at(&mut payload, mp + 4).map_err(io_snag)?;
                 let lengths = payload.split_off(1);
@@ -2419,23 +2454,80 @@ mod tests {
         assert!(msg.contains("mixed wavelet kernels"), "got {msg}");
     }
 
-    /// A tile-part POC reorders that tile's packets, which the single
-    /// progression the plan takes from the COD cannot follow.
     #[test]
-    fn a_tile_part_poc_is_rejected() {
-        let stream = synth_stream();
-        const POC: [u8; 11] = [0xFF, 0x5F, 0x00, 0x09, 0, 0, 0, 1, 1, 1, 0];
-        let mut spliced = stream[..12].to_vec();
-        spliced.extend(POC);
-        spliced.extend(&stream[12..]);
-        let psot =
-            u32::from_be_bytes([spliced[6], spliced[7], spliced[8], spliced[9]]) + POC.len() as u32;
-        spliced[6..10].copy_from_slice(&psot.to_be_bytes());
-        let Err(DecodeError::Logic(msg)) = draft(&spliced, &synth_header(), 0, 0, true, None)
-        else {
-            panic!("a tile-part POC must be rejected");
+    fn a_first_tile_part_poc_replaces_the_main_header_poc() {
+        let volume = ProgressionVolume {
+            res_s: 0,
+            comp_s: 0,
+            lay_e: LAYERS,
+            res_e: 2,
+            comp_e: 1,
+            order: ProgressionOrder::Rlcp,
         };
-        assert!(msg.contains("0xff5f"), "got {msg}");
+        let packets = vec![
+            synth_packet(true, 1),
+            synth_packet(false, 1),
+            synth_packet(false, 1),
+            synth_packet(true, 3),
+            synth_packet(false, 3),
+            synth_packet(false, 3),
+        ];
+        let mut hdr = synth_header();
+        hdr.cod.pocs.push(ProgressionVolume {
+            lay_e: 1,
+            order: ProgressionOrder::Lrcp,
+            ..volume
+        });
+        let stream = marked_stream(&[poc_segment(&[volume])], &packets);
+        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("tile-part POC must plan");
+        let tile = plan.tiles[0].as_ref().expect("tile must be present");
+
+        assert_eq!(tile.cod.pocs.len(), 1);
+        assert_eq!(tile.cod.pocs[0].order, ProgressionOrder::Rlcp);
+        assert_eq!(tile.cod.pocs[0].lay_e, LAYERS);
+        assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS_PER_LAYER as usize]);
+    }
+
+    #[test]
+    fn a_later_tile_part_poc_appends_to_the_first() {
+        let first = ProgressionVolume {
+            res_s: 0,
+            comp_s: 0,
+            lay_e: LAYERS,
+            res_e: 1,
+            comp_e: 1,
+            order: ProgressionOrder::Rlcp,
+        };
+        let second = ProgressionVolume {
+            res_s: 1,
+            res_e: 2,
+            ..first
+        };
+        let first_packets = vec![
+            synth_packet(true, 1),
+            synth_packet(false, 1),
+            synth_packet(false, 1),
+        ];
+        let second_packets = vec![
+            synth_packet(true, 3),
+            synth_packet(false, 3),
+            synth_packet(false, 3),
+        ];
+        let mut stream = tile_part(0, 2, &[poc_segment(&[first])], &first_packets);
+        stream.extend(tile_part(1, 2, &[poc_segment(&[second])], &second_packets));
+        stream.extend([0xFF, 0xD9]);
+
+        let plan = draft(&stream, &synth_header(), 0, 0, true, None)
+            .expect("later tile-part POC must plan");
+        let tile = plan.tiles[0].as_ref().expect("tile must be present");
+        assert_eq!(tile.cod.pocs.len(), 2);
+        assert_eq!(tile.cod.pocs[0].res_s, 0);
+        assert_eq!(tile.cod.pocs[1].res_s, 1);
+        assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS_PER_LAYER as usize]);
+
+        let limited = draft(&stream, &synth_header(), 0, 1, true, None)
+            .expect("layer-limited tile-part POC must plan");
+        assert_eq!(passes(&limited), vec![1; BLOCKS_PER_LAYER as usize]);
     }
 
     /// Two components, two resolutions, three layers, one precinct each: a POC
@@ -2662,6 +2754,21 @@ mod tests {
         let mut out = tile_part(0, 1, markers, packets);
         out.extend([0xFF, 0xD9]); // EOC
         out
+    }
+
+    fn poc_segment(volumes: &[ProgressionVolume]) -> Vec<u8> {
+        const RECORD_BYTES: u16 = 7;
+        let mut segment = vec![0xFF, 0x5F];
+        segment.extend((2 + RECORD_BYTES * volumes.len() as u16).to_be_bytes());
+        for volume in volumes {
+            segment.push(volume.res_s);
+            segment.push(volume.comp_s as u8);
+            segment.extend(volume.lay_e.to_be_bytes());
+            segment.push(volume.res_e);
+            segment.push(volume.comp_e as u8);
+            segment.push(volume.order as u8);
+        }
+        segment
     }
 
     /// A COD segment: LRCP, `layers` layers, no MCT, `levels` decomposition

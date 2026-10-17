@@ -185,7 +185,7 @@ Grok compresses DCI 2K and 4K frames with mercury's encoder by default, and
 - Full-resolution, full-image decode only. No `-reduce` / decode-window /
   region decode (the host handles those on its classic path).
 - Rejected at plan time (returned as errors, never mis-decoded, so the host
-  falls back): tile-part POC markers, mixed wavelet kernels across components,
+  falls back): mixed wavelet kernels across components,
   derived quantization, precincts smaller than code-blocks,
   HT code-block modes.
 - Decode-only; the host owns compression, color management, and output.

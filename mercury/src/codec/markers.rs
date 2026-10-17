@@ -5,8 +5,8 @@
 //! itself.
 
 use crate::codec::params::{
-    CodParams, CodingModes, CompCodingStyle, MAX_LEVELS, PrecinctSize, ProgressionOrder, QcdParams,
-    QuantStyle,
+    CodParams, CodingModes, CompCodingStyle, MAX_LEVELS, PrecinctSize, ProgressionOrder,
+    ProgressionVolume, QcdParams, QuantStyle,
 };
 
 /// Scod/Scoc bit 0: the segment carries one precinct size per resolution.
@@ -49,15 +49,19 @@ impl<'a> SegReader<'a> {
 
     /// Ccoc/Cqcc: one byte for fewer than 257 components, two above that.
     fn comp_index(&mut self, num_comps: usize) -> Result<usize, String> {
-        let idx = if num_comps <= 256 {
-            self.byte()? as usize
-        } else {
-            self.word()? as usize
-        };
+        let idx = self.component(num_comps)? as usize;
         if idx >= num_comps {
             return Err(format!("component {idx} of {num_comps}"));
         }
         Ok(idx)
+    }
+
+    fn component(&mut self, num_comps: usize) -> Result<u16, String> {
+        if num_comps <= 256 {
+            Ok(self.byte()? as u16)
+        } else {
+            self.word()
+        }
     }
 }
 
@@ -228,6 +232,35 @@ pub fn comb_qcc(payload: &[u8], num_comps: usize) -> Result<(usize, QcdParams), 
     Ok((comp, quant))
 }
 
+pub fn comb_poc(payload: &[u8], num_comps: usize) -> Result<Vec<ProgressionVolume>, String> {
+    let component_bytes = if num_comps <= 256 { 1 } else { 2 };
+    let record_bytes = 5 + 2 * component_bytes;
+    if payload.is_empty() || !payload.len().is_multiple_of(record_bytes) {
+        return Err(format!("{} bytes cannot form POC records", payload.len()));
+    }
+
+    let mut reader = SegReader::warp(payload);
+    let mut volumes = Vec::with_capacity(payload.len() / record_bytes);
+    while reader.left() != 0 {
+        let res_s = reader.byte()?;
+        let comp_s = reader.component(num_comps)?;
+        let lay_e = reader.word()?;
+        let res_e = reader.byte()?;
+        let comp_e = reader.component(num_comps)?;
+        let order = ProgressionOrder::from_host(reader.byte()?)
+            .map_err(|_| "progression order".to_string())?;
+        volumes.push(ProgressionVolume {
+            res_s,
+            comp_s,
+            lay_e,
+            res_e,
+            comp_e,
+            order,
+        });
+    }
+    Ok(volumes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -372,5 +405,7 @@ mod tests {
         assert!(comb_cod(&[0x00, 0x00, 0x00], &mut cod_params(1)).is_err());
         assert!(comb_coc(&[0x00], &mut cod_params(1)).is_err());
         assert!(comb_qcc(&[0x00], 1).is_err());
+        assert!(comb_poc(&[0x00; 6], 1).is_err());
+        assert!(comb_poc(&[0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x05], 1).is_err());
     }
 }

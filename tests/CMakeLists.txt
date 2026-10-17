@@ -291,6 +291,15 @@ if(GRK_ENABLE_MERCURY)
   add_executable(grk_mercury_poc_test GrkMercuryPocTest.cpp)
   target_link_libraries(grk_mercury_poc_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_mercury_poc_test COMMAND grk_mercury_poc_test)
+  if(GRK_DATA_ROOT)
+    foreach(tile_part_poc_stream
+            e1_colr.j2c
+            p0_07.j2k)
+      add_test(NAME grk_mercury_tile_part_poc_test_${tile_part_poc_stream}
+        COMMAND grk_mercury_part_one_modes_test
+                ${GRK_DATA_ROOT}/input/conformance/${tile_part_poc_stream})
+    endforeach()
+  endif()
 
   # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
   add_executable(grk_mercury_subsampling_test GrkMercurySubsamplingTest.cpp)
