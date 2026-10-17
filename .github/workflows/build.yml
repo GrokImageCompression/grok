@@ -220,8 +220,8 @@ jobs:
   ubsan-wavelet-overflow:
     runs-on: ubuntu-latest
     env:
-      SANITIZE_FLAGS: -fsanitize=signed-integer-overflow -fno-sanitize-recover=all
-      CXX_SANITIZE_FLAGS: -fsanitize=signed-integer-overflow,vptr -fno-sanitize-recover=all
+      SANITIZE_FLAGS: -fsanitize=address,signed-integer-overflow -fno-sanitize-recover=all
+      CXX_SANITIZE_FLAGS: -fsanitize=address,signed-integer-overflow,vptr -fno-sanitize-recover=all
       CLANG_VERSION: 19
     steps:
     - uses: actions/checkout@v4
@@ -263,10 +263,10 @@ jobs:
           -DCMAKE_SHARED_LINKER_FLAGS="$SANITIZE_FLAGS"
 
     - name: build
-      run: cmake --build build-ubsan -j"$(nproc)" --target grk_wavelet_53_overflow_test grk_region_decompress_int16_test grk_region_decompress_97_int16_test
+      run: cmake --build build-ubsan -j"$(nproc)" --target grk_wavelet_53_overflow_test grk_region_decompress_int16_test grk_region_decompress_97_int16_test grk_termall_zero_length_segment_test
 
     - name: test
-      run: ctest --test-dir build-ubsan -R 'grk_wavelet_53_overflow_test|grk_region_decompress_int16_test|grk_region_decompress_97_int16_test' --output-on-failure
+      run: ctest --test-dir build-ubsan -R 'grk_wavelet_53_overflow_test|grk_region_decompress_int16_test|grk_region_decompress_97_int16_test|grk_termall_zero_length_segment_test' --output-on-failure
 
   lto-ctor-isa:
     runs-on: ubuntu-latest

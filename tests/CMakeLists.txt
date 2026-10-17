@@ -372,6 +372,14 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_late_tile_part_reschedule_test PROPERTIES TIMEOUT 120)
 endif()
 
+# Regression for a CIFuzz heap overread: a termall pass signalled with zero bytes
+add_executable(grk_termall_zero_length_segment_test GrkTermallZeroLengthSegmentTest.cpp)
+target_link_libraries(grk_termall_zero_length_segment_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_termall_zero_length_segment_test
+  COMMAND grk_termall_zero_length_segment_test
+          ${CMAKE_CURRENT_SOURCE_DIR}/data/termall_zero_length_segment.j2k)
+set_tests_properties(grk_termall_zero_length_segment_test PROPERTIES TIMEOUT 60)
+
 # Regression for an OSS-Fuzz timeout: a bogus precinct grid with PLT markers made
 # T2 packet parsing skip corrupt packets across the whole grid without end. The
 # test must RETURN; the TIMEOUT turns a regression hang into a failure.

@@ -741,7 +741,9 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       seg->headerTotalPasses_ = passes;
       remaining -= passes;
       int32_t len = (numSegs <= 1) ? dataLen : segLens[i];
-      seg->data_chunks_.push_back(new Buffer8(p, (size_t)len));
+      // packet parsing never creates a chunk for an empty segment
+      if(len > 0)
+        seg->data_chunks_.push_back(new Buffer8(p, (size_t)len));
       seg->totalBytes_ = (uint32_t)len;
       p += len;
       numDataParsedSegments_++;
