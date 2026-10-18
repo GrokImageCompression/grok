@@ -139,6 +139,10 @@ if(GRK_BUILD_PLUGIN_LOADER)
     COMMAND grk_plugin_batch_file_test $<TARGET_FILE:grk_decompress>)
   set_tests_properties(grk_plugin_batch_file_test PROPERTIES
     ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
+  # player frame rate on one code stream, not a test
+  add_executable(grk_plugin_player_bench grk_plugin_player_bench.cpp)
+  target_link_libraries(grk_plugin_player_bench ${GROK_CORE_NAME})
 endif()
 
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
