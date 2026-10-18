@@ -506,6 +506,87 @@ void checkSyccCinema()
   grk_object_unref(&cpuSource->obj);
   grk_object_unref(&gpuSource->obj);
 }
+
+void putUint16(std::vector<uint8_t>& out, uint16_t value)
+{
+  out.push_back((uint8_t)(value >> 8));
+  out.push_back((uint8_t)value);
+}
+void putUint32(std::vector<uint8_t>& out, uint32_t value)
+{
+  putUint16(out, (uint16_t)(value >> 16));
+  putUint16(out, (uint16_t)value);
+}
+
+// a main header for a single tile 8 bit grey image, with a tile part that contains no packets
+std::vector<uint8_t> headerOnlyCodeStream(uint32_t width, uint32_t height)
+{
+  constexpr uint8_t kLevels = 5;
+  std::vector<uint8_t> out;
+  putUint16(out, 0xFF4F);
+  putUint16(out, 0xFF51);
+  putUint16(out, 41);
+  putUint16(out, 0);
+  for(uint32_t value : {width, height, 0u, 0u, width, height, 0u, 0u})
+    putUint32(out, value);
+  putUint16(out, 1);
+  out.insert(out.end(), {7, 1, 1});
+  putUint16(out, 0xFF52);
+  putUint16(out, 12);
+  out.insert(out.end(), {0, 0, 0, 1, 0, kLevels, 4, 4, 0, 1});
+  putUint16(out, 0xFF5C);
+  putUint16(out, 3 + 3 * kLevels + 1);
+  out.push_back(0x40);
+  out.insert(out.end(), 3 * kLevels + 1, 0x50);
+  putUint16(out, 0xFF90);
+  putUint16(out, 10);
+  putUint16(out, 0);
+  putUint32(out, 0);
+  out.insert(out.end(), {0, 1});
+  putUint16(out, 0xFF93);
+  putUint16(out, 0xFFD9);
+  return out;
+}
+
+std::vector<uint8_t> g_headerOnlyStream;
+int32_t g_initDecodersResult = 0;
+
+int headerOnlyDecodeCallback(grk_plugin_decompress_callback_info* info)
+{
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+  {
+    if(info->codec)
+      grk_object_unref(info->codec);
+    info->codec = nullptr;
+    return 0;
+  }
+  if(!(info->decompress_flags & GRK_DECODE_HEADER))
+    return -1;
+  grk_stream_params stream = {};
+  stream.buf = g_headerOnlyStream.data();
+  stream.buf_len = g_headerOnlyStream.size();
+  info->codec = grk_decompress_init(&stream, info->decompressor_parameters);
+  if(!info->codec || !grk_decompress_read_header(info->codec, &info->header_info))
+    return -1;
+  info->image = grk_decompress_get_image(info->codec);
+  g_initDecodersResult = info->init_decompressors_func(&info->header_info, info->image);
+  return g_initDecodersResult;
+}
+
+// 65536 x 65536 is 2^32 samples, which wraps to zero in 32 bits
+void checkOversizedDecodeDeclined()
+{
+  g_headerOnlyStream = headerOnlyCodeStream(65536, 65536);
+  grk_decompress_parameters params = {};
+  g_initDecodersResult = 0;
+  int32_t rc = grk_plugin_decompress(&params, headerOnlyDecodeCallback);
+  if(g_initDecodersResult != 1 || rc != 1)
+  {
+    std::fprintf(stderr, "init decoders returned %d, plugin decompress returned %d\n",
+                 g_initDecodersResult, rc);
+    fail("the plugin did not hand a 65536 x 65536 image back to the CPU");
+  }
+}
 } // namespace
 
 int main()
@@ -534,6 +615,7 @@ int main()
   checkLossless(0, 8);
   checkCinema();
   checkSyccCinema();
+  checkOversizedDecodeDeclined();
   grk_deinitialize();
   if(g_failures)
   {

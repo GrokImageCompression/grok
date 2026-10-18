@@ -116,6 +116,21 @@ public:
   }
 };
 
+inline uint64_t packedRowBytes(GRK_SUPPORTED_FILE_FMT format, uint16_t numcomps, uint32_t width,
+                               uint8_t prec)
+{
+  switch(format)
+  {
+    case GRK_FMT_BMP:
+      // bmp rows are eight bit samples padded to four bytes
+      return (((uint64_t)numcomps * width + 3) >> 2) << 2;
+    case GRK_FMT_PXM:
+      return PlanarToInterleaved<int32_t>::getPackedBytes(numcomps, width, prec > 8 ? 16 : 8);
+    default:
+      return PlanarToInterleaved<int32_t>::getPackedBytes(numcomps, width, prec);
+  }
+}
+
 template<typename T>
 class PlanarToInterleaved1 : public PlanarToInterleaved<T>
 {

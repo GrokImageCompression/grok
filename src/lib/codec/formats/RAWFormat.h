@@ -54,32 +54,30 @@ template<typename WT>
 bool RAWFormat<T>::writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w,
                                uint32_t stride, uint32_t h, T lower, T upper)
 {
-  const size_t bufSize = 4096;
-  WT buf[bufSize];
-  WT* outPtr = buf;
-  size_t outCount = 0;
-  auto stride_diff = stride - w;
-  for(uint32_t j = 0; j < h; ++j)
+  constexpr size_t bufferLength = (1 << 16) / sizeof(WT);
+  WT buffer[bufferLength];
+  size_t buffered = 0;
+  for(uint32_t row = 0; row < h; ++row, ptr += stride)
   {
-    for(uint32_t i = 0; i < w; ++i)
+    for(uint32_t column = 0; column < w;)
     {
-      T curr = *ptr++;
-      if(curr > upper)
-        curr = upper;
-      else if(curr < lower)
-        curr = lower;
-      if(!grk::writeBytes<WT>((WT)curr, buf, &outPtr, &outCount, bufSize, bigEndian, fileStream_))
-        return false;
+      auto count = std::min<size_t>(w - column, bufferLength - buffered);
+      auto source = ptr + column;
+      auto destination = buffer + buffered;
+      for(size_t i = 0; i < count; ++i)
+        destination[i] = grk::endian<WT>((WT)std::clamp<T>(source[i], lower, upper), bigEndian);
+      column += (uint32_t)count;
+      buffered += count;
+      if(buffered == bufferLength)
+      {
+        if(fwrite(buffer, sizeof(WT), buffered, fileStream_) != buffered)
+          return false;
+        buffered = 0;
+      }
     }
-    ptr += stride_diff;
   }
-  // flush
-  if(outCount)
-  {
-    size_t res = fwrite(buf, sizeof(WT), outCount, fileStream_);
-    if(res != outCount)
-      return false;
-  }
+  if(buffered && fwrite(buffer, sizeof(WT), buffered, fileStream_) != buffered)
+    return false;
 
   return true;
 }

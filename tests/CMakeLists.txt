@@ -132,6 +132,13 @@ if(GRK_BUILD_PLUGIN_LOADER)
   add_test(NAME grk_plugin_batch_memory_test COMMAND grk_plugin_batch_memory_test)
   set_tests_properties(grk_plugin_batch_memory_test PROPERTIES
     ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
+  add_executable(grk_plugin_batch_file_test GrkPluginBatchFileTest.cpp)
+  target_link_libraries(grk_plugin_batch_file_test ${GROK_CORE_NAME})
+  add_test(NAME grk_plugin_batch_file_test
+    COMMAND grk_plugin_batch_file_test $<TARGET_FILE:grk_decompress>)
+  set_tests_properties(grk_plugin_batch_file_test PROPERTIES
+    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 endif()
 
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT

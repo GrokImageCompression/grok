@@ -602,20 +602,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
   }
   else
   {
-    switch(decompress_fmt)
-    {
-      case GRK_FMT_BMP:
-        packed_row_bytes = (((uint64_t)ncmp * decompress_width + 3) >> 2) << 2;
-        break;
-      case GRK_FMT_PXM:
-        packed_row_bytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width,
-                                                                             prec > 8 ? 16 : 8);
-        break;
-      default:
-        packed_row_bytes =
-            grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width, prec);
-        break;
-    }
+    packed_row_bytes = grk::packedRowBytes(decompress_fmt, ncmp, decompress_width, prec);
     rows_per_strip = has_multiple_tiles ? ceildivpow2(cp->t_height_, cp->codingParams_.dec_.reduce_)
                                         : singleTileRowsPerStrip;
   }

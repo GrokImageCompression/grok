@@ -1062,6 +1062,48 @@ bool GrkDecompress::writeInit(grk_plugin_decompress_callback_info* info)
 }
 
 // return: 0 for success, non-zero for failure
+static IImageFormat* newImageFormat(GRK_SUPPORTED_FILE_FMT format,
+                                    const grk_decompress_parameters* parameters)
+{
+  switch(format)
+  {
+    case GRK_FMT_PXM:
+      return new PNMFormat<int32_t>(parameters->split_by_component);
+    case GRK_FMT_PGX:
+      return new PGXFormat<int32_t>();
+    case GRK_FMT_BMP:
+      return new BMPFormat<int32_t>();
+    case GRK_FMT_TIF:
+#ifdef GROK_HAVE_LIBTIFF
+      return new TIFFFormat<int32_t>();
+#else
+      spdlog::error("libtiff is missing");
+      return nullptr;
+#endif
+    case GRK_FMT_RAW:
+      return new RAWFormat<int32_t>(true);
+    case GRK_FMT_RAWL:
+      return new RAWFormat<int32_t>(false);
+    case GRK_FMT_JPG:
+#ifdef GROK_HAVE_LIBJPEG
+      return new JPEGFormat<int32_t>();
+#else
+      spdlog::error("libjpeg is missing");
+      return nullptr;
+#endif
+    case GRK_FMT_PNG:
+#ifdef GROK_HAVE_LIBPNG
+      return new PNGFormat<int32_t>();
+#else
+      spdlog::error("libpng is missing");
+      return nullptr;
+#endif
+    default:
+      spdlog::error("Unsupported output format {}", convertFileFmtToString(format));
+      return nullptr;
+  }
+}
+
 int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 {
   if(!info)
@@ -1076,63 +1118,29 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
                             ? info->decompressor_parameters->outfile
                             : info->output_file_name;
   auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
-  switch(cod_format)
+  // the gpu batch runs several frames through here at once, so the format is per call
+  auto fmt = (IImageFormat*)info->format_private;
+  if(!fmt)
   {
-    case GRK_FMT_PXM:
-      imageFormat = new PNMFormat<int32_t>(parameters->split_by_component);
-      break;
-    case GRK_FMT_PGX:
-      imageFormat = new PGXFormat<int32_t>();
-      break;
-    case GRK_FMT_BMP:
-      imageFormat = new BMPFormat<int32_t>();
-      break;
-    case GRK_FMT_TIF:
-#ifdef GROK_HAVE_LIBTIFF
-      imageFormat = new TIFFFormat<int32_t>();
-#else
-      spdlog::error("libtiff is missing");
+    fmt = newImageFormat(cod_format, parameters);
+    if(!fmt)
       goto cleanup;
-#endif
-      break;
-    case GRK_FMT_RAW:
-      imageFormat = new RAWFormat<int32_t>(true);
-      break;
-    case GRK_FMT_RAWL:
-      imageFormat = new RAWFormat<int32_t>(false);
-      break;
-    case GRK_FMT_JPG:
-#ifdef GROK_HAVE_LIBJPEG
-      imageFormat = new JPEGFormat<int32_t>();
-#else
-      spdlog::error("libjpeg is missing");
-      goto cleanup;
-#endif
-      break;
-    case GRK_FMT_PNG:
-#ifdef GROK_HAVE_LIBPNG
-      imageFormat = new PNGFormat<int32_t>();
-#else
-      spdlog::error("libpng is missing");
-      goto cleanup;
-#endif
-      break;
-    default:
-      spdlog::error("Unsupported output format {}", convertFileFmtToString(info->cod_format));
-      goto cleanup;
-      break;
+    info->format_private = fmt;
+    if(!info->init_decompressors_func)
+      imageFormat = fmt;
   }
-  parameters->core.io_buffer_callback = grkWriteStripCallback;
-  parameters->core.io_user_data = imageFormat;
-  parameters->core.io_register_client_callback = grkRegisterReclaimCallback;
-  info->format_private = imageFormat;
 
   // 1. initialize
   if(!info->codec)
   {
     grk_stream_params stream_params{};
     safe_strcpy(stream_params.file, infile);
-    info->codec = grk_decompress_init(&stream_params, parameters);
+    // the shared parameters are read by every frame, so the callbacks go on a copy
+    auto frameParameters = *parameters;
+    frameParameters.core.io_buffer_callback = grkWriteStripCallback;
+    frameParameters.core.io_user_data = fmt;
+    frameParameters.core.io_register_client_callback = grkRegisterReclaimCallback;
+    info->codec = grk_decompress_init(&stream_params, &frameParameters);
     if(!info->codec)
     {
       spdlog::error("grk_decompress: failed to set up the decompressor");
@@ -1217,7 +1225,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     // write header early — metadata is already final since postProcess is a no-op
     if(!writeHeader(info))
       goto cleanup;
-    auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
     if(fmt->supportsIncrementalBandWrite())
     {
       incrementalBandFormat_ = fmt;
@@ -1285,41 +1292,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   {
     auto parameters = info->decompressor_parameters;
     auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
-    switch(cod_format)
-    {
-      case GRK_FMT_PXM:
-        fmt = new PNMFormat<int32_t>(parameters->split_by_component);
-        break;
-      case GRK_FMT_PGX:
-        fmt = new PGXFormat<int32_t>();
-        break;
-      case GRK_FMT_BMP:
-        fmt = new BMPFormat<int32_t>();
-        break;
-      case GRK_FMT_TIF:
-#ifdef GROK_HAVE_LIBTIFF
-        fmt = new TIFFFormat<int32_t>();
-#endif
-        break;
-      case GRK_FMT_RAW:
-        fmt = new RAWFormat<int32_t>(true);
-        break;
-      case GRK_FMT_RAWL:
-        fmt = new RAWFormat<int32_t>(false);
-        break;
-      case GRK_FMT_JPG:
-#ifdef GROK_HAVE_LIBJPEG
-        fmt = new JPEGFormat<int32_t>();
-#endif
-        break;
-      case GRK_FMT_PNG:
-#ifdef GROK_HAVE_LIBPNG
-        fmt = new PNGFormat<int32_t>();
-#endif
-        break;
-      default:
-        break;
-    }
+    fmt = newImageFormat(cod_format, parameters);
     info->format_private = fmt;
   }
   bool failed = true;
@@ -1384,11 +1357,9 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
             image->decompress_colour_space = image->color_space;
           }
           if(image->packed_row_bytes == 0)
-          {
-            uint16_t ncmp = image->numcomps;
-            uint8_t prec = image->comps[0].prec;
-            image->packed_row_bytes = ((uint64_t)image->comps[0].w * ncmp * prec + 7U) / 8U;
-          }
+            image->packed_row_bytes =
+                grk::packedRowBytes(info->decompressor_parameters->cod_format, image->numcomps,
+                                    image->comps[0].w, image->comps[0].prec);
           if(image->rows_per_strip == 0)
             image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
         }
