@@ -212,14 +212,23 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
 
               auto plugin_cblk = plugin_prc->blocks[cblkno];
 
-              // copy segments into plugin codeblock buffer, and point host code block
-              // data to plugin data buffer
-              plugin_cblk->compressed_data_length = (uint32_t)cblk->getDataChunksLength();
-              cblk->copyDataChunksToContiguous(plugin_cblk->compressed_data);
+              // the plugin reads the block bytes from grok memory, one chunk is used in place
+              auto length = cblk->getDataChunksLength();
               auto blockStream = cblk->getCompressedStream();
-              blockStream->set_buf(plugin_cblk->compressed_data,
-                                   plugin_cblk->compressed_data_length);
-              blockStream->set_owns_data(false);
+              auto& chunks = cblk->getSegment(0)->data_chunks_;
+              if(chunks.size() == 1)
+              {
+                blockStream->set_buf(chunks[0]->buf(), length);
+                blockStream->set_owns_data(false);
+              }
+              else if(length)
+              {
+                if(!blockStream->alloc(length))
+                  throw std::bad_alloc();
+                cblk->copyDataChunksToContiguous(blockStream->buf());
+              }
+              plugin_cblk->compressed_data = length ? blockStream->buf() : nullptr;
+              plugin_cblk->compressed_data_length = (uint32_t)length;
               plugin_cblk->num_bit_planes = cblk->numbps();
               plugin_cblk->num_passes = cblk->getSegment(0)->totalPasses_;
             }

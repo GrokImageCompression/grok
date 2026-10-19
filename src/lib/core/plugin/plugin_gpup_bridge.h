@@ -401,6 +401,7 @@ inline void grk_tile_sync_metadata_to_gpup(grk_plugin_tile* wrapper, gpup_tile* 
             auto* okb = op->blocks[k];
             if(!wkb || !okb)
               continue;
+            okb->compressedData = wkb->compressed_data;
             okb->compressedDataLength = wkb->compressed_data_length;
             okb->numBitPlanes = wkb->num_bit_planes;
             okb->numPasses = wkb->num_passes;
