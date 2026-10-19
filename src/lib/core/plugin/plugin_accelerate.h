@@ -27,6 +27,7 @@
 namespace grk
 {
 bool pluginAccelerates(void);
+bool pluginAcceleratesCompress(const grk_cparameters* parameters);
 // one frame on the device at a time, host T2 runs outside this lock
 std::mutex& pluginFrameMutex(void);
 void pluginCountAcceleratedFrame(void);

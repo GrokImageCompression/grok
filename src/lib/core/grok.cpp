@@ -1313,6 +1313,10 @@ bool pluginAccelerates(void)
 {
   return pluginLoaded && pluginInitialized && pluginEnabled;
 }
+bool pluginAcceleratesCompress(const grk_cparameters* parameters)
+{
+  return pluginAccelerates() && !parameters->cpu_only;
+}
 std::mutex& pluginFrameMutex(void)
 {
   return pluginFrameMutex_;

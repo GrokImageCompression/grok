@@ -122,8 +122,8 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, Gr
 {
   bool cinema =
       parameters->rsiz == GRK_PROFILE_CINEMA_2K || parameters->rsiz == GRK_PROFILE_CINEMA_4K;
-  if(mercuryEncodeDisabled() || pluginAccelerates() || !cinema || !imagePlanesMatchMercury(image) ||
-     image->comps[0].prec > maxXyzSourcePrecision)
+  if(mercuryEncodeDisabled() || pluginAcceleratesCompress(parameters) || !cinema ||
+     !imagePlanesMatchMercury(image) || image->comps[0].prec > maxXyzSourcePrecision)
     return false;
   mercuryXyzSourcePrecision_ = image->comps[0].prec;
   for(uint16_t c = 0; c < image->numcomps; ++c)

@@ -67,7 +67,7 @@ struct ITileProcessor;
 static bool compressionUses32BitPreprocessing(const grk_cparameters* parameters)
 {
   return parameters->apply_icc || parameters->apply_xyz_transform ||
-         GRK_IS_CINEMA(parameters->rsiz) || grk::pluginAccelerates();
+         GRK_IS_CINEMA(parameters->rsiz) || grk::pluginAcceleratesCompress(parameters);
 }
 
 grk_data_type grk_compress_get_recommended_data_type(const grk_cparameters* parameters,
@@ -332,7 +332,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   }
 
   // the plugin gets the image after the colour transform and precision cut above
-  if(pluginAccelerates())
+  if(pluginAcceleratesCompress(parameters))
     pluginParameters_ = std::make_unique<grk_cparameters>(*parameters);
 
   if(isHT)
@@ -897,7 +897,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
       pluginReleaseEncodedTile(tile, raw);
     }
   } pluginTile;
-  if(!tile && pluginParameters_ && pluginAccelerates())
+  if(!tile && pluginParameters_ && pluginAcceleratesCompress(pluginParameters_.get()))
   {
     int32_t rc;
     {

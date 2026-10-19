@@ -1906,6 +1906,7 @@ typedef struct _grk_cparameters
    * Only applied to images with ≥3 components.
    */
   bool apply_xyz_transform;
+  bool cpu_only; /* compress on the CPU even when a plugin is loaded */
 } grk_cparameters;
 
 /**
@@ -2444,6 +2445,8 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
  * call. The plugin is on as soon as grk_plugin_init() succeeds.
  *
  * @param enabled  false sends every frame to the CPU while keeping the plugin loaded
+ *
+ * cpu_only in grk_cparameters is the per-compress switch.
  */
 GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled);
 
