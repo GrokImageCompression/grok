@@ -1,15 +1,21 @@
 // The accelerator plugin under grk_compress() and grk_decompress() on memory
 // buffers, no file anywhere. A frame compressed through the plugin decodes back
 // to the samples that went in, on the CPU and on the device, the device did the
-// work, and a cinema frame the device decodes matches the CPU's decode.
+// work, and a cinema frame the device decodes matches the CPU's decode. A compress
+// with cpu_only set writes the same code stream as a process without the plugin.
 //
 // Needs the plugin library and a device: GRK_PLUGIN_PATH names the directory
-// holding libgrokj2k_plugin.
+// holding libgrokj2k_plugin. The argument is the directory holding the code
+// streams that --write-cpu-only-reference wrote with GRK_NO_PLUGIN set.
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <memory>
 #include <algorithm>
 #include <vector>
@@ -325,11 +331,8 @@ void checkLossless(uint8_t mct, uint8_t precision)
   grk_object_unref(&gpuInput->obj);
 }
 
-// a DCI 2K frame: the device's decode of a lossy cinema code stream stays
-// within a few codes of the CPU's
-void checkCinema()
+void cinemaParameters(grk_cparameters& params)
 {
-  grk_cparameters params;
   baseParameters(params);
   params.rsiz = GRK_PROFILE_CINEMA_2K;
   params.framerate = 24;
@@ -338,6 +341,14 @@ void checkCinema()
   params.allocation_by_rate_distortion = true;
   params.layer_rate[0] = kCinemaRatio;
   params.write_tlm = true;
+}
+
+// a DCI 2K frame: the device's decode of a lossy cinema code stream stays
+// within a few codes of the CPU's
+void checkCinema()
+{
+  grk_cparameters params;
+  cinemaParameters(params);
 
   std::vector<uint8_t> stream((size_t)kCinemaWidth * kCinemaHeight * kNumComps * 2);
   // the transform runs on the image in place, so each compress gets its own
@@ -507,6 +518,101 @@ void checkSyccCinema()
   grk_object_unref(&gpuSource->obj);
 }
 
+// the frames held against a process without the plugin, one code stream file each
+struct CpuOnlyFrame
+{
+  const char* fileName;
+  bool cinema;
+};
+constexpr CpuOnlyFrame kCpuOnlyFrames[] = {{"cpu_only_lossless.j2k", false},
+                                           {"cpu_only_cinema.j2k", true}};
+
+// the code stream of one frame, empty on failure
+std::vector<uint8_t> compressCpuOnlyFrame(const CpuOnlyFrame& frame, bool cpuOnly)
+{
+  grk_cparameters params;
+  uint32_t width = kWidth;
+  uint32_t height = kHeight;
+  if(frame.cinema)
+  {
+    cinemaParameters(params);
+    width = kCinemaWidth;
+    height = kCinemaHeight;
+  }
+  else
+  {
+    baseParameters(params);
+  }
+  params.cpu_only = cpuOnly;
+  auto source = frame.cinema ? smoothFrame(width, height) : patternFrame(width, height);
+  if(!source)
+    return {};
+  std::vector<uint8_t> stream((size_t)width * height * kNumComps * 2);
+  stream.resize(compress(source, params, stream));
+  grk_object_unref(&source->obj);
+  return stream;
+}
+
+std::string cpuOnlyReferencePath(const char* directory, const CpuOnlyFrame& frame)
+{
+  return std::string(directory) + "/" + frame.fileName;
+}
+
+int writeCpuOnlyReference(const char* directory)
+{
+  for(const auto& frame : kCpuOnlyFrames)
+  {
+    auto stream = compressCpuOnlyFrame(frame, true);
+    std::ofstream file(cpuOnlyReferencePath(directory, frame), std::ios::binary);
+    file.write((const char*)stream.data(), (std::streamsize)stream.size());
+    if(stream.empty() || !file)
+    {
+      std::fprintf(stderr, "failed to write %s\n", frame.fileName);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+// cpu_only keeps one compress off the device while the next one in the same
+// process still runs there
+void checkCpuOnly(const char* referenceDirectory)
+{
+  grk_cparameters params;
+  baseParameters(params);
+  grk_plugin_set_enabled(false);
+  auto cpuDataType = grk_compress_get_recommended_data_type(&params, 8, true);
+  grk_plugin_set_enabled(true);
+  params.cpu_only = true;
+  if(grk_compress_get_recommended_data_type(&params, 8, true) != cpuDataType)
+    fail("cpu_only did not recommend the sample type of a CPU compress");
+  for(const auto& frame : kCpuOnlyFrames)
+  {
+    std::printf("cpu_only %s\n", frame.fileName);
+    std::ifstream file(cpuOnlyReferencePath(referenceDirectory, frame), std::ios::binary);
+    std::vector<uint8_t> reference((std::istreambuf_iterator<char>(file)),
+                                   std::istreambuf_iterator<char>());
+    if(reference.empty())
+    {
+      fail("cpu_only reference code stream missing");
+      continue;
+    }
+    uint64_t before = grk_plugin_accelerated_frames();
+    auto cpuOnlyStream = compressCpuOnlyFrame(frame, true);
+    if(grk_plugin_accelerated_frames() != before)
+      fail("cpu_only compress was counted as accelerated");
+    std::printf("  cpu_only compress %zu bytes, without the plugin %zu bytes\n",
+                cpuOnlyStream.size(), reference.size());
+    if(cpuOnlyStream != reference)
+      fail("cpu_only code stream differs from the one written without the plugin");
+    auto pluginStream = compressCpuOnlyFrame(frame, false);
+    if(pluginStream.empty())
+      fail("plugin compress after a cpu_only compress");
+    if(grk_plugin_accelerated_frames() != before + 1)
+      fail("plugin compress after a cpu_only compress was not counted as accelerated");
+  }
+}
+
 void putUint16(std::vector<uint8_t>& out, uint16_t value)
 {
   out.push_back((uint8_t)(value >> 8));
@@ -589,10 +695,29 @@ void checkOversizedDecodeDeclined()
 }
 } // namespace
 
-int main()
+int main(int argc, char** argv)
 {
   bool loaded = false;
   grk_initialize(nullptr, 0, &loaded);
+  if(argc == 3 && std::strcmp(argv[1], "--write-cpu-only-reference") == 0)
+  {
+    if(loaded)
+    {
+      std::fprintf(stderr, "set GRK_NO_PLUGIN to write the cpu_only reference\n");
+      return 1;
+    }
+    int rc = writeCpuOnlyReference(argv[2]);
+    grk_deinitialize();
+    return rc;
+  }
+  if(argc != 2)
+  {
+    std::fprintf(stderr,
+                 "usage: %s <cpu_only reference directory>\n"
+                 "       %s --write-cpu-only-reference <directory>\n",
+                 argv[0], argv[0]);
+    return 1;
+  }
   if(!loaded)
   {
     std::fprintf(stderr, "no accelerator plugin loaded: set GRK_PLUGIN_PATH to the directory "
@@ -616,6 +741,7 @@ int main()
   checkCinema();
   checkSyccCinema();
   checkOversizedDecodeDeclined();
+  checkCpuOnly(argv[1]);
   grk_deinitialize();
   if(g_failures)
   {

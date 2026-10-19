@@ -123,9 +123,16 @@ add_test(NAME grk_cinema_eight_bit_test COMMAND grk_cinema_eight_bit_test)
 if(GRK_BUILD_PLUGIN_LOADER)
   add_executable(grk_plugin_memory_test GrkPluginMemoryTest.cpp)
   target_link_libraries(grk_plugin_memory_test ${GROK_CORE_NAME})
-  add_test(NAME grk_plugin_memory_test COMMAND grk_plugin_memory_test)
+  # the code streams a cpu_only compress has to match, written without the plugin
+  add_test(NAME grk_plugin_cpu_only_reference
+    COMMAND grk_plugin_memory_test --write-cpu-only-reference ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(grk_plugin_cpu_only_reference PROPERTIES
+    ENVIRONMENT "GRK_NO_PLUGIN=1" FIXTURES_SETUP plugin_cpu_only_reference)
+  add_test(NAME grk_plugin_memory_test
+    COMMAND grk_plugin_memory_test ${CMAKE_CURRENT_BINARY_DIR})
   set_tests_properties(grk_plugin_memory_test PROPERTIES
-    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+    FIXTURES_REQUIRED plugin_cpu_only_reference)
 
   add_executable(grk_plugin_batch_memory_test GrkPluginBatchMemoryTest.cpp)
   target_link_libraries(grk_plugin_batch_memory_test ${GROK_CORE_NAME})
