@@ -516,6 +516,7 @@ bool GrkImage::cieLabToRGB(void)
     srcComp->prec = 16;
     srcComp->stride = destComp->stride;
     srcComp->data = destComp->data;
+    srcComp->owns_data = true;
   }
   // clean up dest image
   setDataToNull(dest_img->comps);

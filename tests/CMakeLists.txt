@@ -496,6 +496,15 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_block_schedule_window_test PROPERTIES TIMEOUT 60)
 endif()
 
+# CIELab to sRGB conversion handed over its planes without setting owns_data
+add_executable(grk_cielab_owns_data_test GrkCieLabOwnsDataTest.cpp)
+target_link_libraries(grk_cielab_owns_data_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_cielab_owns_data_test
+    COMMAND grk_cielab_owns_data_test
+            ${GRK_DATA_ROOT}/input/nonregression/issue559-eci-090-CIELab.jp2)
+endif()
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring 58368 quality
 # layers made T2 packet parsing create a block per code block in the precinct.
 # The test fails if peak resident memory exceeds 1 GB.
