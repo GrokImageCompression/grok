@@ -2,11 +2,12 @@
 // buffers, no file anywhere. A frame compressed through the plugin decodes back
 // to the samples that went in, on the CPU and on the device, the device did the
 // work, and a cinema frame the device decodes matches the CPU's decode. A compress
-// with cpu_only set writes the same code stream as a process without the plugin.
+// with cpu_only set writes the same code stream as a process without the plugin,
+// and a decompress with cpu_only set gives the same samples as one.
 //
 // Needs the plugin library and a device: GRK_PLUGIN_PATH names the directory
 // holding libgrokj2k_plugin. The argument is the directory holding the code
-// streams that --write-cpu-only-reference wrote with GRK_NO_PLUGIN set.
+// streams and samples that --write-cpu-only-reference wrote with GRK_NO_PLUGIN set.
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -149,10 +150,12 @@ uint64_t compress(grk_image* image, const grk_cparameters& parameters, std::vect
 }
 
 // the samples of every component, row major without padding, empty on failure
-std::vector<std::vector<int32_t>> decode(std::vector<uint8_t>& stream, uint64_t length)
+std::vector<std::vector<int32_t>> decode(std::vector<uint8_t>& stream, uint64_t length,
+                                         bool cpuOnly = false)
 {
   std::vector<std::vector<int32_t>> planes;
   grk_decompress_parameters params = {};
+  params.cpu_only = cpuOnly;
   grk_stream_params streamParams = {};
   streamParams.buf = stream.data();
   streamParams.buf_len = length;
@@ -558,6 +561,20 @@ std::string cpuOnlyReferencePath(const char* directory, const CpuOnlyFrame& fram
   return std::string(directory) + "/" + frame.fileName;
 }
 
+std::string cpuOnlySamplesPath(const char* directory, const CpuOnlyFrame& frame)
+{
+  return cpuOnlyReferencePath(directory, frame) + ".samples";
+}
+
+// every component's samples one after the other, empty on failure
+std::vector<int32_t> decodedSamples(std::vector<uint8_t>& stream, bool cpuOnly)
+{
+  std::vector<int32_t> samples;
+  for(const auto& plane : decode(stream, stream.size(), cpuOnly))
+    samples.insert(samples.end(), plane.begin(), plane.end());
+  return samples;
+}
+
 int writeCpuOnlyReference(const char* directory)
 {
   for(const auto& frame : kCpuOnlyFrames)
@@ -565,7 +582,11 @@ int writeCpuOnlyReference(const char* directory)
     auto stream = compressCpuOnlyFrame(frame, true);
     std::ofstream file(cpuOnlyReferencePath(directory, frame), std::ios::binary);
     file.write((const char*)stream.data(), (std::streamsize)stream.size());
-    if(stream.empty() || !file)
+    auto samples = decodedSamples(stream, true);
+    std::ofstream samplesFile(cpuOnlySamplesPath(directory, frame), std::ios::binary);
+    samplesFile.write((const char*)samples.data(),
+                      (std::streamsize)(samples.size() * sizeof(int32_t)));
+    if(stream.empty() || !file || samples.empty() || !samplesFile)
     {
       std::fprintf(stderr, "failed to write %s\n", frame.fileName);
       return 1;
@@ -610,6 +631,46 @@ void checkCpuOnly(const char* referenceDirectory)
       fail("plugin compress after a cpu_only compress");
     if(grk_plugin_accelerated_frames() != before + 1)
       fail("plugin compress after a cpu_only compress was not counted as accelerated");
+  }
+}
+
+// cpu_only keeps one decompress off the device while the next one in the same
+// process still runs there
+void checkCpuOnlyDecompress(const char* referenceDirectory)
+{
+  for(const auto& frame : kCpuOnlyFrames)
+  {
+    std::printf("cpu_only decompress %s\n", frame.fileName);
+    std::ifstream file(cpuOnlyReferencePath(referenceDirectory, frame), std::ios::binary);
+    std::vector<uint8_t> stream((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+    std::ifstream samplesFile(cpuOnlySamplesPath(referenceDirectory, frame), std::ios::binary);
+    std::vector<char> samplesBytes((std::istreambuf_iterator<char>(samplesFile)),
+                                   std::istreambuf_iterator<char>());
+    if(stream.empty() || samplesBytes.empty())
+    {
+      fail("cpu_only reference code stream or samples missing");
+      continue;
+    }
+    std::vector<int32_t> reference(samplesBytes.size() / sizeof(int32_t));
+    std::memcpy(reference.data(), samplesBytes.data(), reference.size() * sizeof(int32_t));
+    uint64_t before = grk_plugin_accelerated_frames();
+    auto cpuOnlySamples = decodedSamples(stream, true);
+    uint64_t afterCpuOnly = grk_plugin_accelerated_frames();
+    std::printf("  accelerated frames before %llu, after cpu_only decompress %llu\n",
+                (unsigned long long)before, (unsigned long long)afterCpuOnly);
+    if(afterCpuOnly != before)
+      fail("cpu_only decompress was counted as accelerated");
+    if(cpuOnlySamples != reference)
+      fail("cpu_only decompress differs from the one without the plugin");
+    auto pluginSamples = decodedSamples(stream, false);
+    uint64_t afterPlugin = grk_plugin_accelerated_frames();
+    std::printf("  accelerated frames after plugin decompress %llu\n",
+                (unsigned long long)afterPlugin);
+    if(pluginSamples.size() != reference.size())
+      fail("plugin decompress after a cpu_only decompress");
+    if(afterPlugin != before + 1)
+      fail("plugin decompress after a cpu_only decompress was not counted as accelerated");
   }
 }
 
@@ -742,6 +803,7 @@ int main(int argc, char** argv)
   checkSyccCinema();
   checkOversizedDecodeDeclined();
   checkCpuOnly(argv[1]);
+  checkCpuOnlyDecompress(argv[1]);
   grk_deinitialize();
   if(g_failures)
   {
