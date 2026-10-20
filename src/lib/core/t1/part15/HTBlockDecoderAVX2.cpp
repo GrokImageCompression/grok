@@ -1555,6 +1555,70 @@ namespace grk::t1::ht {
         }
     }
 
+    // vlc_tbl1 entries with two extra bits above the 16-bit payload:
+    // bit 24 is the west context of the next quad, bit 26 its u offset,
+    // both already at the position the table indexes use after >> 16
+    static ui32 vlc_tbl1_ext[1024];
+    // uvlc_tbl1_wide entries rearranged to total bits | u0 << 16 | u1 << 24
+    static ui32 uvlc_wide_ext[4096];
+
+    static bool ht_init_vlc_ext_tables()
+    {
+      for (ui32 i = 0; i < 1024; ++i)
+      {
+        ui32 t = vlc_tbl1[i];
+        ui32 hi = ((t & 0xC0u) ? 0x100u : 0u) | ((t & 0x8u) ? 0x400u : 0u);
+        vlc_tbl1_ext[i] = t | (hi << 16);
+      }
+      for (ui32 i = 0; i < 4096; ++i)
+      {
+        ui32 e = uvlc_tbl1_wide[i];
+        uvlc_wide_ext[i] = (e & 0x1Fu) | (((e >> 5) & 0xFFu) << 16) | (((e >> 13) & 0xFFu) << 24);
+      }
+      return true;
+    }
+
+    // context bits each quad of a row gets from the row above
+    static inline
+    void ht_build_north(const ui16* prev, ui32 nq, ui32* north)
+    {
+      const __m256i m80 = _mm256_set1_epi32(0x80);
+      const __m256i mA0 = _mm256_set1_epi32(0xA0);
+      const __m256i m20 = _mm256_set1_epi32(0x20);
+      for (ui32 q = 0; q < nq; q += 8)
+      {
+        const ui16* p = prev + 2 * q;
+        __m256i nw = _mm256_loadu_si256((const __m256i*)(p - 2));
+        __m256i n = _mm256_loadu_si256((const __m256i*)p);
+        __m256i ne = _mm256_loadu_si256((const __m256i*)(p + 2));
+        __m256i c = _mm256_and_si256(nw, m80);
+        c = _mm256_or_si256(c, _mm256_slli_epi32(_mm256_and_si256(n, mA0), 2));
+        c = _mm256_or_si256(c, _mm256_slli_epi32(_mm256_and_si256(ne, m20), 4));
+        _mm256_storeu_si256((__m256i*)(north + q), c);
+      }
+      north[0] = ((prev[0] & 0xA0u) << 2) | ((prev[2] & 0x20u) << 4);
+    }
+
+    // u values of a quad pair whose prefix and suffix exceed the wide table
+    OJPH_NO_INLINE
+    ui32 ht_decode_u_long(ui64 w, ui32 t0, ui32 t1, ui32& bits)
+    {
+      ui32 uvlc_mode = ((t0 & 0x8u) << 3) | ((t1 & 0x8u) << 4);
+      ui32 entry = uvlc_tbl1[uvlc_mode + (ui32)(w & 0x3F)];
+      ui32 prefix_len = entry & 0x7u;
+      w >>= prefix_len;
+      entry >>= 3;
+      ui32 len = entry & 0xF;
+      ui32 tmp = (ui32)w & ((1u << len) - 1);
+      entry >>= 4;
+      ui32 len0 = entry & 0x7;
+      entry >>= 3;
+      ui32 u0 = (entry & 7) + (tmp & ~(0xFFu << len0));
+      ui32 u1 = (entry >> 3) + (tmp >> len0);
+      bits = prefix_len + len;
+      return (u0 << 16) | (u1 << 24);
+    }
+
     //************************************************************************/
     /** @brief Step-1: decode the VLC and MEL segments into the scratch buffer.
      *
@@ -1696,117 +1760,89 @@ namespace grk::t1::ht {
         sp[0] = sp[1] = 0;
 
         //non initial quad rows
+        static const bool ext_tables_ready = ht_init_vlc_ext_tables();
+        (void)ext_tables_ready;
+        ui32 nq = (width + 1) >> 1;
+        ui32 north[512 + 8];
         for (ui32 y = 2; y < height; y += 2)
         {
-          c_q = 0;                                // context
-          ui16 *sp = scratch + (y >> 1) * sstr;   // this row of quads
-
-          for (ui32 x = 0; x < width; sp += 4)
+          ui16 *sp = scratch + (y >> 1) * sstr;
+          ht_build_north(sp - sstr, nq, north);
+          const ui32* ncp = north;
+          ui32 west = 0;
+          ui32 q = 0;
+          for (; q + 2 <= nq; q += 2, sp += 4, ncp += 2)
           {
-            // decode VLC
-            /////////////
-
-            // sigma_q (n, ne, nf)
-            c_q |= ((sp[0 - (si32)sstr] & 0xA0U) << 2);
-            c_q |= ((sp[2 - (si32)sstr] & 0x20U) << 4);
-
-            // first quad
             drefill(vlc_val, vlc_bits, vlc_off, vlc_buf, vlc_limit);
+            ui64 w = vlc_val;
 
-            //decode VLC using the context c_q and the head of VLC bitstream
-            ui16 t0 = vlc_tbl1[ c_q + (vlc_val & 0x7F) ];
-
-            // if context is zero, use one MEL event
-            if (c_q == 0) //zero context
+            ui32 c0 = ncp[0] | west;
+            ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(w & 0x7F)];
+            if (c0 == 0)
             {
-              run -= 2; //subtract 2, since events number is multiplied by 2
-
-              // Is the run terminated in 1? if so, use decoded VLC code,
-              // otherwise, discard decoded data, since we will decoded again
-              // using a different context
-              t0 = (run == -1) ? t0 : 0;
-
-              // is run -1 or -2? this means a run has been consumed
+              run -= 2;
+              e0 = (run == -1) ? e0 : 0;
               if (run < 0)
-                run = mel_get_run(&mel);  // get another run
+                run = mel_get_run(&mel);
             }
-            //run -= (c_q == 0) ? 2 : 0;
-            //t0 = (c_q != 0 || run == -1) ? t0 : 0;
-            //if (run < 0)
-            //  run = mel_get_run(&mel);  // get another run
-            sp[0] = t0;
-            x += 2;
+            ui32 len0 = e0 & 7;
+            dconsume(vlc_val, vlc_bits, len0);
+            w = vlc_val;
 
-            // prepare context for the next quad; eqn. 2 in ITU T.814
-            // sigma_q (w, sw)
-            c_q = ((t0 & 0x40U) << 2) | ((t0 & 0x80U) << 1);
-            // sigma_q (nw)
-            c_q |= sp[0 - (si32)sstr] & 0x80;
-            // sigma_q (n, ne, nf)
-            c_q |= ((sp[2 - (si32)sstr] & 0xA0U) << 2);
-            c_q |= ((sp[4 - (si32)sstr] & 0x20U) << 4);
-
-            //remove data from vlc stream (0 bits are removed if vlc is unused)
-            dconsume(vlc_val, vlc_bits, t0 & 0x7u);
-
-            //second quad
-            ui16 t1 = 0;
-
-            //decode VLC using the context c_q and the head of VLC bitstream
-            t1 = vlc_tbl1[ c_q + (vlc_val & 0x7F)];
-
-            // if context is zero, use one MEL event
-            if (c_q == 0 && x < width) //zero context
+            ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
+            ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(w & 0x7F)];
+            if (c1 == 0)
             {
-              run -= 2; //subtract 2, since events number if multiplied by 2
-
-              // if event is 0, discard decoded t1
-              t1 = (run == -1) ? t1 : 0;
-
-              if (run < 0) // have we consumed all events in a run
-                run = mel_get_run(&mel); // if yes, then get another run
+              run -= 2;
+              e1 = (run == -1) ? e1 : 0;
+              if (run < 0)
+                run = mel_get_run(&mel);
             }
-            t1 = x < width ? t1 : 0;
-            //run -= (c_q == 0 && x < width) ? 2 : 0;
-            //t1 = (c_q != 0 || run == -1) ? t1 : 0;
-            //if (run < 0)
-            //  run = mel_get_run(&mel);  // get another run
-            sp[2] = t1;
-            x += 2;
+            ui32 len1 = e1 & 7;
+            dconsume(vlc_val, vlc_bits, len1);
+            w = vlc_val;
+            west = (e1 >> 16) & 0x100;
 
-            // partial c_q, will be completed when we process the next quad
-            // sigma_q (w, sw)
-            c_q = ((t1 & 0x40U) << 2) | ((t1 & 0x80U) << 1);
-            // sigma_q (nw)
-            c_q |= sp[2 - (si32)sstr] & 0x80;
+            ui32 ue = uvlc_wide_ext[(ui32)(w & 0x3FF) | ((e0 >> 16) & 0x400) | ((e1 >> 15) & 0x800)];
+            ui32 total = ue & 0x1F;
+            if (total == 0x1F)
+              ue = ht_decode_u_long(w, e0, e1, total);
+            dconsume(vlc_val, vlc_bits, total);
 
-            //remove data from vlc stream, if qinf is not used, cwdlen is 0
-            dconsume(vlc_val, vlc_bits, t1 & 0x7u);
+            ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
+            ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
+            memcpy(sp, &s0, 4);
+            memcpy(sp + 2, &s1, 4);
+          }
+          if (q < nq)
+          {
+            drefill(vlc_val, vlc_bits, vlc_off, vlc_buf, vlc_limit);
+            ui64 w = vlc_val;
 
-            // decode u using wide UVLC table
-            /////////////
-            ui32 uvlc_mode = (((t0 >> 3) & 1u) | (((t1 >> 3) & 1u) << 1));
-            ui32 uvlc_entry =
-              uvlc_tbl1_wide[(uvlc_mode << 10) | (vlc_val & 0x3FF)];
-            ui32 total_bits = uvlc_entry & 0x1F;
-            if (total_bits < 0x1F) {
-              sp[1] = (ui16)((uvlc_entry >> 5) & 0xFF);
-              sp[3] = (ui16)((uvlc_entry >> 13) & 0xFF);
-              dconsume(vlc_val, vlc_bits, total_bits);
-            } else {
-              uvlc_mode = ((t0 & 0x8U) << 3) | ((t1 & 0x8U) << 4);
-              uvlc_entry = uvlc_tbl1[uvlc_mode + (vlc_val & 0x3F)];
-              dconsume(vlc_val, vlc_bits, uvlc_entry & 0x7u);
-              uvlc_entry >>= 3;
-              ui32 len = uvlc_entry & 0xF;
-              ui32 tmp = (ui32)vlc_val & ((1u << len) - 1);
-              dconsume(vlc_val, vlc_bits, len);
-              uvlc_entry >>= 4;
-              len = uvlc_entry & 0x7;
-              uvlc_entry >>= 3;
-              sp[1] = (ui16)((uvlc_entry & 7) + (tmp & ~(0xFFU << len)));
-              sp[3] = (ui16)((uvlc_entry >> 3) + (tmp >> len));
+            ui32 c0 = ncp[0] | west;
+            ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(w & 0x7F)];
+            if (c0 == 0)
+            {
+              run -= 2;
+              e0 = (run == -1) ? e0 : 0;
+              if (run < 0)
+                run = mel_get_run(&mel);
             }
+            ui32 len0 = e0 & 7;
+            dconsume(vlc_val, vlc_bits, len0);
+            w = vlc_val;
+
+            ui32 ue = uvlc_wide_ext[(ui32)(w & 0x3FF) | ((e0 >> 16) & 0x400)];
+            ui32 total = ue & 0x1F;
+            if (total == 0x1F)
+              ue = ht_decode_u_long(w, e0, 0, total);
+            dconsume(vlc_val, vlc_bits, total);
+
+            ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
+            ui32 s1 = (ue >> 8) & 0xFF0000;
+            memcpy(sp, &s0, 4);
+            memcpy(sp + 2, &s1, 4);
+            sp += 4;
           }
           sp[0] = sp[1] = 0;
         }
@@ -1914,10 +1950,12 @@ namespace grk::t1::ht {
       // quads), we use 24 (enough for 12 quads).
       ui32 sstr = ((width + 2u) + 7u) & ~7u; // multiples of 8
 
+      ui16 scratch_store[8 * 513 + 8];
+      ui16* scratch = scratch_store + 8;
+      memset(scratch_store, 0, 8 * sizeof(ui16));
 #ifdef __MINGW64__
-      ui16 scratch[8 * 513] = {0};
+      memset(scratch, 0, 8 * 513 * sizeof(ui16));
 #else
-      ui16 scratch[8 * 513];
       ui32 quad_rows = (height + 1u) >> 1;
       size_t scratch_zero = (size_t)(quad_rows + 1) * sstr;
       if (scratch_zero > 8 * 513) scratch_zero = 8 * 513;
