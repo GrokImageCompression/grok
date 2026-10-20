@@ -779,6 +779,10 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/issue411-ycc420.jp2)
 endif()
 
+add_executable(grk_tiff_many_samples_test GrkTiffManySamplesTest.cpp)
+target_link_libraries(grk_tiff_many_samples_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
+add_test(NAME grk_tiff_many_samples_test COMMAND grk_tiff_many_samples_test)
+
 # synthesizes its own images, so it needs no GRK_DATA_ROOT
 add_executable(grk_degenerate_97_test GrkDegenerate97Test.cpp)
 target_link_libraries(grk_degenerate_97_test ${GROK_CORE_NAME} spdlog::spdlog)

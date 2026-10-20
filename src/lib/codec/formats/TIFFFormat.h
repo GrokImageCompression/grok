@@ -1737,6 +1737,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
           else
           {
             /* Small strip: process sequentially (avoid Taskflow overhead) */
+            auto rowPlanesArr = std::make_unique<T*[]>(numcomps);
             for(uint32_t r = 0; r < rowCount; ++r)
             {
               if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount,
@@ -1745,10 +1746,9 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
                 success = false;
                 goto beach;
               }
-              T* rowPlanesArr[16]; // max components
               for(uint16_t k = 0; k < numcomps; ++k)
                 rowPlanesArr[k] = planes[k] + r * comp->stride;
-              interleave(buffer32s, rowPlanesArr, comp->w, targetPlanes);
+              interleave(buffer32s, rowPlanesArr.get(), comp->w, targetPlanes);
             }
           }
 
