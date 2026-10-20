@@ -19,6 +19,7 @@
 #include "../part15/common/ojph_arch.h"
 #include "../part15/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
+#include "HTBlockDecoder.h"
 #include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"
 #include "CoderOJPH.h"
@@ -51,7 +52,7 @@ static decode_cb_t dispatch_decoder()
 #if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
 #ifndef OJPH_DISABLE_AVX2
   if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
-    return ojph_decode_codeblock_avx2;
+    return grk::t1::ht::local::ht_decode_codeblock_avx2;
 #endif
 #ifndef OJPH_DISABLE_SSSE3
   if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_SSSE3)
