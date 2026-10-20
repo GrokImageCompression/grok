@@ -22,6 +22,12 @@
 
 namespace grk::t1::ojph
 {
+// sign-magnitude int32 rows to the band sample type, SIMD dispatched at run time
+void htShiftRow(int32_t* dest, const int32_t* src, uint32_t len, uint32_t shift);
+void htScaleRow(float* dest, const int32_t* src, uint32_t len, float scale);
+void htShiftRow16(int16_t* dest, const int32_t* src, uint32_t len, uint32_t shift);
+void htScaleRow16(int16_t* dest, const int32_t* src, uint32_t len, float scale);
+
 template<typename T>
 class RoiShiftOJPHFilter
 {
@@ -48,19 +54,13 @@ private:
   uint32_t roiThreshold;
   uint32_t shift;
 };
-template<typename T>
 class ShiftOJPHFilter
 {
 public:
   explicit ShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
-  inline void copy(T* dest, const T* src, uint32_t len)
+  inline void copy(int32_t* dest, const int32_t* src, uint32_t len)
   {
-    for(uint32_t i = 0; i < len; ++i)
-    {
-      T val = src[i];
-      T val_shifted = (val & 0x7FFFFFFF) >> shift;
-      dest[i] = (T)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
-    }
+    htShiftRow(dest, src, len, shift);
   }
 
 private:
@@ -96,7 +96,6 @@ private:
   float scale;
 };
 
-template<typename T>
 class ScaleOJPHFilter
 {
 public:
@@ -105,14 +104,9 @@ public:
   {
     assert(block->bandNumbps <= maxBitPlanesHT);
   }
-  inline void copy(T* dest, const T* src, uint32_t len)
+  inline void copy(int32_t* dest, const int32_t* src, uint32_t len)
   {
-    for(uint32_t i = 0; i < len; ++i)
-    {
-      int32_t val = src[i];
-      float val_scaled = (float)(val & 0x7FFFFFFF) * scale;
-      ((float*)dest)[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
-    }
+    htScaleRow((float*)dest, src, len, scale);
   }
 
 private:
@@ -126,12 +120,7 @@ public:
   explicit NarrowShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
-    for(uint32_t i = 0; i < len; ++i)
-    {
-      int32_t val = src[i];
-      int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
-      dest[i] = (int16_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
-    }
+    htShiftRow16(dest, src, len, shift);
   }
 
 private:
@@ -178,18 +167,7 @@ public:
   }
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
-    for(uint32_t i = 0; i < len; ++i)
-    {
-      int32_t val = src[i];
-      float val_scaled = (float)(val & 0x7FFFFFFF) * scale_;
-      float signed_val = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
-      int32_t rounded = (int32_t)(signed_val >= 0 ? signed_val + 0.5f : signed_val - 0.5f);
-      if(rounded > 32767)
-        rounded = 32767;
-      else if(rounded < -32768)
-        rounded = -32768;
-      dest[i] = (int16_t)rounded;
-    }
+    htScaleRow16(dest, src, len, scale_);
   }
 
 private:

@@ -723,11 +723,9 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
         else
         {
           if(block->qmfbid == 1)
-            src.template copyFrom<t1::ojph::ShiftOJPHFilter<T>>(
-                src, t1::ojph::ShiftOJPHFilter<T>{block});
+            src.template copyFrom<t1::ojph::ShiftOJPHFilter>(src, t1::ojph::ShiftOJPHFilter{block});
           else
-            src.template copyFrom<t1::ojph::ScaleOJPHFilter<T>>(
-                src, t1::ojph::ScaleOJPHFilter<T>{block});
+            src.template copyFrom<t1::ojph::ScaleOJPHFilter>(src, t1::ojph::ScaleOJPHFilter{block});
         }
       }
       else
@@ -745,11 +743,11 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
         else
         {
           if(block->qmfbid == 1)
-            postProcess<t1::ojph::ShiftOJPHFilter<T>>(src, block->resno, block->bandOrientation,
-                                                      block);
+            postProcess<t1::ojph::ShiftOJPHFilter>(src, block->resno, block->bandOrientation,
+                                                   block);
           else
-            postProcess<t1::ojph::ScaleOJPHFilter<T>>(src, block->resno, block->bandOrientation,
-                                                      block);
+            postProcess<t1::ojph::ScaleOJPHFilter>(src, block->resno, block->bandOrientation,
+                                                   block);
         }
       }
     }

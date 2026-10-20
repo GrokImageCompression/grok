@@ -166,6 +166,7 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/PostDecodeFiltersOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
