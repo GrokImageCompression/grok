@@ -705,6 +705,11 @@ target_link_libraries(grk_grey_to_rgb_region_reduce_test ${GROK_CORE_NAME} spdlo
 add_test(NAME grk_grey_to_rgb_region_reduce_test COMMAND grk_grey_to_rgb_region_reduce_test)
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_force_rgb_geometry_test GrkForceRgbGeometryTest.cpp)
+target_link_libraries(grk_force_rgb_geometry_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_force_rgb_geometry_test COMMAND grk_force_rgb_geometry_test)
+
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_region_decompress_int16_test GrkRegionDecompressInt16Test.cpp)
 target_link_libraries(grk_region_decompress_int16_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_region_decompress_int16_test COMMAND grk_region_decompress_int16_test)

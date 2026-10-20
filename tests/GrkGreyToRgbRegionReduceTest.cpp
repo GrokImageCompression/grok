@@ -205,8 +205,6 @@ bool decodeWindowRgb(const std::string& path, DecodedPlane& out)
   }
   bool ok = false;
   grk_header_info headerInfo = {};
-  // a raw codestream carries no colour space, and greyToRGB only expands grey
-  headerInfo.color_space = GRK_CLRSPC_GRAY;
   headerInfo.force_rgb = true;
   if(!grk_decompress_read_header(codec, &headerInfo))
     fprintf(stderr, "grk_decompress_read_header failed\n");

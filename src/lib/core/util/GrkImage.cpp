@@ -484,7 +484,7 @@ bool GrkImage::isPostProcessNoOp(void) const
   if(needsConversionToRGB())
     return false;
   // greyToRGB
-  if(numcomps == 1 && force_rgb && color_space == GRK_CLRSPC_GRAY)
+  if(force_rgb && numcomps < 3)
     return false;
   // convertPrecision
   if(precision)
@@ -509,7 +509,7 @@ bool GrkImage::isPostProcessNoOp(void) const
       return false;
   }
   // execUpsample
-  if(upsample)
+  if(upsample || force_rgb)
   {
     for(uint16_t compno = 0; compno < numcomps; ++compno)
     {
@@ -567,7 +567,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
   if(meta && meta->color.palette && apply_palette)
     decompress_num_comps = meta->color.palette->num_channels;
   else
-    decompress_num_comps = (force_rgb && numcomps < 3) ? 3 : numcomps;
+    decompress_num_comps = (force_rgb && numcomps < 3) ? numcomps + 2 : numcomps;
   if(decompress_fmt == GRK_FMT_PXM && decompress_num_comps == 4 && !isGAorRGBA)
     decompress_num_comps = 3;
   uint16_t ncmp = decompress_num_comps;
@@ -1359,14 +1359,12 @@ bool GrkImage::validateICC(void)
  */
 bool GrkImage::greyToRGB(void)
 {
-  if(numcomps != 1)
+  if(!force_rgb || numcomps > 2)
     return true;
 
-  if(!force_rgb || color_space != GRK_CLRSPC_GRAY)
-    return true;
-
-  auto new_components = new grk_image_comp[3];
-  memset(new_components, 0, 3 * sizeof(grk_image_comp));
+  uint16_t newNumComps = numcomps + 2;
+  auto new_components = new grk_image_comp[newNumComps];
+  memset(new_components, 0, newNumComps * sizeof(grk_image_comp));
   for(uint16_t i = 0; i < 3; ++i)
   {
     auto dest = new_components + i;
@@ -1395,10 +1393,16 @@ bool GrkImage::greyToRGB(void)
   new_components->stride = comps->stride;
   comps->data = nullptr;
   comps->owns_data = false;
+  if(numcomps == 2)
+  {
+    new_components[3] = comps[1];
+    comps[1].data = nullptr;
+    comps[1].owns_data = false;
+  }
   all_components_data_free();
   delete[] comps;
   comps = new_components;
-  numcomps = 3;
+  numcomps = newNumComps;
   color_space = GRK_CLRSPC_SRGB;
 
   return true;

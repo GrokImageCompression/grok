@@ -1454,7 +1454,7 @@ bool GrkImage::apply_palette_clr()
 template<typename T>
 bool GrkImage::execUpsample(void)
 {
-  if(!upsample)
+  if(!upsample && !force_rgb)
     return true;
 
   if(!comps)
