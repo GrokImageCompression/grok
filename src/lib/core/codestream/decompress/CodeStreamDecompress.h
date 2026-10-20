@@ -460,6 +460,8 @@ private:
    */
   bool compositeDecompressed_ = false;
 
+  bool cpuOnly_ = false;
+
   std::function<void()> postMulti_;
 
   /**

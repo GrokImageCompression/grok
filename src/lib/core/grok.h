@@ -828,6 +828,7 @@ typedef struct _grk_decompress_params
   uint32_t kernel_build_options; /* plugin OpenCL kernel build options */
   int32_t device_id; /* plugin device ID */
   void* user_data; /* plugin user data */
+  bool cpu_only; /* decompress on the CPU even when a plugin is loaded */
 } grk_decompress_parameters;
 
 /**
@@ -2446,7 +2447,7 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
  *
  * @param enabled  false sends every frame to the CPU while keeping the plugin loaded
  *
- * cpu_only in grk_cparameters is the per-compress switch.
+ * cpu_only in grk_cparameters and grk_decompress_parameters is the per-call switch.
  */
 GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled);
 

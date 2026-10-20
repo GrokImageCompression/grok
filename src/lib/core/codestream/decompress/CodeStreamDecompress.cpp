@@ -158,6 +158,7 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   grkRegisterReclaimCallback_ = core->io_register_client_callback;
   ioBandCallback_ = core->io_band_callback;
   ioBandUserData_ = core->io_band_user_data;
+  cpuOnly_ = parameters->cpu_only;
 
   // guard on null: never replace an executor a decode may already be running on
   if(parameters->num_threads && !localExecutor_)
@@ -280,7 +281,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
 
-  if(!tile && !compositeDecompressed_ && pluginAccelerates() && pluginDecompressEligible())
+  if(!tile && !compositeDecompressed_ && !cpuOnly_ && pluginAccelerates() &&
+     pluginDecompressEligible())
   {
     int32_t rc;
     {
