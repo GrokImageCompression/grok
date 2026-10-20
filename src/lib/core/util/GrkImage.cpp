@@ -153,7 +153,7 @@ bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool c
   return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
           dest->stride == src->stride && dest->h == src->h && dest->x0 == src->x0 &&
           dest->y0 == src->y0 && dest->crg_x == src->crg_x && dest->crg_y == src->crg_y &&
-          dest->sgnd == src->sgnd && dest->type == src->type);
+          dest->sgnd == src->sgnd);
 }
 GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
                            GRK_COLOR_SPACE clrspc, bool doAllocation)
