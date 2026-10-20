@@ -243,31 +243,18 @@ uint32_t grk_worker_id(void)
   return TFSingleton::workerId();
 }
 
-static inline bool areStringsEqual(const char* lhs, const char* rhs)
-{
-  if(lhs == nullptr && rhs == nullptr)
-  {
-    return true;
-  }
-  if(lhs == nullptr || rhs == nullptr)
-  {
-    return false;
-  }
-  return std::strcmp(lhs, rhs) == 0;
-}
-
 struct InitState
 {
   InitState(const char* pluginPath, uint32_t numThreads)
-      : pluginPath_(pluginPath), numThreads_(numThreads), initialized_(false),
+      : pluginPath_(pluginPath ? pluginPath : ""), numThreads_(numThreads), initialized_(false),
         pluginInitialized_(false)
   {}
   InitState(void) : InitState(nullptr, 0) {}
   bool operator==(const InitState& rhs) const
   {
-    return areStringsEqual(pluginPath_, rhs.pluginPath_) && numThreads_ == rhs.numThreads_;
+    return pluginPath_ == rhs.pluginPath_ && numThreads_ == rhs.numThreads_;
   }
-  const char* pluginPath_;
+  std::string pluginPath_;
   uint32_t numThreads_;
   bool initialized_;
   bool pluginInitialized_;

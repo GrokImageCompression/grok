@@ -699,6 +699,10 @@ add_executable(grk_region_decompress_test GrkRegionDecompressTest.cpp)
 target_link_libraries(grk_region_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_region_decompress_test COMMAND grk_region_decompress_test)
 
+add_executable(grk_initialize_plugin_path_test GrkInitializePluginPathTest.cpp)
+target_link_libraries(grk_initialize_plugin_path_test ${GROK_CORE_NAME})
+add_test(NAME grk_initialize_plugin_path_test COMMAND grk_initialize_plugin_path_test)
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_grey_to_rgb_region_reduce_test GrkGreyToRgbRegionReduceTest.cpp)
 target_link_libraries(grk_grey_to_rgb_region_reduce_test ${GROK_CORE_NAME} spdlog::spdlog)
