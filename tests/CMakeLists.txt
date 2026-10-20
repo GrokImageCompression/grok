@@ -703,6 +703,10 @@ add_executable(grk_initialize_plugin_path_test GrkInitializePluginPathTest.cpp)
 target_link_libraries(grk_initialize_plugin_path_test ${GROK_CORE_NAME})
 add_test(NAME grk_initialize_plugin_path_test COMMAND grk_initialize_plugin_path_test)
 
+add_executable(grk_initialize_cycle_test GrkInitializeCycleTest.cpp)
+target_link_libraries(grk_initialize_cycle_test ${GROK_CORE_NAME})
+add_test(NAME grk_initialize_cycle_test COMMAND grk_initialize_cycle_test)
+
 # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
 add_executable(grk_grey_to_rgb_region_reduce_test GrkGreyToRgbRegionReduceTest.cpp)
 target_link_libraries(grk_grey_to_rgb_region_reduce_test ${GROK_CORE_NAME} spdlog::spdlog)

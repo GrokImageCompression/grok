@@ -222,12 +222,6 @@ public:
   }
 };
 
-void grk_deinitialize(void)
-{
-  grk_plugin_cleanup();
-  TFSingleton::destroy();
-}
-
 void* grk_thread_pool(void)
 {
   return &TFSingleton::get();
@@ -262,6 +256,14 @@ struct InitState
 
 static InitState initState_;
 static std::mutex initMutex;
+
+void grk_deinitialize(void)
+{
+  grk_plugin_cleanup();
+  TFSingleton::destroy();
+  std::lock_guard<std::mutex> guard(initMutex);
+  initState_ = InitState();
+}
 
 // Plugin loading is suppressed when the GRK_NO_PLUGIN environment variable is
 // set (to any value). Cached on first read so the env is consulted once per
