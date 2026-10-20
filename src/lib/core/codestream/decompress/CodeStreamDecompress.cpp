@@ -481,7 +481,6 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
                     static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
                 tileCache_->releaseForSwath(tileIndex);
               }
-              MemoryManager::releaseFreedPages();
             }
 
             pendingBands_.erase(nextBandTileY_);

@@ -26,7 +26,6 @@
 #include <vector>
 #include <functional>
 #include "MinHeap.h"
-#include "MemManager.h"
 
 namespace grk
 {
@@ -166,8 +165,6 @@ public:
     uint32_t x1 = swath->x1;
     uint32_t y1 = swath->y1;
 
-    bool shouldNotifyRelease = false;
-
     grklog.debug("Swath canvas: x0=%u, y0=%u, x1=%u, y1=%u", x0, y0, x1, y1);
 
     // Validate swath bounds against image bounds
@@ -260,16 +257,12 @@ public:
         }
         lastClearedTileY_ = static_cast<int32_t>(tileY0) - 1;
         grklog.debug("Cleared tile rows up to tileY=%d", lastClearedTileY_);
-        shouldNotifyRelease = true;
       }
       currentTileY_ = tileY0;
       grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%d", currentTileY_,
                    lastClearedTileY_);
     }
 
-    // Return freed pages to the OS so RSS drops after tile release
-    if(shouldNotifyRelease)
-      MemoryManager::releaseFreedPages();
     // neededTileY1_ just moved, so the scheduler has to re-check its throttle even
     // when no row was released, or a swath it stopped short of never gets scheduled
     if(rowsReleasedCallback_)

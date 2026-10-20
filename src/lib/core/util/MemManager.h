@@ -28,11 +28,6 @@
 
 #ifdef _WIN32
 #include <malloc.h>
-#include <windows.h>
-#elif defined(__GLIBC__)
-// malloc_trim is a glibc extension; musl (e.g. Alpine) has neither the
-// declaration nor the symbol.
-#include <malloc.h>
 #endif
 
 #ifndef SIZE_MAX
@@ -77,14 +72,6 @@ public:
     return instance;
   }
 
-  static void releaseFreedPages()
-  {
-#if defined(__GLIBC__)
-    malloc_trim(0);
-#elif defined(_WIN32)
-    HeapCompact(GetProcessHeap(), 0);
-#endif
-  }
 
   void* malloc(size_t size)
   {
