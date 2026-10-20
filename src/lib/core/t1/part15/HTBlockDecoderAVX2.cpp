@@ -731,6 +731,73 @@ namespace grk::t1::ht {
     }
 
 
+    // two quads whose samples carry at most 25 magnitude bits: each lane is
+    // a plain 16 byte window of the stream and every sample gathers four
+    // bytes and shifts them by its own bit offset
+    OJPH_FORCE_INLINE
+    __m256i decode_two_quad32_lean(__m256i inf_u_q, __m256i U_q,
+                                   const ui8* dbuf, ui32 limit, ui32& pos,
+                                   ui32 p, __m128i& vn) {
+        __m256i flags = _mm256_and_si256(inf_u_q, _mm256_set_epi32(0x8880, 0x4440, 0x2220, 0x1110, 0x8880, 0x4440, 0x2220, 0x1110));
+        __m256i insig = _mm256_cmpeq_epi32(flags, _mm256_setzero_si256());
+        if ((uint32_t)_mm256_movemask_epi8(insig) == (uint32_t)0xFFFFFFFF)
+            return _mm256_setzero_si256();
+
+        flags = _mm256_mullo_epi16(flags, _mm256_set_epi16(1, 1, 2, 2, 4, 4, 8, 8, 1, 1, 2, 2, 4, 4, 8, 8));
+        __m256i e_k = _mm256_srli_epi32(flags, 15);
+        __m256i m_n = _mm256_andnot_si256(insig, _mm256_sub_epi32(U_q, e_k));
+
+        __m256i inc_sum = m_n;
+        inc_sum = _mm256_add_epi32(inc_sum, _mm256_bslli_epi128(inc_sum, 4));
+        inc_sum = _mm256_add_epi32(inc_sum, _mm256_bslli_epi128(inc_sum, 8));
+        ui32 total0 = (ui32)_mm256_extract_epi16(inc_sum, 6);
+        ui32 total1 = (ui32)_mm256_extract_epi16(inc_sum, 14);
+        ui32 pos1 = pos + total0;
+
+        ui32 off0 = pos >> 3;
+        off0 = off0 < limit ? off0 : limit;
+        ui32 off1 = pos1 >> 3;
+        off1 = off1 < limit ? off1 : limit;
+        __m128i w0 = _mm_loadu_si128((const __m128i*)(dbuf + off0));
+        __m128i w1 = _mm_loadu_si128((const __m128i*)(dbuf + off1));
+        __m256i window = _mm256_inserti128_si256(_mm256_castsi128_si256(w0), w1, 0x1);
+
+        __m256i base = _mm256_castsi128_si256(_mm_set_epi32(0, 0, (int)(pos1 & 7), (int)(pos & 7)));
+        base = _mm256_permutevar8x32_epi32(base, _mm256_setr_epi32(0, 0, 0, 0, 1, 1, 1, 1));
+        __m256i bit_pos = _mm256_add_epi32(base, _mm256_bslli_epi128(inc_sum, 4));
+        __m256i byte_idx = _mm256_srli_epi32(bit_pos, 3);
+        __m256i bit_idx = _mm256_and_si256(bit_pos, _mm256_set1_epi32(7));
+        byte_idx = _mm256_shuffle_epi8(byte_idx,
+            _mm256_set_epi32(0x0C0C0C0C, 0x08080808, 0x04040404, 0x00000000, 0x0C0C0C0C, 0x08080808, 0x04040404, 0x00000000));
+        byte_idx = _mm256_add_epi32(byte_idx, _mm256_set1_epi32(0x03020100));
+        __m256i d = _mm256_srlv_epi32(_mm256_shuffle_epi8(window, byte_idx), bit_idx);
+        pos = pos1 + total1;
+
+        __m256i ones = _mm256_set1_epi32(1);
+        __m256i twos = _mm256_set1_epi32(2);
+        __m256i U_q_m1 = _mm256_and_si256(_mm256_sub_epi32(U_q, ones), _mm256_set1_epi32(0x1F));
+        __m256i shift = _mm256_sllv_epi32(_mm256_sub_epi32(twos, e_k), U_q_m1);
+        __m256i ms_vec = _mm256_and_si256(d, _mm256_sub_epi32(shift, ones));
+
+        __m256i w = _mm256_and_si256(flags, _mm256_set1_epi32(0x800));
+        w = _mm256_cmpeq_epi32(w, _mm256_setzero_si256());
+        w = _mm256_andnot_si256(w, shift);
+        ms_vec = _mm256_or_si256(ms_vec, w);
+        w = _mm256_slli_epi32(ms_vec, 31);
+        ms_vec = _mm256_or_si256(ms_vec, ones);
+        __m256i tvn = ms_vec;
+        ms_vec = _mm256_add_epi32(ms_vec, twos);
+        ms_vec = _mm256_slli_epi32(ms_vec, (si32)p - 1);
+        ms_vec = _mm256_or_si256(ms_vec, w);
+        __m256i row = _mm256_andnot_si256(insig, ms_vec);
+
+        tvn = _mm256_andnot_si256(insig, tvn);
+        tvn = _mm256_shuffle_epi8(tvn, _mm256_set_epi32(-1, 0x0F0E0D0C, 0x07060504, -1, -1, -1, 0x0F0E0D0C, 0x07060504));
+        vn = _mm_or_si128(vn, _mm256_castsi256_si128(tvn));
+        vn = _mm_or_si128(vn, _mm256_extracti128_si256(tvn, 0x1));
+        return row;
+    }
+
    //************************************************************************/
     /** @brief decodes twos consecutive quads (one octet), using 16 bit data
      *
@@ -1042,6 +1109,7 @@ namespace grk::t1::ht {
      *  allocation scope, isolated from step-1 and from the 16-bit path.
      *  Returns false on a precision-overflow error, true otherwise.
      */
+    template<bool lean>
     OJPH_NO_INLINE
     bool decode_cb_step2_32bit(ui16* scratch, ui32* decoded_data,
                                ui8* coded_data, ui32 width, ui32 height,
@@ -1083,7 +1151,8 @@ namespace grk::t1::ht {
                 return false;
             }
 
-            __m256i row = decode_two_quad32_avx2(inf_u_q, U_q, dbuf, limit, pos, p, vn);
+            __m256i row = lean ? decode_two_quad32_lean(inf_u_q, U_q, dbuf, limit, pos, p, vn)
+                               : decode_two_quad32_avx2(inf_u_q, U_q, dbuf, limit, pos, p, vn);
             row = _mm256_permutevar8x32_epi32(row, _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7));
             _mm_store_si128((__m128i*)dp, _mm256_castsi256_si128(row));
             _mm_store_si128((__m128i*)(dp + stride), _mm256_extracti128_si256(row, 0x1));
@@ -1149,7 +1218,8 @@ namespace grk::t1::ht {
             __m256i U_q = _mm256_castsi128_si256(_mm_loadl_epi64((__m128i*)(vp + v_n_size)));
             U_q = _mm256_permutevar8x32_epi32(U_q, _mm256_setr_epi32(0, 0, 0, 0, 1, 1, 1, 1));
 
-            __m256i row = decode_two_quad32_avx2(inf_u_q, U_q, dbuf, limit, pos, p, vn);
+            __m256i row = lean ? decode_two_quad32_lean(inf_u_q, U_q, dbuf, limit, pos, p, vn)
+                               : decode_two_quad32_avx2(inf_u_q, U_q, dbuf, limit, pos, p, vn);
             row = _mm256_permutevar8x32_epi32(row, _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7));
             _mm_store_si128((__m128i*)dp, _mm256_castsi256_si128(row));
             _mm_store_si128((__m128i*)(dp + stride), _mm256_extracti128_si256(row, 0x1));
@@ -1578,6 +1648,18 @@ namespace grk::t1::ht {
       return true;
     }
 
+    // the window keeps at least 57 valid bits; the buffer is zero past the
+    // data and larger than any block can consume, so no bound is checked
+    OJPH_FORCE_INLINE
+    void ht_refill(ui64& w, ui32& bits, const ui8*& vp)
+    {
+      ui64 v;
+      memcpy(&v, vp, 8);
+      w |= v << bits;
+      vp += (63 - bits) >> 3;
+      bits |= 56;
+    }
+
     // context bits each quad of a row gets from the row above
     static inline
     void ht_build_north(const ui16* prev, ui32 nq, ui32* north)
@@ -1762,6 +1844,8 @@ namespace grk::t1::ht {
         //non initial quad rows
         static const bool ext_tables_ready = ht_init_vlc_ext_tables();
         (void)ext_tables_ready;
+        memset(vlc_buf + vlc_limit, 0, sizeof(vlc_buf) - vlc_limit);
+        const ui8* vp = vlc_buf + vlc_off;
         ui32 nq = (width + 1) >> 1;
         ui32 north[512 + 8];
         for (ui32 y = 2; y < height; y += 2)
@@ -1773,7 +1857,7 @@ namespace grk::t1::ht {
           ui32 q = 0;
           for (; q + 2 <= nq; q += 2, sp += 4, ncp += 2)
           {
-            drefill(vlc_val, vlc_bits, vlc_off, vlc_buf, vlc_limit);
+            ht_refill(vlc_val, vlc_bits, vp);
             ui64 w = vlc_val;
 
             ui32 c0 = ncp[0] | west;
@@ -1816,7 +1900,7 @@ namespace grk::t1::ht {
           }
           if (q < nq)
           {
-            drefill(vlc_val, vlc_bits, vlc_off, vlc_buf, vlc_limit);
+            ht_refill(vlc_val, vlc_bits, vp);
             ui64 w = vlc_val;
 
             ui32 c0 = ncp[0] | west;
@@ -1985,9 +2069,14 @@ namespace grk::t1::ht {
       // path, but we are not doing this here.
       if (mmsbp2 >= 16)
       {
-        if (!decode_cb_step2_32bit(scratch, decoded_data, coded_data,
-                                   width, height, stride, sstr, p, mmsbp2,
-                                   lcup, scup))
+        bool ok = mmsbp2 <= 25
+          ? decode_cb_step2_32bit<true>(scratch, decoded_data, coded_data,
+                                        width, height, stride, sstr, p,
+                                        mmsbp2, lcup, scup)
+          : decode_cb_step2_32bit<false>(scratch, decoded_data, coded_data,
+                                         width, height, stride, sstr, p,
+                                         mmsbp2, lcup, scup);
+        if (!ok)
           return false;
       }
       else {
