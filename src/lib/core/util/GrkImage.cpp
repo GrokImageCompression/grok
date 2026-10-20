@@ -1379,8 +1379,13 @@ bool GrkImage::greyToRGB(void)
         delete[] new_components;
         return false;
       }
-      size_t dataSize = (uint64_t)comps->stride * comps->h * sizeOfDataType(dest->data_type);
-      memcpy(dest->data, comps->data, dataSize);
+      size_t elementSize = sizeOfDataType(dest->data_type);
+      size_t rowBytes = (size_t)comps->w * elementSize;
+      auto sourceBytes = static_cast<const uint8_t*>(comps->data);
+      auto destBytes = static_cast<uint8_t*>(dest->data);
+      for(uint32_t row = 0; row < comps->h; ++row)
+        memcpy(destBytes + (size_t)row * dest->stride * elementSize,
+               sourceBytes + (size_t)row * comps->stride * elementSize, rowBytes);
     }
   }
 
