@@ -505,6 +505,15 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/issue559-eci-090-CIELab.jp2)
 endif()
 
+# the ICC profile name was reallocated on every postReadHeader call
+add_executable(grk_icc_profile_name_test GrkIccProfileNameTest.cpp)
+target_link_libraries(grk_icc_profile_name_test ${GROK_CORE_NAME} spdlog::spdlog)
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_icc_profile_name_test
+    COMMAND grk_icc_profile_name_test
+            ${GRK_DATA_ROOT}/input/nonregression/basn6a08.jp2)
+endif()
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring 58368 quality
 # layers made T2 packet parsing create a block per code block in the precinct.
 # The test fails if peak resident memory exceeds 1 GB.

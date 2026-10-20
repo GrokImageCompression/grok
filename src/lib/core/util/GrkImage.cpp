@@ -610,7 +610,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
     rows_per_strip = height();
 
   if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
-     decompress_fmt == GRK_FMT_PNG)
+     decompress_fmt == GRK_FMT_PNG && !meta->color.icc_profile_name)
   {
     // extract the description tag from the ICC header,
     // and use this tag as the profile name
