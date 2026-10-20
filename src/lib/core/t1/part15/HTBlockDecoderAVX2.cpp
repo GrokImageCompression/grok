@@ -2153,50 +2153,63 @@ namespace grk::t1::ht {
 
           for (ui32 x = 0; x < width; x += 4, sp += 4, vp += 2, dp += 4)
           {
-            ht_refill(vlc_val, vlc_bits, vlc_p);
-            ui64 vw = vlc_val;
-            ui32 in1 = (q + 1 < nq) ? 0xFFFFFFFFu : 0u;
-
-            ui32 c0 = ncp[0] | west;
-            ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
-            if (c0 == 0)
+            // a pair of zero context quads inside a MEL run of zero events:
+            // no VLC or u bits are consumed and both quads decode to zero
+            if (run >= 4 && (west | ncp[0] | ncp[1]) == 0 && q + 1 < nq)
             {
-              run -= 2;
-              e0 = (run == -1) ? e0 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              run -= 4;
+              memset(vsp, 0, 8);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len0 = e0 & 7;
-            dconsume(vlc_val, vlc_bits, len0);
-            vw = vlc_val;
-
-            ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
-            ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & in1;
-            if (c1 == 0 && in1)
+            else
             {
-              run -= 2;
-              e1 = (run == -1) ? e1 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              ht_refill(vlc_val, vlc_bits, vlc_p);
+              ui64 vw = vlc_val;
+              ui32 in1 = q + 1 < nq;
+
+              ui32 c0 = ncp[0] | west;
+              ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
+              if (c0 == 0)
+              {
+                run -= 2;
+                e0 = (run == -1) ? e0 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len0 = e0 & 7;
+              dconsume(vlc_val, vlc_bits, len0);
+              vw = vlc_val;
+
+              ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
+              ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & (0u - in1);
+              if (c1 == 0 && in1)
+              {
+                run -= 2;
+                e1 = (run == -1) ? e1 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len1 = e1 & 7;
+              dconsume(vlc_val, vlc_bits, len1);
+              vw = vlc_val;
+              west = (e1 >> 16) & 0x100;
+
+              ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
+              ui32 total = ue & 0x1F;
+              if (total == 0x1F)
+                ue = ht_decode_u_long(vw, e0, e1, total);
+              dconsume(vlc_val, vlc_bits, total);
+
+              ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
+              ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
+              memcpy(vsp, &s0, 4);
+              memcpy(vsp + 2, &s1, 4);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len1 = e1 & 7;
-            dconsume(vlc_val, vlc_bits, len1);
-            vw = vlc_val;
-            west = (e1 >> 16) & 0x100;
-
-            ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
-            ui32 total = ue & 0x1F;
-            if (total == 0x1F)
-              ue = ht_decode_u_long(vw, e0, e1, total);
-            dconsume(vlc_val, vlc_bits, total);
-
-            ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
-            ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
-            memcpy(vsp, &s0, 4);
-            memcpy(vsp + 2, &s1, 4);
-            q += 2;
-            vsp += 4;
-            ncp += 2;
 
             //process two quads
             __m128i vn = _mm_set1_epi32(2);
@@ -2514,96 +2527,122 @@ namespace grk::t1::ht {
 
           for (ui32 x = 0; x < width; x += 8, sp += 8, vp += 4, dp += 8, vp_32 += 4)
           {
-            ht_refill(vlc_val, vlc_bits, vlc_p);
-            ui64 vw = vlc_val;
-            ui32 in1 = (q + 1 < nq) ? 0xFFFFFFFFu : 0u;
-
-            ui32 c0 = ncp[0] | west;
-            ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
-            if (c0 == 0)
+            // a pair of zero context quads inside a MEL run of zero events:
+            // no VLC or u bits are consumed and both quads decode to zero
+            if (run >= 4 && (west | ncp[0] | ncp[1]) == 0 && q + 1 < nq)
             {
-              run -= 2;
-              e0 = (run == -1) ? e0 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              run -= 4;
+              memset(vsp, 0, 8);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len0 = e0 & 7;
-            dconsume(vlc_val, vlc_bits, len0);
-            vw = vlc_val;
-
-            ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
-            ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & in1;
-            if (c1 == 0 && in1)
+            else
             {
-              run -= 2;
-              e1 = (run == -1) ? e1 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              ht_refill(vlc_val, vlc_bits, vlc_p);
+              ui64 vw = vlc_val;
+              ui32 in1 = q + 1 < nq;
+
+              ui32 c0 = ncp[0] | west;
+              ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
+              if (c0 == 0)
+              {
+                run -= 2;
+                e0 = (run == -1) ? e0 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len0 = e0 & 7;
+              dconsume(vlc_val, vlc_bits, len0);
+              vw = vlc_val;
+
+              ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
+              ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & (0u - in1);
+              if (c1 == 0 && in1)
+              {
+                run -= 2;
+                e1 = (run == -1) ? e1 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len1 = e1 & 7;
+              dconsume(vlc_val, vlc_bits, len1);
+              vw = vlc_val;
+              west = (e1 >> 16) & 0x100;
+
+              ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
+              ui32 total = ue & 0x1F;
+              if (total == 0x1F)
+                ue = ht_decode_u_long(vw, e0, e1, total);
+              dconsume(vlc_val, vlc_bits, total);
+
+              ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
+              ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
+              memcpy(vsp, &s0, 4);
+              memcpy(vsp + 2, &s1, 4);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len1 = e1 & 7;
-            dconsume(vlc_val, vlc_bits, len1);
-            vw = vlc_val;
-            west = (e1 >> 16) & 0x100;
-
-            ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
-            ui32 total = ue & 0x1F;
-            if (total == 0x1F)
-              ue = ht_decode_u_long(vw, e0, e1, total);
-            dconsume(vlc_val, vlc_bits, total);
-
-            ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
-            ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
-            memcpy(vsp, &s0, 4);
-            memcpy(vsp + 2, &s1, 4);
-            q += 2;
-            vsp += 4;
-            ncp += 2;
             if (q < nq)
             {
-            ht_refill(vlc_val, vlc_bits, vlc_p);
-            ui64 vw = vlc_val;
-            ui32 in1 = (q + 1 < nq) ? 0xFFFFFFFFu : 0u;
-
-            ui32 c0 = ncp[0] | west;
-            ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
-            if (c0 == 0)
+            // a pair of zero context quads inside a MEL run of zero events:
+            // no VLC or u bits are consumed and both quads decode to zero
+            if (run >= 4 && (west | ncp[0] | ncp[1]) == 0 && q + 1 < nq)
             {
-              run -= 2;
-              e0 = (run == -1) ? e0 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              run -= 4;
+              memset(vsp, 0, 8);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len0 = e0 & 7;
-            dconsume(vlc_val, vlc_bits, len0);
-            vw = vlc_val;
-
-            ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
-            ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & in1;
-            if (c1 == 0 && in1)
+            else
             {
-              run -= 2;
-              e1 = (run == -1) ? e1 : 0;
-              if (run < 0)
-                run = mel_get_run(&mel);
+              ht_refill(vlc_val, vlc_bits, vlc_p);
+              ui64 vw = vlc_val;
+              ui32 in1 = q + 1 < nq;
+
+              ui32 c0 = ncp[0] | west;
+              ui32 e0 = vlc_tbl1_ext[c0 + (ui32)(vw & 0x7F)];
+              if (c0 == 0)
+              {
+                run -= 2;
+                e0 = (run == -1) ? e0 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len0 = e0 & 7;
+              dconsume(vlc_val, vlc_bits, len0);
+              vw = vlc_val;
+
+              ui32 c1 = ncp[1] | ((e0 >> 16) & 0x100);
+              ui32 e1 = vlc_tbl1_ext[c1 + (ui32)(vw & 0x7F)] & (0u - in1);
+              if (c1 == 0 && in1)
+              {
+                run -= 2;
+                e1 = (run == -1) ? e1 : 0;
+                if (run < 0)
+                  run = mel_get_run(&mel);
+              }
+              ui32 len1 = e1 & 7;
+              dconsume(vlc_val, vlc_bits, len1);
+              vw = vlc_val;
+              west = (e1 >> 16) & 0x100;
+
+              ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
+              ui32 total = ue & 0x1F;
+              if (total == 0x1F)
+                ue = ht_decode_u_long(vw, e0, e1, total);
+              dconsume(vlc_val, vlc_bits, total);
+
+              ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
+              ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
+              memcpy(vsp, &s0, 4);
+              memcpy(vsp + 2, &s1, 4);
+              q += 2;
+              vsp += 4;
+              ncp += 2;
             }
-            ui32 len1 = e1 & 7;
-            dconsume(vlc_val, vlc_bits, len1);
-            vw = vlc_val;
-            west = (e1 >> 16) & 0x100;
-
-            ui32 ue = uvlc_wide_ext[(ui32)(vw & 0x3FF) | (((e0 | (e1 << 1)) >> 16) & 0xC00)];
-            ui32 total = ue & 0x1F;
-            if (total == 0x1F)
-              ue = ht_decode_u_long(vw, e0, e1, total);
-            dconsume(vlc_val, vlc_bits, total);
-
-            ui32 s0 = (e0 & 0xFFFF) | (ue & 0xFF0000);
-            ui32 s1 = (e1 & 0xFFFF) | ((ue >> 8) & 0xFF0000);
-            memcpy(vsp, &s0, 4);
-            memcpy(vsp + 2, &s1, 4);
-            q += 2;
-            vsp += 4;
-            ncp += 2;
             }
 
             ////process four quads
