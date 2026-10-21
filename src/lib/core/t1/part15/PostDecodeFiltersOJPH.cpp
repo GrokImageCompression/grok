@@ -30,16 +30,20 @@ namespace HWY_NAMESPACE
   namespace hn = hwy::HWY_NAMESPACE;
 
   template<typename DestD, typename Convert>
-  void convertRow(DestD dd, typename hn::TFromD<DestD>* dest, const int32_t* src, uint32_t len,
-                  Convert convert)
+  void convertBlock(DestD dd, typename hn::TFromD<DestD>* dest, size_t destStride,
+                    const int32_t* src, size_t srcStride, uint32_t width, uint32_t height,
+                    Convert convert)
   {
     const hn::ScalableTag<int32_t> di;
     const size_t lanes = hn::Lanes(di);
-    size_t i = 0;
-    for(; i + lanes <= len; i += lanes)
-      hn::StoreU(convert(hn::LoadU(di, src + i)), dd, dest + i);
-    if(i < len)
-      hn::StoreN(convert(hn::LoadN(di, src + i, len - i)), dd, dest + i, len - i);
+    for(uint32_t row = 0; row < height; ++row, dest += destStride, src += srcStride)
+    {
+      size_t i = 0;
+      for(; i + lanes <= width; i += lanes)
+        hn::StoreU(convert(hn::LoadU(di, src + i)), dd, dest + i);
+      if(i < width)
+        hn::StoreN(convert(hn::LoadN(di, src + i, width - i)), dd, dest + i, width - i);
+    }
   }
 
   // sign-magnitude to two's complement, magnitude shifted right
@@ -62,33 +66,39 @@ namespace HWY_NAMESPACE
     return hn::Or(hn::Mul(mag, hn::Set(df, scale)), signBit);
   }
 
-  void hwy_ht_shift_row(int32_t* dest, const int32_t* src, uint32_t len, uint32_t shift)
+  void hwy_ht_shift_block(int32_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                          uint32_t width, uint32_t height, uint32_t shift)
   {
     const hn::ScalableTag<int32_t> di;
-    convertRow(di, dest, src, len, [&](auto v) { return shiftSignMagnitude(v, (int)shift); });
+    convertBlock(di, dest, destStride, src, srcStride, width, height,
+                 [&](auto v) { return shiftSignMagnitude(v, (int)shift); });
   }
 
-  void hwy_ht_scale_row(float* dest, const int32_t* src, uint32_t len, float scale)
+  void hwy_ht_scale_block(float* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                          uint32_t width, uint32_t height, float scale)
   {
     const hn::ScalableTag<float> df;
-    convertRow(df, dest, src, len, [&](auto v) { return scaleSignMagnitude(v, scale); });
+    convertBlock(df, dest, destStride, src, srcStride, width, height,
+                 [&](auto v) { return scaleSignMagnitude(v, scale); });
   }
 
-  void hwy_ht_shift_row16(int16_t* dest, const int32_t* src, uint32_t len, uint32_t shift)
+  void hwy_ht_shift_block16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                            uint32_t width, uint32_t height, uint32_t shift)
   {
     const hn::ScalableTag<int32_t> di;
     const hn::Rebind<int16_t, decltype(di)> d16;
-    convertRow(d16, dest, src, len,
-               [&](auto v) { return hn::DemoteTo(d16, shiftSignMagnitude(v, (int)shift)); });
+    convertBlock(d16, dest, destStride, src, srcStride, width, height,
+                 [&](auto v) { return hn::DemoteTo(d16, shiftSignMagnitude(v, (int)shift)); });
   }
 
   // rounds half away from zero, then saturates to int16
-  void hwy_ht_scale_row16(int16_t* dest, const int32_t* src, uint32_t len, float scale)
+  void hwy_ht_scale_block16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                            uint32_t width, uint32_t height, float scale)
   {
     const hn::ScalableTag<int32_t> di;
     const hn::ScalableTag<float> df;
     const hn::Rebind<int16_t, decltype(di)> d16;
-    convertRow(d16, dest, src, len, [&](auto v) {
+    convertBlock(d16, dest, destStride, src, srcStride, width, height, [&](auto v) {
       auto mag = hn::ConvertTo(df, hn::And(v, hn::Set(di, 0x7FFFFFFF)));
       auto rounded =
           hn::ConvertTo(di, hn::Add(hn::Mul(mag, hn::Set(df, scale)), hn::Set(df, 0.5f)));
@@ -103,26 +113,32 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 namespace grk::t1::ojph
 {
-HWY_EXPORT(hwy_ht_shift_row);
-HWY_EXPORT(hwy_ht_scale_row);
-HWY_EXPORT(hwy_ht_shift_row16);
-HWY_EXPORT(hwy_ht_scale_row16);
+HWY_EXPORT(hwy_ht_shift_block);
+HWY_EXPORT(hwy_ht_scale_block);
+HWY_EXPORT(hwy_ht_shift_block16);
+HWY_EXPORT(hwy_ht_scale_block16);
 
-void htShiftRow(int32_t* dest, const int32_t* src, uint32_t len, uint32_t shift)
+void htShiftBlock(int32_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                  uint32_t width, uint32_t height, uint32_t shift)
 {
-  HWY_DYNAMIC_DISPATCH(hwy_ht_shift_row)(dest, src, len, shift);
+  HWY_DYNAMIC_DISPATCH(hwy_ht_shift_block)(dest, destStride, src, srcStride, width, height, shift);
 }
-void htScaleRow(float* dest, const int32_t* src, uint32_t len, float scale)
+void htScaleBlock(float* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                  uint32_t width, uint32_t height, float scale)
 {
-  HWY_DYNAMIC_DISPATCH(hwy_ht_scale_row)(dest, src, len, scale);
+  HWY_DYNAMIC_DISPATCH(hwy_ht_scale_block)(dest, destStride, src, srcStride, width, height, scale);
 }
-void htShiftRow16(int16_t* dest, const int32_t* src, uint32_t len, uint32_t shift)
+void htShiftBlock16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                    uint32_t width, uint32_t height, uint32_t shift)
 {
-  HWY_DYNAMIC_DISPATCH(hwy_ht_shift_row16)(dest, src, len, shift);
+  HWY_DYNAMIC_DISPATCH(hwy_ht_shift_block16)
+  (dest, destStride, src, srcStride, width, height, shift);
 }
-void htScaleRow16(int16_t* dest, const int32_t* src, uint32_t len, float scale)
+void htScaleBlock16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                    uint32_t width, uint32_t height, float scale)
 {
-  HWY_DYNAMIC_DISPATCH(hwy_ht_scale_row16)(dest, src, len, scale);
+  HWY_DYNAMIC_DISPATCH(hwy_ht_scale_block16)
+  (dest, destStride, src, srcStride, width, height, scale);
 }
 } // namespace grk::t1::ojph
 #endif

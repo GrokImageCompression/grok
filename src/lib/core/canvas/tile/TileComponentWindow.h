@@ -512,9 +512,7 @@ void narrowBlockInPlace(int32_t* srcData, uint32_t srcStride, uint32_t width, ui
                         t1::DecompressBlockExec* block)
 {
   F filter(block);
-  auto dest = (int16_t*)srcData;
-  for(uint32_t j = 0; j < height; ++j)
-    filter.copy(dest + (size_t)j * width, srcData + (size_t)j * srcStride, width);
+  copyRowsFiltered(filter, (int16_t*)srcData, width, srcData, srcStride, width, height);
 }
 
 template<typename T>

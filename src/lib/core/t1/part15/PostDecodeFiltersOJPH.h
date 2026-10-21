@@ -22,11 +22,15 @@
 
 namespace grk::t1::ojph
 {
-// sign-magnitude int32 rows to the band sample type, SIMD dispatched at run time
-void htShiftRow(int32_t* dest, const int32_t* src, uint32_t len, uint32_t shift);
-void htScaleRow(float* dest, const int32_t* src, uint32_t len, float scale);
-void htShiftRow16(int16_t* dest, const int32_t* src, uint32_t len, uint32_t shift);
-void htScaleRow16(int16_t* dest, const int32_t* src, uint32_t len, float scale);
+// sign-magnitude int32 blocks to the band sample type, one SIMD dispatch per block
+void htShiftBlock(int32_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                  uint32_t width, uint32_t height, uint32_t shift);
+void htScaleBlock(float* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                  uint32_t width, uint32_t height, float scale);
+void htShiftBlock16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                    uint32_t width, uint32_t height, uint32_t shift);
+void htScaleBlock16(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                    uint32_t width, uint32_t height, float scale);
 
 template<typename T>
 class RoiShiftOJPHFilter
@@ -58,9 +62,10 @@ class ShiftOJPHFilter
 {
 public:
   explicit ShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
-  inline void copy(int32_t* dest, const int32_t* src, uint32_t len)
+  inline void copyBlock(int32_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                        uint32_t width, uint32_t height)
   {
-    htShiftRow(dest, src, len, shift);
+    htShiftBlock(dest, destStride, src, srcStride, width, height, shift);
   }
 
 private:
@@ -104,9 +109,10 @@ public:
   {
     assert(block->bandNumbps <= maxBitPlanesHT);
   }
-  inline void copy(int32_t* dest, const int32_t* src, uint32_t len)
+  inline void copyBlock(int32_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                        uint32_t width, uint32_t height)
   {
-    htScaleRow((float*)dest, src, len, scale);
+    htScaleBlock((float*)dest, destStride, src, srcStride, width, height, scale);
   }
 
 private:
@@ -118,9 +124,10 @@ class NarrowShiftOJPHFilter
 {
 public:
   explicit NarrowShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - block->bandNumbps) {}
-  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  inline void copyBlock(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                        uint32_t width, uint32_t height)
   {
-    htShiftRow16(dest, src, len, shift);
+    htShiftBlock16(dest, destStride, src, srcStride, width, height, shift);
   }
 
 private:
@@ -165,9 +172,10 @@ public:
   {
     assert(block->bandNumbps <= maxBitPlanesHT);
   }
-  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  inline void copyBlock(int16_t* dest, size_t destStride, const int32_t* src, size_t srcStride,
+                        uint32_t width, uint32_t height)
   {
-    htScaleRow16(dest, src, len, scale_);
+    htScaleBlock16(dest, destStride, src, srcStride, width, height, scale_);
   }
 
 private:
