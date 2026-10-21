@@ -29,6 +29,9 @@
 #ifdef _WIN32
 #include <malloc.h>
 #endif
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t)-1)
@@ -127,7 +130,20 @@ public:
 #ifdef _WIN32
     void* ptr = _aligned_malloc(bytes, alignment);
 #else
-    void* ptr = ::aligned_alloc(alignment, bytes);
+    // two megabyte pages so the vertical wavelet pass stops missing the second level TLB
+    const size_t huge_page_bytes = 2u << 20;
+    void* ptr = nullptr;
+    if(bytes >= huge_page_bytes)
+    {
+      if(posix_memalign(&ptr, huge_page_bytes, bytes) != 0)
+        ptr = nullptr;
+#ifdef __linux__
+      if(ptr)
+        madvise(ptr, bytes, MADV_HUGEPAGE);
+#endif
+    }
+    else
+      ptr = ::aligned_alloc(alignment, bytes);
 #endif
 
     if(ptr && track_stats)
