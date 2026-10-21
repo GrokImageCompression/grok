@@ -1234,8 +1234,9 @@ namespace grk::t1::ht {
 
     // index: candidate rows | insignificant rows << 4 | next codeword bits << 8
     // entry: rows that became significant | codeword bits consumed << 4
-    static constexpr std::array<ui8, 4096> spp_column_table = []() {
-      std::array<ui8, 4096> table{};
+    // | rows of the next column they make candidates << 8
+    static constexpr std::array<ui16, 4096> spp_column_table = []() {
+      std::array<ui16, 4096> table{};
       for (ui32 index = 0; index < 4096; ++index)
       {
         ui32 cand = index & 0xFu;
@@ -1255,7 +1256,8 @@ namespace grk::t1::ht {
           }
           ++used;
         }
-        table[index] = (ui8)(out | (used << 4));
+        ui32 spread = (out | (out << 1) | (out >> 1)) & 0xFu;
+        table[index] = (ui16)(out | (used << 4) | (spread << 8));
       }
       return table;
     }();
@@ -1330,6 +1332,15 @@ namespace grk::t1::ht {
             dp[0] = 0; // set an extra entry on the right with 0
           }
         }
+
+        // the MRP segment, read in the same loop as the SPP below
+        const ui32 mrp_cap = 1024;
+        ui8 mrp_buf[mrp_cap + 72];
+        ui32 mrp_limit = 0;
+        ui32 mrp_pos = 0;
+        if (num_passes > 2)
+          mrp_limit = destuff_mrp(coded_data, (int)lengths1, (int)lengths2,
+                                  mrp_buf, mrp_cap);
 
         // We perform Significance Propagation Pass here
         {
@@ -1430,13 +1441,13 @@ namespace grk::t1::ht {
                   ui32 e = spp_column_table[(cand & 0xFu) | ((inv & 0xFu) << 4)
                                             | (((ui32)cwd & 0xFu) << 8)];
                   ui32 sig = e & 0xFu;
-                  ui32 used = e >> 4;
+                  ui32 used = (e >> 4) & 7u;
                   cwd >>= used;
                   cnt += used;
                   new_sig |= sig << i;
                   cand >>= 4;
                   inv >>= 4;
-                  cand |= (sig | (sig << 1) | (sig >> 1)) & inv & 0xFu;
+                  cand |= (e >> 8) & inv;
                 }
 
                 if (new_sig)
@@ -1514,6 +1525,82 @@ namespace grk::t1::ht {
                 spp_pos += cnt;
               }
 
+              if (num_passes > 2)
+              {
+                ui64 cwd = dfetch64(mrp_buf, mrp_limit, mrp_pos);
+                ui16 sig = (ui16)cs;
+                int total_bits = 0;
+                if (sig) // if any of the 32 bits are set
+                {
+                  // We work on 4 rows, with 4 samples each, since
+                  // data is 32 bit (4 bytes)
+
+                  // spread the 16 bits in sig to 0 or 1 bytes in sig_vec
+                  __m128i sig_vec = _mm_set1_epi16((si16)sig);
+                  sig_vec = _mm_shuffle_epi8(sig_vec,
+                    _mm_set_epi8(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0));
+                  sig_vec = _mm_and_si128(sig_vec,
+                    _mm_set1_epi64x((si64)0x8040201008040201));
+                  sig_vec = _mm_cmpeq_epi8(sig_vec,
+                    _mm_set1_epi64x((si64)0x8040201008040201));
+                  sig_vec = _mm_abs_epi8(sig_vec);
+
+                  // find cumulative sums
+                  // to find which bit in cwd we should extract
+                  __m128i inc_sum = sig_vec; // inclusive scan
+                  inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 1));
+                  inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 2));
+                  inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 4));
+                  inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 8));
+                  total_bits = _mm_extract_epi16(inc_sum, 7) >> 8;
+                  __m128i ex_sum = _mm_bslli_si128(inc_sum, 1); // exclusive scan
+
+                  // Spread the 16 bits in cwd to inverted 0 or 1 bytes in
+                  // cwd_vec. Then, convert these to a form suitable
+                  // for coefficient modifications; in particular, a value
+                  // of 0 is presented as binary 11, and a value of 1 is
+                  // represented as binary 01
+                  __m128i cwd_vec = _mm_set1_epi16((si16)cwd);
+                  cwd_vec = _mm_shuffle_epi8(cwd_vec,
+                    _mm_set_epi8(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0));
+                  cwd_vec = _mm_and_si128(cwd_vec,
+                    _mm_set1_epi64x((si64)0x8040201008040201));
+                  cwd_vec = _mm_cmpeq_epi8(cwd_vec,
+                    _mm_set1_epi64x((si64)0x8040201008040201));
+                  cwd_vec = _mm_add_epi8(cwd_vec, _mm_set1_epi8(1));
+                  cwd_vec = _mm_add_epi8(cwd_vec, cwd_vec);
+                  cwd_vec = _mm_or_si128(cwd_vec, _mm_set1_epi8(1));
+
+                  // load data and insert the mrp bit
+                  __m128i m =
+                    _mm_set_epi8(-1,-1,-1,12,-1,-1,-1,8,-1,-1,-1,4,-1,-1,-1,0);
+                  ui32 *dp = dpp;
+                  for (int c = 0; c < 4; ++c) {
+                    __m128i s0, s0_sig, s0_idx, s0_val;
+                    // load coefficients
+                    s0 = _mm_load_si128((__m128i*)dp);
+                    // find significant samples in this row
+                    s0_sig = _mm_shuffle_epi8(sig_vec, m);
+                    s0_sig = _mm_cmpeq_epi8(s0_sig, _mm_setzero_si128());
+                    // get MRP bit index, and MRP pattern
+                    s0_idx = _mm_shuffle_epi8(ex_sum, m);
+                    s0_val = _mm_shuffle_epi8(cwd_vec, s0_idx);
+                    // keep data from significant samples only
+                    s0_val = _mm_andnot_si128(s0_sig, s0_val);
+                    // move mrp bits to correct position, and employ
+                    s0_val = _mm_slli_epi32(s0_val, (si32)p - 2);
+                    s0 = _mm_xor_si128(s0, s0_val);
+                    // store coefficients
+                    _mm_store_si128((__m128i*)dp, s0);
+                    // prepare for next row
+                    dp += stride;
+                    m = _mm_add_epi32(m, _mm_set1_epi32(1));
+                  }
+                }
+                // consume data according to the number of bits set
+                mrp_pos += (ui32)total_bits;
+              }
+
               new_sig |= cs;
               *prev_sig = (ui16)(new_sig);
 
@@ -1529,100 +1616,6 @@ namespace grk::t1::ht {
           }
         }
 
-        // We perform Magnitude Refinement Pass here
-        if (num_passes > 2)
-        {
-          // de-stuff the MRP segment; consumption is at most 1 bit per
-          // sample = 512 bytes, so 1024 bytes always suffice
-          const ui32 mrp_cap = 1024;
-          ui8 mrp_buf[mrp_cap + 72];
-          ui32 mrp_limit = destuff_mrp(coded_data, (int)lengths1,
-                                       (int)lengths2, mrp_buf, mrp_cap);
-          ui32 mrp_pos = 0;
-
-          for (ui32 y = 0; y < height; y += 4)
-          {
-            ui16 *cur_sig = sigma + (y >> 2) * mstr;
-            ui32 *dpp = decoded_data + y * stride;
-            for (ui32 i = 0; i < width; i += 4, dpp += 4)
-            {
-              //Process one entry from sigma array at a time
-              // Each nibble (4 bits) in the sigma array represents 4 rows,
-              ui64 cwd = dfetch64(mrp_buf, mrp_limit, mrp_pos);
-              ui16 sig = *cur_sig++; // 16 bit that will be processed now
-              int total_bits = 0;
-              if (sig) // if any of the 32 bits are set
-              {
-                // We work on 4 rows, with 4 samples each, since
-                // data is 32 bit (4 bytes)
-
-                // spread the 16 bits in sig to 0 or 1 bytes in sig_vec
-                __m128i sig_vec = _mm_set1_epi16((si16)sig);
-                sig_vec = _mm_shuffle_epi8(sig_vec,
-                  _mm_set_epi8(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0));
-                sig_vec = _mm_and_si128(sig_vec,
-                  _mm_set1_epi64x((si64)0x8040201008040201));
-                sig_vec = _mm_cmpeq_epi8(sig_vec,
-                  _mm_set1_epi64x((si64)0x8040201008040201));
-                sig_vec = _mm_abs_epi8(sig_vec);
-
-                // find cumulative sums
-                // to find which bit in cwd we should extract
-                __m128i inc_sum = sig_vec; // inclusive scan
-                inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 1));
-                inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 2));
-                inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 4));
-                inc_sum = _mm_add_epi8(inc_sum, _mm_bslli_si128(inc_sum, 8));
-                total_bits = _mm_extract_epi16(inc_sum, 7) >> 8;
-                __m128i ex_sum = _mm_bslli_si128(inc_sum, 1); // exclusive scan
-
-                // Spread the 16 bits in cwd to inverted 0 or 1 bytes in
-                // cwd_vec. Then, convert these to a form suitable
-                // for coefficient modifications; in particular, a value
-                // of 0 is presented as binary 11, and a value of 1 is
-                // represented as binary 01
-                __m128i cwd_vec = _mm_set1_epi16((si16)cwd);
-                cwd_vec = _mm_shuffle_epi8(cwd_vec,
-                  _mm_set_epi8(1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0));
-                cwd_vec = _mm_and_si128(cwd_vec,
-                  _mm_set1_epi64x((si64)0x8040201008040201));
-                cwd_vec = _mm_cmpeq_epi8(cwd_vec,
-                  _mm_set1_epi64x((si64)0x8040201008040201));
-                cwd_vec = _mm_add_epi8(cwd_vec, _mm_set1_epi8(1));
-                cwd_vec = _mm_add_epi8(cwd_vec, cwd_vec);
-                cwd_vec = _mm_or_si128(cwd_vec, _mm_set1_epi8(1));
-
-                // load data and insert the mrp bit
-                __m128i m =
-                  _mm_set_epi8(-1,-1,-1,12,-1,-1,-1,8,-1,-1,-1,4,-1,-1,-1,0);
-                ui32 *dp = dpp;
-                for (int c = 0; c < 4; ++c) {
-                  __m128i s0, s0_sig, s0_idx, s0_val;
-                  // load coefficients
-                  s0 = _mm_load_si128((__m128i*)dp);
-                  // find significant samples in this row
-                  s0_sig = _mm_shuffle_epi8(sig_vec, m);
-                  s0_sig = _mm_cmpeq_epi8(s0_sig, _mm_setzero_si128());
-                  // get MRP bit index, and MRP pattern
-                  s0_idx = _mm_shuffle_epi8(ex_sum, m);
-                  s0_val = _mm_shuffle_epi8(cwd_vec, s0_idx);
-                  // keep data from significant samples only
-                  s0_val = _mm_andnot_si128(s0_sig, s0_val);
-                  // move mrp bits to correct position, and employ
-                  s0_val = _mm_slli_epi32(s0_val, (si32)p - 2);
-                  s0 = _mm_xor_si128(s0, s0_val);
-                  // store coefficients
-                  _mm_store_si128((__m128i*)dp, s0);
-                  // prepare for next row
-                  dp += stride;
-                  m = _mm_add_epi32(m, _mm_set1_epi32(1));
-                }
-              }
-              // consume data according to the number of bits set
-              mrp_pos += (ui32)total_bits;
-            }
-          }
-        }
     }
 
     // vlc_tbl1 entries with two extra bits above the 16-bit payload:
