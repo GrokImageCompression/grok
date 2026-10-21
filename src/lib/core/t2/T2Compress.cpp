@@ -136,7 +136,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
         }
       }
     }
-    if(tilePartBytes)
+    // the caller's array has one slot per component
+    if(tilePartBytes && compno < image->numcomps)
       tilePartBytes[compno] = componentBytes;
   }
 

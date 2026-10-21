@@ -541,6 +541,21 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
       // one header total unless the packets are walked per component
       std::vector<uint64_t> tilePartBytes(numComps, 0);
       std::vector<uint64_t> measuredHeaders(numComps, 0);
+      // earlier layers' packets do not depend on this layer's threshold,
+      // so they stay out of the headers that scale with the pass count
+      std::vector<uint64_t> previousBytes(numComps, 0);
+      uint64_t previousTotal = 0;
+      if(!fixedQuality && layno > 0)
+      {
+        uint32_t packetBytes = 0;
+        if(t2.compressPacketsSimulate(tileIndex_, layno, &packetBytes, UINT_MAX,
+                                      newTilePartProgressionPosition_,
+                                      packetLengthCache_->getMarkers(), true, false,
+                                      previousBytes.data()))
+          previousTotal = packetBytes;
+        else
+          std::fill(previousBytes.begin(), previousBytes.end(), 0);
+      }
       uint64_t measuredPasses = 0;
       bool haveEstimate = false;
       auto estimatedHeaders = [&](uint16_t compno, uint32_t thresh) -> uint64_t {
@@ -549,12 +564,16 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         return measuredHeaders[compno] * passesAbove[thresh + 1] / measuredPasses;
       };
       auto fitsEstimated = [&](uint32_t thresh) -> bool {
-        uint64_t total = 0;
+        uint64_t total = componentCap ? 0 : previousTotal;
         for(uint16_t compno = 0; compno < numComps; ++compno)
         {
           uint64_t bytes = bodyBytesAt(compno, thresh) + estimatedHeaders(compno, thresh);
-          if(componentCap && bytes > componentCap)
-            return false;
+          if(componentCap)
+          {
+            bytes += previousBytes[compno];
+            if(bytes > componentCap)
+              return false;
+          }
           total += bytes;
         }
         return total <= maxLayerLength;
@@ -578,14 +597,15 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         if(componentCap)
         {
           for(uint16_t compno = 0; compno < numComps; ++compno)
-            measuredHeaders[compno] = tilePartBytes[compno] - bodyBytesAt(compno, thresh);
+            measuredHeaders[compno] =
+                tilePartBytes[compno] - previousBytes[compno] - bodyBytesAt(compno, thresh);
         }
         else
         {
           uint64_t body = 0;
           for(uint16_t compno = 0; compno < numComps; ++compno)
             body += bodyBytesAt(compno, thresh);
-          measuredHeaders[0] = totalBytes - body;
+          measuredHeaders[0] = totalBytes - previousTotal - body;
         }
         haveEstimate = true;
         if(totalBytes > maxLayerLength)

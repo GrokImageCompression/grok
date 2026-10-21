@@ -824,6 +824,11 @@ target_link_libraries(grk_rate_allocation_test ${GROK_CORE_NAME})
 add_test(NAME grk_rate_allocation_test COMMAND grk_rate_allocation_test)
 
 # synthesizes its own image, so it needs no GRK_DATA_ROOT
+add_executable(grk_layer_rate_target_test GrkLayerRateTargetTest.cpp)
+target_link_libraries(grk_layer_rate_target_test ${GROK_CORE_NAME})
+add_test(NAME grk_layer_rate_target_test COMMAND grk_layer_rate_target_test)
+
+# synthesizes its own image, so it needs no GRK_DATA_ROOT
 add_executable(grk_icc_rate_control_test GrkIccRateControlTest.cpp)
 target_link_libraries(grk_icc_rate_control_test ${GROK_CORE_NAME})
 add_test(NAME grk_icc_rate_control_test COMMAND grk_icc_rate_control_test)
