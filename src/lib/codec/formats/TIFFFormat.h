@@ -1626,7 +1626,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     success = false;
     goto beach;
   }
-  rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+  rowStride = (tsize_t)(((uint64_t)comps[0].w * tiSpp * comps[0].prec + 7U) / 8U);
   buffer32s = new T[(size_t)comps[0].w * tiSpp];
   strip = 0;
   invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
@@ -1850,7 +1850,7 @@ bool TIFFFormat<T>::readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint1
     success = false;
     goto beach;
   }
-  rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+  rowStride = (tsize_t)(((uint64_t)comps[0].w * tiSpp * comps[0].prec + 7U) / 8U);
   buffer32s = new T[(size_t)comps[0].w * tiSpp];
   strip = 0;
   for(uint16_t j = 0; j < numcomps; j++)
