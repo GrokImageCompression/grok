@@ -1263,7 +1263,7 @@ void BMPFormat<T>::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
   for(uint32_t y = destHeight; y != 0U; --y)
   {
     uint32_t destIndex = 0;
-    for(uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++)
+    for(uint32_t srcIndex = 0; srcIndex < absSrcStride && destIndex < destWidth; srcIndex++)
     {
       uint8_t val = pSrc[srcIndex];
       for(int32_t ct = 7; ct >= 0; --ct)
@@ -1286,7 +1286,7 @@ void BMPFormat<T>::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
   for(uint32_t y = destHeight; y != 0U; --y)
   {
     uint32_t destIndex = 0;
-    for(uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++)
+    for(uint32_t srcIndex = 0; srcIndex < absSrcStride && destIndex < destWidth; srcIndex++)
     {
       uint8_t val = pSrc[srcIndex];
       for(int32_t ct = 4; ct >= 0; ct -= 4)
