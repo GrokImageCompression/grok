@@ -1108,7 +1108,7 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
       if(bytesRead == 0)
         break;
       auto chunkPtr = (const uint8_t*)chunk;
-      for(size_t ct = 0; ct < bytesRead; ++ct)
+      for(size_t ct = 0; ct < bytesRead && i < area; ++ct)
       {
         uint8_t c = *chunkPtr++;
         if(c != '\n' && c != ' ')
