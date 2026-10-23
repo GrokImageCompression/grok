@@ -2133,6 +2133,22 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
                         chroma_subsample_x, chroma_subsample_y);
           goto cleanup;
         }
+        if(tiPC == PLANARCONFIG_SEPARATE)
+        {
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with separate "
+                        "planes not supported",
+                        chroma_subsample_x, chroma_subsample_y);
+          goto cleanup;
+        }
+        uint32_t rowsPerStrip = 0;
+        TIFFGetFieldDefaulted(tif_, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+        if(rowsPerStrip < tiHeight && rowsPerStrip % chroma_subsample_y != 0)
+        {
+          spdlog::error("TIFFFormat<T>::readImage: rows per strip {} must be a multiple of "
+                        "vertical chroma subsampling {}",
+                        rowsPerStrip, chroma_subsample_y);
+          goto cleanup;
+        }
       }
       break;
     case PHOTOMETRIC_SEPARATED:
