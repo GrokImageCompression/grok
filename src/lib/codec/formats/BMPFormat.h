@@ -112,12 +112,9 @@ public:
 
 private:
   uint64_t off_;
-  grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                         uint8_t const* const* pLUT, bool topDown);
-  grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                         uint8_t const* const* pLUT);
-  grk_image* bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                         uint8_t const* const* pLUT);
+  grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, bool topDown);
+  grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
+  grk_image* bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
   bool readFileHeader(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readRawData(uint8_t* pData, uint32_t stride, uint32_t height);
@@ -136,15 +133,6 @@ private:
   void conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
                   uint32_t width, uint32_t height);
 
-  void applyLUT8u_1u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                              int32_t const* pDstStride, uint8_t const* const* pLUT,
-                              uint32_t destWidth, uint32_t destHeight);
-  void applyLUT8u_4u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                              int32_t const* pDstStride, uint8_t const* const* pLUT,
-                              uint32_t destWidth, uint32_t destHeight);
-  void applyLUT8u_8u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                              int32_t const* pDstStride, uint8_t const* const* pLUT,
-                              uint32_t destWidth, uint32_t destHeight);
   void mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
                      uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
   void mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
@@ -462,87 +450,37 @@ bool BMPFormat<T>::writeFinish(void)
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                     uint8_t const* const* pLUT)
+grk_image* BMPFormat<T>::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
   auto pSrc = pData + (height - 1U) * srcStride;
-  if(image->decompress_num_comps == 1U)
-  {
-    conv_1u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
-               width, height);
-  }
-  else
-  {
-    T* pDst[3];
-    int32_t pDstStride[3];
-
-    pDst[0] = (T*)image->comps[0].data;
-    pDst[1] = (T*)image->comps[1].data;
-    pDst[2] = (T*)image->comps[2].data;
-    pDstStride[0] = (T)image->comps[0].stride;
-    pDstStride[1] = (T)image->comps[0].stride;
-    pDstStride[2] = (T)image->comps[0].stride;
-    applyLUT8u_1u32s_C1P3R(pSrc, -(int32_t)srcStride, pDst, pDstStride, pLUT, width, height);
-  }
+  conv_1u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
+             width, height);
   return image;
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                     uint8_t const* const* pLUT)
+grk_image* BMPFormat<T>::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
   auto pSrc = pData + (height - 1U) * srcStride;
-  if(image->decompress_num_comps == 1U)
-  {
-    conv_4u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
-               width, height);
-  }
-  else
-  {
-    T* pDst[3];
-    int32_t pDstStride[3];
-
-    pDst[0] = (T*)image->comps[0].data;
-    pDst[1] = (T*)image->comps[1].data;
-    pDst[2] = (T*)image->comps[2].data;
-    pDstStride[0] = (T)image->comps[0].stride;
-    pDstStride[1] = (T)image->comps[0].stride;
-    pDstStride[2] = (T)image->comps[0].stride;
-    applyLUT8u_4u32s_C1P3R(pSrc, -(int32_t)srcStride, pDst, pDstStride, pLUT, width, height);
-  }
+  conv_4u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
+             width, height);
   return image;
 }
 
 template<typename T>
 grk_image* BMPFormat<T>::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                     uint8_t const* const* pLUT, bool topDown)
+                                     bool topDown)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
   auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
   int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
-  if(image->decompress_num_comps == 1U)
-  {
-    conv_8u32s(pSrc, s_stride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
-               height);
-  }
-  else
-  {
-    T* pDst[3];
-    int32_t pDstStride[3];
-
-    pDst[0] = (T*)image->comps[0].data;
-    pDst[1] = (T*)image->comps[1].data;
-    pDst[2] = (T*)image->comps[2].data;
-    pDstStride[0] = (T)image->comps[0].stride;
-    pDstStride[1] = (T)image->comps[0].stride;
-    pDstStride[2] = (T)image->comps[0].stride;
-    applyLUT8u_8u32s_C1P3R(pSrc, s_stride, pDst, pDstStride, pLUT, width, height);
-  }
+  conv_8u32s(pSrc, s_stride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
+             height);
   return image;
 }
 
@@ -874,14 +812,10 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
 {
   grk_image_comp cmptparm[4]; /* maximum of 4 components */
   uint8_t lut_R[256], lut_G[256], lut_B[256];
-  uint8_t const* pLUT[3];
   grk_image* image = nullptr;
   bool result = false;
   uint8_t* pData = nullptr;
   uint32_t bmpStride;
-  pLUT[0] = lut_R;
-  pLUT[1] = lut_G;
-  pLUT[2] = lut_B;
   bool handled = true;
   bool topDown = false;
   bool is_os2 = false;
@@ -1114,13 +1048,13 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
           mask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
           break;
         case 8: /* RGB 8bpp Indexed */
-          bmp8toimage(pData, bmpStride, image, pLUT, topDown);
+          bmp8toimage(pData, bmpStride, image, topDown);
           break;
         case 4: /* RGB 4bpp Indexed */
-          bmp4toimage(pData, bmpStride, image, pLUT);
+          bmp4toimage(pData, bmpStride, image);
           break;
         case 1: /* Grayscale 1bpp Indexed */
-          bmp1toimage(pData, bmpStride, image, pLUT);
+          bmp1toimage(pData, bmpStride, image);
           break;
         default:
           handled = false;
@@ -1131,7 +1065,7 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       switch(infoHeader_.biBitCount)
       {
         case 8: /*RLE8*/
-          bmp8toimage(pData, bmpStride, image, pLUT, topDown);
+          bmp8toimage(pData, bmpStride, image, topDown);
           break;
         default:
           handled = false;
@@ -1142,7 +1076,7 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       switch(infoHeader_.biBitCount)
       {
         case 4: /*RLE4*/
-          bmp8toimage(pData, bmpStride, image, pLUT,
+          bmp8toimage(pData, bmpStride, image,
                       topDown); /* RLE 4 gets decoded as 8 bits data for now */
           break;
         default:
@@ -1311,111 +1245,6 @@ void BMPFormat<T>::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
       pDst[x] = (T)pSrc[x];
     pSrc += srcStride;
     pDst += dstStride;
-  }
-}
-
-template<typename T>
-void BMPFormat<T>::applyLUT8u_1u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                                          int32_t const* pDstStride, uint8_t const* const* pLUT,
-                                          uint32_t destWidth, uint32_t destHeight)
-{
-  uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
-  uint32_t y;
-  auto pR = pDst[0];
-  auto pG = pDst[1];
-  auto pB = pDst[2];
-  uint8_t const* pLUT_R = pLUT[0];
-  uint8_t const* pLUT_G = pLUT[1];
-  uint8_t const* pLUT_B = pLUT[2];
-
-  for(y = destHeight; y != 0U; --y)
-  {
-    uint32_t destIndex = 0;
-    for(uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++)
-    {
-      uint8_t idx = pSrc[srcIndex];
-      for(int32_t ct = 7; ct >= 0; ct--)
-      {
-        uint8_t val = (idx >> ct) & 0x1;
-        pR[destIndex] = (T)pLUT_R[val];
-        pG[destIndex] = (T)pLUT_G[val];
-        pB[destIndex] = (T)pLUT_B[val];
-        destIndex++;
-        if(destIndex == destWidth)
-          break;
-      }
-    }
-    pSrc += srcStride;
-    pR += pDstStride[0];
-    pG += pDstStride[1];
-    pB += pDstStride[2];
-  }
-}
-
-template<typename T>
-void BMPFormat<T>::applyLUT8u_4u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                                          int32_t const* pDstStride, uint8_t const* const* pLUT,
-                                          uint32_t destWidth, uint32_t destHeight)
-{
-  uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
-  uint32_t y;
-  auto pR = pDst[0];
-  auto pG = pDst[1];
-  auto pB = pDst[2];
-  uint8_t const* pLUT_R = pLUT[0];
-  uint8_t const* pLUT_G = pLUT[1];
-  uint8_t const* pLUT_B = pLUT[2];
-
-  for(y = destHeight; y != 0U; --y)
-  {
-    uint32_t destIndex = 0;
-    for(uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++)
-    {
-      uint8_t idx = pSrc[srcIndex];
-      for(int32_t ct = 4; ct >= 0; ct -= 4)
-      {
-        uint8_t val = (idx >> ct) & 0xF;
-        pR[destIndex] = (T)pLUT_R[val];
-        pG[destIndex] = (T)pLUT_G[val];
-        pB[destIndex] = (T)pLUT_B[val];
-        destIndex++;
-        if(destIndex == destWidth)
-          break;
-      }
-    }
-    pSrc += srcStride;
-    pR += pDstStride[0];
-    pG += pDstStride[1];
-    pB += pDstStride[2];
-  }
-}
-
-template<typename T>
-void BMPFormat<T>::applyLUT8u_8u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, T* const* pDst,
-                                          int32_t const* pDstStride, uint8_t const* const* pLUT,
-                                          uint32_t destWidth, uint32_t destHeight)
-{
-  uint32_t y;
-  auto pR = pDst[0];
-  auto pG = pDst[1];
-  auto pB = pDst[2];
-  uint8_t const* pLUT_R = pLUT[0];
-  uint8_t const* pLUT_G = pLUT[1];
-  uint8_t const* pLUT_B = pLUT[2];
-
-  for(y = destHeight; y != 0U; --y)
-  {
-    for(uint32_t x = 0; x < destWidth; x++)
-    {
-      uint8_t idx = pSrc[x];
-      pR[x] = (T)pLUT_R[idx];
-      pG[x] = (T)pLUT_G[idx];
-      pB[x] = (T)pLUT_B[idx];
-    }
-    pSrc += srcStride;
-    pR += pDstStride[0];
-    pG += pDstStride[1];
-    pB += pDstStride[2];
   }
 }
 
