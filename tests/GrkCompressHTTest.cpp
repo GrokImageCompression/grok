@@ -203,6 +203,20 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
       fail(label + ": differs with \"" + extraArguments + "\"");
     checkStream(label, reference, numComps, frame);
   }
+
+  // a single file encode writes the CPU's bytes under the extra arguments
+  auto tif = tifDir / frameName(0, "j2k.tif");
+  auto singleReference = shapeRoot / "single_reference.jhc";
+  auto singleTest = shapeRoot / "single_test.jhc";
+  auto single = "\"" + compressPath + "\" -i \"" + tif.string() + "\" -M 64 -o ";
+  if(run(single + "\"" + singleReference.string() + "\" -G -2") != 0)
+    fail(shapeName + ": single file encode on the CPU returned non zero");
+  if(run(single + "\"" + singleTest.string() + "\" " + extraArguments) != 0)
+    fail(shapeName + ": single file encode with \"" + extraArguments + "\" returned non zero");
+  auto singleBytes = readFile(singleTest);
+  if(singleBytes.empty() || singleBytes != readFile(singleReference))
+    fail(shapeName + ": single file encode differs with \"" + extraArguments + "\"");
+  checkStream(shapeName + ", single file", singleBytes, numComps, 0);
 }
 
 } // namespace
@@ -218,7 +232,7 @@ int main(int argc, char** argv)
   std::string extraArguments;
   for(int i = 3; i < argc; ++i)
     extraArguments += std::string(i > 3 ? " " : "") + argv[i];
-  auto root = std::filesystem::current_path() / "compress_directory_ht_test";
+  auto root = std::filesystem::current_path() / "compress_ht_test";
   std::filesystem::remove_all(root);
   grk_initialize(nullptr, 0, nullptr);
   for(auto numComps : kComponentCounts)
