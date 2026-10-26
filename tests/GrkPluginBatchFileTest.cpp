@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -32,6 +33,12 @@ void fail(const std::string& what)
   std::fprintf(stderr, "FAIL: %s\n", what.c_str());
 }
 
+uint16_t sampleValue(uint32_t frameIndex, uint32_t compno, uint32_t x, uint32_t y)
+{
+  constexpr uint32_t maxSample = (1 << kPrecision) - 1;
+  return (uint16_t)((x * 7 + y * 3 + compno * 501 + frameIndex * 37) & maxSample);
+}
+
 bool writeFrame(uint16_t numComps, uint32_t frameIndex, const std::filesystem::path& path)
 {
   auto components = std::make_unique<grk_image_comp[]>(numComps);
@@ -49,14 +56,13 @@ bool writeFrame(uint16_t numComps, uint32_t frameIndex, const std::filesystem::p
                              numComps == 1 ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB, true);
   if(!image)
     return false;
-  constexpr int32_t maxSample = (1 << kPrecision) - 1;
   for(uint16_t compno = 0; compno < image->numcomps; ++compno)
   {
     auto comp = image->comps + compno;
     auto data = (int32_t*)comp->data;
     for(uint32_t y = 0; y < comp->h; ++y, data += comp->stride)
       for(uint32_t x = 0; x < comp->w; ++x)
-        data[x] = (int32_t)((x * 7 + y * 3 + compno * 501 + frameIndex * 37) & maxSample);
+        data[x] = (int32_t)sampleValue(frameIndex, compno, x, y);
   }
   grk_cparameters params;
   grk_compress_set_default_params(&params);
@@ -94,10 +100,32 @@ void checkRun(const std::string& label, const std::filesystem::path& outputDir, 
     std::snprintf(name, sizeof(name), "frame_%02u.j2k.raw", frame);
     auto path = outputDir / name;
     if(!std::filesystem::exists(path))
+    {
       fail(label + ": no " + name);
-    else if(std::filesystem::file_size(path) != expectedSize)
+      continue;
+    }
+    if(std::filesystem::file_size(path) != expectedSize)
+    {
       fail(label + ": " + name + " has " + std::to_string(std::filesystem::file_size(path)) +
            " bytes, expected " + std::to_string(expectedSize));
+      continue;
+    }
+    std::ifstream file(path, std::ios::binary);
+    std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(file)),
+                               std::istreambuf_iterator<char>());
+    // raw output is big endian, one component plane after another
+    size_t numMismatches = 0;
+    size_t offset = 0;
+    for(uint32_t compno = 0; compno < shape.numComps; ++compno)
+      for(uint32_t y = 0; y < kHeight; ++y)
+        for(uint32_t x = 0; x < kWidth; ++x, offset += 2)
+        {
+          auto decoded = (uint16_t)((bytes[offset] << 8) | bytes[offset + 1]);
+          if(decoded != sampleValue(frame, compno, x, y))
+            ++numMismatches;
+        }
+    if(numMismatches)
+      fail(label + ": " + name + " has " + std::to_string(numMismatches) + " wrong samples");
   }
   auto numOutputs = std::distance(std::filesystem::directory_iterator(outputDir),
                                   std::filesystem::directory_iterator());

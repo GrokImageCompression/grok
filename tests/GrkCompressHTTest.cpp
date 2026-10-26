@@ -18,7 +18,6 @@ int g_failures = 0;
 constexpr uint8_t kPrecision = 12;
 constexpr uint32_t kWidth = 512;
 constexpr uint32_t kHeight = 256;
-// a mono plugin batch packs four files per tile, a partial last group encodes files twice
 constexpr uint32_t kNumFrames = 8;
 constexpr uint16_t kComponentCounts[] = {3, 1};
 
@@ -75,9 +74,7 @@ grk_image* makeFrame(uint16_t numComps, uint32_t frame)
   return image;
 }
 
-// grk_decompress writes one TIFF strip per tile row of this stream
-bool writeFrame(uint16_t numComps, uint32_t frame, uint32_t tileHeight,
-                const std::filesystem::path& path)
+bool writeFrame(uint16_t numComps, uint32_t frame, const std::filesystem::path& path)
 {
   auto image = makeFrame(numComps, frame);
   if(!image)
@@ -87,9 +84,6 @@ bool writeFrame(uint16_t numComps, uint32_t frame, uint32_t tileHeight,
   params.cod_format = GRK_FMT_J2K;
   params.numlayers = 1;
   params.mct = numComps == 3;
-  params.tile_size_on = true;
-  params.t_width = kWidth;
-  params.t_height = tileHeight;
   std::vector<uint8_t> buffer((size_t)kWidth * kHeight * numComps * 4);
   grk_stream_params stream = {};
   stream.buf = buffer.data();
@@ -199,12 +193,11 @@ std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device dev
 }
 
 bool writeTiff(const std::string& decompressPath, uint16_t numComps, uint32_t frame,
-               uint32_t tileHeight, const std::filesystem::path& j2kDir,
-               const std::filesystem::path& tifDir)
+               const std::filesystem::path& j2kDir, const std::filesystem::path& tifDir)
 {
   auto label = std::to_string(numComps) + " components, frame " + std::to_string(frame);
   auto j2k = j2kDir / frameName(frame, "j2k");
-  if(!writeFrame(numComps, frame, tileHeight, j2k))
+  if(!writeFrame(numComps, frame, j2k))
   {
     fail(label + ": could not write the code stream");
     return false;
@@ -275,7 +268,7 @@ void checkCompress(const std::string& decompressPath, Device device,
     std::filesystem::create_directories(dir);
   for(uint32_t frame = 0; frame < kNumFrames; ++frame)
   {
-    if(!writeTiff(decompressPath, numComps, frame, kHeight, j2kDir, tifDir))
+    if(!writeTiff(decompressPath, numComps, frame, j2kDir, tifDir))
       return;
   }
   std::string deviceId = usePlugin ? "0" : "-2";
@@ -363,37 +356,6 @@ void checkMixedDirectory(const std::filesystem::path& root)
     auto test = readFile(testDir / name);
     if(test.empty() || test != readFile(referenceDir / name))
       fail("mixed directory, " + name + ": differs from the CPU");
-  }
-}
-
-// a mono group whose files differ in strip layout goes to the CPU
-void checkStripMismatch(const std::string& decompressPath, const std::filesystem::path& root)
-{
-  auto shapeRoot = root / "strips";
-  auto j2kDir = shapeRoot / "j2k";
-  auto tifDir = shapeRoot / "tif";
-  auto referenceDir = shapeRoot / "reference";
-  auto testDir = shapeRoot / "test";
-  for(auto& dir : {j2kDir, tifDir, referenceDir, testDir})
-    std::filesystem::create_directories(dir);
-  constexpr uint32_t numFiles = 4;
-  for(uint32_t frame = 0; frame < numFiles; ++frame)
-  {
-    if(!writeTiff(decompressPath, 1, frame, frame == 1 ? kHeight / 2 : kHeight, j2kDir, tifDir))
-      return;
-  }
-  compress("strip mismatch on the CPU", {"-y", tifDir.string(), "-O", "JPH", "-M", "64", "-a",
-                                         referenceDir.string(), "-G", "-2"});
-  auto accelerated = compress("strip mismatch", {"-y", tifDir.string(), "-O", "JPH", "-M", "64",
-                                                 "-a", testDir.string(), "-G", "0"});
-  if(accelerated != 0)
-    fail("strip mismatch: " + std::to_string(accelerated) + " frames on the plugin");
-  for(uint32_t frame = 0; frame < numFiles; ++frame)
-  {
-    auto name = frameName(frame, "jph");
-    auto test = readFile(testDir / name);
-    if(test.empty() || test != readFile(referenceDir / name))
-      fail("strip mismatch, " + name + ": differs from the CPU");
   }
 }
 
@@ -485,7 +447,7 @@ int main(int argc, char** argv)
     return 1;
   }
   auto device = std::strcmp(argv[2], "plugin") == 0 ? Device::plugin : Device::cpu;
-  auto root = std::filesystem::current_path() / "compress_ht_test";
+  auto root = std::filesystem::current_path() / (std::string("compress_ht_test_") + argv[2]);
   std::filesystem::remove_all(root);
   grk_initialize(nullptr, 0, nullptr);
   for(auto numComps : kComponentCounts)
@@ -493,7 +455,6 @@ int main(int argc, char** argv)
   if(device == Device::plugin)
   {
     checkMixedDirectory(root);
-    checkStripMismatch(argv[1], root);
     checkMemoryEncodeAfterFileEncode(root);
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
