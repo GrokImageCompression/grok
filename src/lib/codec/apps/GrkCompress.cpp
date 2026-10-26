@@ -723,6 +723,14 @@ int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
   return 0;
 }
 
+// batch frames compress at the same time, so each one writes its slope threshold to its own copy
+static uint64_t pluginBatchCompressCallback(grk_plugin_compress_user_callback_info* info)
+{
+  grk_cparameters frameParameters = *info->compressor_parameters;
+  info->compressor_parameters = &frameParameters;
+  return pluginCompressCallback(info);
+}
+
 int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
 {
   setUpSignalHandler();
@@ -731,7 +739,7 @@ int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
   info.input_dir = initParams->inputFolder.imgdirpath;
   info.output_dir = initParams->outFolder.imgdirpath;
   info.compress_parameters = &initParams->parameters;
-  info.callback = pluginCompressCallback;
+  info.callback = pluginBatchCompressCallback;
   int success = grk_plugin_batch_compress(info);
   // if plugin successfully begins batch compress, then wait for batch to complete
   if(success == 0)

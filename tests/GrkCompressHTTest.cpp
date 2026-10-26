@@ -385,6 +385,44 @@ void checkMemoryEncodeAfterFileEncode(const std::filesystem::path& root)
          " frames on the plugin");
 }
 
+// a plugin decode after a plugin file encode decodes the code stream, not the encoder's image
+void checkPluginDecodeAfterFileEncode(const std::filesystem::path& root)
+{
+  auto stream = compressFrame(3, 0, Device::cpu);
+  checkStream("plugin decode before a file encode", stream, 3, 0, Device::plugin);
+  auto tif = (root / "3" / "tif" / frameName(0, "tif")).string();
+  auto output = (root / "decode_single.jhc").string();
+  compress("file encode between plugin decodes",
+           {"-i", tif, "-M", "64", "-n", "3", "-o", output, "-G", "0"});
+  checkStream("plugin decode after a file encode", stream, 3, 0, Device::plugin);
+}
+
+// a lossy batch frame writes the bytes of its single file encode, whatever frame finished before it
+void checkBatchRateTolerance(const std::filesystem::path& root)
+{
+  auto tifDir = root / "3" / "tif";
+  auto batchDir = root / "rate_batch";
+  auto singleDir = root / "rate_single";
+  for(auto& dir : {batchDir, singleDir})
+    std::filesystem::create_directories(dir);
+  std::vector<std::string> rateArguments = {"-I", "-r", "30", "--rate-tolerance", "0.3", "-G", "0"};
+  std::vector<std::string> batchArguments = {"-y", tifDir.string(),  "-O", "J2K",
+                                             "-a", batchDir.string()};
+  batchArguments.insert(batchArguments.end(), rateArguments.begin(), rateArguments.end());
+  compress("lossy batch", batchArguments);
+  for(uint32_t frame = 0; frame < kNumFrames; ++frame)
+  {
+    auto single = singleDir / frameName(frame, "j2k");
+    std::vector<std::string> singleArguments = {"-i", (tifDir / frameName(frame, "tif")).string(),
+                                                "-o", single.string()};
+    singleArguments.insert(singleArguments.end(), rateArguments.begin(), rateArguments.end());
+    compress("lossy single file", singleArguments);
+    auto batch = readFile(batchDir / frameName(frame, "j2k"));
+    if(batch.empty() || batch != readFile(single))
+      fail("lossy batch, " + frameName(frame, "j2k") + ": differs from the single file encode");
+  }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -407,6 +445,8 @@ int main(int argc, char** argv)
     checkMixedDirectory(root);
     checkStripMismatch(argv[1], root);
     checkMemoryEncodeAfterFileEncode(root);
+    checkPluginDecodeAfterFileEncode(root);
+    checkBatchRateTolerance(root);
   }
   grk_deinitialize();
   if(g_failures)
