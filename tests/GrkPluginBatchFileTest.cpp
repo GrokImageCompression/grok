@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "grok.h"
+#include "GrkRunQuiet.h"
 
 namespace
 {
@@ -24,11 +25,6 @@ constexpr BatchShape kBatchShapes[] = {{3, 24}, {3, 20}, {1, 24}, {1, 20}};
 // with sixteen workers for twenty-odd frames, workers finish their shares at different times
 constexpr uint32_t kNumWorkers = 16;
 constexpr uint32_t kNumRuns = 3;
-#ifdef _WIN32
-constexpr const char* kDiscardOutput = " > NUL";
-#else
-constexpr const char* kDiscardOutput = " > /dev/null";
-#endif
 
 void fail(const std::string& what)
 {
@@ -134,10 +130,9 @@ bool checkBatch(const std::string& decompressPath, const std::filesystem::path& 
     std::filesystem::remove_all(outputDir);
     std::filesystem::create_directories(outputDir);
     auto command = "\"" + decompressPath + "\" -y \"" + inputDir.string() + "\" -a \"" +
-                   outputDir.string() + "\" -O raw -e 1 -H " + std::to_string(kNumWorkers) +
-                   kDiscardOutput;
+                   outputDir.string() + "\" -O raw -e 1 -H " + std::to_string(kNumWorkers);
     auto label = shapeName + ", run " + std::to_string(run);
-    int rc = std::system(command.c_str());
+    int rc = runQuiet(command);
     if(rc != 0)
       fail(label + ": grk_decompress returned " + std::to_string(rc));
     checkRun(label, outputDir, shape);

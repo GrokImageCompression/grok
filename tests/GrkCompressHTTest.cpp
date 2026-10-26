@@ -10,6 +10,7 @@
 #include <vector>
 #include "grok.h"
 #include "grok_codec.h"
+#include "GrkRunQuiet.h"
 
 namespace
 {
@@ -20,11 +21,6 @@ constexpr uint32_t kHeight = 256;
 // a mono plugin batch packs four files per tile, a partial last group encodes files twice
 constexpr uint32_t kNumFrames = 8;
 constexpr uint16_t kComponentCounts[] = {3, 1};
-#ifdef _WIN32
-constexpr const char* kDiscardOutput = " > NUL";
-#else
-constexpr const char* kDiscardOutput = " > /dev/null";
-#endif
 
 enum class Device
 {
@@ -202,11 +198,6 @@ std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device dev
   return buffer;
 }
 
-int run(const std::string& command)
-{
-  return std::system((command + kDiscardOutput).c_str());
-}
-
 bool writeTiff(const std::string& decompressPath, uint16_t numComps, uint32_t frame,
                uint32_t tileHeight, const std::filesystem::path& j2kDir,
                const std::filesystem::path& tifDir)
@@ -219,8 +210,8 @@ bool writeTiff(const std::string& decompressPath, uint16_t numComps, uint32_t fr
     return false;
   }
   // a directory decode names its outputs differently with and without the plugin
-  if(run("\"" + decompressPath + "\" -i \"" + j2k.string() + "\" -o \"" +
-         (tifDir / frameName(frame, "tif")).string() + "\"") != 0)
+  if(runQuiet("\"" + decompressPath + "\" -i \"" + j2k.string() + "\" -o \"" +
+              (tifDir / frameName(frame, "tif")).string() + "\"") != 0)
   {
     fail(label + ": grk_decompress to TIFF");
     return false;
