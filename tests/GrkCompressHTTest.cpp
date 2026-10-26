@@ -170,17 +170,19 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
     std::filesystem::create_directories(dir);
   for(uint32_t frame = 0; frame < kNumFrames; ++frame)
   {
-    if(!writeFrame(numComps, frame, j2kDir / frameName(frame, "j2k")))
+    auto j2k = j2kDir / frameName(frame, "j2k");
+    if(!writeFrame(numComps, frame, j2k))
     {
       fail(shapeName + ": could not write frame " + std::to_string(frame));
       return;
     }
-  }
-  if(run("\"" + decompressPath + "\" -y \"" + j2kDir.string() + "\" -a \"" + tifDir.string() +
-         "\" -O tif") != 0)
-  {
-    fail(shapeName + ": grk_decompress to TIFF");
-    return;
+    // a directory decode names its outputs differently with and without the plugin
+    if(run("\"" + decompressPath + "\" -i \"" + j2k.string() + "\" -o \"" +
+           (tifDir / frameName(frame, "tif")).string() + "\"") != 0)
+    {
+      fail(shapeName + ": grk_decompress to TIFF");
+      return;
+    }
   }
   auto compress = "\"" + compressPath + "\" -y \"" + tifDir.string() + "\" -O JPH -M 64 -a ";
   if(run(compress + "\"" + referenceDir.string() + "\" -G -2") != 0)
@@ -189,8 +191,7 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
     fail(shapeName + ": directory encode with \"" + extraArguments + "\" returned non zero");
   for(uint32_t frame = 0; frame < kNumFrames; ++frame)
   {
-    // the frames keep their .j2k through grk_decompress, the output name drops only the .tif
-    auto name = frameName(frame, "j2k.jph");
+    auto name = frameName(frame, "jph");
     auto label = shapeName + ", " + name;
     if(!std::filesystem::exists(referenceDir / name) || !std::filesystem::exists(testDir / name))
     {
@@ -205,7 +206,7 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
   }
 
   // a single file encode writes the CPU's bytes under the extra arguments
-  auto tif = tifDir / frameName(0, "j2k.tif");
+  auto tif = tifDir / frameName(0, "tif");
   auto singleReference = shapeRoot / "single_reference.jhc";
   auto singleTest = shapeRoot / "single_test.jhc";
   auto single = "\"" + compressPath + "\" -i \"" + tif.string() + "\" -M 64 -o ";
