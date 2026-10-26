@@ -116,7 +116,6 @@ public:
   // the device runs T1, the host still reads the header and parses the packets
   bool pluginDecompressEligible(void);
   int32_t pluginDecompress(void);
-  bool pluginStoreDecodedImage(const grk_image* decoded);
   static int32_t pluginDecompressCallback(grk_plugin_decompress_callback_info* info);
   void discardPluginTileParse(void);
 
@@ -140,6 +139,7 @@ public:
   GrkImage* getHeaderImage(void);
 
   bool decompress(grk_plugin_tile* tile) override;
+  bool postProcessPluginImage(const grk_image* decoded) override;
 
   bool decompressTile(uint16_t tile_index) override;
 

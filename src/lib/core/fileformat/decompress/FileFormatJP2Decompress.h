@@ -57,6 +57,7 @@ public:
   grk_progression_state getProgressionState(uint16_t tile_index) override;
   bool setProgressionState(grk_progression_state state) override;
   bool decompress(grk_plugin_tile* tile) override;
+  bool postProcessPluginImage(const grk_image* decoded) override;
   bool decompressTile(uint16_t tile_index) override;
   bool end(void);
   bool postProcess(GrkImage* img);

@@ -2022,6 +2022,8 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
   gpup_to_grk_header_info(&info->header_info, &grokInfo.header_info);
 
   // image: wrap gpup_image as grk_image for the host callback
+  grk_image* postProcessedImage = nullptr;
+  bool postProcessFailed = false;
   grk_image grk_img;
   grk_image_comp grk_comps_buf[16];
   memset(&grk_img, 0, sizeof(grk_img));
@@ -2068,13 +2070,26 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
       }
     }
     grokInfo.image = &grk_img;
+    // the plugin's samples have not been through palette, colour or precision conversion
+    bool needsPostProcess = (info->decompress_flags & GPUP_DECODE_POST_T1) && headerImage &&
+                            !static_cast<GrkImage*>(headerImage)->isPostProcessNoOp();
+    if(needsPostProcess)
+    {
+      auto decompressor = Codec::getImpl((grk_object*)info->codec)->decompressor_;
+      postProcessFailed = !decompressor->postProcessPluginImage(&grk_img);
+      if(postProcessFailed)
+        Logger::logger_.error("[plugin] Failed to post-process the decoded image");
+      postProcessedImage = headerImage;
+      grokInfo.image = headerImage;
+    }
   }
 
-  if(decodeCallback)
+  if(decodeCallback && !postProcessFailed)
     rc = decodeCallback(&grokInfo);
 
   // synch back: host callback may have created/modified image, codec, header_info
-  if(grokInfo.image && grokInfo.image != &grk_img)
+  // the post-processed image belongs to the codec, which the host may already have released
+  if(grokInfo.image && grokInfo.image != &grk_img && grokInfo.image != postProcessedImage)
   {
     // Host created a new image (e.g. via grk_decompress_get_image during HEADER)
     gpup_image* gpupImg = grk_to_gpup_image(grokInfo.image);
@@ -2307,6 +2322,9 @@ int32_t grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
     return -1;
   // the batch owns the callback state, this frame decompresses on the CPU
   if(batchDecompress.running)
+    return 1;
+  // the plugin decodes the whole image, never one tile of it
+  if(decompress_parameters->single_tile_decompress)
     return 1;
   decodeCallback = callback;
   s_originalDecompressParams = decompress_parameters;

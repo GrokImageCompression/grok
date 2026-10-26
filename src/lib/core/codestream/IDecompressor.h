@@ -105,6 +105,8 @@ public:
    */
   virtual bool decompress(grk_plugin_tile* tile) = 0;
 
+  virtual bool postProcessPluginImage(const grk_image* decoded) = 0;
+
   // 0 decoded, 1 the plugin cannot decode the tile, -1 failure
   int32_t decompressPluginTile(grk_plugin_tile* tile)
   {

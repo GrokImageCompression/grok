@@ -916,6 +916,11 @@ cleanup:
   return success;
 }
 
+bool FileFormatMJ2Decompress::postProcessPluginImage([[maybe_unused]] const grk_image* decoded)
+{
+  grklog.error("MJ2: the plugin does not decode MJ2");
+  return false;
+}
 bool FileFormatMJ2Decompress::decompress([[maybe_unused]] grk_plugin_tile* tile)
 {
   if(!current_track_)

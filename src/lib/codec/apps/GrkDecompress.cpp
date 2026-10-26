@@ -794,16 +794,6 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
   info.user_data = this;
   info.cod_format =
       info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
-  info.header_info.decompress_fmt = info.cod_format;
-
-  info.header_info.color_space = info.decompressor_parameters->color_space;
-  info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
-  info.header_info.apply_palette = info.decompressor_parameters->apply_palette;
-  info.header_info.upsample = info.decompressor_parameters->upsample;
-  info.header_info.precision = info.decompressor_parameters->precision;
-  info.header_info.num_precision = info.decompressor_parameters->num_precision;
-  info.header_info.split_by_component = info.decompressor_parameters->split_by_component;
-  info.header_info.single_tile_decompress = info.decompressor_parameters->single_tile_decompress;
 
   if(preProcess(&info))
   {
@@ -1152,6 +1142,16 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   // 2. read header
   if(info->decompress_flags & GRK_DECODE_HEADER)
   {
+    // the plugin's header info has no output options
+    info->header_info.decompress_fmt = cod_format;
+    info->header_info.color_space = parameters->color_space;
+    info->header_info.force_rgb = parameters->force_rgb;
+    info->header_info.apply_palette = parameters->apply_palette;
+    info->header_info.upsample = parameters->upsample;
+    info->header_info.precision = parameters->precision;
+    info->header_info.num_precision = parameters->num_precision;
+    info->header_info.split_by_component = parameters->split_by_component;
+    info->header_info.single_tile_decompress = parameters->single_tile_decompress;
     // Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
     if(!grk_decompress_read_header(info->codec, &info->header_info))
     {

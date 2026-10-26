@@ -237,7 +237,7 @@ int32_t CodeStreamDecompress::pluginDecompressCallback(grk_plugin_decompress_cal
     return self->decompressPluginTile(info->tile);
   }
   if(info->decompress_flags & GRK_DECODE_POST_T1)
-    return self->pluginStoreDecodedImage(info->image) ? 0 : -1;
+    return self->postProcessPluginImage(info->image) ? 0 : -1;
   return -1;
 }
 // the parsed tiles point at the plugin's tile, which the plugin frees
@@ -249,7 +249,7 @@ void CodeStreamDecompress::discardPluginTileParse(void)
   tileCache_->discardTiles();
 }
 // the plugin's sample buffers go away when the callback returns
-bool CodeStreamDecompress::pluginStoreDecodedImage(const grk_image* decoded)
+bool CodeStreamDecompress::postProcessPluginImage(const grk_image* decoded)
 {
   auto composite = multiTileComposite_.get();
   if(!decoded || !decoded->comps || decoded->numcomps != composite->numcomps)
@@ -276,7 +276,7 @@ bool CodeStreamDecompress::pluginStoreDecodedImage(const grk_image* decoded)
     composite->decompress_num_comps = composite->numcomps;
     composite->decompress_colour_space = composite->color_space;
   }
-  return true;
+  return postProcess(composite);
 }
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)

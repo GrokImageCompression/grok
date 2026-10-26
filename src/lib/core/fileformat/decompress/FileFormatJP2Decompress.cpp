@@ -224,6 +224,10 @@ void FileFormatJP2Decompress::init(grk_decompress_parameters* parameters)
   codeStream->init(parameters);
 }
 
+bool FileFormatJP2Decompress::postProcessPluginImage(const grk_image* decoded)
+{
+  return codeStream->postProcessPluginImage(decoded);
+}
 void FileFormatJP2Decompress::setInputFilePath(const char* path)
 {
   codeStream->setInputFilePath(path);

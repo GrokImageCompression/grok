@@ -388,6 +388,58 @@ void checkSubsampledMemoryEncode()
     fail("4:2:0 memory encode differs from the CPU");
 }
 
+// the precision and samples of every component after an 8 bit output precision is requested
+std::vector<int32_t> decompressTo8Bit(std::vector<uint8_t>& stream, Device device)
+{
+  grk_decompress_parameters params = {};
+  params.cpu_only = device == Device::cpu;
+  grk_stream_params streamParams = {};
+  streamParams.buf = stream.data();
+  streamParams.buf_len = stream.size();
+  auto codec = grk_decompress_init(&streamParams, &params);
+  grk_precision precision = {8, GRK_PREC_MODE_SCALE};
+  grk_header_info header = {};
+  header.precision = &precision;
+  header.num_precision = 1;
+  std::vector<int32_t> result;
+  if(!codec || !grk_decompress_read_header(codec, &header) || !grk_decompress(codec, nullptr))
+  {
+    grk_object_unref(codec);
+    return result;
+  }
+  auto image = grk_decompress_get_image(codec);
+  for(uint16_t compno = 0; image && compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    result.push_back(comp->prec);
+    bool isInt16 = comp->data_type == GRK_INT_16;
+    for(uint32_t y = 0; y < comp->h; ++y)
+    {
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        size_t index = (size_t)y * comp->stride + x;
+        result.push_back(isInt16 ? ((const int16_t*)comp->data)[index]
+                                 : ((const int32_t*)comp->data)[index]);
+      }
+    }
+  }
+  grk_object_unref(codec);
+  return result;
+}
+
+// a plugin decode through the library applies the requested output precision
+void checkPluginDecodePrecision()
+{
+  auto stream = compressFrame(3, 0, Device::cpu);
+  auto reference = decompressTo8Bit(stream, Device::cpu);
+  auto before = grk_plugin_accelerated_frames();
+  auto decoded = decompressTo8Bit(stream, Device::plugin);
+  if(grk_plugin_accelerated_frames() != before + 1)
+    fail("8 bit output precision: the decode did not run on the plugin");
+  if(reference.empty() || decoded != reference)
+    fail("8 bit output precision: plugin decode differs from the CPU");
+}
+
 // a plugin decode after a plugin file encode decodes the code stream, not the encoder's image
 void checkPluginDecodeAfterFileEncode(const std::filesystem::path& root)
 {
@@ -597,6 +649,7 @@ int main(int argc, char** argv)
     checkMixedDirectory(root);
     checkMemoryEncodeAfterFileEncode(root);
     checkSubsampledMemoryEncode();
+    checkPluginDecodePrecision();
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
     checkDecompressDevice(argv[1], root);
