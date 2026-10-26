@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -8,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "grok.h"
+#include "grok_codec.h"
 
 namespace
 {
@@ -15,13 +17,20 @@ int g_failures = 0;
 constexpr uint8_t kPrecision = 12;
 constexpr uint32_t kWidth = 512;
 constexpr uint32_t kHeight = 256;
-constexpr uint32_t kNumFrames = 6;
+// a mono plugin batch packs four files per tile, a partial last group encodes files twice
+constexpr uint32_t kNumFrames = 8;
 constexpr uint16_t kComponentCounts[] = {3, 1};
 #ifdef _WIN32
 constexpr const char* kDiscardOutput = " > NUL";
 #else
 constexpr const char* kDiscardOutput = " > /dev/null";
 #endif
+
+enum class Device
+{
+  cpu,
+  plugin
+};
 
 void fail(const std::string& what)
 {
@@ -42,8 +51,7 @@ std::string frameName(uint32_t frame, const char* extension)
   return name;
 }
 
-// grk_decompress turns these into the TIFF frames the directory encode reads
-bool writeFrame(uint16_t numComps, uint32_t frame, const std::filesystem::path& path)
+grk_image* makeFrame(uint16_t numComps, uint32_t frame)
 {
   auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
@@ -59,7 +67,7 @@ bool writeFrame(uint16_t numComps, uint32_t frame, const std::filesystem::path& 
   auto image = grk_image_new(numComps, components.get(),
                              numComps == 1 ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB, true);
   if(!image)
-    return false;
+    return nullptr;
   for(uint16_t compno = 0; compno < image->numcomps; ++compno)
   {
     auto comp = image->comps + compno;
@@ -68,11 +76,24 @@ bool writeFrame(uint16_t numComps, uint32_t frame, const std::filesystem::path& 
       for(uint32_t x = 0; x < comp->w; ++x)
         data[x] = sampleAt(x, y, compno, frame);
   }
+  return image;
+}
+
+// grk_decompress writes one TIFF strip per tile row of this stream
+bool writeFrame(uint16_t numComps, uint32_t frame, uint32_t tileHeight,
+                const std::filesystem::path& path)
+{
+  auto image = makeFrame(numComps, frame);
+  if(!image)
+    return false;
   grk_cparameters params;
   grk_compress_set_default_params(&params);
   params.cod_format = GRK_FMT_J2K;
   params.numlayers = 1;
   params.mct = numComps == 3;
+  params.tile_size_on = true;
+  params.t_width = kWidth;
+  params.t_height = tileHeight;
   std::vector<uint8_t> buffer((size_t)kWidth * kHeight * numComps * 4);
   grk_stream_params stream = {};
   stream.buf = buffer.data();
@@ -98,9 +119,11 @@ std::vector<uint8_t> readFile(const std::filesystem::path& path)
 
 // the stream is HTJ2K and decodes to the frame it was made from
 void checkStream(const std::string& label, std::vector<uint8_t>& stream, uint16_t numComps,
-                 uint32_t frame)
+                 uint32_t frame, Device device = Device::cpu)
 {
   grk_decompress_parameters params = {};
+  params.cpu_only = device == Device::cpu;
+  auto before = grk_plugin_accelerated_frames();
   grk_stream_params streamParams = {};
   streamParams.buf = stream.data();
   streamParams.buf_len = stream.size();
@@ -148,6 +171,35 @@ void checkStream(const std::string& label, std::vector<uint8_t>& stream, uint16_
     }
   }
   grk_object_unref(codec);
+  if(device == Device::plugin && grk_plugin_accelerated_frames() != before + 1)
+    fail(label + ": the decode did not run on the plugin");
+}
+
+// lossless HTJ2K of a frame from memory
+std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device device)
+{
+  auto image = makeFrame(numComps, frame);
+  if(!image)
+    return {};
+  grk_cparameters params;
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.numlayers = 1;
+  params.irreversible = false;
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  params.mct = numComps == 3;
+  params.cpu_only = device == Device::cpu;
+  std::vector<uint8_t> buffer((size_t)kWidth * kHeight * numComps * 4);
+  grk_stream_params stream = {};
+  stream.buf = buffer.data();
+  stream.buf_len = buffer.size();
+  auto codec = grk_compress_init(&stream, &params, image);
+  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
+  if(codec)
+    grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+  buffer.resize(length);
+  return buffer;
 }
 
 int run(const std::string& command)
@@ -155,11 +207,44 @@ int run(const std::string& command)
   return std::system((command + kDiscardOutput).c_str());
 }
 
-// a directory encode to JPH writes HTJ2K .jph files, the CPU's bytes under the extra arguments
-void checkDirectory(const std::string& compressPath, const std::string& decompressPath,
-                    const std::string& extraArguments, const std::filesystem::path& root,
-                    uint16_t numComps)
+bool writeTiff(const std::string& decompressPath, uint16_t numComps, uint32_t frame,
+               uint32_t tileHeight, const std::filesystem::path& j2kDir,
+               const std::filesystem::path& tifDir)
 {
+  auto label = std::to_string(numComps) + " components, frame " + std::to_string(frame);
+  auto j2k = j2kDir / frameName(frame, "j2k");
+  if(!writeFrame(numComps, frame, tileHeight, j2k))
+  {
+    fail(label + ": could not write the code stream");
+    return false;
+  }
+  // a directory decode names its outputs differently with and without the plugin
+  if(run("\"" + decompressPath + "\" -i \"" + j2k.string() + "\" -o \"" +
+         (tifDir / frameName(frame, "tif")).string() + "\"") != 0)
+  {
+    fail(label + ": grk_decompress to TIFF");
+    return false;
+  }
+  return true;
+}
+
+// grk_compress in this process, returns the frames the plugin coded
+uint64_t compress(const std::string& label, const std::vector<std::string>& arguments)
+{
+  std::vector<const char*> argv = {"grk_compress"};
+  for(const auto& argument : arguments)
+    argv.push_back(argument.c_str());
+  auto before = grk_plugin_accelerated_frames();
+  if(grk_codec_compress((int)argv.size(), argv.data(), nullptr, nullptr) != EXIT_SUCCESS)
+    fail(label + ": grk_compress returned non zero");
+  return grk_plugin_accelerated_frames() - before;
+}
+
+// directory and single file HTJ2K encodes write the CPU's bytes
+void checkCompress(const std::string& decompressPath, Device device,
+                   const std::filesystem::path& root, uint16_t numComps)
+{
+  bool usePlugin = device == Device::plugin;
   auto shapeName = std::to_string(numComps) + " components";
   auto shapeRoot = root / std::to_string(numComps);
   auto j2kDir = shapeRoot / "j2k";
@@ -170,25 +255,32 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
     std::filesystem::create_directories(dir);
   for(uint32_t frame = 0; frame < kNumFrames; ++frame)
   {
-    auto j2k = j2kDir / frameName(frame, "j2k");
-    if(!writeFrame(numComps, frame, j2k))
-    {
-      fail(shapeName + ": could not write frame " + std::to_string(frame));
+    if(!writeTiff(decompressPath, numComps, frame, kHeight, j2kDir, tifDir))
       return;
-    }
-    // a directory decode names its outputs differently with and without the plugin
-    if(run("\"" + decompressPath + "\" -i \"" + j2k.string() + "\" -o \"" +
-           (tifDir / frameName(frame, "tif")).string() + "\"") != 0)
-    {
-      fail(shapeName + ": grk_decompress to TIFF");
-      return;
-    }
   }
-  auto compress = "\"" + compressPath + "\" -y \"" + tifDir.string() + "\" -O JPH -M 64 -a ";
-  if(run(compress + "\"" + referenceDir.string() + "\" -G -2") != 0)
-    fail(shapeName + ": directory encode on the CPU returned non zero");
-  if(run(compress + "\"" + testDir.string() + "\" " + extraArguments) != 0)
-    fail(shapeName + ": directory encode with \"" + extraArguments + "\" returned non zero");
+  std::string deviceId = usePlugin ? "0" : "-2";
+  auto directoryLabel = shapeName + ", directory";
+  if(compress(directoryLabel + " on the CPU", {"-y", tifDir.string(), "-O", "JPH", "-M", "64", "-a",
+                                               referenceDir.string(), "-G", "-2"}) != 0)
+    fail(directoryLabel + ": the CPU encode ran on the plugin");
+  auto accelerated = compress(directoryLabel, {"-y", tifDir.string(), "-O", "JPH", "-M", "64", "-a",
+                                               testDir.string(), "-G", deviceId});
+  if(accelerated != (usePlugin ? kNumFrames : 0))
+    fail(directoryLabel + ": " + std::to_string(accelerated) + " frames on the plugin");
+  if(usePlugin)
+  {
+    auto repeatDir = shapeRoot / "repeat";
+    std::filesystem::create_directories(repeatDir);
+    accelerated = compress(directoryLabel + ", two repetitions",
+                           {"-y", tifDir.string(), "-O", "JPH", "-M", "64", "-a",
+                            repeatDir.string(), "-G", "0", "-e", "2"});
+    if(accelerated != 2 * kNumFrames)
+      fail(directoryLabel + ", two repetitions: " + std::to_string(accelerated) +
+           " frames on the plugin");
+    auto firstFrame = readFile(testDir / frameName(0, "jph"));
+    checkStream(directoryLabel + ", plugin decode after the batch", firstFrame, numComps, 0,
+                Device::plugin);
+  }
   for(uint32_t frame = 0; frame < kNumFrames; ++frame)
   {
     auto name = frameName(frame, "jph");
@@ -201,43 +293,130 @@ void checkDirectory(const std::string& compressPath, const std::string& decompre
     auto reference = readFile(referenceDir / name);
     auto test = readFile(testDir / name);
     if(test != reference)
-      fail(label + ": differs with \"" + extraArguments + "\"");
+      fail(label + ": differs from the CPU");
     checkStream(label, reference, numComps, frame);
   }
 
-  // a single file encode writes the CPU's bytes under the extra arguments
-  auto tif = tifDir / frameName(0, "tif");
+  auto tif = (tifDir / frameName(0, "tif")).string();
   auto singleReference = shapeRoot / "single_reference.jhc";
   auto singleTest = shapeRoot / "single_test.jhc";
-  auto single = "\"" + compressPath + "\" -i \"" + tif.string() + "\" -M 64 -o ";
-  if(run(single + "\"" + singleReference.string() + "\" -G -2") != 0)
-    fail(shapeName + ": single file encode on the CPU returned non zero");
-  if(run(single + "\"" + singleTest.string() + "\" " + extraArguments) != 0)
-    fail(shapeName + ": single file encode with \"" + extraArguments + "\" returned non zero");
+  auto singleLabel = shapeName + ", single file";
+  if(compress(singleLabel + " on the CPU",
+              {"-i", tif, "-M", "64", "-o", singleReference.string(), "-G", "-2"}) != 0)
+    fail(singleLabel + ": the CPU encode ran on the plugin");
+  accelerated =
+      compress(singleLabel, {"-i", tif, "-M", "64", "-o", singleTest.string(), "-G", deviceId});
+  if(accelerated != (usePlugin ? 1 : 0))
+    fail(singleLabel + ": " + std::to_string(accelerated) + " frames on the plugin");
   auto singleBytes = readFile(singleTest);
   if(singleBytes.empty() || singleBytes != readFile(singleReference))
-    fail(shapeName + ": single file encode differs with \"" + extraArguments + "\"");
-  checkStream(shapeName + ", single file", singleBytes, numComps, 0);
+    fail(singleLabel + ": differs from the CPU");
+  checkStream(singleLabel, singleBytes, numComps, 0);
+}
+
+// a batch whose image has one shape hands the files of the other shape to the CPU
+void checkMixedDirectory(const std::filesystem::path& root)
+{
+  auto mixedDir = root / "mixed";
+  auto referenceDir = root / "mixed_reference";
+  auto testDir = root / "mixed_test";
+  for(auto& dir : {mixedDir, referenceDir, testDir})
+    std::filesystem::create_directories(dir);
+  std::vector<std::string> names;
+  for(auto numComps : kComponentCounts)
+  {
+    for(uint32_t frame = 0; frame < kNumFrames; ++frame)
+    {
+      auto name = std::to_string(numComps) + "_" + frameName(frame, "tif");
+      std::filesystem::copy_file(root / std::to_string(numComps) / "tif" / frameName(frame, "tif"),
+                                 mixedDir / name);
+      names.push_back(name.substr(0, name.size() - 3) + "jph");
+    }
+  }
+  compress("mixed directory on the CPU", {"-y", mixedDir.string(), "-O", "JPH", "-M", "64", "-a",
+                                          referenceDir.string(), "-G", "-2"});
+  compress("mixed directory",
+           {"-y", mixedDir.string(), "-O", "JPH", "-M", "64", "-a", testDir.string(), "-G", "0"});
+  for(const auto& name : names)
+  {
+    auto test = readFile(testDir / name);
+    if(test.empty() || test != readFile(referenceDir / name))
+      fail("mixed directory, " + name + ": differs from the CPU");
+  }
+}
+
+// a mono group whose files differ in strip layout goes to the CPU
+void checkStripMismatch(const std::string& decompressPath, const std::filesystem::path& root)
+{
+  auto shapeRoot = root / "strips";
+  auto j2kDir = shapeRoot / "j2k";
+  auto tifDir = shapeRoot / "tif";
+  auto referenceDir = shapeRoot / "reference";
+  auto testDir = shapeRoot / "test";
+  for(auto& dir : {j2kDir, tifDir, referenceDir, testDir})
+    std::filesystem::create_directories(dir);
+  constexpr uint32_t numFiles = 4;
+  for(uint32_t frame = 0; frame < numFiles; ++frame)
+  {
+    if(!writeTiff(decompressPath, 1, frame, frame == 1 ? kHeight / 2 : kHeight, j2kDir, tifDir))
+      return;
+  }
+  compress("strip mismatch on the CPU", {"-y", tifDir.string(), "-O", "JPH", "-M", "64", "-a",
+                                         referenceDir.string(), "-G", "-2"});
+  auto accelerated = compress("strip mismatch", {"-y", tifDir.string(), "-O", "JPH", "-M", "64",
+                                                 "-a", testDir.string(), "-G", "0"});
+  if(accelerated != 0)
+    fail("strip mismatch: " + std::to_string(accelerated) + " frames on the plugin");
+  for(uint32_t frame = 0; frame < numFiles; ++frame)
+  {
+    auto name = frameName(frame, "jph");
+    auto test = readFile(testDir / name);
+    if(test.empty() || test != readFile(referenceDir / name))
+      fail("strip mismatch, " + name + ": differs from the CPU");
+  }
+}
+
+// a memory encode after a file encode of another shape still writes the CPU's bytes
+void checkMemoryEncodeAfterFileEncode(const std::filesystem::path& root)
+{
+  auto reference = compressFrame(3, 0, Device::cpu);
+  auto before = grk_plugin_accelerated_frames();
+  if(compressFrame(3, 0, Device::plugin) != reference)
+    fail("first memory encode differs from the CPU");
+  auto tif = (root / "1" / "tif" / frameName(0, "tif")).string();
+  auto output = (root / "memory_single.jhc").string();
+  compress("file encode between memory encodes", {"-i", tif, "-M", "64", "-o", output, "-G", "0"});
+  if(compressFrame(3, 0, Device::plugin) != reference)
+    fail("memory encode after a file encode differs from the CPU");
+  auto accelerated = grk_plugin_accelerated_frames() - before;
+  if(accelerated != 3)
+    fail("memory, file and memory encodes: " + std::to_string(accelerated) +
+         " frames on the plugin");
 }
 
 } // namespace
 
 int main(int argc, char** argv)
 {
-  if(argc < 3)
+  bool validMode =
+      argc == 3 && (std::strcmp(argv[2], "cpu") == 0 || std::strcmp(argv[2], "plugin") == 0);
+  if(!validMode)
   {
-    std::fprintf(stderr, "usage: %s <grk_compress> <grk_decompress> [compress arguments]\n",
-                 argv[0]);
+    std::fprintf(stderr, "usage: %s <grk_decompress> cpu|plugin\n", argv[0]);
     return 1;
   }
-  std::string extraArguments;
-  for(int i = 3; i < argc; ++i)
-    extraArguments += std::string(i > 3 ? " " : "") + argv[i];
+  auto device = std::strcmp(argv[2], "plugin") == 0 ? Device::plugin : Device::cpu;
   auto root = std::filesystem::current_path() / "compress_ht_test";
   std::filesystem::remove_all(root);
   grk_initialize(nullptr, 0, nullptr);
   for(auto numComps : kComponentCounts)
-    checkDirectory(argv[1], argv[2], extraArguments, root, numComps);
+    checkCompress(argv[1], device, root, numComps);
+  if(device == Device::plugin)
+  {
+    checkMixedDirectory(root);
+    checkStripMismatch(argv[1], root);
+    checkMemoryEncodeAfterFileEncode(root);
+  }
   grk_deinitialize();
   if(g_failures)
   {

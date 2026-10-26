@@ -114,10 +114,9 @@ if(GRK_DATA_ROOT)
 endif()
 
 add_executable(grk_compress_ht_test GrkCompressHTTest.cpp)
-target_link_libraries(grk_compress_ht_test ${GROK_CORE_NAME})
+target_link_libraries(grk_compress_ht_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_compress_ht_test
-  COMMAND grk_compress_ht_test $<TARGET_FILE:grk_compress>
-    $<TARGET_FILE:grk_decompress> -G -2)
+  COMMAND grk_compress_ht_test $<TARGET_FILE:grk_decompress> cpu)
 
 # synthesizes its own frames, so it needs no GRK_DATA_ROOT
 add_executable(grk_cinema_eight_bit_test GrkCinemaEightBitTest.cpp)
@@ -153,9 +152,9 @@ if(GRK_BUILD_PLUGIN_LOADER)
   set_tests_properties(grk_plugin_batch_file_test PROPERTIES
     ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
   add_test(NAME grk_plugin_compress_ht_test
-    COMMAND grk_compress_ht_test $<TARGET_FILE:grk_compress>
-      $<TARGET_FILE:grk_decompress> -G 0)
-  set_tests_properties(grk_plugin_compress_ht_test PROPERTIES
+    COMMAND grk_compress_ht_test $<TARGET_FILE:grk_decompress> plugin)
+  # a batch that never finishes hangs
+  set_tests_properties(grk_plugin_compress_ht_test PROPERTIES TIMEOUT 120
     ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
   # player frame rate on one code stream, not a test

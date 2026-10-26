@@ -897,6 +897,9 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
       pluginReleaseEncodedTile(tile, raw);
     }
   } pluginTile;
+  // the plugin's file and batch encodes pass in the tile they coded
+  if(tile)
+    pluginCountAcceleratedFrame();
   if(!tile && pluginParameters_ && pluginAcceleratesCompress(pluginParameters_.get()))
   {
     int32_t rc;

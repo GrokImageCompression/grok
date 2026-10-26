@@ -1081,6 +1081,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   {
     parameters->device_id = deviceId;
     initParams->usePlugin = (deviceId != -2);
+    parameters->cpu_only = deviceId == -2;
   }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
@@ -2138,6 +2139,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 {
   auto parameters = info->compressor_parameters;
+  grk_cparameters frameParameters;
   uint64_t compressedBytes = 0;
   grk_object* codec = nullptr;
   grk_image* image = info->image;
@@ -2266,20 +2268,22 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     }
   }
 
+  // a plugin batch shares parameters across frames of different shapes
+  frameParameters = *parameters;
   /* Decide if MCT should be used */
-  if(parameters->mct == 255)
+  if(frameParameters.mct == 255)
   { /* mct mode has not been set in commandline */
-    parameters->mct = (image->numcomps >= 3) ? 1 : 0;
+    frameParameters.mct = (image->numcomps >= 3) ? 1 : 0;
   }
   else
   { /* mct mode has been set in commandline */
-    if((parameters->mct == 1) && (image->numcomps < 3))
+    if((frameParameters.mct == 1) && (image->numcomps < 3))
     {
       spdlog::error("RGB->YCC conversion cannot be used:");
       spdlog::error("Input image has less than 3 components");
       goto cleanup;
     }
-    if((parameters->mct == 2) && (!parameters->mct_data))
+    if((frameParameters.mct == 2) && (!frameParameters.mct_data))
     {
       spdlog::error("Custom MCT has been set but no array-based MCT");
       spdlog::error("has been provided.");
@@ -2342,7 +2346,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   {
     safe_strcpy(info->stream_params.file, outfile.c_str());
   }
-  codec = grk_compress_init(&info->stream_params, parameters, image);
+  codec = grk_compress_init(&info->stream_params, &frameParameters, image);
   if(!codec)
   {
     spdlog::error("failed to compress image: grk_compress_init");
