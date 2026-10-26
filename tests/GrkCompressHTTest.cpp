@@ -167,6 +167,21 @@ void checkStream(const std::string& label, std::vector<uint8_t>& stream, uint16_
     fail(label + ": the decode did not run on the plugin");
 }
 
+std::vector<uint8_t> compressImage(grk_image* image, grk_cparameters& params)
+{
+  std::vector<uint8_t> buffer((size_t)kWidth * kHeight * image->numcomps * 4);
+  grk_stream_params stream = {};
+  stream.buf = buffer.data();
+  stream.buf_len = buffer.size();
+  auto codec = grk_compress_init(&stream, &params, image);
+  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
+  if(codec)
+    grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+  buffer.resize(length);
+  return buffer;
+}
+
 // lossless HTJ2K of a frame from memory
 std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device device,
                                    uint8_t chromaSubsampling = 1)
@@ -182,17 +197,99 @@ std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device dev
   params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
   params.mct = numComps == 3 && chromaSubsampling == 1;
   params.cpu_only = device == Device::cpu;
-  std::vector<uint8_t> buffer((size_t)kWidth * kHeight * numComps * 4);
-  grk_stream_params stream = {};
-  stream.buf = buffer.data();
-  stream.buf_len = buffer.size();
-  auto codec = grk_compress_init(&stream, &params, image);
-  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
-  if(codec)
+  return compressImage(image, params);
+}
+
+// PSNR of a CPU decode of the stream against frame 0
+double psnrAgainstFrame(std::vector<uint8_t>& stream)
+{
+  grk_decompress_parameters params = {};
+  params.cpu_only = true;
+  grk_stream_params streamParams = {};
+  streamParams.buf = stream.data();
+  streamParams.buf_len = stream.size();
+  auto codec = grk_decompress_init(&streamParams, &params);
+  grk_header_info header = {};
+  if(!codec || !grk_decompress_read_header(codec, &header) || !grk_decompress(codec, nullptr))
+  {
     grk_object_unref(codec);
-  grk_object_unref(&image->obj);
-  buffer.resize(length);
-  return buffer;
+    return 0;
+  }
+  auto image = grk_decompress_get_image(codec);
+  double squaredError = 0;
+  size_t samples = 0;
+  for(uint16_t compno = 0; image && compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    bool isInt16 = comp->data_type == GRK_INT_16;
+    for(uint32_t y = 0; y < comp->h; ++y)
+    {
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        size_t index = (size_t)y * comp->stride + x;
+        int32_t sample =
+            isInt16 ? ((const int16_t*)comp->data)[index] : ((const int32_t*)comp->data)[index];
+        double error = sample - sampleAt(x, y, compno, 0);
+        squaredError += error * error;
+        ++samples;
+      }
+    }
+  }
+  grk_object_unref(codec);
+  if(!samples)
+    return 0;
+  double peak = (1 << kPrecision) - 1;
+  return 10 * std::log10(peak * peak * (double)samples / squaredError);
+}
+
+// a fixed quality encode on the plugin reaches its PSNR target
+void checkPluginFixedQuality()
+{
+  constexpr double target = 40;
+  auto image = makeFrame(3, 0);
+  if(!image)
+  {
+    fail("fixed quality: could not make the frame");
+    return;
+  }
+  grk_cparameters params;
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.numlayers = 1;
+  params.mct = 1;
+  params.allocation_by_quality = true;
+  params.layer_distortion[0] = target;
+  auto before = grk_plugin_accelerated_frames();
+  auto stream = compressImage(image, params);
+  if(grk_plugin_accelerated_frames() != before + 1)
+    fail("fixed quality: the encode did not run on the plugin");
+  auto psnr = psnrAgainstFrame(stream);
+  if(psnr < target - 1)
+    fail("fixed quality: " + std::to_string(psnr) + " dB, the target is " + std::to_string(target));
+}
+
+std::vector<uint8_t> compressWithQfactor(Device device)
+{
+  auto image = makeFrame(3, 0);
+  if(!image)
+    return {};
+  grk_cparameters params;
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.numlayers = 1;
+  params.mct = 1;
+  params.irreversible = true;
+  params.qfactor = 90;
+  params.cpu_only = device == Device::cpu;
+  return compressImage(image, params);
+}
+
+// a qfactor encode in plugin mode writes the CPU's bytes
+void checkQfactorEncode()
+{
+  auto reference = compressWithQfactor(Device::cpu);
+  if(reference.empty() || compressWithQfactor(Device::plugin) != reference)
+    fail("qfactor: plugin mode encode differs from the CPU");
 }
 
 bool writeTiff(const std::string& decompressPath, uint16_t numComps, uint32_t frame,
@@ -650,6 +747,8 @@ int main(int argc, char** argv)
     checkMemoryEncodeAfterFileEncode(root);
     checkSubsampledMemoryEncode();
     checkPluginDecodePrecision();
+    checkPluginFixedQuality();
+    checkQfactorEncode();
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
     checkDecompressDevice(argv[1], root);

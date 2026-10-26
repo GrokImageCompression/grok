@@ -1314,7 +1314,8 @@ bool pluginAccelerates(void)
 }
 bool pluginAcceleratesCompress(const grk_cparameters* parameters)
 {
-  return pluginAccelerates() && !parameters->cpu_only;
+  // the plugin quantizes with its own step sizes, not the qfactor ones
+  return pluginAccelerates() && !parameters->cpu_only && !parameters->qfactor;
 }
 std::mutex& pluginFrameMutex(void)
 {
@@ -1492,7 +1493,7 @@ uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
 int32_t grk_plugin_compress(grk_cparameters* compress_parameters,
                             GRK_PLUGIN_COMPRESS_USER_CALLBACK callback)
 {
-  if(!pluginLoaded)
+  if(!pluginAcceleratesCompress(compress_parameters))
     return -1;
   userEncodeCallback = callback;
   s_originalCompressParams = compress_parameters;
@@ -1512,7 +1513,7 @@ int32_t grk_plugin_compress(grk_cparameters* compress_parameters,
 }
 int32_t grk_plugin_batch_compress(grk_plugin_compress_batch_info info)
 {
-  if(!pluginLoaded)
+  if(!pluginAcceleratesCompress(info.compress_parameters))
     return -1;
   userEncodeCallback = info.callback;
   s_originalCompressParams = info.compress_parameters;

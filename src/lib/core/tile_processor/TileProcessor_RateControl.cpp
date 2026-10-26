@@ -397,6 +397,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
   {
     // Fallback: serial traversal (plugin path or no scheduler)
     RateInfo rateInfo;
+    double tileDistortion = 0;
     for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
     {
       auto tilec = &tile_->comps_[compno];
@@ -422,6 +423,8 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
 
               RateControl::convexHull(cblk->getPass(0), cblk->getNumPasses());
               rateInfo.synch(cblk);
+              if(cblk->getNumPasses())
+                tileDistortion += cblk->getLastPass()->distortiondec_;
               numpix += num_pix;
             } /* cbklno */
           } /* precinctIndex */
@@ -432,6 +435,8 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
                (double)(((uint64_t)1 << headerImage_->comps[compno].prec) - 1) * (double)numpix;
     } /* compno */
     min_slope = rateInfo.getMinimumThresh();
+    // the scheduler sums the block distortions only when T1 runs on the CPU
+    tile_->distortion_ = tileDistortion;
   }
 
   // Build flat codeblock vector for parallel makeLayer
@@ -949,6 +954,7 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
   else
   {
     // Fallback: serial traversal (plugin path or no scheduler)
+    double tileDistortion = 0;
     for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
     {
       auto tilec = &tile_->comps_[compno];
@@ -994,6 +1000,8 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
                 if(rdslope > max_slope)
                   max_slope = rdslope;
               } /* passno */
+              if(cblk->getNumPasses())
+                tileDistortion += cblk->getLastPass()->distortiondec_;
               numpix += num_pix;
             } /* cbklno */
           } /* precinctIndex */
@@ -1002,6 +1010,8 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
       maxSE += (double)(((uint64_t)1 << headerImage_->comps[compno].prec) - 1) *
                (double)(((uint64_t)1 << headerImage_->comps[compno].prec) - 1) * (double)numpix;
     } /* compno */
+    // the scheduler sums the block distortions only when T1 runs on the CPU
+    tile_->distortion_ = tileDistortion;
   }
 
   // Build flat codeblock vector for parallel makeLayer
