@@ -47,16 +47,17 @@ std::string frameName(uint32_t frame, const char* extension)
   return name;
 }
 
-grk_image* makeFrame(uint16_t numComps, uint32_t frame)
+grk_image* makeFrame(uint16_t numComps, uint32_t frame, uint8_t chromaSubsampling = 1)
 {
   auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
   {
     auto c = &components[i];
-    c->w = kWidth;
-    c->h = kHeight;
-    c->dx = 1;
-    c->dy = 1;
+    uint8_t subsampling = i == 0 ? 1 : chromaSubsampling;
+    c->w = (kWidth + subsampling - 1) / subsampling;
+    c->h = (kHeight + subsampling - 1) / subsampling;
+    c->dx = subsampling;
+    c->dy = subsampling;
     c->prec = kPrecision;
     c->sgnd = false;
   }
@@ -167,9 +168,10 @@ void checkStream(const std::string& label, std::vector<uint8_t>& stream, uint16_
 }
 
 // lossless HTJ2K of a frame from memory
-std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device device)
+std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device device,
+                                   uint8_t chromaSubsampling = 1)
 {
-  auto image = makeFrame(numComps, frame);
+  auto image = makeFrame(numComps, frame, chromaSubsampling);
   if(!image)
     return {};
   grk_cparameters params;
@@ -178,7 +180,7 @@ std::vector<uint8_t> compressFrame(uint16_t numComps, uint32_t frame, Device dev
   params.numlayers = 1;
   params.irreversible = false;
   params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
-  params.mct = numComps == 3;
+  params.mct = numComps == 3 && chromaSubsampling == 1;
   params.cpu_only = device == Device::cpu;
   std::vector<uint8_t> buffer((size_t)kWidth * kHeight * numComps * 4);
   grk_stream_params stream = {};
@@ -376,6 +378,14 @@ void checkMemoryEncodeAfterFileEncode(const std::filesystem::path& root)
   if(accelerated != 3)
     fail("memory, file and memory encodes: " + std::to_string(accelerated) +
          " frames on the plugin");
+}
+
+// a 4:2:0 memory encode on the plugin writes the CPU's bytes
+void checkSubsampledMemoryEncode()
+{
+  auto reference = compressFrame(3, 0, Device::cpu, 2);
+  if(reference.empty() || compressFrame(3, 0, Device::plugin, 2) != reference)
+    fail("4:2:0 memory encode differs from the CPU");
 }
 
 // a plugin decode after a plugin file encode decodes the code stream, not the encoder's image
@@ -586,6 +596,7 @@ int main(int argc, char** argv)
   {
     checkMixedDirectory(root);
     checkMemoryEncodeAfterFileEncode(root);
+    checkSubsampledMemoryEncode();
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
     checkDecompressDevice(argv[1], root);

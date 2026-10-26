@@ -578,6 +578,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       parameters->numresolution = maxRes;
     }
   }
+  // the plugin copied the parameters before the profiles and the clamp above set this
+  if(pluginParameters_)
+    pluginParameters_->numresolution = parameters->numresolution;
   if(parameters->enable_tile_part_generation)
   {
     cp_.codingParams_.enc_.newTilePartProgressionDivider_ =
