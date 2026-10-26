@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "grk_exceptions.h"
+
 namespace grk
 {
 
@@ -102,6 +104,19 @@ public:
    * @return true if successful
    */
   virtual bool decompress(grk_plugin_tile* tile) = 0;
+
+  // 0 decoded, 1 the plugin cannot decode the tile, -1 failure
+  int32_t decompressPluginTile(grk_plugin_tile* tile)
+  {
+    try
+    {
+      return decompress(tile) ? 0 : -1;
+    }
+    catch(const PluginDecodeUnsupportedException&)
+    {
+      return 1;
+    }
+  }
 
   /**
    * @brief Decompresses a single tile

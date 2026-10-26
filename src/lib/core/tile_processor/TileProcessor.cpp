@@ -152,6 +152,40 @@ void TileProcessor::setProcessors(MarkerParser* parser)
                  MCO, [this](uint8_t* data, uint16_t len) { return tcp_->readMco(data, len); })}});
 }
 
+// the plugin decodes the cleanup bytes followed by the refinement bytes, as T1OJPH does
+static void synchPluginBlockHT(t1::CodeblockDecompress* cblk, grk_plugin_code_block* plugin_cblk,
+                               uint8_t bandBitPlanes)
+{
+  if(cblk->isPart1Block())
+  {
+    grklog.info("Plugin does not handle Part 1 code blocks in an HT tile. "
+                "Image will be decompressed on CPU.");
+    throw PluginDecodeUnsupportedException();
+  }
+  auto layout = cblk->htSetLayout();
+  auto cleanupLength = layout.cleanup ? layout.cleanup->getDataChunksLength() : 0;
+  auto refinementLength = layout.refinement ? layout.refinement->getDataChunksLength() : 0;
+  auto length = cleanupLength + refinementLength;
+  auto blockStream = cblk->getCompressedStream();
+  if(length)
+  {
+    if(!blockStream->alloc(length))
+      throw std::bad_alloc();
+    layout.cleanup->copyDataChunksToContiguous(blockStream->buf());
+    if(refinementLength)
+      layout.refinement->copyDataChunksToContiguous(blockStream->buf() + cleanupLength);
+  }
+  plugin_cblk->compressed_data = length ? blockStream->buf() : nullptr;
+  plugin_cblk->compressed_data_length = (uint32_t)length;
+  plugin_cblk->cleanup_length = (uint32_t)cleanupLength;
+  plugin_cblk->refinement_length = (uint32_t)refinementLength;
+  plugin_cblk->num_bit_planes = cblk->numbps();
+  plugin_cblk->num_passes =
+      cleanupLength ? (uint8_t)(1 + (refinementLength ? layout.refinement->totalPasses_ : 0)) : 0;
+  plugin_cblk->missing_msbs =
+      (uint8_t)(bandBitPlanes - cblk->numbps() + cblk->htPlaceholderBitPlanes());
+}
+
 // Performed after T2, just before plugin decompress is triggered
 // note: only support single segment at the moment
 void TileProcessor::decompress_synch_plugin_with_host(void)
@@ -169,6 +203,12 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
         grklog.info("Plugin does not handle Part 2 transforms. Image will be decompressed on CPU.");
         throw PluginDecodeUnsupportedException();
       }
+      if(tcp_->isHT() && tcp_->tccps_[compno].roishift_)
+      {
+        grklog.info("Plugin does not handle region of interest shifts in HT code blocks. "
+                    "Image will be decompressed on CPU.");
+        throw PluginDecodeUnsupportedException();
+      }
       assert(tilec->num_resolutions_ == plugin_tilec->numresolutions);
       for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
       {
@@ -182,6 +222,7 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
           assert(plugin_band->num_precincts == res->precinctGrid_.area());
           //!!!! plugin still uses stepsize/2
           plugin_band->stepsize = band->stepsize_ / 2;
+          plugin_band->num_bit_planes = band->maxBitPlanes_;
           for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
           {
             auto prc = band->precincts_[vectorIndex];
@@ -192,6 +233,11 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
               auto cblk = prc->getDecompressBlock(cblkno);
               if(!cblk->getNumDataParsedSegments())
                 continue;
+              if(tcp_->isHT())
+              {
+                synchPluginBlockHT(cblk, plugin_prc->blocks[cblkno], band->maxBitPlanes_);
+                continue;
+              }
               // sanity check
               if(cblk->getNumDataParsedSegments() != 1)
               {

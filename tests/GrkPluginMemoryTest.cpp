@@ -1,7 +1,10 @@
 // The accelerator plugin under grk_compress() and grk_decompress() on memory
 // buffers, no file anywhere. A frame compressed through the plugin decodes back
 // to the samples that went in, on the CPU and on the device, the device did the
-// work, and a cinema frame the device decodes matches the CPU's decode. A compress
+// work, and a cinema frame the device decodes matches the CPU's decode, as do
+// lossy frames with per-component and large step sizes and frames whose
+// resolutions are 1 sample across. A code stream the plugin declines after
+// packet parsing decodes on the CPU instead. A compress
 // with cpu_only set writes the same code stream as a process without the plugin,
 // and a decompress with cpu_only set gives the same samples as one.
 //
@@ -521,6 +524,195 @@ void checkSyccCinema()
   grk_object_unref(&gpuSource->obj);
 }
 
+// the plugin's decode of a code stream held against a cpu_only decode of it
+void checkPluginDecodeMatchesCpu(std::vector<uint8_t>& stream, uint64_t length, bool accelerated,
+                                 int32_t tolerance)
+{
+  uint64_t before = grk_plugin_accelerated_frames();
+  auto pluginDecoded = decode(stream, length);
+  bool pluginAccelerated = grk_plugin_accelerated_frames() != before;
+  auto cpuDecoded = decode(stream, length, true);
+  if(length == 0 || cpuDecoded.empty() || pluginDecoded.size() != cpuDecoded.size())
+  {
+    fail("plugin or CPU decode");
+    return;
+  }
+  int32_t maxDifference = 0;
+  for(size_t compno = 0; compno < cpuDecoded.size(); ++compno)
+  {
+    if(pluginDecoded[compno].size() != cpuDecoded[compno].size())
+    {
+      fail("plugin and CPU decodes differ in size");
+      return;
+    }
+    for(size_t i = 0; i < cpuDecoded[compno].size(); ++i)
+      maxDifference =
+          std::max(maxDifference, std::abs(pluginDecoded[compno][i] - cpuDecoded[compno][i]));
+  }
+  std::printf("  plugin decode vs CPU decode: max difference %d codes, accelerated %d\n",
+              maxDifference, pluginAccelerated);
+  if(pluginAccelerated != accelerated)
+    fail(accelerated ? "plugin decode was not accelerated" : "declined decode was accelerated");
+  if(maxDifference > tolerance)
+    fail("plugin decode strays from the CPU decode");
+}
+
+// the plugin declines an HT ROI shift after packet parsing and the codec decodes on the CPU
+void checkDeclinedDecode()
+{
+  std::printf("declined decode, HT region of interest\n");
+  grk_cparameters params;
+  baseParameters(params);
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  params.roi_compno = 0;
+  params.roi_shift = 4;
+  auto source = patternFrame(kWidth, kHeight);
+  if(!source)
+  {
+    fail("declined decode frame allocation");
+    return;
+  }
+  std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 4);
+  grk_plugin_set_enabled(false);
+  uint64_t length = compress(source, params, stream);
+  grk_plugin_set_enabled(true);
+  checkPluginDecodeMatchesCpu(stream, length, false, 0);
+  grk_object_unref(&source->obj);
+}
+
+// qfactor gives each component its own step sizes, and a low qfactor steps above 4
+void checkQuantSteps(uint8_t qfactor, uint8_t cblkSty, uint8_t numResolutions)
+{
+  std::printf("lossy qfactor=%u cblk_sty=0x%x resolutions=%u\n", qfactor, cblkSty, numResolutions);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = true;
+  params.qfactor = qfactor;
+  params.cblk_sty = cblkSty;
+  params.numresolution = numResolutions;
+  auto source = smoothFrame(kWidth, kHeight);
+  if(!source)
+  {
+    fail("qfactor frame allocation");
+    return;
+  }
+  std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 4);
+  grk_plugin_set_enabled(false);
+  uint64_t length = compress(source, params, stream);
+  grk_plugin_set_enabled(true);
+  checkPluginDecodeMatchesCpu(stream, length, true, kLossyTolerance);
+  grk_object_unref(&source->obj);
+}
+
+// an origin of 16 on an 18 sample grid makes the resolutions below the full one 1 sample across
+void checkOneSampleResolutions(bool vertical, bool irreversible)
+{
+  constexpr uint32_t kOrigin = 16;
+  constexpr uint32_t kNarrow = 2;
+  constexpr uint32_t kLength = 40;
+  std::printf("1 sample resolutions vertical=%d irreversible=%d\n", vertical, irreversible);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = irreversible;
+  params.numresolution = 5;
+  uint32_t width = vertical ? kLength : kNarrow;
+  uint32_t height = vertical ? kNarrow : kLength;
+  auto source = patternFrame(width, height);
+  if(!source)
+  {
+    fail("1 sample resolution frame allocation");
+    return;
+  }
+  if(vertical)
+    source->y0 = kOrigin;
+  else
+    source->x0 = kOrigin;
+  source->x1 = source->x0 + width;
+  source->y1 = source->y0 + height;
+  for(uint16_t compno = 0; compno < source->numcomps; ++compno)
+  {
+    source->comps[compno].x0 = source->x0;
+    source->comps[compno].y0 = source->y0;
+  }
+  std::vector<uint8_t> stream((size_t)kLength * kLength * kNumComps * 4);
+  grk_plugin_set_enabled(false);
+  uint64_t length = compress(source, params, stream);
+  grk_plugin_set_enabled(true);
+  checkPluginDecodeMatchesCpu(stream, length, true, irreversible ? kLossyTolerance : 0);
+  grk_object_unref(&source->obj);
+}
+
+int g_htBlockCoderErrors = 0;
+void countHTBlockCoderErrors(const char* message, void*)
+{
+  std::fprintf(stderr, "%s\n", message);
+  if(std::strstr(message, "Error in HT block coder"))
+    ++g_htBlockCoderErrors;
+}
+
+// 0xFE before EOC makes the last block's MEL and VLC length exceed its cleanup segment
+void checkCorruptHTBlock()
+{
+  std::printf("corrupt HT block\n");
+  grk_cparameters params;
+  baseParameters(params);
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  auto source = patternFrame(kWidth, kHeight);
+  if(!source)
+  {
+    fail("corrupt HT block frame allocation");
+    return;
+  }
+  std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 4);
+  grk_plugin_set_enabled(false);
+  uint64_t length = compress(source, params, stream);
+  grk_plugin_set_enabled(true);
+  grk_object_unref(&source->obj);
+  if(length < 3 || stream[length - 2] != 0xFF || stream[length - 1] != 0xD9)
+  {
+    fail("corrupt HT block compress");
+    return;
+  }
+  stream[length - 3] = 0xFE;
+  grk_msg_handlers handlers = {};
+  handlers.error_callback = countHTBlockCoderErrors;
+  grk_set_msg_handlers(handlers);
+  int errorsBefore = g_htBlockCoderErrors;
+  auto pluginDecoded = decode(stream, length);
+  std::printf("  plugin decode reported %d corrupt block errors\n",
+              g_htBlockCoderErrors - errorsBefore);
+  if(pluginDecoded.empty())
+    fail("plugin decode of a corrupt HT block");
+  if(g_htBlockCoderErrors == errorsBefore)
+    fail("plugin decode did not report the corrupt HT block");
+  checkPluginDecodeMatchesCpu(stream, length, true, 0);
+}
+
+// the plugin against the CPU on a conformance stream, whose CPU decode has a reference test
+void checkConformanceFile(const char* path, bool accelerated)
+{
+  constexpr int32_t kLossyConformanceTolerance = 1;
+  std::printf("conformance %s\n", path);
+  std::ifstream file(path, std::ios::binary);
+  std::vector<uint8_t> stream((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
+  grk_decompress_parameters params = {};
+  grk_stream_params streamParams = {};
+  streamParams.buf = stream.data();
+  streamParams.buf_len = stream.size();
+  auto codec = stream.empty() ? nullptr : grk_decompress_init(&streamParams, &params);
+  grk_header_info header = {};
+  bool headerRead = codec && grk_decompress_read_header(codec, &header);
+  grk_object_unref(codec);
+  if(!headerRead)
+  {
+    fail("conformance code stream header");
+    return;
+  }
+  checkPluginDecodeMatchesCpu(stream, stream.size(), accelerated,
+                              header.irreversible ? kLossyConformanceTolerance : 0);
+}
+
 // the frames held against a process without the plugin, one code stream file each
 struct CpuOnlyFrame
 {
@@ -771,12 +963,15 @@ int main(int argc, char** argv)
     grk_deinitialize();
     return rc;
   }
-  if(argc != 2)
+  bool conformance = argc == 4 && std::strcmp(argv[1], "--conformance") == 0 &&
+                     (std::strcmp(argv[3], "plugin") == 0 || std::strcmp(argv[3], "cpu") == 0);
+  if(argc != 2 && !conformance)
   {
     std::fprintf(stderr,
                  "usage: %s <cpu_only reference directory>\n"
-                 "       %s --write-cpu-only-reference <directory>\n",
-                 argv[0], argv[0]);
+                 "       %s --write-cpu-only-reference <directory>\n"
+                 "       %s --conformance <code stream> plugin|cpu\n",
+                 argv[0], argv[0], argv[0]);
     return 1;
   }
   if(!loaded)
@@ -795,12 +990,29 @@ int main(int argc, char** argv)
     std::fprintf(stderr, "the plugin refused device 0\n");
     return 1;
   }
+  if(conformance)
+  {
+    checkConformanceFile(argv[2], std::strcmp(argv[3], "plugin") == 0);
+    grk_deinitialize();
+    return g_failures ? 1 : 0;
+  }
   checkLossless(1, 12);
   checkLossless(0, 12);
   checkLossless(1, 8);
   checkLossless(0, 8);
   checkCinema();
   checkSyccCinema();
+  checkDeclinedDecode();
+  for(uint8_t cblkSty : {(uint8_t)0, (uint8_t)GRK_CBLKSTY_HT_ONLY})
+  {
+    checkQuantSteps(90, cblkSty, kResolutions);
+    checkQuantSteps(5, cblkSty, kResolutions);
+    checkQuantSteps(90, cblkSty, 1);
+  }
+  for(bool vertical : {false, true})
+    for(bool irreversible : {false, true})
+      checkOneSampleResolutions(vertical, irreversible);
+  checkCorruptHTBlock();
   checkOversizedDecodeDeclined();
   checkCpuOnly(argv[1]);
   checkCpuOnlyDecompress(argv[1]);

@@ -760,6 +760,15 @@ bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
   }
   return false;
 }
+int32_t grk_plugin_decompress_tile(grk_object* codecWrapper, grk_plugin_tile* tile)
+{
+  if(!codecWrapper || !tile)
+    return -1;
+  auto codec = Codec::getImpl(codecWrapper);
+  if(!codec->decompressor_)
+    return -1;
+  return codec->decompressor_->decompressPluginTile(tile);
+}
 bool grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
 {
   if(!codecWrapper)

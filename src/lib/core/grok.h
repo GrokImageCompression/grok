@@ -1181,6 +1181,9 @@ typedef struct _grk_plugin_code_block
   uint8_t num_passes; /* number of passes */
   grk_plugin_pass* passes; /* passes */
   unsigned int sorted_index; /* sorted index */
+  uint32_t cleanup_length; /* HT cleanup segment bytes, at the start of compressed_data */
+  uint32_t refinement_length; /* HT refinement segment bytes, after the cleanup bytes */
+  uint8_t missing_msbs; /* HT missing most significant bit planes, placeholders included */
 } grk_plugin_code_block;
 
 /**
@@ -1203,6 +1206,7 @@ typedef struct _grk_plugin_band
   uint64_t num_precincts; /* number of precincts */
   grk_plugin_precinct** precincts; /* precincts */
   float stepsize; /* stepsize */
+  uint8_t num_bit_planes; /* band bit planes, used by HT */
 } grk_plugin_band;
 
 /**
@@ -2870,6 +2874,9 @@ typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
                                                    grk_plugin_decompress_callback callback);
+
+// 0 decoded, 1 the plugin cannot decode the tile and the caller decodes it on the CPU, -1 failure
+GRK_API int32_t GRK_CALLCONV grk_plugin_decompress_tile(grk_object* codec, grk_plugin_tile* tile);
 
 /**
  * @brief Initialises a batch plugin decompress operation but does not start it.

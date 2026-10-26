@@ -118,6 +118,7 @@ public:
   int32_t pluginDecompress(void);
   bool pluginStoreDecodedImage(const grk_image* decoded);
   static int32_t pluginDecompressCallback(grk_plugin_decompress_callback_info* info);
+  void discardPluginTileParse(void);
 
   /**
    * @brief Checks if header needs to be read

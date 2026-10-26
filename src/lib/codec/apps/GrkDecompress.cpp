@@ -1107,12 +1107,13 @@ static IImageFormat* newImageFormat(GRK_SUPPORTED_FILE_FMT format,
 int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 {
   if(!info)
-    return 1;
+    return -1;
   bool failed = true;
+  bool pluginTileUnsupported = false;
   // bool useMemoryBuffer = false;
   auto parameters = info->decompressor_parameters;
   if(!parameters)
-    return 1;
+    return -1;
   auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
   const char* outfile = info->decompressor_parameters->outfile[0]
                             ? info->decompressor_parameters->outfile
@@ -1245,12 +1246,18 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     info->image = grk_decompress_get_tile_image(info->codec, parameters->tile_index, true);
   }
   // or, decompress all tiles
-  else
+  else if(info->tile)
   {
-    if(!(grk_decompress(info->codec, info->tile)))
+    auto pluginRc = grk_plugin_decompress_tile(info->codec, info->tile);
+    pluginTileUnsupported = pluginRc == 1;
+    if(pluginRc)
       goto cleanup;
   }
-  // GPU path: during T2, grk_decompress does packet parsing and feeds codeblock
+  else if(!grk_decompress(info->codec, nullptr))
+  {
+    goto cleanup;
+  }
+  // GPU path: during T2, grk_plugin_decompress_tile does packet parsing and feeds codeblock
   // data to the GPU plugin. The image is not populated yet (POST_T1 handles that).
   if(info->init_decompressors_func)
   {
@@ -1276,7 +1283,9 @@ cleanup:
     }
   }
 
-  return failed ? 1 : 0;
+  if(!failed)
+    return 0;
+  return pluginTileUnsupported ? 1 : -1;
 }
 
 /*

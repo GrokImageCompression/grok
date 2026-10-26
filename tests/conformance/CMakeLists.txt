@@ -507,6 +507,21 @@ set( HT_conformance_records
   "sigprop_refinement_overlap.j2k|sigprop_refinement_overlap|3|0|2:2:2|0.25:0.25:0.25"
 )
 
+# the HT streams the plugin decodes, it declines the others and grok decodes them on the CPU
+set(HT_plugin_conformance_streams
+  ds0_ht_01_b11.j2k
+  ds0_ht_04_b11.j2k
+  ds0_ht_04_b12.j2k
+  ds0_ht_09_b11.j2k
+  ds0_ht_11_b10.j2k
+  ds0_ht_12_b11.j2k
+  ds0_ht_14_b11.j2k
+  ds0_ht_16_b11.j2k
+  ds1_ht_02_b11.j2k
+  ds1_ht_02_b12.j2k
+  hifi_ht1_02.j2k
+)
+
 foreach(record ${HT_conformance_records})
   string(REPLACE "|" ";" fields "${record}")
   list(GET fields 0 filenameInput)
@@ -536,6 +551,18 @@ foreach(record ${HT_conformance_records})
   set_tests_properties(ETS-HT-${filenameInput}-compare2ref
                        PROPERTIES DEPENDS
                        ETS-HT-${filenameInput}-decode)
+
+  if(GRK_BUILD_PLUGIN_LOADER)
+    set(pluginDecoder cpu)
+    if(filenameInput IN_LIST HT_plugin_conformance_streams)
+      set(pluginDecoder plugin)
+    endif()
+    add_test(NAME ETS-HT-${filenameInput}-plugin
+        COMMAND grk_plugin_memory_test --conformance ${INPUT_CONF}/${filenameInput} ${pluginDecoder})
+    set_tests_properties(ETS-HT-${filenameInput}-plugin PROPERTIES
+        ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+        LABELS "gpu")
+  endif()
 
 endforeach()
 

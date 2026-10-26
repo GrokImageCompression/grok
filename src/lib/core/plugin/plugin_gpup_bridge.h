@@ -258,6 +258,7 @@ inline grk_plugin_tile* gpup_tile_to_grk(gpup_tile* src)
         db->num_precincts = sb->numPrecincts;
         db->precincts = new grk_plugin_precinct*[sb->numPrecincts]();
         db->stepsize = sb->stepsize;
+        db->num_bit_planes = sb->numBitPlanes;
         for(uint64_t p = 0; p < sb->numPrecincts; ++p)
         {
           auto* sp = sb->precincts[p];
@@ -280,6 +281,9 @@ inline grk_plugin_tile* gpup_tile_to_grk(gpup_tile* src)
             dkb->num_passes = (uint8_t)skb->numPasses;
             dkb->passes = reinterpret_cast<grk_plugin_pass*>(skb->passes); // shared
             dkb->sorted_index = skb->sortedIndex;
+            dkb->cleanup_length = skb->cleanupLength;
+            dkb->refinement_length = skb->refinementLength;
+            dkb->missing_msbs = skb->missingMsbs;
             dp->blocks[k] = dkb;
           }
           db->precincts[p] = dp;
@@ -325,6 +329,7 @@ inline void gpup_tile_update_grk(grk_plugin_tile* dst, gpup_tile* src)
         if(!db || !sb)
           continue;
         db->stepsize = sb->stepsize;
+        db->num_bit_planes = sb->numBitPlanes;
         uint64_t np = std::min(db->num_precincts, sb->numPrecincts);
         for(uint64_t p = 0; p < np; ++p)
         {
@@ -347,6 +352,9 @@ inline void gpup_tile_update_grk(grk_plugin_tile* dst, gpup_tile* src)
             dkb->num_passes = (uint8_t)skb->numPasses;
             dkb->passes = reinterpret_cast<grk_plugin_pass*>(skb->passes);
             dkb->sorted_index = skb->sortedIndex;
+            dkb->cleanup_length = skb->cleanupLength;
+            dkb->refinement_length = skb->refinementLength;
+            dkb->missing_msbs = skb->missingMsbs;
           }
         }
       }
@@ -387,6 +395,7 @@ inline void grk_tile_sync_metadata_to_gpup(grk_plugin_tile* wrapper, gpup_tile* 
           continue;
         // sync band-level stepsize (host sets it in decompress_synch_plugin_with_host)
         ob->stepsize = wb->stepsize;
+        ob->numBitPlanes = wb->num_bit_planes;
         uint64_t np = std::min(wb->num_precincts, ob->numPrecincts);
         for(uint64_t p = 0; p < np; ++p)
         {
@@ -405,6 +414,9 @@ inline void grk_tile_sync_metadata_to_gpup(grk_plugin_tile* wrapper, gpup_tile* 
             okb->compressedDataLength = wkb->compressed_data_length;
             okb->numBitPlanes = wkb->num_bit_planes;
             okb->numPasses = wkb->num_passes;
+            okb->cleanupLength = wkb->cleanup_length;
+            okb->refinementLength = wkb->refinement_length;
+            okb->missingMsbs = wkb->missing_msbs;
           }
         }
       }

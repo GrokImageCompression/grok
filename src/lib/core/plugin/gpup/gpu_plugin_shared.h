@@ -259,6 +259,10 @@ typedef struct _gpup_code_block
   size_t numPasses;
   gpup_pass passes[GPUP_MAX_PASSES];
   unsigned int sortedIndex;
+  /* HT: cleanup bytes then refinement bytes in compressedData */
+  uint32_t cleanupLength;
+  uint32_t refinementLength;
+  uint8_t missingMsbs;
 } gpup_code_block;
 
 typedef struct _gpup_precinct
@@ -273,6 +277,7 @@ typedef struct _gpup_band
   uint64_t numPrecincts;
   gpup_precinct** precincts;
   float stepsize;
+  uint8_t numBitPlanes;
 } gpup_band;
 
 typedef struct _gpup_resolution

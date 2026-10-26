@@ -234,11 +234,19 @@ int32_t CodeStreamDecompress::pluginDecompressCallback(grk_plugin_decompress_cal
     if(!info->tile)
       return -1;
     info->tile->decompress_flags = info->decompress_flags;
-    return self->decompress(info->tile) ? 0 : -1;
+    return self->decompressPluginTile(info->tile);
   }
   if(info->decompress_flags & GRK_DECODE_POST_T1)
     return self->pluginStoreDecodedImage(info->image) ? 0 : -1;
   return -1;
+}
+// the parsed tiles point at the plugin's tile, which the plugin frees
+void CodeStreamDecompress::discardPluginTileParse(void)
+{
+  current_plugin_tile = nullptr;
+  currTileProcessor_ = nullptr;
+  currTileIndex_ = -1;
+  tileCache_->discardTiles();
 }
 // the plugin's sample buffers go away when the callback returns
 bool CodeStreamDecompress::pluginStoreDecodedImage(const grk_image* decoded)
@@ -350,11 +358,23 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     {
       currTileProcessor_->prepareForDecompression();
       // Run T2 inline with no-op post (no image extraction needed)
-      currTileProcessor_->scheduleAndRunDecompress(
-          &coderPool_, headerImage_->getBounds(), nullptr, []() {}, decompressTileFutureManager_);
+      try
+      {
+        currTileProcessor_->scheduleAndRunDecompress(
+            &coderPool_, headerImage_->getBounds(), nullptr, []() {}, decompressTileFutureManager_);
+      }
+      catch(const PluginDecodeUnsupportedException&)
+      {
+        discardPluginTileParse();
+        throw;
+      }
+      if(currTileProcessor_->hasError())
+        success_ = false;
       currTileProcessor_ = nullptr;
       currTileIndex_ = -1;
     }
+    if(!success_)
+      discardPluginTileParse();
     return success_;
   }
 
