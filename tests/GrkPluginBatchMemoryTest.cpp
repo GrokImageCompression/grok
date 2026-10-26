@@ -1254,6 +1254,44 @@ bool compressOnCpu(grk_cparameters& params, Collector& encoded)
   return true;
 }
 
+// lossless HT: every frame's code stream is the CPU encoder's, byte for byte
+void checkHTLossless()
+{
+  std::printf("HT lossless 12 bit, mct, %ux%u, %u frames\n", kWidth, kHeight, kNumFrames);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  Collector cpu;
+  if(!compressOnCpu(params, cpu))
+  {
+    fail("HT CPU compress");
+    return;
+  }
+
+  Collector collector;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, &seconds, &xyzOnDevice))
+  {
+    fail("HT lossless batch");
+    return;
+  }
+  std::printf("HT lossless batch: %.2f s, %.1f frames per second\n", seconds, kNumFrames / seconds);
+  checkCollector(collector, "HT lossless batch delivery");
+  size_t differing = 0;
+  for(const auto& entry : collector.codestreams)
+  {
+    if(entry.second != cpu.codestreams[entry.first])
+      ++differing;
+  }
+  if(differing)
+  {
+    std::printf("  %zu of %u frames differ from the CPU code stream\n", differing, kNumFrames);
+    fail("an HT batch frame differs from the CPU code stream");
+  }
+}
+
 // the interleaved 8 bit rows an srgb8 batch hands back, keyed by frame identity
 struct Rgb8Collector
 {
@@ -2247,6 +2285,7 @@ int main()
   checkBatchDecompress();
   checkDisplayOutputThresholds();
   checkLossless();
+  checkHTLossless();
   checkCinema();
   checkCinemaSource16();
   checkYuvProbe();

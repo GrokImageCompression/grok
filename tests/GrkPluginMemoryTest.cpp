@@ -337,6 +337,166 @@ void checkLossless(uint8_t mct, uint8_t precision)
   grk_object_unref(&gpuInput->obj);
 }
 
+struct HTLosslessCase
+{
+  uint16_t numComps;
+  uint8_t precision;
+  uint32_t codeBlockWidth;
+  uint32_t codeBlockHeight;
+  uint8_t numResolutions;
+  uint32_t width;
+  uint32_t height;
+  bool zero;
+};
+
+// a gradient under noise that shrinks from left to right covers small and large u_q, and a
+// flat stripe codes long MEL runs
+grk_image* htFrame(const HTLosslessCase& htCase)
+{
+  const int32_t maxSample = (1 << htCase.precision) - 1;
+  auto components = std::make_unique<grk_image_comp[]>(htCase.numComps);
+  for(uint16_t i = 0; i < htCase.numComps; ++i)
+  {
+    auto c = &components[i];
+    c->w = htCase.width;
+    c->h = htCase.height;
+    c->dx = 1;
+    c->dy = 1;
+    c->prec = htCase.precision;
+    c->sgnd = false;
+  }
+  auto image = grk_image_new(htCase.numComps, components.get(),
+                             htCase.numComps == 1 ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB, true);
+  if(!image)
+    return nullptr;
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    auto data = (int32_t*)comp->data;
+    for(uint32_t y = 0; y < comp->h; ++y)
+    {
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        uint32_t hash = (x * 73856093u) ^ (y * 19349663u) ^ (compno * 83492791u);
+        hash *= 2654435761u;
+        int32_t noiseRange = (maxSample / 4) >> (8 * x / comp->w);
+        int32_t noise = (int32_t)((hash >> 8) % (uint32_t)(noiseRange + 1));
+        int32_t gradient = (int32_t)(((uint64_t)x * maxSample) / (2 * comp->w));
+        bool flat = y >= comp->h / 3 && y < comp->h / 2;
+        int32_t value = flat ? maxSample / 3 : std::min(maxSample, gradient + noise);
+        data[x] = htCase.zero ? 0 : value;
+      }
+      data += comp->stride;
+    }
+  }
+  return image;
+}
+
+// lossless HT: the plugin writes the CPU encoder's code stream byte for byte
+void checkHTLossless(const HTLosslessCase& htCase)
+{
+  std::printf("HT lossless components=%u precision=%u block=%ux%u resolutions=%u %ux%u%s\n",
+              htCase.numComps, htCase.precision, htCase.codeBlockWidth, htCase.codeBlockHeight,
+              htCase.numResolutions, htCase.width, htCase.height, htCase.zero ? " zero" : "");
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  params.mct = htCase.numComps == 3 ? 1 : 0;
+  params.numresolution = htCase.numResolutions;
+  params.cblockw_init = htCase.codeBlockWidth;
+  params.cblockh_init = htCase.codeBlockHeight;
+  // the reversible transform runs on the caller's image in place
+  auto source = htFrame(htCase);
+  auto cpuInput = htFrame(htCase);
+  auto gpuInput = htFrame(htCase);
+  if(!source || !cpuInput || !gpuInput)
+  {
+    fail("HT lossless frame allocation");
+    return;
+  }
+  std::vector<uint8_t> cpuStream((size_t)htCase.width * htCase.height * htCase.numComps * 4);
+  std::vector<uint8_t> gpuStream(cpuStream.size());
+  grk_plugin_set_enabled(false);
+  uint64_t cpuLength = compress(cpuInput, params, cpuStream);
+  grk_plugin_set_enabled(true);
+  uint64_t before = grk_plugin_accelerated_frames();
+  uint64_t gpuLength = compress(gpuInput, params, gpuStream);
+  if(cpuLength == 0 || gpuLength == 0)
+    fail("HT lossless compress");
+  if(grk_plugin_accelerated_frames() != before + 1)
+    fail("HT plugin compress was not counted as accelerated");
+  auto mismatch =
+      std::mismatch(cpuStream.begin(), cpuStream.begin() + (ptrdiff_t)cpuLength, gpuStream.begin());
+  if(gpuLength != cpuLength || mismatch.first != cpuStream.begin() + (ptrdiff_t)cpuLength)
+  {
+    std::printf("  plugin %llu bytes, CPU %llu bytes, first difference at byte %lld\n",
+                (unsigned long long)gpuLength, (unsigned long long)cpuLength,
+                (long long)(mismatch.first - cpuStream.begin()));
+    fail("HT plugin code stream differs from the CPU code stream");
+  }
+  grk_plugin_set_enabled(false);
+  int32_t difference = 0;
+  if(!samplesEqual(source, decode(gpuStream, gpuLength), 0, &difference))
+  {
+    std::printf("  HT plugin compress then CPU decode: max difference %d\n", difference);
+    fail("HT plugin compress then CPU decode is not the source");
+  }
+  grk_plugin_set_enabled(true);
+  grk_object_unref(&source->obj);
+  grk_object_unref(&cpuInput->obj);
+  grk_object_unref(&gpuInput->obj);
+}
+
+struct HTDeclinedCase
+{
+  const char* name;
+  uint8_t cblkSty;
+  bool irreversible;
+  double layerRate;
+  uint64_t maxCodeStreamSize;
+};
+
+// HT the plugin cannot code as one lossless layer goes to the CPU encoder
+void checkHTDeclined(const HTDeclinedCase& declined)
+{
+  std::printf("HT declined: %s\n", declined.name);
+  const HTLosslessCase frame = {1, 12, 64, 64, 6, 517, 301, false};
+  grk_cparameters params;
+  baseParameters(params);
+  params.cblk_sty = declined.cblkSty;
+  params.irreversible = declined.irreversible;
+  params.mct = 0;
+  params.cblockw_init = frame.codeBlockWidth;
+  params.cblockh_init = frame.codeBlockHeight;
+  params.allocation_by_rate_distortion = declined.layerRate > 0;
+  params.layer_rate[0] = declined.layerRate;
+  params.max_cs_size = declined.maxCodeStreamSize;
+  auto cpuInput = htFrame(frame);
+  auto gpuInput = htFrame(frame);
+  if(!cpuInput || !gpuInput)
+  {
+    fail("HT declined frame allocation");
+    return;
+  }
+  std::vector<uint8_t> cpuStream((size_t)frame.width * frame.height * 4);
+  std::vector<uint8_t> gpuStream(cpuStream.size());
+  grk_plugin_set_enabled(false);
+  uint64_t cpuLength = compress(cpuInput, params, cpuStream);
+  grk_plugin_set_enabled(true);
+  uint64_t before = grk_plugin_accelerated_frames();
+  uint64_t gpuLength = compress(gpuInput, params, gpuStream);
+  if(cpuLength == 0 || gpuLength == 0)
+    fail("HT declined compress");
+  if(grk_plugin_accelerated_frames() != before)
+    fail("HT declined compress was accelerated");
+  if(gpuLength != cpuLength ||
+     !std::equal(cpuStream.begin(), cpuStream.begin() + (ptrdiff_t)cpuLength, gpuStream.begin()))
+    fail("HT declined compress differs from the CPU code stream");
+  grk_object_unref(&cpuInput->obj);
+  grk_object_unref(&gpuInput->obj);
+}
+
 void cinemaParameters(grk_cparameters& params)
 {
   baseParameters(params);
@@ -1000,6 +1160,25 @@ int main(int argc, char** argv)
   checkLossless(0, 12);
   checkLossless(1, 8);
   checkLossless(0, 8);
+  const HTLosslessCase htCases[] = {
+      {1, 12, 64, 64, 6, 517, 301, false}, {1, 12, 64, 64, 1, 517, 301, false},
+      {1, 16, 64, 64, 6, 517, 301, false}, {1, 16, 32, 32, 6, 517, 301, false},
+      {3, 8, 32, 32, 6, 517, 301, false},  {3, 8, 64, 64, 1, 517, 301, false},
+      {3, 10, 64, 64, 6, 517, 301, false}, {1, 12, 16, 32, 6, 517, 301, false},
+      {1, 12, 32, 64, 6, 517, 301, false}, {1, 12, 64, 16, 6, 517, 301, false},
+      {1, 12, 64, 64, 6, 512, 256, false}, {1, 12, 64, 64, 6, 517, 301, true},
+      {3, 8, 32, 32, 6, 517, 301, true},
+  };
+  for(const auto& htCase : htCases)
+    checkHTLossless(htCase);
+  const HTDeclinedCase htDeclinedCases[] = {
+      {"layer rate", GRK_CBLKSTY_HT_ONLY, false, 10.0, 0},
+      {"maximum code stream size", GRK_CBLKSTY_HT_ONLY, false, 0, 100000},
+      {"lossy", GRK_CBLKSTY_HT_ONLY, true, 0, 0},
+      {"mixed", GRK_CBLKSTY_HT_MIXED, false, 0, 0},
+  };
+  for(const auto& declined : htDeclinedCases)
+    checkHTDeclined(declined);
   checkCinema();
   checkSyccCinema();
   checkDeclinedDecode();

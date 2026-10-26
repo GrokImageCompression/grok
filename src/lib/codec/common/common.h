@@ -120,7 +120,6 @@ bool grk_set_binary_mode(FILE* file);
 GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K);
 GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename);
 const char* pathSeparator();
-char* get_file_name(char* name);
 uint32_t get_num_images(char* imgdirpath);
 char* actual_path(const char* outfile, bool* mem_allocated);
 bool isFinalOutputSubsampled(grk_image* image);

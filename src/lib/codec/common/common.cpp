@@ -298,11 +298,6 @@ const char* pathSeparator()
 #endif
 }
 
-char* get_file_name(char* name)
-{
-  return strtok(name, ".");
-}
-
 uint32_t get_num_images(char* imgdirpath)
 {
   auto count = std::count_if(std::filesystem::directory_iterator(imgdirpath),

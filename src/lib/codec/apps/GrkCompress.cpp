@@ -152,6 +152,11 @@ CompressInitParams::~CompressInitParams()
   free(inputFolder.imgdirpath);
   free(outFolder.imgdirpath);
 }
+static std::string withoutExtension(const std::string& fileName)
+{
+  auto pos = fileName.rfind(".");
+  return pos == std::string::npos ? fileName : fileName.substr(0, pos);
+}
 static char nextFile(const std::string& inputFile, const grk_img_fol* inputFolder,
                      const grk_img_fol* outFolder, grk_cparameters* parameters)
 {
@@ -168,13 +173,7 @@ static char nextFile(const std::string& inputFile, const grk_img_fol* inputFolde
   {
     return 1;
   }
-  std::string outputRootFile;
-  // if we don't find a file tag, then just use the full file name
-  auto pos = inputFile.rfind(".");
-  if(pos != std::string::npos)
-    outputRootFile = inputFile.substr(0, pos);
-  else
-    outputRootFile = inputFile;
+  auto outputRootFile = withoutExtension(inputFile);
   if(inputFolder->set_out_format)
   {
     std::string outfilename = outFolder->imgdirpath + std::string(grk::pathSeparator()) +
@@ -1159,6 +1158,30 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       return GrkRCFail;
     }
   }
+  if(outputFormatOpt->count() > 0)
+  {
+    std::string outformat = std::string(".") + outputFormat;
+    inputFolder->set_out_format = true;
+    parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
+    switch(parameters->cod_format)
+    {
+      case GRK_FMT_J2K:
+        inputFolder->out_format = isHT ? "jhc" : "j2k";
+        break;
+      case GRK_FMT_JP2:
+        inputFolder->out_format = isHT ? "jph" : "jp2";
+        break;
+      case GRK_FMT_MJ2:
+        inputFolder->out_format = "mj2";
+        break;
+      default:
+        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
+                      "*.jhc or *.mj2] supported");
+        return GrkRCFail;
+    }
+    if(isHT)
+      setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
+  }
   if(rawFormatOpt->count() > 0)
   {
     bool wrong = false;
@@ -2006,30 +2029,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   {
     parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
   }
-  if(outputFormatOpt->count() > 0)
-  {
-    std::string outformat = std::string(".") + outputFormat;
-    inputFolder->set_out_format = true;
-    parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
-    switch(parameters->cod_format)
-    {
-      case GRK_FMT_J2K:
-        inputFolder->out_format = "j2k";
-        break;
-      case GRK_FMT_JP2:
-        inputFolder->out_format = "jp2";
-        break;
-      case GRK_FMT_MJ2:
-        inputFolder->out_format = "mj2";
-        break;
-      default:
-        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
-                      "*.jhc or *.mj2] supported");
-        return GrkRCFail;
-    }
-    if(isHT)
-      setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
-  }
   if(serverOpt->count() > 0 && licenseOpt->count() > 0)
   {
     initParams->server_ = server;
@@ -2154,7 +2153,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     {
       if(info->output_file_name_is_relative)
       {
-        temp_ofname = get_file_name((char*)info->output_file_name);
+        temp_ofname = withoutExtension(info->output_file_name);
         if(img_fol_plugin.set_out_format)
         {
           outfile =
