@@ -142,7 +142,7 @@ Select algorithm used for rate control.
 
 Note: not supported for Part 15 (HTJ2K) compression
 
-Compression ratio values (double precision, greater than or equal to one). Each value is a factor of compression, thus 20 means 20 times compressed. Each value represents a quality layer. The order used to define the different levels of compression is important and must be from left to right in descending order. A final lossless quality layer (including all remaining code passes) will be signified by the value 1. Default: 1 single lossless quality layer.
+Compression ratio values (double precision, greater than or equal to one). Each value is a factor of compression, thus 20 means 20 times compressed. Each value represents a quality layer. The order used to define the different levels of compression is important and must be from left to right in descending order. A final lossless quality layer (including all remaining code passes) will be signified by the value 1. A layer whose byte budget is smaller than its required headers is written empty at its minimum valid size. Default: 1 single lossless quality layer.
 
 `-q, -quality [quality in dB,quality in dB,...]`
 
@@ -161,6 +161,10 @@ Multiplies every sub-band's base quantization step by 2 to the power of this, so
 `--rate-tolerance [fraction]`
 
 Fraction of a quality layer's byte budget rate control may leave unused. Rate control stops at the first threshold whose simulated size is within this fraction of the budget instead of bisecting to the exact answer, which cuts the number of packet simulations. Must be less than `0.5`. Default: `0.0`, an exact search.
+
+`--strict-rates`
+
+Fail when a compression ratio's byte budget is smaller than the minimum valid layer size.
 
 `-n, -numresolutions [number of resolutions]`
 

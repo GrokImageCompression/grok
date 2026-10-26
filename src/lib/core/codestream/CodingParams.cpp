@@ -579,7 +579,10 @@ bool TileCodingParams::resolvePart2(void)
 TileCodingParams::TileCodingParams(CodingParams* cp) : cp_(cp)
 {
   for(auto i = 0; i < maxCompressLayersGRK; ++i)
+  {
     rates_[i] = 0.0;
+    writeEmptyLayer_[i] = false;
+  }
   for(auto i = 0; i < maxCompressLayersGRK; ++i)
     distortion_[i] = 0;
   for(auto i = 0; i < 32; ++i)
@@ -602,6 +605,7 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
       numComps_(rhs.numComps_), ht_(rhs.ht_)
 {
   memcpy(rates_, rhs.rates_, sizeof(rates_));
+  memcpy(writeEmptyLayer_, rhs.writeEmptyLayer_, sizeof(writeEmptyLayer_));
   memcpy(distortion_, rhs.distortion_, sizeof(distortion_));
   memcpy(progressionOrderChange_, rhs.progressionOrderChange_, sizeof(progressionOrderChange_));
 

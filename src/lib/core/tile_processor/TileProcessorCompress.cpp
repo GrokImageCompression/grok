@@ -108,6 +108,7 @@ void TileProcessorCompress::resetForNextFrame(void)
 {
   tileIndex_ = 0;
   ignoreSlopeHint_ = false;
+  checkMinimumLayerSizes_ = false;
   slopeThreshold_ = 0;
   preCalculatedTileLen_ = 0;
   prog_iter_num = 0;

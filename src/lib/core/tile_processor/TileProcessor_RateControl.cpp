@@ -102,6 +102,65 @@ void TileProcessorCompress::resetRateControlInclusion(void)
     }
   }
 }
+void TileProcessorCompress::makeLayerEmpty(uint16_t layno)
+{
+  tile_->setLayerDistortion(layno, 0);
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+  {
+    auto tilec = tile_->comps_ + compno;
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; ++resno)
+    {
+      auto res = tilec->resolutions_ + resno;
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
+      {
+        auto band = res->band + bandIndex;
+        for(auto precinct : band->precincts_)
+        {
+          for(uint32_t codeBlockIndex = 0; codeBlockIndex < precinct->getNumCblks();
+              ++codeBlockIndex)
+          {
+            auto layer = precinct->getCompressBlock(codeBlockIndex)->getLayer(layno);
+            layer->totalPasses_ = 0;
+            layer->len = 0;
+            layer->distortion = 0;
+            layer->data = nullptr;
+          }
+        }
+      }
+    }
+  }
+}
+TileProcessorCompress::MinimumLayerSizeResult
+    TileProcessorCompress::checkMinimumLayerSize(T2Compress& tier2, uint16_t layno,
+                                                 uint32_t* maximumLayerBytes)
+{
+  makeLayerEmpty(layno);
+  uint32_t minimumLayerBytes = 0;
+  if(!tier2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), &minimumLayerBytes,
+                                    UINT_MAX, newTilePartProgressionPosition_,
+                                    packetLengthCache_->getMarkers(), true, false))
+    return MinimumLayerSizeResult::error;
+
+  bool writeEmptyLayer = tcp_->writeEmptyLayer_[layno];
+  if(!writeEmptyLayer && minimumLayerBytes <= *maximumLayerBytes)
+    return MinimumLayerSizeResult::fits;
+
+  if(cp_->codingParams_.enc_.failOnRateControlOvershoot_)
+  {
+    grklog.error("Layer %u of tile %u cannot meet its compression ratio: its %u byte packet "
+                 "budget does not cover the %u byte minimum packet size",
+                 layno, tileIndex_, *maximumLayerBytes, minimumLayerBytes);
+    return MinimumLayerSizeResult::error;
+  }
+  if(!writeEmptyLayer)
+  {
+    grklog.warn("Layer %u of tile %u cannot meet its compression ratio: increasing its %u byte "
+                "packet budget to the %u byte minimum and writing an empty layer",
+                layno, tileIndex_, *maximumLayerBytes, minimumLayerBytes);
+  }
+  *maximumLayerBytes = minimumLayerBytes;
+  return MinimumLayerSizeResult::empty;
+}
 bool TileProcessorCompress::rateAllocate(uint32_t* allPacketBytes, bool disableRateControl)
 {
   // a failed attempt leaves every pass marked included
@@ -129,6 +188,15 @@ bool TileProcessorCompress::rateAllocateWithFallback(uint32_t* allPacketBytes)
     if(rateAllocate(allPacketBytes, false))
       return true;
   }
+  checkMinimumLayerSizes_ = true;
+  *allPacketBytes = 0;
+  if(rateAllocate(allPacketBytes, false))
+    return true;
+  if(cp_->codingParams_.enc_.failOnRateControlOvershoot_)
+  {
+    grklog.error("Unable to meet compression ratios on tile %d", tileIndex_);
+    return false;
+  }
   grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
   grklog.warn("Rate control will be disabled for this tile");
   *allPacketBytes = 0;
@@ -140,8 +208,15 @@ bool TileProcessorCompress::rateAllocateWithFallback(uint32_t* allPacketBytes)
 bool TileProcessorCompress::layerNeedsRateControl(uint16_t layno)
 {
   auto enc_params = &cp_->codingParams_.enc_;
-  return (enc_params->allocationByRateDistortion_ && (tcp_->rates_[layno] > 0.0)) ||
+  return tcp_->writeEmptyLayer_[layno] ||
+         (enc_params->allocationByRateDistortion_ && (tcp_->rates_[layno] > 0.0)) ||
          (enc_params->allocationByFixedQuality_ && (tcp_->distortion_[layno] > 0.0f));
+}
+bool TileProcessorCompress::layerNeedsMinimumSizeCheck(uint16_t layno, bool disableRateControl)
+{
+  return cp_->codingParams_.enc_.allocationByRateDistortion_ &&
+         (tcp_->writeEmptyLayer_[layno] ||
+          (checkMinimumLayerSizes_ && !disableRateControl && tcp_->rates_[layno] > 0.0));
 }
 bool TileProcessorCompress::needsRateControl()
 {
@@ -488,6 +563,14 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
     maxLayerLength = (!disableRateControl && tcp->rates_[layno] > 0.0f)
                          ? ((uint32_t)ceil(tcp->rates_[layno]))
                          : UINT_MAX;
+    if(layerNeedsMinimumSizeCheck(layno, disableRateControl))
+    {
+      auto minimumSizeResult = checkMinimumLayerSize(t2, layno, &maxLayerLength);
+      if(minimumSizeResult == MinimumLayerSizeResult::error)
+        return false;
+      if(minimumSizeResult == MinimumLayerSizeResult::empty)
+        continue;
+    }
     if(layerNeedsRateControl(layno))
     {
       double distortionTarget =
@@ -548,10 +631,9 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
       if(!fixedQuality && layno > 0)
       {
         uint32_t packetBytes = 0;
-        if(t2.compressPacketsSimulate(tileIndex_, layno, &packetBytes, UINT_MAX,
-                                      newTilePartProgressionPosition_,
-                                      packetLengthCache_->getMarkers(), true, false,
-                                      previousBytes.data()))
+        if(t2.compressPacketsSimulate(
+               tileIndex_, layno, &packetBytes, UINT_MAX, newTilePartProgressionPosition_,
+               packetLengthCache_->getMarkers(), true, false, previousBytes.data()))
           previousTotal = packetBytes;
         else
           std::fill(previousBytes.begin(), previousBytes.end(), 0);
@@ -1063,6 +1145,14 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
     maxLayerLength = (!disableRateControl && tcp->rates_[layno] > 0.0f)
                          ? ((uint32_t)ceil(tcp->rates_[layno]))
                          : UINT_MAX;
+    if(layerNeedsMinimumSizeCheck(layno, disableRateControl))
+    {
+      auto minimumSizeResult = checkMinimumLayerSize(t2, layno, &maxLayerLength);
+      if(minimumSizeResult == MinimumLayerSizeResult::error)
+        return false;
+      if(minimumSizeResult == MinimumLayerSizeResult::empty)
+        continue;
+    }
     if(layerNeedsRateControl(layno))
     {
       double lowerBound = min_slope;

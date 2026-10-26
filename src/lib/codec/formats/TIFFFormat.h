@@ -669,8 +669,10 @@ public:
   virtual bool writeStrip(uint32_t workerId, grk_io_buf pixels) override;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  bool readMetadata(const std::string& filename, grk_image* image, grk_cparameters* parameters);
 
 private:
+  void readMetadataTags(TIFF* tif, grk_image* image, grk_cparameters* parameters, bool isCIE);
 #ifdef GRK_CUSTOM_TIFF_IO
   TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
@@ -1901,6 +1903,87 @@ beach:
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
 template<typename T>
+void TIFFFormat<T>::readMetadataTags(TIFF* tif, grk_image* image, grk_cparameters* parameters,
+                                     bool isCIE)
+{
+  short tiResUnit = 0;
+  float tiXRes = 0, tiYRes = 0;
+  bool hasXRes = false, hasYRes = false, hasResUnit = false;
+  uint32_t icclen = 0;
+  uint8_t* iccbuf = nullptr;
+  uint8_t* xmp_buf = nullptr;
+  uint32_t xmp_len = 0;
+  uint32_t count = 0;
+  void* raw_ptr = nullptr;
+
+  // 5. extract capture resolution
+  hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+  hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+  hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+  if(hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE)
+  {
+    set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+    parameters->write_capture_resolution_from_file = true;
+  }
+  // 6. extract embedded ICC profile (with sanity check on binary size of profile)
+  // note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
+  // CIE and ICC
+  if(!isCIE)
+  {
+    if((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
+       icclen < grk::maxICCProfileBufferLen)
+      copyICC(image, iccbuf, icclen);
+  }
+  // 7. extract IPTC meta-data
+  if(TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &count, &raw_ptr) == 1 && raw_ptr)
+  {
+    const uint8_t* src = static_cast<const uint8_t*>(raw_ptr);
+    if(count > 0)
+    {
+      createMeta(image);
+      image->meta->iptc_len = count;
+      image->meta->iptc_buf = new uint8_t[count];
+      memcpy(image->meta->iptc_buf, src, count);
+    }
+  }
+  // 8. extract XML meta-data
+  if(TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
+  {
+    createMeta(image);
+    image->meta->xmp_len = xmp_len;
+    image->meta->xmp_buf = new uint8_t[xmp_len];
+    memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
+  }
+  // 8b. extract EXIF meta-data
+  {
+    uint8_t* exif_data = nullptr;
+    uint32_t exif_size = 0;
+    if(extractExifFromTiff(tif, &exif_data, &exif_size) && exif_data && exif_size > 0)
+    {
+      createMeta(image);
+      image->meta->exif_buf = exif_data;
+      image->meta->exif_len = exif_size;
+    }
+  }
+}
+template<typename T>
+bool TIFFFormat<T>::readMetadata(const std::string& filename, grk_image* image,
+                                 grk_cparameters* parameters)
+{
+  auto tif = TIFFOpen(filename.c_str(), "r");
+  if(!tif)
+  {
+    spdlog::error("TIFFFormat<T>::readMetadata: Failed to open {} for reading", filename);
+    return false;
+  }
+  uint16_t tiPhoto = 0;
+  TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+  readMetadataTags(tif, image, parameters,
+                   tiPhoto == PHOTOMETRIC_CIELAB || tiPhoto == PHOTOMETRIC_ICCLAB);
+  TIFFClose(tif);
+  return true;
+}
+template<typename T>
 grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   bool found_assocalpha = false;
@@ -1912,8 +1995,6 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
   grk_image* image = nullptr;
   uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
   bool hasTiSf = false;
-  short tiResUnit = 0;
-  float tiXRes = 0, tiYRes = 0;
   uint32_t tiWidth = 0, tiHeight = 0;
   bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
   bool success = false;
@@ -1954,17 +2035,10 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
   uint32_t w = tiWidth;
   uint32_t h = tiHeight;
   uint16_t numcomps = 0;
-  uint32_t icclen = 0;
-  uint8_t* iccbuf = nullptr;
-  uint8_t* xmp_buf = nullptr;
-  uint32_t xmp_len = 0;
   uint16_t* sampleinfo = nullptr;
   uint16_t extrasamples = 0;
-  bool hasXRes = false, hasYRes = false, hasResUnit = false;
   bool isSigned = (tiSf == SAMPLEFORMAT_INT);
   bool needSignedPixelReader = isSigned && (tiBps == 8 || tiBps == 16);
-  uint32_t count = 0;
-  void* raw_ptr = nullptr;
 
   // 1. sanity checks
 
@@ -2317,55 +2391,7 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
     goto cleanup;
   }
 
-  // 5. extract capture resolution
-  hasXRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-  hasYRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-  hasResUnit = TIFFGetFieldDefaulted(tif_, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
-  if(hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE)
-  {
-    set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
-    parameters->write_capture_resolution_from_file = true;
-  }
-  // 6. extract embedded ICC profile (with sanity check on binary size of profile)
-  // note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
-  // CIE and ICC
-  if(!isCIE)
-  {
-    if((TIFFGetFieldDefaulted(tif_, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
-       icclen < grk::maxICCProfileBufferLen)
-      copyICC(image, iccbuf, icclen);
-  }
-  // 7. extract IPTC meta-data
-  if(TIFFGetField(tif_, TIFFTAG_RICHTIFFIPTC, &count, &raw_ptr) == 1 && raw_ptr)
-  {
-    const uint8_t* src = static_cast<const uint8_t*>(raw_ptr);
-    if(count > 0)
-    {
-      createMeta(image);
-      image->meta->iptc_len = count;
-      image->meta->iptc_buf = new uint8_t[count];
-      memcpy(image->meta->iptc_buf, src, count);
-    }
-  }
-  // 8. extract XML meta-data
-  if(TIFFGetFieldDefaulted(tif_, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
-  {
-    createMeta(image);
-    image->meta->xmp_len = xmp_len;
-    image->meta->xmp_buf = new uint8_t[xmp_len];
-    memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
-  }
-  // 8b. extract EXIF meta-data
-  {
-    uint8_t* exif_data = nullptr;
-    uint32_t exif_size = 0;
-    if(extractExifFromTiff(tif_, &exif_data, &exif_size) && exif_data && exif_size > 0)
-    {
-      createMeta(image);
-      image->meta->exif_buf = exif_data;
-      image->meta->exif_len = exif_size;
-    }
-  }
+  readMetadataTags(tif_, image, parameters, isCIE);
   // For chunky (interleaved) data the per-row scratch buffer is sized from
   // tiSpp, but the de-interleavers read width*numcomps samples. If the
   // photometric/extrasamples-derived numcomps exceeds the SamplesPerPixel tag,

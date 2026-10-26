@@ -924,7 +924,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   uint8_t quantStepShift;
   double rateTolerance;
 
-  bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC;
+  bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC, strictCompressionRatios;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
   auto rateControlAlgorithmOpt =
@@ -1006,6 +1006,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       "Quantization step shift, applied only after a frame that hit its byte budget");
   auto rateToleranceOpt =
       app.add_option("--rate-tolerance", rateTolerance, "Rate control tolerance");
+  auto strictCompressionRatiosOpt = app.add_flag("--strict-rates", strictCompressionRatios,
+                                                 "Fail when a compression ratio cannot be met");
   app.add_option("--write-metadata", parameters->metadata_write_flags,
                  "JP2 metadata: 1=EXIF, 2=IPTC, 4=XMP, 8=none, 0=all")
       ->default_val(0);
@@ -1071,6 +1073,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->quant_step_shift = quantStepShift;
   if(rateToleranceOpt->count() > 0)
     parameters->rate_control_tolerance = rateTolerance;
+  if(strictCompressionRatiosOpt->count() > 0)
+    parameters->strict_compression_ratios = strictCompressionRatios;
   if(xyzOpt->count() > 0)
     parameters->apply_xyz_transform = true;
   if(repetitionsOpt->count() > 0)
@@ -2152,6 +2156,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   grk_object* codec = nullptr;
   grk_image* image = info->image;
   bool createdImage = false;
+  bool attachedPluginMetadata = false;
   std::string outfile;
   std::string temp_ofname;
 
@@ -2350,6 +2355,16 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       spdlog::warn("MSamples/sec is {}, whereas limit is {}.", msamplespersec, limit);
   }
 
+#ifdef GROK_HAVE_LIBTIFF
+  // the plugin reads only the pixels of a TIFF, not its metadata tags
+  if(info->tile && !createdImage && info->input_file_name && info->input_file_name[0])
+  {
+    TIFFFormat<int32_t> tif;
+    if(!tif.readMetadata(info->input_file_name, image, &frameParameters))
+      goto cleanup;
+    attachedPluginMetadata = true;
+  }
+#endif
   if(!info->stream_params.buf)
   {
     safe_strcpy(info->stream_params.file, outfile.c_str());
@@ -2377,6 +2392,11 @@ cleanup:
   grk_object_unref(codec);
   if(createdImage)
     grk_object_unref(&image->obj);
+  if(attachedPluginMetadata && image->meta)
+  {
+    grk_object_unref(&image->meta->obj);
+    image->meta = nullptr;
+  }
   if(!compressedBytes)
   {
     spdlog::error("failed to compress image");

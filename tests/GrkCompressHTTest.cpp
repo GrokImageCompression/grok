@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -435,6 +436,135 @@ void checkDecompressDevice(const std::string& decompressPath, const std::filesys
   }
 }
 
+constexpr char kXmp[] = "<x:xmpmeta>plugin tiff metadata</x:xmpmeta>";
+constexpr uint32_t kProfileBytes = 132;
+// pels per metre
+constexpr double kResolution = 3000;
+
+void writeBigEndian32(uint8_t* destination, uint32_t value)
+{
+  for(int i = 0; i < 4; ++i)
+    destination[i] = (uint8_t)(value >> (24 - 8 * i));
+}
+
+// an RGB display profile header with no tags, enough for lcms to open it
+std::vector<uint8_t> makeProfile()
+{
+  std::vector<uint8_t> profile(kProfileBytes, 0);
+  writeBigEndian32(profile.data(), kProfileBytes);
+  writeBigEndian32(profile.data() + 8, 0x04300000);
+  std::memcpy(profile.data() + 12, "mntrRGB XYZ ", 12);
+  std::memcpy(profile.data() + 36, "acsp", 4);
+  return profile;
+}
+
+bool writeJp2WithMetadata(const std::filesystem::path& path)
+{
+  auto image = makeFrame(3, 0);
+  if(!image)
+    return false;
+  image->meta = grk_image_meta_new();
+  auto profile = makeProfile();
+  image->meta->color.icc_profile_buf = new uint8_t[kProfileBytes];
+  std::memcpy(image->meta->color.icc_profile_buf, profile.data(), kProfileBytes);
+  image->meta->color.icc_profile_len = kProfileBytes;
+  image->meta->xmp_buf = new uint8_t[sizeof(kXmp)];
+  std::memcpy(image->meta->xmp_buf, kXmp, sizeof(kXmp));
+  image->meta->xmp_len = sizeof(kXmp);
+  grk_cparameters params;
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_JP2;
+  params.numlayers = 1;
+  params.mct = 1;
+  params.write_capture_resolution = true;
+  params.capture_resolution[0] = kResolution;
+  params.capture_resolution[1] = kResolution;
+  std::vector<uint8_t> buffer((size_t)kWidth * kHeight * 3 * 4);
+  grk_stream_params stream = {};
+  stream.buf = buffer.data();
+  stream.buf_len = buffer.size();
+  auto codec = grk_compress_init(&stream, &params, image);
+  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
+  if(codec)
+    grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+  if(!length)
+    return false;
+  std::ofstream file(path, std::ios::binary);
+  file.write((const char*)buffer.data(), (std::streamsize)length);
+  return (bool)file;
+}
+
+void checkJp2Metadata(const std::string& label, const std::filesystem::path& path)
+{
+  grk_decompress_parameters params = {};
+  grk_stream_params streamParams = {};
+  auto file = path.string();
+  std::snprintf(streamParams.file, sizeof(streamParams.file), "%s", file.c_str());
+  auto codec = grk_decompress_init(&streamParams, &params);
+  grk_header_info header = {};
+  if(!codec || !grk_decompress_read_header(codec, &header))
+  {
+    fail(label + ": read header");
+    grk_object_unref(codec);
+    return;
+  }
+  auto image = grk_decompress_get_image(codec);
+  auto meta = image ? image->meta : nullptr;
+  auto profile = makeProfile();
+  if(!meta || meta->color.icc_profile_len != kProfileBytes ||
+     std::memcmp(meta->color.icc_profile_buf, profile.data(), kProfileBytes) != 0)
+    fail(label + ": ICC profile missing");
+  if(!meta || meta->xmp_len != sizeof(kXmp) || std::memcmp(meta->xmp_buf, kXmp, sizeof(kXmp)) != 0)
+    fail(label + ": XMP missing");
+  bool hasResolution = image && std::abs(image->capture_resolution[0] - kResolution) < 1 &&
+                       std::abs(image->capture_resolution[1] - kResolution) < 1;
+  if(!hasResolution)
+    fail(label + ": capture resolution missing");
+  grk_object_unref(codec);
+}
+
+// metadata survives a plugin decode to TIFF and a plugin encode of that TIFF
+void checkTiffMetadata(const std::string& decompressPath, const std::filesystem::path& root)
+{
+  auto metadataRoot = root / "tiff_metadata";
+  auto sourceDir = metadataRoot / "source";
+  auto tifDir = metadataRoot / "tif";
+  auto batchDecodeDir = metadataRoot / "batch_decode";
+  auto batchDir = metadataRoot / "batch";
+  for(auto& dir : {sourceDir, tifDir, batchDecodeDir, batchDir})
+    std::filesystem::create_directories(dir);
+  auto source = sourceDir / "source.jp2";
+  auto tif = tifDir / frameName(0, "tif");
+  if(!writeJp2WithMetadata(source) ||
+     runQuiet("\"" + decompressPath + "\" -i \"" + source.string() + "\" -o \"" + tif.string() +
+              "\" -G 0") != 0)
+  {
+    fail("TIFF with metadata: could not write the input");
+    return;
+  }
+  if(runQuiet("\"" + decompressPath + "\" -y \"" + sourceDir.string() + "\" -a \"" +
+              batchDecodeDir.string() + "\" -O tif -G 0") != 0)
+    fail("TIFF metadata, batch decode: grk_decompress returned non zero");
+  // the plugin names a batch output after the whole input file name
+  auto batchDecoded = batchDecodeDir / "source.jp2.tif";
+  if(!std::filesystem::exists(batchDecoded))
+    fail("TIFF metadata, batch decode: not decoded on the plugin");
+  auto batchDecodedJp2 = metadataRoot / "batch_decode.jp2";
+  compress("TIFF metadata, batch decode",
+           {"-i", batchDecoded.string(), "-o", batchDecodedJp2.string(), "-G", "-2"});
+  checkJp2Metadata("TIFF metadata, batch decode", batchDecodedJp2);
+  auto single = metadataRoot / "single.jp2";
+  if(compress("TIFF metadata, single file",
+              {"-i", tif.string(), "-o", single.string(), "-G", "0"}) != 1)
+    fail("TIFF metadata, single file: not coded on the plugin");
+  checkJp2Metadata("TIFF metadata, single file", single);
+  if(compress("TIFF metadata, batch",
+              {"-y", tifDir.string(), "-O", "jp2", "-a", batchDir.string(), "-G", "0"}) != 1)
+    fail("TIFF metadata, batch: not coded on the plugin");
+  checkJp2Metadata("TIFF metadata, batch", batchDir / frameName(0, "jp2"));
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -459,6 +589,7 @@ int main(int argc, char** argv)
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
     checkDecompressDevice(argv[1], root);
+    checkTiffMetadata(argv[1], root);
   }
   grk_deinitialize();
   if(g_failures)

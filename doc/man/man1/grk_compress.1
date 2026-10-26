@@ -199,6 +199,16 @@ sub\-sampling
 .PP
 Apply ICC profile before compression, if present.
 .PP
+\f[CR]\-\-write\-metadata [flags]\f[R]
+.PP
+Select the metadata written to JP2 UUID boxes.
+The flags are \f[CR]1\f[R] for EXIF, \f[CR]2\f[R] for IPTC, \f[CR]4\f[R]
+for XMP and \f[CR]8\f[R] for none.
+Add the values to select more than one type.
+The default \f[CR]0\f[R] writes all three types.
+The none flag overrides the type flags.
+GeoTIFF metadata is always written.
+.PP
 \f[CR]\-A, \-\-rate\-\-control\-algorithm [0|1]\f[R]
 .PP
 Select algorithm used for rate control.
@@ -222,6 +232,8 @@ The order used to define the different levels of compression is
 important and must be from left to right in descending order.
 A final lossless quality layer (including all remaining code passes)
 will be signified by the value 1.
+A layer whose byte budget is smaller than its required headers is
+written empty at its minimum valid size.
 Default: 1 single lossless quality layer.
 .PP
 \f[CR]\-q, \-quality [quality in dB,quality in dB,...]\f[R]
@@ -245,6 +257,31 @@ Requires \f[CR]\-I\f[R] and a single component or a colour image.
 Step sizes only: use \f[CR]\-r\f[R] or \f[CR]\-q\f[R] as well to add
 rate constrained quality layers.
 Default: off.
+.PP
+\f[CR]\-\-quant\-step\-shift [planes]\f[R]
+.PP
+Multiplies every sub\-band\[cq]s base quantization step by 2 to the
+power of this, so the given number of finest bit planes is never coded
+and both encoding and rate control do less work.
+At most \f[CR]8\f[R].
+Requires \f[CR]\-I\f[R], and is ignored when \f[CR]\-\-qfactor\f[R] is
+set.
+Default: \f[CR]0\f[R].
+.PP
+\f[CR]\-\-rate\-tolerance [fraction]\f[R]
+.PP
+Fraction of a quality layer\[cq]s byte budget rate control may leave
+unused.
+Rate control stops at the first threshold whose simulated size is within
+this fraction of the budget instead of bisecting to the exact answer,
+which cuts the number of packet simulations.
+Must be less than \f[CR]0.5\f[R].
+Default: \f[CR]0.0\f[R], an exact search.
+.PP
+\f[CR]\-\-strict\-rates\f[R]
+.PP
+Fail when a compression ratio\[cq]s byte budget is smaller than the
+minimum valid layer size.
 .PP
 \f[CR]\-n, \-numresolutions [number of resolutions]\f[R]
 .PP
@@ -293,6 +330,31 @@ Default: off
 .PP
 Use TLM markers.
 Default: off
+.PP
+\f[CR]\-\-progressive\-rc\f[R]
+.PP
+Progressive rate control.
+The encoder estimates the rate control slope threshold while code blocks
+are still being coded, then stops generating the coding passes that the
+estimate says rate control would discard.
+This speeds up compression at a target rate, and makes the output differ
+slightly from a full encode.
+Only applies to the JPEG 2000 Part 1 coder.
+Default: off
+.PP
+\f[CR]\-\-slope\-hint [threshold]\f[R]
+.PP
+Rate control slope threshold from a previously compressed similar frame,
+as logged with \f[CR]\-v\f[R].
+It narrows the rate control search when there is a single quality layer
+allocated by compression ratio, reaching the same threshold in fewer
+packet simulations.
+It does not change block coding and does not need
+\f[CR]\-\-progressive\-rc\f[R].
+When compressing a directory the encoder carries each frame\[cq]s
+threshold to the next on its own, so this flag is only needed for the
+first frame or when frames are compressed one process at a time.
+Default: \f[CR]0\f[R], no hint
 .PP
 \f[CR]\-I, \-irreversible\f[R]
 .PP

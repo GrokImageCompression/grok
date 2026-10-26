@@ -316,6 +316,7 @@ struct TileCodingParams
   uint8_t mct_ = 0;
   /** rates of layers */
   double rates_[maxCompressLayersGRK];
+  bool writeEmptyLayer_[maxCompressLayersGRK];
   /** number of progression order changes, minus one, so it cannot tell one from none */
   uint32_t numpocs_ = 0;
   /** set when a main header POC was read, so that a single one is not read as none */
@@ -408,6 +409,7 @@ struct EncodingParams
   uint16_t rateControlSlopeHint_;
   /* fraction of the layer budget rate control may leave unused, 0 for an exact search */
   double rateControlTolerance_;
+  bool failOnRateControlOvershoot_;
 };
 
 struct DecodingParams

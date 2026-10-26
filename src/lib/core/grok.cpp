@@ -966,6 +966,7 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->rate_control_slope_hint = 0;
   parameters->quant_step_shift = 0;
   parameters->rate_control_tolerance = 0.0;
+  parameters->strict_compression_ratios = false;
 }
 bool grk_apply_xyz_transform(grk_image* image)
 {
@@ -2053,6 +2054,19 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
     grk_img.decompress_height = info->image->comps[0].h;
     grk_img.decompress_prec = info->image->comps[0].prec;
     grk_img.decompress_colour_space = (GRK_COLOR_SPACE)info->image->color_space;
+    // the plugin image has no metadata
+    auto headerImage = info->codec ? grk_decompress_get_image((grk_object*)info->codec) : nullptr;
+    if(headerImage)
+    {
+      grk_img.meta = headerImage->meta;
+      grk_img.has_capture_resolution = headerImage->has_capture_resolution;
+      grk_img.has_display_resolution = headerImage->has_display_resolution;
+      for(int i = 0; i < 2; ++i)
+      {
+        grk_img.capture_resolution[i] = headerImage->capture_resolution[i];
+        grk_img.display_resolution[i] = headerImage->display_resolution[i];
+      }
+    }
     grokInfo.image = &grk_img;
   }
 

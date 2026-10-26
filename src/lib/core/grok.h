@@ -1912,6 +1912,7 @@ typedef struct _grk_cparameters
    */
   bool apply_xyz_transform;
   bool cpu_only; /* compress on the CPU even when a plugin is loaded */
+  bool strict_compression_ratios;
 } grk_cparameters;
 
 /**

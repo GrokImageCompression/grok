@@ -38,6 +38,12 @@ constexpr uint32_t kCountedProfile = 2500;
 // between one tile's header share and the whole-file budget
 constexpr uint32_t kSharedProfile = 9000;
 
+enum class StrictCompressionRatios
+{
+  no,
+  yes
+};
+
 int g_failures = 0;
 std::string g_errors;
 
@@ -115,9 +121,12 @@ grk_image* makeImage(uint32_t profileBytes)
   return image;
 }
 
-uint64_t compressImage(GRK_SUPPORTED_FILE_FMT format, uint32_t profileBytes,
-                       std::initializer_list<double> rates, uint32_t tileSize, bool irreversible,
-                       std::vector<uint8_t>* stream)
+uint64_t
+    compressImage(GRK_SUPPORTED_FILE_FMT format, uint32_t profileBytes,
+                  std::initializer_list<double> rates, uint32_t tileSize, bool irreversible,
+                  std::vector<uint8_t>* stream,
+                  StrictCompressionRatios strictCompressionRatios = StrictCompressionRatios::no,
+                  GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT)
 {
   auto image = makeImage(profileBytes);
   if(!image)
@@ -131,6 +140,8 @@ uint64_t compressImage(GRK_SUPPORTED_FILE_FMT format, uint32_t profileBytes,
   params.cblockh_init = 32;
   params.irreversible = irreversible;
   params.allocation_by_rate_distortion = true;
+  params.strict_compression_ratios = strictCompressionRatios == StrictCompressionRatios::yes;
+  params.rate_control_algorithm = rateControlAlgorithm;
   params.numlayers = 0;
   for(double rate : rates)
     params.layer_rate[params.numlayers++] = rate;
@@ -154,9 +165,11 @@ uint64_t compressImage(GRK_SUPPORTED_FILE_FMT format, uint32_t profileBytes,
   return length;
 }
 
-size_t countDifferences(std::vector<uint8_t>& stream, uint64_t length)
+std::vector<int32_t> decompressSamples(std::vector<uint8_t>& stream, uint64_t length,
+                                       uint16_t layers = 0)
 {
   grk_decompress_parameters params = {};
+  params.core.layers_to_decompress = layers;
   grk_stream_params streamParams = {};
   streamParams.buf = stream.data();
   streamParams.buf_len = length;
@@ -165,29 +178,44 @@ size_t countDifferences(std::vector<uint8_t>& stream, uint64_t length)
   if(!codec || !grk_decompress_read_header(codec, &header) || !grk_decompress(codec, nullptr))
   {
     grk_object_unref(codec);
-    return SIZE_MAX;
+    return {};
   }
   auto image = grk_decompress_get_image(codec);
   if(!image || image->numcomps != kComponents)
   {
     grk_object_unref(codec);
-    return SIZE_MAX;
+    return {};
   }
-  size_t differences = 0;
+  std::vector<int32_t> samples;
+  samples.reserve((size_t)kWidth * kHeight * kComponents);
   for(uint16_t c = 0; c < image->numcomps; ++c)
   {
     auto comp = image->comps + c;
     if(comp->w != kWidth || comp->h != kHeight)
     {
       grk_object_unref(codec);
-      return SIZE_MAX;
+      return {};
     }
     for(uint32_t y = 0; y < comp->h; ++y)
       for(uint32_t x = 0; x < comp->w; ++x)
-        if(loadSample(comp, x, y) != noiseAt(c, x, y))
-          ++differences;
+        samples.push_back(loadSample(comp, x, y));
   }
   grk_object_unref(codec);
+  return samples;
+}
+
+size_t countDifferences(std::vector<uint8_t>& stream, uint64_t length)
+{
+  auto samples = decompressSamples(stream, length);
+  if(samples.empty())
+    return SIZE_MAX;
+  size_t differences = 0;
+  size_t sampleIndex = 0;
+  for(uint16_t component = 0; component < kComponents; ++component)
+    for(uint32_t y = 0; y < kHeight; ++y)
+      for(uint32_t x = 0; x < kWidth; ++x)
+        if(samples[sampleIndex++] != noiseAt(component, x, y))
+          ++differences;
   return differences;
 }
 
@@ -202,7 +230,8 @@ void expectReject(const char* name, uint32_t profileBytes, std::initializer_list
 {
   g_errors.clear();
   std::vector<uint8_t> stream;
-  uint64_t length = compressImage(GRK_FMT_JP2, profileBytes, rates, tileSize, true, &stream);
+  uint64_t length = compressImage(GRK_FMT_JP2, profileBytes, rates, tileSize, true, &stream,
+                                  StrictCompressionRatios::yes);
   if(length != 0)
   {
     char detail[128];
@@ -239,6 +268,27 @@ void expectDecodes(const char* name, GRK_SUPPORTED_FILE_FMT format, uint32_t pro
   std::printf("ok: %s is %llu bytes, %zu samples differ\n", name, (unsigned long long)length,
               differences);
 }
+
+void expectEmptyInitialLayers(
+    const char* name, uint32_t profileBytes, std::initializer_list<double> rates,
+    uint16_t emptyLayers,
+    GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT)
+{
+  std::vector<uint8_t> stream;
+  uint64_t length = compressImage(GRK_FMT_JP2, profileBytes, rates, 0, true, &stream,
+                                  StrictCompressionRatios::no, rateControlAlgorithm);
+  auto firstLayer = length == 0 ? std::vector<int32_t>{} : decompressSamples(stream, length, 1);
+  auto allLayers = length == 0 ? std::vector<int32_t>{} : decompressSamples(stream, length);
+  bool invalid = firstLayer.empty() || allLayers.empty() || firstLayer == allLayers;
+  for(uint16_t layer = 2; !invalid && layer <= emptyLayers; ++layer)
+    invalid = decompressSamples(stream, length, layer) != firstLayer;
+  if(invalid)
+  {
+    fail(name, "initial layers are not empty and identical");
+    return;
+  }
+  std::printf("ok: %s has %u empty initial layers\n", name, emptyLayers);
+}
 } // namespace
 
 int main()
@@ -248,11 +298,27 @@ int main()
   handlers.error_callback = recordError;
   grk_set_msg_handlers(handlers);
 
-  expectReject("first layer smaller than the profile", kOversizeProfile, {40.0, 4.0}, 0);
-  expectReject("first layer smaller than the profile, four tiles", kOversizeProfile, {40.0, 4.0},
-               64);
-
   constexpr uint64_t kFinalBudget = kRawBytes / 4;
+  expectDecodes("empty first layer for a large profile", GRK_FMT_JP2, kOversizeProfile, {40.0, 4.0},
+                0, true, false, kFinalBudget + 1024);
+  expectDecodes("empty first layer for a large profile, four tiles", GRK_FMT_JP2, kOversizeProfile,
+                {40.0, 4.0}, 64, true, false, kFinalBudget + 2048);
+  expectDecodes("consecutive empty layers for a large profile", GRK_FMT_JP2, kOversizeProfile,
+                {80.0, 40.0, 20.0, 4.0}, 0, true, false, kFinalBudget + 1024);
+  expectEmptyInitialLayers("consecutive empty layers remain identical", kOversizeProfile,
+                           {80.0, 40.0, 20.0, 4.0}, 3);
+  expectEmptyInitialLayers("bisect keeps consecutive empty layers identical", kOversizeProfile,
+                           {80.0, 40.0, 20.0, 4.0}, 3, GRK_RATE_CONTROL_BISECT);
+  expectEmptyInitialLayers("empty first layer before a lossless layer", kOversizeProfile,
+                           {40.0, 0.0}, 1);
+  expectEmptyInitialLayers("bisect empty first layer before a lossless layer", kOversizeProfile,
+                           {40.0, 0.0}, 1, GRK_RATE_CONTROL_BISECT);
+  expectDecodes("single empty layer for a large profile", GRK_FMT_JP2, kOversizeProfile, {40.0}, 0,
+                true, false, kOversizeProfile + 1024);
+  expectReject("strict first layer smaller than the profile", kOversizeProfile, {40.0, 4.0}, 0);
+  expectReject("strict first layer smaller than the profile, four tiles", kOversizeProfile,
+               {40.0, 4.0}, 64);
+
   expectDecodes("jp2 without a profile", GRK_FMT_JP2, 0, {40.0, 4.0}, 0, true, false,
                 kFinalBudget + 1024);
   expectDecodes("j2k does not store the profile", GRK_FMT_J2K, kOversizeProfile, {40.0, 4.0}, 0,

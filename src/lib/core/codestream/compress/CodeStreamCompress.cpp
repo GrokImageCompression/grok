@@ -247,6 +247,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
   if(!parameters || !image)
     return false;
+  bool failOnRateControlOvershoot =
+      parameters->strict_compression_ratios || GRK_IS_CINEMA(parameters->rsiz) ||
+      GRK_IS_BROADCAST(parameters->rsiz) || GRK_IS_IMF(parameters->rsiz);
 
   bool isHT = (parameters->cblk_sty & 0X7F) == GRK_CBLKSTY_HT_ONLY;
 
@@ -484,6 +487,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   cp_.codingParams_.enc_.progressiveRateControl_ = parameters->progressive_rate_control;
   cp_.codingParams_.enc_.rateControlSlopeHint_ = parameters->rate_control_slope_hint;
   cp_.codingParams_.enc_.rateControlTolerance_ = parameters->rate_control_tolerance;
+  cp_.codingParams_.enc_.failOnRateControlOvershoot_ = failOnRateControlOvershoot;
 
   /* tiles */
   cp_.t_width_ = parameters->t_width;
@@ -1261,10 +1265,19 @@ bool CodeStreamCompress::updateRates(void)
           double byteTarget = rawBudget - offset;
           if(enforceRate && byteTarget <= 0.0)
           {
-            grklog.error("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
-                         "budget does not cover the %.0f byte tile-part overhead",
-                         k, tileId, rawBudget, offset);
-            return false;
+            if(cp->codingParams_.enc_.failOnRateControlOvershoot_)
+            {
+              grklog.error("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                           "budget does not cover the %.0f byte tile-part overhead",
+                           k, tileId, rawBudget, offset);
+              return false;
+            }
+            grklog.warn("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                        "budget does not cover the %.0f byte tile-part overhead. Writing an "
+                        "empty layer",
+                        k, tileId, rawBudget, offset);
+            tcp->writeEmptyLayer_[k] = true;
+            byteTarget = 0.0;
           }
           *rates = byteTarget;
         }
@@ -1291,12 +1304,23 @@ bool CodeStreamCompress::updateRates(void)
         {
           if(enforceRate && rates[k] <= overhead)
           {
-            grklog.error(
+            if(cp->codingParams_.enc_.failOnRateControlOvershoot_)
+            {
+              grklog.error(
+                  "Layer %u of tile %u cannot meet its compression ratio: its %.0f byte budget "
+                  "does not cover its %.0f byte share of the %.0f byte file header. The header "
+                  "counts toward the ratio, and for a JP2 file it includes the ICC profile",
+                  k, tileId, rates[k], overhead, headerSize);
+              return false;
+            }
+            grklog.warn(
                 "Layer %u of tile %u cannot meet its compression ratio: its %.0f byte budget "
-                "does not cover its %.0f byte share of the %.0f byte file header. The header "
-                "counts toward the ratio, and for a JP2 file it includes the ICC profile",
+                "does not cover its %.0f byte share of the %.0f byte file header. Writing an "
+                "empty layer",
                 k, tileId, rates[k], overhead, headerSize);
-            return false;
+            tcp->writeEmptyLayer_[k] = true;
+            rates[k] = 0.0;
+            continue;
           }
           rates[k] -= overhead;
         }

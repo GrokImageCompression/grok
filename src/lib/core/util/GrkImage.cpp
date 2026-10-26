@@ -357,11 +357,13 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->color_space = color_space;
   if(has_capture_resolution)
   {
+    dest->has_capture_resolution = true;
     dest->capture_resolution[0] = capture_resolution[0];
     dest->capture_resolution[1] = capture_resolution[1];
   }
   if(has_display_resolution)
   {
+    dest->has_display_resolution = true;
     dest->display_resolution[0] = display_resolution[0];
     dest->display_resolution[1] = display_resolution[1];
   }

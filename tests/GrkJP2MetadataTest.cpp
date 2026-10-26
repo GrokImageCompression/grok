@@ -15,11 +15,13 @@
  *
  */
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include "grok.h"
@@ -48,7 +50,8 @@ namespace grk
 // Compress a 16x16 gray JP2 with optional metadata, then decompress and verify round-trip.
 // Returns 0 on success, 1 on failure.
 static bool compressWithMeta(const std::string& path, grk_image_meta* meta,
-                             uint32_t metadataWriteFlags = GRK_METADATA_WRITE_ALL)
+                             uint32_t metadataWriteFlags = GRK_METADATA_WRITE_ALL,
+                             std::optional<double> resolution = std::nullopt)
 {
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
@@ -57,6 +60,16 @@ static bool compressWithMeta(const std::string& path, grk_image_meta* meta,
   cparams.numlayers = 1;
   cparams.layer_rate[0] = 0;
   cparams.metadata_write_flags = metadataWriteFlags;
+  if(resolution)
+  {
+    cparams.write_capture_resolution = true;
+    cparams.write_display_resolution = true;
+    for(int i = 0; i < 2; ++i)
+    {
+      cparams.capture_resolution[i] = *resolution;
+      cparams.display_resolution[i] = *resolution;
+    }
+  }
 
   grk_image_comp comp{};
   comp.dx = 1;
@@ -333,6 +346,31 @@ static int testGeoTiffUUID(const std::string& tmpDir)
 
   grk_object_unref(codec);
   grk_object_unref(&meta->obj);
+  return ok ? 0 : 1;
+}
+
+static int testResolution(const std::string& tmpDir)
+{
+  constexpr double resolution = 3000;
+  auto* meta = grk_image_meta_new();
+  std::string path = tmpDir + "/resolution_test.jp2";
+  bool compressed = compressWithMeta(path, meta, GRK_METADATA_WRITE_ALL, resolution);
+  grk_object_unref(&meta->obj);
+  grk_header_info header{};
+  grk_image* image = nullptr;
+  grk_object* codec = nullptr;
+  if(!compressed || !decompressAndReadHeader(path, &header, &image, &codec))
+    return 1;
+  bool ok = image->has_capture_resolution && image->has_display_resolution &&
+            std::abs(image->capture_resolution[0] - resolution) < 1 &&
+            std::abs(image->display_resolution[0] - resolution) < 1;
+  if(ok)
+    spdlog::info("resolution: PASSED");
+  else
+    spdlog::error("resolution: has capture {} display {}, capture {} display {}",
+                  image->has_capture_resolution, image->has_display_resolution,
+                  image->capture_resolution[0], image->display_resolution[0]);
+  grk_object_unref(codec);
   return ok ? 0 : 1;
 }
 
@@ -2547,6 +2585,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   int failures = 0;
   failures += testGeoTiffUUID(tmpDir.string());
   failures += testIPR(tmpDir.string());
+  failures += testResolution(tmpDir.string());
   failures += testMultipleXmlBoxes(tmpDir.string());
   failures += testIPRFlagInIHDR(tmpDir.string());
   failures += testXmlBoxPlacement(tmpDir.string());
