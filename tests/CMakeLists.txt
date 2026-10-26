@@ -154,8 +154,9 @@ if(GRK_BUILD_PLUGIN_LOADER)
   add_test(NAME grk_plugin_compress_ht_test
     COMMAND grk_compress_ht_test $<TARGET_FILE:grk_decompress> plugin)
   # a batch that never finishes hangs
+  # random delays start batch file readers after the batch compress call has returned
   set_tests_properties(grk_plugin_compress_ht_test PROPERTIES TIMEOUT 120
-    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    ENVIRONMENT "GRK_PLUGIN_PATH=${CMAKE_LIBRARY_OUTPUT_DIRECTORY};GPUP_CHAOS=50000")
 
   # player frame rate on one code stream, not a test
   add_executable(grk_plugin_player_bench grk_plugin_player_bench.cpp)
