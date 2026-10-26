@@ -453,6 +453,26 @@ void checkBatchRateTolerance(const std::filesystem::path& root)
   }
 }
 
+// grk_decompress -G -2 decodes on the CPU, as grk_compress -G -2 encodes on the CPU
+void checkDecompressDevice(const std::string& decompressPath, const std::filesystem::path& root)
+{
+  auto streamDir = root / "3" / "jhc_streams";
+  auto name = frameName(0, "jhc");
+  for(std::string deviceId : {"0", "-2"})
+  {
+    auto decodeDir = root / ("device_" + deviceId);
+    std::filesystem::create_directories(decodeDir);
+    if(runQuiet("\"" + decompressPath + "\" -y \"" + streamDir.string() + "\" -a \"" +
+                decodeDir.string() + "\" -O tif -G " + deviceId) != 0)
+      fail("grk_decompress -G " + deviceId + " returned non zero");
+    // the plugin names a batch output after the whole input file name
+    bool onPlugin = std::filesystem::exists(decodeDir / (name + ".tif"));
+    bool onCpu = std::filesystem::exists(decodeDir / frameName(0, "tif"));
+    if(onPlugin != (deviceId != "-2") || onCpu != (deviceId == "-2"))
+      fail("grk_decompress -G " + deviceId + " decoded on the wrong device");
+  }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -477,6 +497,7 @@ int main(int argc, char** argv)
     checkMemoryEncodeAfterFileEncode(root);
     checkPluginDecodeAfterFileEncode(root);
     checkBatchRateTolerance(root);
+    checkDecompressDevice(argv[1], root);
   }
   grk_deinitialize();
   if(g_failures)

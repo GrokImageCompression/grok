@@ -705,7 +705,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   if(deviceIdOpt->count() > 0)
   {
     parameters->device_id = deviceId;
-    initParams->usePlugin = (deviceId == -2);
+    initParams->usePlugin = (deviceId != -2);
+    parameters->cpu_only = deviceId == -2;
   }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
@@ -845,7 +846,7 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
     return GrkRCFail;
   }
 
-  // only load GPU plugin when -G is specified to be -2 (CPU only)
+  // skip GPU plugin when -G is -2 (CPU only)
   if(!initParams->usePlugin)
   {
     grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
