@@ -231,6 +231,35 @@ uint64_t compress(const std::string& label, const std::vector<std::string>& argu
   return grk_plugin_accelerated_frames() - before;
 }
 
+// a plugin batch decode of HTJ2K files writes each output under its input file's full name
+void checkBatchDecode(const std::string& decompressPath, const std::filesystem::path& shapeRoot,
+                      const std::string& shapeName)
+{
+  auto tifDir = shapeRoot / "tif";
+  for(std::string extension : {"jhc", "jph"})
+  {
+    auto label = shapeName + ", batch decode of " + extension;
+    auto streamDir = shapeRoot / (extension + "_streams");
+    auto decodeDir = shapeRoot / (extension + "_decoded");
+    for(auto& dir : {streamDir, decodeDir})
+      std::filesystem::create_directories(dir);
+    compress(label + " streams", {"-y", tifDir.string(), "-O", extension, "-M", "64", "-a",
+                                  streamDir.string(), "-G", "-2"});
+    if(runQuiet("\"" + decompressPath + "\" -y \"" + streamDir.string() + "\" -a \"" +
+                decodeDir.string() + "\" -O tif") != 0)
+    {
+      fail(label + ": grk_decompress returned non zero");
+      continue;
+    }
+    for(uint32_t frame = 0; frame < kNumFrames; ++frame)
+    {
+      auto decoded = readFile(decodeDir / (frameName(frame, extension.c_str()) + ".tif"));
+      if(decoded.empty() || decoded != readFile(tifDir / frameName(frame, "tif")))
+        fail(label + ", " + frameName(frame, extension.c_str()) + ": differs from the source");
+    }
+  }
+}
+
 // directory and single file HTJ2K encodes write the CPU's bytes
 void checkCompress(const std::string& decompressPath, Device device,
                    const std::filesystem::path& root, uint16_t numComps)
@@ -260,6 +289,7 @@ void checkCompress(const std::string& decompressPath, Device device,
     fail(directoryLabel + ": " + std::to_string(accelerated) + " frames on the plugin");
   if(usePlugin)
   {
+    checkBatchDecode(decompressPath, shapeRoot, shapeName);
     auto repeatDir = shapeRoot / "repeat";
     std::filesystem::create_directories(repeatDir);
     accelerated = compress(directoryLabel + ", two repetitions",
