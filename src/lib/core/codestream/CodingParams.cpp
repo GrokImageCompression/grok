@@ -2103,6 +2103,22 @@ bool TileCodingParams::mergePpt(void)
   return true;
 }
 
+bool TileCodingParams::validateMct(void) const
+{
+  if(mct_ != 1 || numComps_ < 3)
+    return true;
+  for(uint16_t k = 1; k < 3; ++k)
+  {
+    if(tccps_[k].qmfbid_ != tccps_[0].qmfbid_)
+    {
+      grklog.error("The colour transform needs one wavelet for components 0 to 2, but component "
+                   "%u uses %s and component 0 uses %s",
+                   k, tccps_[k].qmfbid_ ? "5/3" : "9/7", tccps_[0].qmfbid_ ? "5/3" : "9/7");
+      return false;
+    }
+  }
+  return true;
+}
 bool TileCodingParams::validateQuantization(void)
 {
   // ensure lossy wavelet has quantization set

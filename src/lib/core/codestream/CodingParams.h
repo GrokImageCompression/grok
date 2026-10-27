@@ -288,6 +288,7 @@ struct TileCodingParams
   void updateLayersToDecompress(void);
 
   bool validateQuantization(void);
+  bool validateMct(void) const;
   /** derives per level splits, depths, step size offsets and kernel reversibility from the
    * DFS and ATK tables, and checks the Part 2 combinations this decoder handles */
   bool resolvePart2(void);

@@ -776,9 +776,9 @@ grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6102120322629632 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6102120322629632.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784.pgx -d 0,0,1024,1024
-grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264.pgx -d 0,0,1024,1024
-grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120.pgx -d 0,0,1024,1024
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-grk_decompress_mercury_fuzzer-767e5d99359ac2422cab3045d3970860799990b7 -o @TEMP_PATH@/clusterfuzz-testcase-grk_decompress_mercury_fuzzer-767e5d99359ac2422cab3045d3970860799990b7.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/security_ht_segments_overflow.j2k -o @TEMP_PATH@/security_ht_segments_overflow.j2k.pgx

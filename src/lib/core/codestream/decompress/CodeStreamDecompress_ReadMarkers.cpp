@@ -155,6 +155,8 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
       grklog.error("required QCD marker not found in main header");
       return false;
     }
+    if(!defaultTcp_->validateMct())
+      return false;
     if(!mergePpm(&cp_))
     {
       grklog.error("Failed to merge PPM data");

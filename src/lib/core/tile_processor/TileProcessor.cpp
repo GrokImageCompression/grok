@@ -983,7 +983,7 @@ void TileProcessor::prepareForDecompression(void)
     if(hasError())
       return;
     // now we can get ready to decompress this tile
-    if(!tcp_->resolvePart2() || !tcp_->validateQuantization())
+    if(!tcp_->resolvePart2() || !tcp_->validateQuantization() || !tcp_->validateMct())
     {
       success_ = false;
       return;
