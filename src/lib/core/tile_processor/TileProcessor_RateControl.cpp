@@ -598,10 +598,10 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         {
           auto cblk = flatCodeblocks[i];
           auto bytesAbove = bodyBytesAbove.data() + (size_t)blockComponent[i] * (kSlopeBuckets + 1);
-          uint32_t base = layno == 0 ? 0 : cblk->getNumPassesInPreviousLayers();
+          uint8_t base = layno == 0 ? 0 : cblk->getNumPassesInPreviousLayers();
           uint32_t previousRate = base ? cblk->getPass(base - 1)->rate_ : 0;
           uint32_t effectiveSlope = USHRT_MAX;
-          for(uint32_t passno = base; passno < cblk->getNumPasses(); ++passno)
+          for(uint8_t passno = base; passno < cblk->getNumPasses(); ++passno)
           {
             auto pass = cblk->getPass(passno);
             if(!pass->slope_)
@@ -613,7 +613,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
             previousRate = pass->rate_;
           }
         }
-        for(int slope = kSlopeBuckets - 1; slope >= 0; --slope)
+        for(uint32_t slope = kSlopeBuckets; slope-- > 0;)
         {
           passesAbove[slope] += passesAbove[slope + 1];
           for(uint16_t compno = 0; compno < numComps; ++compno)
