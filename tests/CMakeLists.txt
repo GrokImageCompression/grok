@@ -794,6 +794,10 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/foo.j2k)
 endif()
 
+add_executable(grk_truncated_resolution_test GrkTruncatedResolutionTest.cpp)
+target_link_libraries(grk_truncated_resolution_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_truncated_resolution_test COMMAND grk_truncated_resolution_test)
+
 add_executable(grk_differential_layers_test GrkDifferentialLayersTest.cpp)
 target_link_libraries(grk_differential_layers_test ${GROK_CORE_NAME} spdlog::spdlog)
 if(GRK_DATA_ROOT)

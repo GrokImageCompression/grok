@@ -1279,6 +1279,14 @@ fn comb_tile(
         if cod.use_eph {
             hdr_len += 2;
         }
+        // the last packet of a cut stream has no later packet to overrun
+        let packet_end = vpos + hdr_len + parsed.body_bytes;
+        if packet_end > stream.total {
+            return Err(DecodeError::Logic(format!(
+                "packet stream overrun: packet ends at {packet_end} of {}",
+                stream.total
+            )));
+        }
 
         // Assign body offsets in contribution order. Bodies are contiguous
         // in the real file (a packet never spans tile-parts).
@@ -1965,6 +1973,18 @@ mod tests {
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "{trailing}");
             assert_eq!(passes(&plan), passes(&baseline), "{trailing}");
         }
+    }
+
+    #[test]
+    fn a_stream_cut_inside_the_last_packet_body_is_rejected() {
+        let mut stream = synth_stream();
+        stream.truncate(stream.len() - 3); // drop the EOC and the last body byte
+        let mut hdr = synth_header();
+        hdr.codestream_len = stream.len() as u64;
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+            panic!("a plan must not point a block past the end of the stream");
+        };
+        assert!(msg.contains("packet stream overrun"), "got {msg}");
     }
 
     #[test]

@@ -89,50 +89,34 @@ struct TileComponent : public Rect32
   template<typename T>
   bool allocRegionWindowTyped(uint32_t numres)
   {
+    // 1. use band geometry, a truncated stream has no precincts past the cut
+    std::vector<Rect32> cblkCovers;
     Rect32 temp(0, 0, 0, 0);
-    bool first = true;
-
-    // 1. find outside bounds of all relevant code blocks, in relative coordinates
     for(uint8_t resno = 0U; resno < numres; ++resno)
     {
       const auto res = &resolutions_[resno];
+      auto cblkExpn = res->cblkExpn_;
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
+        if(band->empty())
+          continue;
         auto roi = window_->getBandWindowPadded(resno, band->orientation_);
-        for(auto precinct : band->precincts_)
-        {
-          if(precinct->empty())
-            continue;
-          precinct->forEachCodeBlockIn(roi, [&](uint32_t cblkno) {
-            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-
-            // transform from canvas coordinates
-            // to buffer coordinates (relative to associated resolution origin)
-            uint32_t x = cblkBounds.x0() - band->x0;
-            uint32_t y = cblkBounds.y0() - band->y0;
-            if(band->orientation_ & 1)
-            {
-              auto prev_res = resolutions_ + resno - 1;
-              x += prev_res->width();
-            }
-            if(band->orientation_ & 2)
-            {
-              auto prev_res = resolutions_ + resno - 1;
-              y += prev_res->height();
-            }
-            // add to union of code block bounds
-            if(first)
-            {
-              temp = Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
-              first = false;
-            }
-            else
-            {
-              temp = temp.rectUnion(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
-            }
-          });
-        }
+        auto cblkGrid = roi->scaleDownPow2(cblkExpn);
+        auto cover = Rect32(cblkGrid.x0 << cblkExpn.x, cblkGrid.y0 << cblkExpn.y,
+                            cblkGrid.x1 << cblkExpn.x, cblkGrid.y1 << cblkExpn.y)
+                         .intersection(band);
+        if(cover.empty())
+          continue;
+        uint32_t x = cover.x0 - band->x0;
+        uint32_t y = cover.y0 - band->y0;
+        if(band->orientation_ & 1)
+          x += resolutions_[resno - 1].width();
+        if(band->orientation_ & 2)
+          y += resolutions_[resno - 1].height();
+        auto bufferCover = Rect32(x, y, x + cover.width(), y + cover.height());
+        temp = cblkCovers.empty() ? bufferCover : temp.rectUnion(bufferCover);
+        cblkCovers.push_back(bufferCover);
       }
     }
 
@@ -142,44 +126,13 @@ struct TileComponent : public Rect32
     auto regionWindow = new SparseCanvas<T, blockSizeExp, blockSizeExp>(temp);
 
     // 3. allocate sparse blocks
-    for(uint8_t resno = 0; resno < numres; ++resno)
+    for(auto& cover : cblkCovers)
     {
-      const auto res = resolutions_ + resno;
-      for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
+      // the wavelet reads windows of code blocks whose decode failed
+      if(!regionWindow->alloc(cover, true))
       {
-        auto band = res->band + bandIndex;
-        auto roi = window_->getBandWindowPadded(resno, band->orientation_);
-        for(auto precinct : band->precincts_)
-        {
-          if(precinct->empty())
-            continue;
-          precinct->forEachCodeBlockIn(roi, [&](uint32_t cblkno) {
-            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-
-            // transform from canvas coordinates
-            // to buffer coordinates (relative to associated resolution origin)
-            uint32_t x = cblkBounds.x0() - band->x0;
-            uint32_t y = cblkBounds.y0() - band->y0;
-            if(band->orientation_ & 1)
-            {
-              auto prev_res = resolutions_ + resno - 1;
-              x += prev_res->width();
-            }
-            if(band->orientation_ & 2)
-            {
-              auto prev_res = resolutions_ + resno - 1;
-              y += prev_res->height();
-            }
-
-            // the wavelet reads windows of code blocks whose decode failed
-            if(!regionWindow->alloc(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
-                                    true))
-            {
-              delete regionWindow;
-              throw std::runtime_error("unable to allocate sparse array");
-            }
-          });
-        }
+        delete regionWindow;
+        throw std::runtime_error("unable to allocate sparse array");
       }
     }
 

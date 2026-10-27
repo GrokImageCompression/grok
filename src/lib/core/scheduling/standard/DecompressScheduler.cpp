@@ -204,6 +204,10 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     auto tilec = tileProcessor->getTile()->comps_ + compno;
     auto wholeTileDecoding = tilec->isWholeTileDecoding();
     auto diffInfo = differentialInfo_ + compno;
+    // resolutions missing from a truncated stream decode as empty bands
+    uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead()
+                         ? tilec->resolutions_to_decompress_
+                         : 0;
 
     // 1. create blocks and store in blocksByRes
     auto& componentBlocks = blocksByTile_[compno];
@@ -305,7 +309,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       {
         try
         {
-          tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead());
+          tilec->allocRegionWindow(numRes);
         }
         catch([[maybe_unused]] const std::runtime_error& ex)
         {
@@ -329,8 +333,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         mctCompHasBlocks++;
       if(imageComponentFlow_[compno])
         delete imageComponentFlow_[compno];
-      imageComponentFlow_[compno] =
-          new ImageComponentFlow(tilec->nextPacketProgressionState_.numResolutionsRead());
+      imageComponentFlow_[compno] = new ImageComponentFlow(numRes);
       if(!tileProcessor->getTile()->comps_->isWholeTileDecoding())
         imageComponentFlow_[compno]->setRegionDecompression();
 
@@ -384,7 +387,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       // generate dependency graph
       graph(compno);
     }
-    uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
     // MCT components clamp after the inverse colour transform, never in the wavelet.
     // a Part 2 level may end without a vertical pass. the float 9/7 canvas holds float
     // bits the fused shift would corrupt, so that one stays standalone.
