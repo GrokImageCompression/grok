@@ -142,6 +142,7 @@ public:
 
 private:
   WaveletPoolData* poolData_ = nullptr;
+  const WaveletScratch* scratch_ = nullptr;
   CodecScheduler* scheduler_ = nullptr;
   TileComponent* tilec_ = nullptr;
   uint16_t compno_ = 0;

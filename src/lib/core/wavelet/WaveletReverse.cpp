@@ -1349,7 +1349,7 @@ bool WaveletReverse::tile_53(void)
   if(numres_ == 1U)
     return true;
 
-  if(!poolData_ || !poolData_->isAllocated())
+  if(!scratch_)
     return false;
 
   // for resolution n, tileCompRes points to LL subband at res n-1
@@ -1381,14 +1381,14 @@ bool WaveletReverse::tile_53(void)
       horizPool_[i].sn = horiz_.sn;
       horizPool_[i].dn = horiz_.dn;
       horizPool_[i].parity = horiz_.parity;
-      horizPool_[i].allocatedMem = (int32_t*)poolData_->getHoriz(i);
-      horizPool_[i].mem = (int32_t*)poolData_->getHoriz(i);
+      horizPool_[i].allocatedMem = (int32_t*)scratch_->getHoriz(i);
+      horizPool_[i].mem = (int32_t*)scratch_->getHoriz(i);
 
       vertPool_[i].sn = vert_.sn;
       vertPool_[i].dn = vert_.dn;
       vertPool_[i].parity = vert_.parity;
-      vertPool_[i].allocatedMem = (int32_t*)poolData_->getVert(i);
-      vertPool_[i].mem = (int32_t*)poolData_->getVert(i);
+      vertPool_[i].allocatedMem = (int32_t*)scratch_->getVert(i);
+      vertPool_[i].mem = (int32_t*)scratch_->getVert(i);
     }
     if(splitsHorizontally(split))
       h_53(res, tileBuffer, resHeight);
@@ -1845,6 +1845,9 @@ bool WaveletReverse::tile_16_53(void)
   if(numres_ == 1U)
     return true;
 
+  if(!scratch_)
+    return false;
+
   auto bandLL = tilec_->resolutions_;
   auto tileBuffer = tilec_->getWindow16();
 
@@ -1873,13 +1876,13 @@ bool WaveletReverse::tile_16_53(void)
     {
       horizPool16_[i].dn = resWidth - horizPool16_[i].sn;
       horizPool16_[i].parity = bandLL->x0 & 1;
-      horizPool16_[i].allocatedMem = (int16_t*)poolData_->getHoriz(i);
-      horizPool16_[i].mem = (int16_t*)poolData_->getHoriz(i);
+      horizPool16_[i].allocatedMem = (int16_t*)scratch_->getHoriz(i);
+      horizPool16_[i].mem = (int16_t*)scratch_->getHoriz(i);
 
       vertPool16_[i].dn = resHeight - vertPool16_[i].sn;
       vertPool16_[i].parity = bandLL->y0 & 1;
-      vertPool16_[i].allocatedMem = (int16_t*)poolData_->getVert(i);
-      vertPool16_[i].mem = (int16_t*)poolData_->getVert(i);
+      vertPool16_[i].allocatedMem = (int16_t*)scratch_->getVert(i);
+      vertPool16_[i].mem = (int16_t*)scratch_->getVert(i);
     }
     h_16_53(res, tileBuffer, resHeight);
     v_16_53(res, tileBuffer, resWidth);
@@ -1890,15 +1893,12 @@ bool WaveletReverse::tile_16_53(void)
 
 bool WaveletReverse::decompress(void)
 {
-  // The pool allocation may legitimately fail (e.g. a degenerate/oversized
-  // tile dimension whose scratch is never actually used); tolerate that as
-  // before. The overflow guard in alloc() prevents the size computation from
-  // wrapping and under-allocating.
-  if(poolData_)
-    poolData_->alloc(maxDim_);
-
   if(!wholeTileDecompress_)
     return decompressPartial();
+
+  // failure is only an error on the paths that use the scratch
+  if(poolData_)
+    scratch_ = poolData_->alloc(maxDim_);
 
   if(kernel_)
     return tile_kernel();

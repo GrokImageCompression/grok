@@ -106,6 +106,7 @@ const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
 typedef std::function<bool(void)> PROCEDURE_FUNC;
 
 class TileCache;
+class WaveletPoolData;
 
 class CodeStream
 {
@@ -122,6 +123,10 @@ public:
     return nullptr;
   }
   virtual void* getBandUserData() const
+  {
+    return nullptr;
+  }
+  virtual WaveletPoolData* getWaveletPoolData()
   {
     return nullptr;
   }

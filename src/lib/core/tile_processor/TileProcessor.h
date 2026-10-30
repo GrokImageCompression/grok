@@ -525,6 +525,8 @@ private:
    */
   uint32_t tileCacheStrategy_ = 0;
 
+  WaveletPoolData* waveletPoolData_ = nullptr;
+
   void decompress_synch_plugin_with_host(void);
 
   std::shared_ptr<TPFetchSeq> tilePartFetchSeq_;

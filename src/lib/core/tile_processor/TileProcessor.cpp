@@ -81,7 +81,8 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
       tile_(new Tile(headerImage_->numcomps)), tileIndex_(tile_index), tcp_(tcp),
       mct_(new Mct(tile_, headerImage_, tcp_)),
       markerParser_(isCompressor ? nullptr : new MarkerParser()), truncated_(false),
-      image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy)
+      image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy),
+      waveletPoolData_(codeStream->getWaveletPoolData())
 {
   TileProcessor::setStream(stream, false);
   TileProcessor::setProcessors(markerParser_);
@@ -1394,8 +1395,8 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   if(!scheduler_)
   {
-    scheduler_ =
-        new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
+    scheduler_ = new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec,
+                                         coderPool, waveletPoolData_);
   }
   else
   {

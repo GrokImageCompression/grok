@@ -18,6 +18,8 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
+#include <vector>
 #include <cstdint>
 #include <cstddef>
 #include "MemManager.h"
@@ -29,12 +31,34 @@ uint32_t get_PLL_COLS_53();
 uint32_t get_PLL_COLS_16_53();
 uint32_t get_PLL_COLS_16_97();
 
+struct WaveletScratch
+{
+  struct AlignedDeleter
+  {
+    void operator()(uint8_t* ptr) const noexcept
+    {
+      grk_aligned_free(ptr);
+    }
+  };
+  using BufferPtr = std::unique_ptr<uint8_t[], AlignedDeleter>;
+
+  size_t maxDim = 0;
+  std::unique_ptr<BufferPtr[]> horiz;
+  std::unique_ptr<BufferPtr[]> vert;
+
+  uint8_t* getHoriz(size_t threadIndex) const
+  {
+    return horiz[threadIndex].get();
+  }
+  uint8_t* getVert(size_t threadIndex) const
+  {
+    return vert[threadIndex].get();
+  }
+};
+
 /**
  * @class WaveletPoolData
  * @brief Per-image pool of per-thread scratch buffers for the 5/3 wavelet.
- *
- * Replaces the former static pool in WaveletReverse so that multiple
- * images can decompress concurrently without sharing scratch memory.
  */
 class WaveletPoolData
 {
@@ -45,45 +69,12 @@ public:
   WaveletPoolData(const WaveletPoolData&) = delete;
   WaveletPoolData& operator=(const WaveletPoolData&) = delete;
 
-  /**
-   * @brief Allocate per-thread horiz/vert scratch buffers.
-   *
-   * If already allocated with sufficient size, this is a no-op.
-   *
-   * @param maxDim  maximum image dimension (width or height)
-   * @return true on success
-   */
-  bool alloc(size_t maxDim);
-
-  uint8_t* getHoriz(size_t threadIndex) const
-  {
-    return horizData_[threadIndex].get();
-  }
-
-  uint8_t* getVert(size_t threadIndex) const
-  {
-    return vertData_[threadIndex].get();
-  }
-
-  bool isAllocated() const
-  {
-    return isAllocated_;
-  }
+  const WaveletScratch* alloc(size_t maxDim);
 
 private:
-  struct AlignedDeleter
-  {
-    void operator()(uint8_t* ptr) const noexcept
-    {
-      grk_aligned_free(ptr);
-    }
-  };
-
-  using BufferPtr = std::unique_ptr<uint8_t[], AlignedDeleter>;
-  std::unique_ptr<BufferPtr[]> horizData_;
-  std::unique_ptr<BufferPtr[]> vertData_;
-  bool isAllocated_ = false;
-  size_t allocatedMaxDim_ = 0;
+  std::mutex mutex_;
+  // smaller scratch stays alive for tiles still decoding with it
+  std::vector<std::unique_ptr<WaveletScratch>> scratch_;
 };
 
 } // namespace grk

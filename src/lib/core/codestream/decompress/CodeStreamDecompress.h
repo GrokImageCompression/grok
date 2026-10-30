@@ -21,6 +21,7 @@
 #include "TFSingleton.h"
 #include "CompressedChunkCache.h"
 #include "SelectiveFetchRanges.h"
+#include "WaveletPoolData.h"
 #include <map>
 #include <atomic>
 
@@ -84,6 +85,10 @@ public:
   void* getBandUserData() const override
   {
     return ioBandUserData_;
+  }
+  WaveletPoolData* getWaveletPoolData() override
+  {
+    return &waveletPoolData_;
   }
 
   grk_progression_state getProgressionState(uint16_t tile_index) override;
@@ -665,6 +670,8 @@ private:
    *
    */
   CoderPool coderPool_;
+
+  WaveletPoolData waveletPoolData_;
 
   std::vector<std::unique_ptr<MarkerParser>> tileMarkerParsers_;
 

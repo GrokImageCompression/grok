@@ -24,18 +24,20 @@
 namespace grk
 {
 
-bool WaveletPoolData::alloc(size_t maxDim)
+const WaveletScratch* WaveletPoolData::alloc(size_t maxDim)
 {
   if(maxDim == 0)
-    return false;
-  if(isAllocated_ && maxDim <= allocatedMaxDim_)
-    return true;
+    return nullptr;
+  std::lock_guard<std::mutex> lock(mutex_);
+  if(!scratch_.empty() && maxDim <= scratch_.back()->maxDim)
+    return scratch_.back().get();
 
   size_t num_threads = TFSingleton::num_threads();
   try
   {
-    auto newHoriz = std::make_unique<BufferPtr[]>(num_threads);
-    auto newVert = std::make_unique<BufferPtr[]>(num_threads);
+    auto scratch = std::make_unique<WaveletScratch>();
+    scratch->horiz = std::make_unique<WaveletScratch::BufferPtr[]>(num_threads);
+    scratch->vert = std::make_unique<WaveletScratch::BufferPtr[]>(num_threads);
 
     size_t buffer_size = maxDim;
     auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
@@ -43,38 +45,25 @@ bool WaveletPoolData::alloc(size_t maxDim)
     if(multiplier && maxDim > SIZE_MAX / multiplier)
     {
       grklog.error("WaveletPoolData: scratch size overflow for dimension %zu", maxDim);
-      return false;
+      return nullptr;
     }
     buffer_size *= multiplier;
     for(size_t i = 0; i < num_threads; ++i)
     {
-      void* horiz_ptr = grk_aligned_malloc(buffer_size);
-      void* vert_ptr = grk_aligned_malloc(buffer_size);
-      if(!horiz_ptr || !vert_ptr)
-      {
-        if(horiz_ptr)
-          grk_aligned_free(horiz_ptr);
-        if(vert_ptr)
-          grk_aligned_free(vert_ptr);
-        throw std::bad_alloc();
-      }
-      newHoriz[i] = BufferPtr(static_cast<uint8_t*>(horiz_ptr));
-      newVert[i] = BufferPtr(static_cast<uint8_t*>(vert_ptr));
+      scratch->horiz[i].reset(static_cast<uint8_t*>(grk_aligned_malloc(buffer_size)));
+      scratch->vert[i].reset(static_cast<uint8_t*>(grk_aligned_malloc(buffer_size)));
+      if(!scratch->horiz[i] || !scratch->vert[i])
+        return nullptr;
     }
-
-    horizData_ = std::move(newHoriz);
-    vertData_ = std::move(newVert);
-    allocatedMaxDim_ = maxDim;
-    isAllocated_ = true;
+    scratch->maxDim = maxDim;
+    scratch_.push_back(std::move(scratch));
   }
   catch(const std::bad_alloc&)
   {
-    horizData_.reset();
-    vertData_.reset();
-    isAllocated_ = false;
+    return nullptr;
   }
 
-  return isAllocated_;
+  return scratch_.back().get();
 }
 
 } // namespace grk

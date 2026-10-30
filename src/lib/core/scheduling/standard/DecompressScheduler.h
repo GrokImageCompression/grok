@@ -42,7 +42,8 @@ public:
    * @param prec precision of input image
    * @param streamPool code stream pool
    */
-  DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool);
+  DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool,
+                      WaveletPoolData* waveletPoolData);
 
   /**
    * @brief Destroys a DecompressScheduler
@@ -83,7 +84,7 @@ private:
 
   CoderPool coderPool_;
   CoderPool* streamPool_;
-  WaveletPoolData waveletPoolData_;
+  WaveletPoolData* waveletPoolData_;
 };
 
 } // namespace grk

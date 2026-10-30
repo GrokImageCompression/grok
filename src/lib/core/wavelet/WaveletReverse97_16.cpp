@@ -1355,18 +1355,18 @@ bool WaveletReverse::tile_16_97(void)
     {
       horizPool16_[i].dn = resWidth - horizPool16_[i].sn;
       horizPool16_[i].parity = bandLL->x0 & 1;
-      if(!poolData_ || !poolData_->isAllocated())
+      if(!scratch_)
       {
         grklog.error("tile_16_97: pool data not allocated");
         return false;
       }
-      horizPool16_[i].allocatedMem = (int16_t*)poolData_->getHoriz(i);
-      horizPool16_[i].mem = (int16_t*)poolData_->getHoriz(i);
+      horizPool16_[i].allocatedMem = (int16_t*)scratch_->getHoriz(i);
+      horizPool16_[i].mem = (int16_t*)scratch_->getHoriz(i);
 
       vertPool16_[i].dn = resHeight - vertPool16_[i].sn;
       vertPool16_[i].parity = bandLL->y0 & 1;
-      vertPool16_[i].allocatedMem = (int16_t*)poolData_->getVert(i);
-      vertPool16_[i].mem = (int16_t*)poolData_->getVert(i);
+      vertPool16_[i].allocatedMem = (int16_t*)scratch_->getVert(i);
+      vertPool16_[i].mem = (int16_t*)scratch_->getVert(i);
     }
     h_16_97(res, tileBuffer, resHeight);
     v_16_97(res, tileBuffer, resWidth);

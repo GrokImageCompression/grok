@@ -68,10 +68,11 @@ struct ITileProcessor;
 namespace grk
 {
 
-DecompressScheduler::DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool)
+DecompressScheduler::DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool,
+                                         WaveletPoolData* waveletPoolData)
     : SchedulerStandard(numcomps), prec_(prec), blocksByTile_(TileBlocks(numcomps)),
       differentialInfo_(new DifferentialInfo[numcomps]), prePostProc_(nullptr),
-      streamPool_(streamPool)
+      streamPool_(streamPool), waveletPoolData_(waveletPoolData)
 {
   for(uint16_t compno = 0; compno < numcomps; ++compno)
     waveletReverse_.push_back(nullptr);
@@ -434,7 +435,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       waveletReverse_[compno] = new WaveletReverse(
           tileProcessor->getScheduler(), tilec, compno, tilec->windowUnreducedBounds(), numRes,
           (tcp->tccps_ + compno)->qmfbid_, maxDimension,
-          tileProcessor->getTCP()->wholeTileDecompress_, &waveletPoolData_, dcShift, tccp, kernel);
+          tileProcessor->getTCP()->wholeTileDecompress_, waveletPoolData_, dcShift, tccp, kernel);
 
       if(!waveletReverse_[compno]->decompress())
         return false;
