@@ -623,7 +623,10 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
 
   scratchImage_ = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
       new GrkImage(), RefCountedDeleter<GrkImage>());
-  const bool singleTileWindow = !ioBandCallback_ && tilesToDecompress_.getSlatedTiles().size() == 1;
+  // callers that skip the composite or take a tile callback read the per-tile image
+  const bool singleTileWindow =
+      !ioBandCallback_ && !cp_.codingParams_.dec_.skipAllocateComposite_ &&
+      !cp_.decompressCallback_ && tilesToDecompress_.getSlatedTiles().size() == 1;
   if(!activateScratch(singleTileWindow, scratchImage_.get()))
     return false;
   if(singleTileWindow)
