@@ -1541,6 +1541,13 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       region.y0 *= scale;
       region.x1 *= scale;
       region.y1 *= scale;
+      // a rounded-up reduced image edge scales past the full image edge
+      auto w = double(image->x1 - image->x0);
+      auto h = double(image->y1 - image->y0);
+      if(region.x1 > w && region.x1 - w < scale)
+        region.x1 = w;
+      if(region.y1 > h && region.y1 - h < scale)
+        region.y1 = h;
     }
     Rect16 tilesToDecompress;
     auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,

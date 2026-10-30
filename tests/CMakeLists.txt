@@ -585,6 +585,10 @@ add_executable(grk_single_tile_window_tile_image_test GrkSingleTileWindowTileIma
 target_link_libraries(grk_single_tile_window_tile_image_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_single_tile_window_tile_image_test COMMAND grk_single_tile_window_tile_image_test)
 
+add_executable(grk_reduced_window_edge_test GrkReducedWindowEdgeTest.cpp)
+target_link_libraries(grk_reduced_window_edge_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_reduced_window_edge_test COMMAND grk_reduced_window_edge_test)
+
 # Regression for an OSS-Fuzz out-of-memory: a stream declaring a canvas
 # 0x2020ff20 samples wide made the mercury plan size its block-record tables
 # from the declared geometry instead of the decode window.
