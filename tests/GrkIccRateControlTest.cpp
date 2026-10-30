@@ -313,8 +313,10 @@ int main()
                            {40.0, 0.0}, 1);
   expectEmptyInitialLayers("bisect empty first layer before a lossless layer", kOversizeProfile,
                            {40.0, 0.0}, 1, GRK_RATE_CONTROL_BISECT);
-  expectDecodes("single empty layer for a large profile", GRK_FMT_JP2, kOversizeProfile, {40.0}, 0,
-                true, false, kOversizeProfile + 1024);
+  expectDecodes("single layer keeps its data under a large profile", GRK_FMT_JP2, kOversizeProfile,
+                {40.0}, 0, false, true, 0);
+  expectDecodes("single layer keeps its data below the tile-part overhead", GRK_FMT_J2K, 0,
+                {40000.0}, 0, false, true, 0);
   expectReject("strict first layer smaller than the profile", kOversizeProfile, {40.0, 4.0}, 0);
   expectReject("strict first layer smaller than the profile, four tiles", kOversizeProfile,
                {40.0, 4.0}, 64);

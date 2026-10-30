@@ -214,7 +214,9 @@ bool TileProcessorCompress::layerNeedsRateControl(uint16_t layno)
 }
 bool TileProcessorCompress::layerNeedsMinimumSizeCheck(uint16_t layno, bool disableRateControl)
 {
-  return cp_->codingParams_.enc_.allocationByRateDistortion_ &&
+  // an empty last layer leaves the image blank
+  bool lastLayer = layno + 1 == tcp_->numLayers_;
+  return !lastLayer && cp_->codingParams_.enc_.allocationByRateDistortion_ &&
          (tcp_->writeEmptyLayer_[layno] ||
           (checkMinimumLayerSizes_ && !disableRateControl && tcp_->rates_[layno] > 0.0));
 }

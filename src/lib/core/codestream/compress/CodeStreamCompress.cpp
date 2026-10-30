@@ -1231,6 +1231,12 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
 
   return true;
 }
+// an empty last layer leaves the image blank
+static const char* unmetRatioAction(bool lastLayer)
+{
+  return lastLayer ? "Ignoring the ratio for this layer" : "Writing an empty layer";
+}
+
 bool CodeStreamCompress::updateRates(void)
 {
   auto cp = &cp_;
@@ -1275,11 +1281,11 @@ bool CodeStreamCompress::updateRates(void)
                            k, tileId, rawBudget, offset);
               return false;
             }
+            bool lastLayer = k + 1 == tcp->numLayers_;
             grklog.warn("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
-                        "budget does not cover the %.0f byte tile-part overhead. Writing an "
-                        "empty layer",
-                        k, tileId, rawBudget, offset);
-            tcp->writeEmptyLayer_[k] = true;
+                        "budget does not cover the %.0f byte tile-part overhead. %s",
+                        k, tileId, rawBudget, offset, unmetRatioAction(lastLayer));
+            tcp->writeEmptyLayer_[k] = !lastLayer;
             byteTarget = 0.0;
           }
           *rates = byteTarget;
@@ -1316,12 +1322,12 @@ bool CodeStreamCompress::updateRates(void)
                   k, tileId, rates[k], overhead, headerSize);
               return false;
             }
-            grklog.warn(
-                "Layer %u of tile %u cannot meet its compression ratio: its %.0f byte budget "
-                "does not cover its %.0f byte share of the %.0f byte file header. Writing an "
-                "empty layer",
-                k, tileId, rates[k], overhead, headerSize);
-            tcp->writeEmptyLayer_[k] = true;
+            bool lastLayer = k + 1 == tcp->numLayers_;
+            grklog.warn("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                        "budget does not cover its %.0f byte share of the %.0f byte file "
+                        "header. %s",
+                        k, tileId, rates[k], overhead, headerSize, unmetRatioAction(lastLayer));
+            tcp->writeEmptyLayer_[k] = !lastLayer;
             rates[k] = 0.0;
             continue;
           }
