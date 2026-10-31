@@ -519,6 +519,8 @@ private:
   std::vector<uint16_t> bandRowScheduledTiles_;
   bool bandRowFullyScheduled(uint16_t tileY);
   bool swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1);
+  bool waitedRowsFullyScheduled(void);
+  void scheduleQueuedForWaitedRows(void);
 
   /**
    * @brief callback to reclaim io buffers

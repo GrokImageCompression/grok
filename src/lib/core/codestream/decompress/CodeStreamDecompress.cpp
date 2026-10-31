@@ -1110,6 +1110,11 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       batchTileScheduleHeadroomSequential_--;
       batchTileUnscheduledSequential_--;
     }
+    // the caller is blocked on a row whose tiles are not all scheduled yet
+    else if(!waitedRowsFullyScheduled())
+    {
+      batchTileUnscheduledSequential_--;
+    }
     else
     {
       batchTileQueueSequential_.push(tileProcessor);
@@ -1933,6 +1938,43 @@ bool CodeStreamDecompress::swathRowsFullyScheduled(int32_t lastClearedTileY, int
   return true;
 }
 
+bool CodeStreamDecompress::waitedRowsFullyScheduled(void)
+{
+  return !tileCompletion_ || swathRowsFullyScheduled(tileCompletion_->getLastClearedTileY(),
+                                                     tileCompletion_->getNeededTileY1());
+}
+
+// tile parts can appear in any order, so the tile that finishes a waited row may sit
+// past the window
+void CodeStreamDecompress::scheduleQueuedForWaitedRows(void)
+{
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    if(cp_.hasTLM())
+    {
+      while(!batchTileQueueTLM_.empty() && !waitedRowsFullyScheduled())
+      {
+        auto tileIndex = batchTileQueueTLM_.front();
+        batchTileQueueTLM_.pop();
+        if(!schedule(getTileProcessor(tileIndex), true))
+          break;
+      }
+    }
+    else
+    {
+      while(!batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
+      {
+        auto tileProcessor = batchTileQueueSequential_.front();
+        batchTileQueueSequential_.pop();
+        batchTileUnscheduledSequential_--;
+        if(!schedule(tileProcessor, true) && !success_)
+          break;
+      }
+    }
+  }
+  batchTileQueueCondition_.notify_one();
+}
+
 void CodeStreamDecompress::scheduleTileBatch()
 {
   // Compute how many rows we're allowed to schedule based on the consumer's position.
@@ -1950,11 +1992,8 @@ void CodeStreamDecompress::scheduleTileBatch()
       maxAllowedRow = neededRow;
     if(batchTileScheduledRows_ >= maxAllowedRow)
     {
-      if(swathRowsFullyScheduled(lastCleared, neededRow))
-        return;
-      // Tile parts can appear in any order, so the tile that finishes a waited row
-      // may sit past the window, and the window only opens by scheduling on.
-      rowsToSchedule = cp_.t_grid_height_;
+      scheduleQueuedForWaitedRows();
+      return;
     }
     else
     {

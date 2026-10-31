@@ -1042,3 +1042,8 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/conformance/p0_07.j2k)
   set_tests_properties(grk_async_swath_decompress_p0_07_test PROPERTIES TIMEOUT 300)
 endif()
+
+add_executable(grk_async_swath_backlog_test GrkAsyncSwathBacklogTest.cpp)
+target_link_libraries(grk_async_swath_backlog_test ${GROK_CORE_NAME})
+add_test(NAME grk_async_swath_backlog_test COMMAND grk_async_swath_backlog_test)
+set_tests_properties(grk_async_swath_backlog_test PROPERTIES TIMEOUT 60)
