@@ -876,7 +876,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
   // Wait for all all tiles to complete
   {
     std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-    batchTileQueueCondition_.wait(lock, [this] { return batchTileQueueTLM_.empty(); });
+    batchTileQueueCondition_.wait(lock, [this] { return batchTileQueueTLM_.empty() || !success_; });
   }
 }
 
@@ -925,7 +925,7 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
 void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendingTiles)
 {
   bool foundUnknownMarker = false;
-  while(!markerParser_.endOfCodeStream() && !foundUnknownMarker)
+  while(!markerParser_.endOfCodeStream() && !foundUnknownMarker && success_)
   {
     // 1. parse and schedule tile
     try

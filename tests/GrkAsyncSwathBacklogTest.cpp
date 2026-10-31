@@ -15,7 +15,8 @@
  *
  */
 
-// an asynchronous decode stays a few tile rows ahead of the swath the caller waits on
+// an asynchronous decode stays a few tile rows ahead of the swath the caller waits on,
+// and a codec destroyed while its decode is held back still returns
 
 #include <algorithm>
 #include <atomic>
@@ -56,7 +57,7 @@ grk_image* makeImage(void)
   return image;
 }
 
-bool compress(const std::string& path)
+bool compress(const std::string& path, bool writeTLM)
 {
   grk_image* image = makeImage();
   if(!image)
@@ -71,6 +72,7 @@ bool compress(const std::string& path)
   parameters.t_width = TILE_SIZE;
   parameters.t_height = TILE_SIZE;
   parameters.numlayers = 1;
+  parameters.write_tlm = writeTLM;
 
   grk_stream_params streamParams = {};
   snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
@@ -106,56 +108,83 @@ bool waitRow(grk_object* codec, uint32_t row)
   return swath.tile_y1 == row + 1;
 }
 
-bool decodeStaysBehindSwath(const std::string& path)
+grk_object* startDecode(const std::string& path, grk_decompress_parameters* params)
 {
-  std::atomic<uint32_t> decodedTiles{0};
-  grk_decompress_parameters params = {};
-  params.asynchronous = true;
-  params.simulate_synchronous = true;
-  params.core.skip_allocate_composite = true;
-  params.decompress_callback = countTile;
-  params.decompress_callback_user_data = &decodedTiles;
   grk_stream_params streamParams = {};
   streamParams.is_read_stream = true;
   snprintf(streamParams.file, sizeof(streamParams.file), "%s", path.c_str());
 
-  grk_object* codec = grk_decompress_init(&streamParams, &params);
+  grk_object* codec = grk_decompress_init(&streamParams, params);
   if(!codec)
   {
     fprintf(stderr, "grk_decompress_init failed\n");
-    return false;
+    return nullptr;
   }
-  bool ok = false;
   grk_header_info headerInfo = {};
+  const char* failedStep = nullptr;
   if(!grk_decompress_read_header(codec, &headerInfo))
-    fprintf(stderr, "grk_decompress_read_header failed\n");
-  else if(!grk_decompress_update(&params, codec))
-    fprintf(stderr, "grk_decompress_update failed\n");
+    failedStep = "grk_decompress_read_header";
+  else if(!grk_decompress_update(params, codec))
+    failedStep = "grk_decompress_update";
   else if(!grk_decompress(codec, nullptr))
-    fprintf(stderr, "grk_decompress failed\n");
+    failedStep = "grk_decompress";
   else if(!waitRow(codec, 0))
-    fprintf(stderr, "wait for tile row 0 failed\n");
-  else
+    failedStep = "wait for tile row 0";
+  if(!failedStep)
+    return codec;
+  fprintf(stderr, "%s failed\n", failedStep);
+  grk_object_unref(codec);
+  return nullptr;
+}
+
+grk_decompress_parameters asyncParams(void)
+{
+  grk_decompress_parameters params = {};
+  params.asynchronous = true;
+  params.simulate_synchronous = true;
+  params.core.skip_allocate_composite = true;
+  return params;
+}
+
+bool decodeStaysBehindSwath(const std::string& path)
+{
+  std::atomic<uint32_t> decodedTiles{0};
+  grk_decompress_parameters params = asyncParams();
+  params.decompress_callback = countTile;
+  params.decompress_callback_user_data = &decodedTiles;
+  grk_object* codec = startDecode(path, &params);
+  if(!codec)
+    return false;
+
+  // gives an unthrottled decode time to run to the end of the image
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  uint32_t decodedWhileWaiting = decodedTiles.load();
+  bool ok = decodedWhileWaiting <= MAX_ROWS_DECODED_AHEAD * TILE_COLS;
+  if(!ok)
+    fprintf(stderr, "%u tiles decoded while the caller held tile row 0, expected at most %u\n",
+            decodedWhileWaiting, MAX_ROWS_DECODED_AHEAD * TILE_COLS);
+  for(uint32_t row = 1; row < IMAGE_SIZE / TILE_SIZE; ++row)
   {
-    // gives an unthrottled decode time to run to the end of the image
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    uint32_t decodedWhileWaiting = decodedTiles.load();
-    ok = decodedWhileWaiting <= MAX_ROWS_DECODED_AHEAD * TILE_COLS;
-    if(!ok)
-      fprintf(stderr, "%u tiles decoded while the caller held tile row 0, expected at most %u\n",
-              decodedWhileWaiting, MAX_ROWS_DECODED_AHEAD * TILE_COLS);
-    for(uint32_t row = 1; row < IMAGE_SIZE / TILE_SIZE; ++row)
+    if(!waitRow(codec, row))
     {
-      if(!waitRow(codec, row))
-      {
-        fprintf(stderr, "wait for tile row %u failed\n", row);
-        ok = false;
-        break;
-      }
+      fprintf(stderr, "wait for tile row %u failed\n", row);
+      ok = false;
+      break;
     }
   }
   grk_object_unref(codec);
   return ok;
+}
+
+// hangs if the held back parser is never released
+bool destroyDuringDecode(const std::string& path)
+{
+  grk_decompress_parameters params = asyncParams();
+  grk_object* codec = startDecode(path, &params);
+  if(!codec)
+    return false;
+  grk_object_unref(codec);
+  return true;
 }
 } // namespace
 
@@ -165,8 +194,11 @@ int main(void)
   grk_initialize(nullptr, 4, nullptr);
 
   std::string path = "async_swath_backlog.j2k";
-  bool ok = compress(path) && decodeStaysBehindSwath(path);
+  bool ok = compress(path, false) && decodeStaysBehindSwath(path) && destroyDuringDecode(path);
+  std::string tlmPath = "async_swath_backlog_tlm.j2k";
+  ok = ok && compress(tlmPath, true) && destroyDuringDecode(tlmPath);
   remove(path.c_str());
+  remove(tlmPath.c_str());
 
   grk_deinitialize();
   return ok ? 0 : 1;

@@ -56,6 +56,12 @@ public:
       decompressQueue_->close();
     if(decompressConsumer_.joinable())
       decompressConsumer_.join();
+    // the worker thread can be blocked until the caller drains tile rows
+    {
+      std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+      success_ = false;
+    }
+    batchTileQueueCondition_.notify_all();
     if(decompressWorker_.joinable())
       decompressWorker_.join();
     // Wait on this codec's own executor when it owns one (single-threaded mode);
