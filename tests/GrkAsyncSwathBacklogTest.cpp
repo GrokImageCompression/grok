@@ -16,7 +16,8 @@
  */
 
 // an asynchronous decode stays a few tile rows ahead of the swath the caller waits on,
-// and a codec destroyed while its decode is held back still returns
+// a full wait after a swath wait decodes every tile, and a codec destroyed while its
+// decode is held back still returns
 
 #include <algorithm>
 #include <atomic>
@@ -176,6 +177,25 @@ bool decodeStaysBehindSwath(const std::string& path)
   return ok;
 }
 
+bool fullWaitDecodesEveryTile(const std::string& path)
+{
+  std::atomic<uint32_t> decodedTiles{0};
+  grk_decompress_parameters params = asyncParams();
+  params.decompress_callback = countTile;
+  params.decompress_callback_user_data = &decodedTiles;
+  grk_object* codec = startDecode(path, &params);
+  if(!codec)
+    return false;
+
+  grk_decompress_wait(codec, nullptr);
+  uint32_t decoded = decodedTiles.load();
+  bool ok = decoded == TILE_COLS * TILE_COLS;
+  if(!ok)
+    fprintf(stderr, "%u of %u tiles decoded after a full wait\n", decoded, TILE_COLS * TILE_COLS);
+  grk_object_unref(codec);
+  return ok;
+}
+
 // hangs if the held back parser is never released
 bool destroyDuringDecode(const std::string& path)
 {
@@ -194,9 +214,11 @@ int main(void)
   grk_initialize(nullptr, 4, nullptr);
 
   std::string path = "async_swath_backlog.j2k";
-  bool ok = compress(path, false) && decodeStaysBehindSwath(path) && destroyDuringDecode(path);
+  bool ok = compress(path, false) && decodeStaysBehindSwath(path) &&
+            fullWaitDecodesEveryTile(path) && destroyDuringDecode(path);
   std::string tlmPath = "async_swath_backlog_tlm.j2k";
-  ok = ok && compress(tlmPath, true) && destroyDuringDecode(tlmPath);
+  ok = ok && compress(tlmPath, true) && fullWaitDecodesEveryTile(tlmPath) &&
+       destroyDuringDecode(tlmPath);
   remove(path.c_str());
   remove(tlmPath.c_str());
 

@@ -1792,7 +1792,7 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     batchTileScheduledRows_ = 0;
     tileCompletion_->setLastClearedTileY(INT16_MAX);
     if(doTileBatching())
-      scheduleTileBatch();
+      scheduleRemainingTiles();
   }
 
   // 2b. wait for sequential parse
@@ -1970,6 +1970,30 @@ void CodeStreamDecompress::scheduleQueuedForWaitedRows(void)
         if(!schedule(tileProcessor, true) && !success_)
           break;
       }
+    }
+  }
+  batchTileQueueCondition_.notify_one();
+}
+
+// the last tile row can complete before the parser queues the last tiles
+void CodeStreamDecompress::scheduleRemainingTiles(void)
+{
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    if(cp_.hasTLM())
+    {
+      while(!batchTileQueueTLM_.empty())
+      {
+        auto tileIndex = batchTileQueueTLM_.front();
+        batchTileQueueTLM_.pop();
+        if(!schedule(getTileProcessor(tileIndex), true))
+          break;
+      }
+    }
+    else
+    {
+      batchTileScheduleHeadroomSequential_ = batchTileUnscheduledSequential_;
+      batchDequeueSequential();
     }
   }
   batchTileQueueCondition_.notify_one();
