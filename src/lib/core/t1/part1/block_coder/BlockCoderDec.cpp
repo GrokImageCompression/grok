@@ -27,13 +27,12 @@ void BlockCoder::decompressInitOrientation(uint8_t orientation)
 {
   coder.lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
 }
-void BlockCoder::decompressInitSegment(uint8_t type, uint8_t** buffers, uint32_t* buffer_lengths,
-                                       uint16_t num_buffers)
+void BlockCoder::decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks)
 {
   if(type == T1_TYPE_RAW)
-    coder.raw_init_dec(buffers, buffer_lengths, num_buffers);
+    coder.raw_init_dec(chunks, numChunks);
   else
-    coder.init_dec(buffers, buffer_lengths, num_buffers);
+    coder.init_dec(chunks, numChunks);
 }
 
 void BlockCoder::decompressBackup(void)
@@ -88,10 +87,9 @@ void BlockCoder::setFinalLayer(bool isFinal)
   coder.finalLayer_ = isFinal;
 }
 
-void BlockCoder::decompressUpdateSegment(uint8_t** buffers, uint32_t* buffer_lengths,
-                                         uint16_t num_buffers)
+void BlockCoder::decompressUpdateSegment(const DataChunk* chunks, uint16_t numChunks)
 {
-  coder.update_dec(buffers, buffer_lengths, num_buffers);
+  coder.update_dec(chunks, numChunks);
 }
 
 bool BlockCoder::decompressPass(uint8_t passno, uint8_t passtype, uint8_t numBpsToDecompress,

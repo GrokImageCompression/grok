@@ -18,7 +18,8 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+
+#include "SmallVector.h"
 
 namespace grk::t1
 {
@@ -56,7 +57,7 @@ private:
     if(layno >= values_.size())
       values_.resize((size_t)layno + 1);
   }
-  std::vector<T> values_;
+  SmallVector<T, 8> values_;
 };
 
 // note: block lives in canvas coordinates

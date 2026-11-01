@@ -43,21 +43,21 @@ const uint8_t B12_POS = 12;
   (void)approaching_red;                      \
   PUSH_MQC();
 
-#define DEC_PASS_LOCAL_VARIABLES_DIFF(flagsStride)                                       \
-  const int32_t one = 1 << bpno;                                                         \
-  const auto mqc = &coder;                                                               \
-  auto dataPtr = uncompressedData_;                                                      \
-  auto flagsPtr = flags_ + flagsStride + 1;                                              \
-  grk_flag _flags = 0;                                                                   \
-  uint16_t i = 0, j = 0, k = 0;                                                          \
-  const mqc_state** curctx;                                                              \
-  uint32_t c, a;                                                                         \
-  uint8_t ct;                                                                            \
-  /* a segment with no bytes has nothing to resume from */                               \
-  bool approaching_red = coder.num_buffers && (coder.backup_->i == BACKUP_DISABLED) &&   \
-                         mqc->bp + red_zone >= mqc->end &&                               \
-                         ((coder.cur_buffer_index + 1 >= coder.num_buffers) ||           \
-                          coder.buffer_lengths[coder.cur_buffer_index + 1] <= red_zone); \
+#define DEC_PASS_LOCAL_VARIABLES_DIFF(flagsStride)                                      \
+  const int32_t one = 1 << bpno;                                                        \
+  const auto mqc = &coder;                                                              \
+  auto dataPtr = uncompressedData_;                                                     \
+  auto flagsPtr = flags_ + flagsStride + 1;                                             \
+  grk_flag _flags = 0;                                                                  \
+  uint16_t i = 0, j = 0, k = 0;                                                         \
+  const mqc_state** curctx;                                                             \
+  uint32_t c, a;                                                                        \
+  uint8_t ct;                                                                           \
+  /* a segment with no bytes has nothing to resume from */                              \
+  bool approaching_red = coder.numChunks && (coder.backup_->i == BACKUP_DISABLED) &&    \
+                         mqc->bp + red_zone >= mqc->end &&                              \
+                         ((coder.cur_buffer_index + 1 >= coder.numChunks) ||            \
+                          coder.chunks[coder.cur_buffer_index + 1].length <= red_zone); \
   (void)approaching_red;
 
 // BACKUP/RESTORE ///////////////////////////////////////////////////////
@@ -116,112 +116,112 @@ const uint8_t red_zone = 6;
     coder.backup_->partial = partial; \
   }
 
-#define DEC_PASS_RESTORE(coder)                                                                 \
-  do                                                                                            \
-  {                                                                                             \
-    if(DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder))                                             \
-    {                                                                                           \
-      DEC_PASS_MQC_RESTORE_LOCAL(coder);                                                        \
-      auto b = coder.backup_;                                                                   \
-      i = b->i;                                                                                 \
-      j = b->j;                                                                                 \
-      k = b->k;                                                                                 \
-      flagsPtr = b->flagsPtr_;                                                                  \
-      _flags = b->_flags;                                                                       \
-      dataPtr = b->dataPtr_;                                                                    \
-      coder.cur_buffer_index = b->layer_;                                                       \
-      coder.end =                                                                               \
-          coder.buffers[coder.cur_buffer_index] + coder.buffer_lengths[coder.cur_buffer_index]; \
-      approaching_red = mqc->bp + red_zone >= mqc->end &&                                       \
-                        ((coder.cur_buffer_index + 1 >= coder.num_buffers) ||                   \
-                         coder.buffer_lengths[coder.cur_buffer_index + 1] <= red_zone);         \
-      b->i = BACKUP_DISABLED;                                                                   \
-      assert(b->passno_ == passno);                                                             \
-      assert(b->passtype_ == passtype);                                                         \
-      assert(b->numBpsToDecompress_ == (uint8_t)bpno);                                          \
-      switch(b->position)                                                                       \
-      {                                                                                         \
-        case B1_POS:                                                                            \
-          goto B1;                                                                              \
-        case B2_POS:                                                                            \
-          goto B2;                                                                              \
-        case B3_POS:                                                                            \
-          goto B3;                                                                              \
-        case B4_POS:                                                                            \
-          goto B4;                                                                              \
-        case B5_POS:                                                                            \
-          goto B5;                                                                              \
-      }                                                                                         \
-    }                                                                                           \
-    else                                                                                        \
-    {                                                                                           \
-      curctx = coder.curctx;                                                                    \
-      c = coder.c;                                                                              \
-      a = coder.a;                                                                              \
-      ct = coder.ct;                                                                            \
-    }                                                                                           \
+#define DEC_PASS_RESTORE(coder)                                                                    \
+  do                                                                                               \
+  {                                                                                                \
+    if(DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder))                                                \
+    {                                                                                              \
+      DEC_PASS_MQC_RESTORE_LOCAL(coder);                                                           \
+      auto b = coder.backup_;                                                                      \
+      i = b->i;                                                                                    \
+      j = b->j;                                                                                    \
+      k = b->k;                                                                                    \
+      flagsPtr = b->flagsPtr_;                                                                     \
+      _flags = b->_flags;                                                                          \
+      dataPtr = b->dataPtr_;                                                                       \
+      coder.cur_buffer_index = b->layer_;                                                          \
+      coder.end =                                                                                  \
+          coder.chunks[coder.cur_buffer_index].data + coder.chunks[coder.cur_buffer_index].length; \
+      approaching_red = mqc->bp + red_zone >= mqc->end &&                                          \
+                        ((coder.cur_buffer_index + 1 >= coder.numChunks) ||                        \
+                         coder.chunks[coder.cur_buffer_index + 1].length <= red_zone);             \
+      b->i = BACKUP_DISABLED;                                                                      \
+      assert(b->passno_ == passno);                                                                \
+      assert(b->passtype_ == passtype);                                                            \
+      assert(b->numBpsToDecompress_ == (uint8_t)bpno);                                             \
+      switch(b->position)                                                                          \
+      {                                                                                            \
+        case B1_POS:                                                                               \
+          goto B1;                                                                                 \
+        case B2_POS:                                                                               \
+          goto B2;                                                                                 \
+        case B3_POS:                                                                               \
+          goto B3;                                                                                 \
+        case B4_POS:                                                                               \
+          goto B4;                                                                                 \
+        case B5_POS:                                                                               \
+          goto B5;                                                                                 \
+      }                                                                                            \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      curctx = coder.curctx;                                                                       \
+      c = coder.c;                                                                                 \
+      a = coder.a;                                                                                 \
+      ct = coder.ct;                                                                               \
+    }                                                                                              \
   } while(0)
 
-#define DEC_PASS_CLN_RESTORE(coder)                                                             \
-  do                                                                                            \
-  {                                                                                             \
-    if(DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder))                                             \
-    {                                                                                           \
-      DEC_PASS_MQC_RESTORE_LOCAL(coder);                                                        \
-      auto b = coder.backup_;                                                                   \
-      i = b->i;                                                                                 \
-      j = b->j;                                                                                 \
-      k = b->k;                                                                                 \
-      runlen = coder.backup_->runlen;                                                           \
-      partial = coder.backup_->partial;                                                         \
-      flagsPtr = b->flagsPtr_;                                                                  \
-      _flags = b->_flags;                                                                       \
-      dataPtr = b->dataPtr_;                                                                    \
-      coder.cur_buffer_index = b->layer_;                                                       \
-      coder.end =                                                                               \
-          coder.buffers[coder.cur_buffer_index] + coder.buffer_lengths[coder.cur_buffer_index]; \
-      approaching_red = mqc->bp + red_zone >= mqc->end &&                                       \
-                        ((coder.cur_buffer_index + 1 >= coder.num_buffers) ||                   \
-                         coder.buffer_lengths[coder.cur_buffer_index + 1] <= red_zone);         \
-      b->i = BACKUP_DISABLED;                                                                   \
-      assert(b->passno_ == passno);                                                             \
-      assert(b->passtype_ == passtype);                                                         \
-      assert(b->numBpsToDecompress_ == (uint8_t)bpno);                                          \
-      switch(b->position)                                                                       \
-      {                                                                                         \
-        case B1_POS:                                                                            \
-          goto B1;                                                                              \
-        case B2_POS:                                                                            \
-          goto B2;                                                                              \
-        case B3_POS:                                                                            \
-          goto B3;                                                                              \
-        case B4_POS:                                                                            \
-          goto B4;                                                                              \
-        case B5_POS:                                                                            \
-          goto B5;                                                                              \
-        case B6_POS:                                                                            \
-          goto B6;                                                                              \
-        case B7_POS:                                                                            \
-          goto B7;                                                                              \
-        case B8_POS:                                                                            \
-          goto B8;                                                                              \
-        case B9_POS:                                                                            \
-          goto B9;                                                                              \
-        case B10_POS:                                                                           \
-          goto B10;                                                                             \
-        case B11_POS:                                                                           \
-          goto B11;                                                                             \
-        case B12_POS:                                                                           \
-          goto B12;                                                                             \
-      }                                                                                         \
-    }                                                                                           \
-    else                                                                                        \
-    {                                                                                           \
-      curctx = coder.curctx;                                                                    \
-      c = coder.c;                                                                              \
-      a = coder.a;                                                                              \
-      ct = coder.ct;                                                                            \
-    }                                                                                           \
+#define DEC_PASS_CLN_RESTORE(coder)                                                                \
+  do                                                                                               \
+  {                                                                                                \
+    if(DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder))                                                \
+    {                                                                                              \
+      DEC_PASS_MQC_RESTORE_LOCAL(coder);                                                           \
+      auto b = coder.backup_;                                                                      \
+      i = b->i;                                                                                    \
+      j = b->j;                                                                                    \
+      k = b->k;                                                                                    \
+      runlen = coder.backup_->runlen;                                                              \
+      partial = coder.backup_->partial;                                                            \
+      flagsPtr = b->flagsPtr_;                                                                     \
+      _flags = b->_flags;                                                                          \
+      dataPtr = b->dataPtr_;                                                                       \
+      coder.cur_buffer_index = b->layer_;                                                          \
+      coder.end =                                                                                  \
+          coder.chunks[coder.cur_buffer_index].data + coder.chunks[coder.cur_buffer_index].length; \
+      approaching_red = mqc->bp + red_zone >= mqc->end &&                                          \
+                        ((coder.cur_buffer_index + 1 >= coder.numChunks) ||                        \
+                         coder.chunks[coder.cur_buffer_index + 1].length <= red_zone);             \
+      b->i = BACKUP_DISABLED;                                                                      \
+      assert(b->passno_ == passno);                                                                \
+      assert(b->passtype_ == passtype);                                                            \
+      assert(b->numBpsToDecompress_ == (uint8_t)bpno);                                             \
+      switch(b->position)                                                                          \
+      {                                                                                            \
+        case B1_POS:                                                                               \
+          goto B1;                                                                                 \
+        case B2_POS:                                                                               \
+          goto B2;                                                                                 \
+        case B3_POS:                                                                               \
+          goto B3;                                                                                 \
+        case B4_POS:                                                                               \
+          goto B4;                                                                                 \
+        case B5_POS:                                                                               \
+          goto B5;                                                                                 \
+        case B6_POS:                                                                               \
+          goto B6;                                                                                 \
+        case B7_POS:                                                                               \
+          goto B7;                                                                                 \
+        case B8_POS:                                                                               \
+          goto B8;                                                                                 \
+        case B9_POS:                                                                               \
+          goto B9;                                                                                 \
+        case B10_POS:                                                                              \
+          goto B10;                                                                                \
+        case B11_POS:                                                                              \
+          goto B11;                                                                                \
+        case B12_POS:                                                                              \
+          goto B12;                                                                                \
+      }                                                                                            \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      curctx = coder.curctx;                                                                       \
+      c = coder.c;                                                                                 \
+      a = coder.a;                                                                                 \
+      ct = coder.ct;                                                                               \
+    }                                                                                              \
   } while(0)
 
 /////////////////////////////////////////////////////////////
@@ -233,63 +233,63 @@ const uint8_t red_zone = 6;
  * @param c MQ c variable
  * @param ct MQ ct variable
  */
-#define DEC_BYTEIN(mqc, c, ct)                                                          \
-  {                                                                                     \
-    uint8_t cur = 0xff;                                                                 \
-    if(mqc->bp >= mqc->end)                                                             \
-    {                                                                                   \
-      if(mqc->cur_buffer_index + 1 < mqc->num_buffers)                                  \
-      {                                                                                 \
-        /* Move to the next buffer */                                                   \
-        mqc->cur_buffer_index++;                                                        \
-        mqc->bp = mqc->buffers[mqc->cur_buffer_index];                                  \
-        mqc->end = mqc->bp + mqc->buffer_lengths[mqc->cur_buffer_index];                \
-        cur = *mqc->bp;                                                                 \
-        approaching_red = mqc->backup_ && (mqc->backup_->i == BACKUP_DISABLED) &&       \
-                          mqc->bp + red_zone >= mqc->end &&                             \
-                          ((mqc->cur_buffer_index + 1 >= mqc->num_buffers) ||           \
-                           mqc->buffer_lengths[mqc->cur_buffer_index + 1] <= red_zone); \
-      }                                                                                 \
-    }                                                                                   \
-    else                                                                                \
-    {                                                                                   \
-      cur = *mqc->bp;                                                                   \
-    }                                                                                   \
-    uint8_t next = 0xff;                                                                \
-    if(mqc->bp + 1 >= mqc->end)                                                         \
-    {                                                                                   \
-      if(mqc->cur_buffer_index + 1 < mqc->num_buffers)                                  \
-      {                                                                                 \
-        /* Peek into the next buffer for the next byte */                               \
-        next = *mqc->buffers[mqc->cur_buffer_index + 1];                                \
-      }                                                                                 \
-      else                                                                              \
-      {                                                                                 \
-        mqc->overflow_ = true;                                                          \
-      }                                                                                 \
-    }                                                                                   \
-    else                                                                                \
-    {                                                                                   \
-      next = *(mqc->bp + 1);                                                            \
-    }                                                                                   \
-    uint8_t curff = (cur == 0xff);                                                      \
-    uint8_t is_end = curff & (next > 0x8f);                                             \
-    if(is_end)                                                                          \
-    {                                                                                   \
-      c += 0xff00;                                                                      \
-      ct = 8;                                                                           \
-      mqc->end_of_byte_stream_counter++;                                                \
-    }                                                                                   \
-    else                                                                                \
-    {                                                                                   \
-      mqc->bp++;                                                                        \
-      approaching_red = mqc->backup_ && (mqc->backup_->i == BACKUP_DISABLED) &&         \
-                        mqc->bp + red_zone >= mqc->end &&                               \
-                        ((mqc->cur_buffer_index + 1 >= mqc->num_buffers) ||             \
-                         mqc->buffer_lengths[mqc->cur_buffer_index + 1] <= red_zone);   \
-      c += next << (8 + curff);                                                         \
-      ct = 8 - curff;                                                                   \
-    }                                                                                   \
+#define DEC_BYTEIN(mqc, c, ct)                                                         \
+  {                                                                                    \
+    uint8_t cur = 0xff;                                                                \
+    if(mqc->bp >= mqc->end)                                                            \
+    {                                                                                  \
+      if(mqc->cur_buffer_index + 1 < mqc->numChunks)                                   \
+      {                                                                                \
+        /* Move to the next buffer */                                                  \
+        mqc->cur_buffer_index++;                                                       \
+        mqc->bp = mqc->chunks[mqc->cur_buffer_index].data;                             \
+        mqc->end = mqc->bp + mqc->chunks[mqc->cur_buffer_index].length;                \
+        cur = *mqc->bp;                                                                \
+        approaching_red = mqc->backup_ && (mqc->backup_->i == BACKUP_DISABLED) &&      \
+                          mqc->bp + red_zone >= mqc->end &&                            \
+                          ((mqc->cur_buffer_index + 1 >= mqc->numChunks) ||            \
+                           mqc->chunks[mqc->cur_buffer_index + 1].length <= red_zone); \
+      }                                                                                \
+    }                                                                                  \
+    else                                                                               \
+    {                                                                                  \
+      cur = *mqc->bp;                                                                  \
+    }                                                                                  \
+    uint8_t next = 0xff;                                                               \
+    if(mqc->bp + 1 >= mqc->end)                                                        \
+    {                                                                                  \
+      if(mqc->cur_buffer_index + 1 < mqc->numChunks)                                   \
+      {                                                                                \
+        /* Peek into the next buffer for the next byte */                              \
+        next = *mqc->chunks[mqc->cur_buffer_index + 1].data;                           \
+      }                                                                                \
+      else                                                                             \
+      {                                                                                \
+        mqc->overflow_ = true;                                                         \
+      }                                                                                \
+    }                                                                                  \
+    else                                                                               \
+    {                                                                                  \
+      next = *(mqc->bp + 1);                                                           \
+    }                                                                                  \
+    uint8_t curff = (cur == 0xff);                                                     \
+    uint8_t is_end = curff & (next > 0x8f);                                            \
+    if(is_end)                                                                         \
+    {                                                                                  \
+      c += 0xff00;                                                                     \
+      ct = 8;                                                                          \
+      mqc->end_of_byte_stream_counter++;                                               \
+    }                                                                                  \
+    else                                                                               \
+    {                                                                                  \
+      mqc->bp++;                                                                       \
+      approaching_red = mqc->backup_ && (mqc->backup_->i == BACKUP_DISABLED) &&        \
+                        mqc->bp + red_zone >= mqc->end &&                              \
+                        ((mqc->cur_buffer_index + 1 >= mqc->numChunks) ||              \
+                         mqc->chunks[mqc->cur_buffer_index + 1].length <= red_zone);   \
+      c += next << (8 + curff);                                                        \
+      ct = 8 - curff;                                                                  \
+    }                                                                                  \
   }
 
 #define DEC_RENORM(mqc, a, c, ct)            \
@@ -357,46 +357,46 @@ const uint8_t red_zone = 6;
 /**
  * @brief Decodes a Raw-encoded pass
  */
-#define DEC_SYMBOL_RAW()                                                       \
-  {                                                                            \
-    if(coder.ct == 0)                                                          \
-    {                                                                          \
-      uint8_t curr = 0xff;                                                     \
-      if(coder.bp >= coder.end)                                                \
-      {                                                                        \
-        if(coder.cur_buffer_index + 1 < coder.num_buffers)                     \
-        {                                                                      \
-          coder.cur_buffer_index++;                                            \
-          coder.bp = coder.buffers[coder.cur_buffer_index];                    \
-          coder.end = coder.bp + coder.buffer_lengths[coder.cur_buffer_index]; \
-          curr = *coder.bp;                                                    \
-        }                                                                      \
-      }                                                                        \
-      else                                                                     \
-      {                                                                        \
-        curr = *coder.bp;                                                      \
-      }                                                                        \
-      if(coder.c == 0xff)                                                      \
-      {                                                                        \
-        if(curr > 0x8f)                                                        \
-        {                                                                      \
-          coder.c = 0xff;                                                      \
-          coder.ct = 8;                                                        \
-        }                                                                      \
-        else                                                                   \
-        {                                                                      \
-          coder.c = curr;                                                      \
-          coder.bp++;                                                          \
-          coder.ct = 7;                                                        \
-        }                                                                      \
-      }                                                                        \
-      else                                                                     \
-      {                                                                        \
-        coder.c = curr;                                                        \
-        coder.bp++;                                                            \
-        coder.ct = 8;                                                          \
-      }                                                                        \
-    }                                                                          \
-    coder.ct--;                                                                \
-    v = ((uint8_t)coder.c >> coder.ct) & 0x1U;                                 \
+#define DEC_SYMBOL_RAW()                                                      \
+  {                                                                           \
+    if(coder.ct == 0)                                                         \
+    {                                                                         \
+      uint8_t curr = 0xff;                                                    \
+      if(coder.bp >= coder.end)                                               \
+      {                                                                       \
+        if(coder.cur_buffer_index + 1 < coder.numChunks)                      \
+        {                                                                     \
+          coder.cur_buffer_index++;                                           \
+          coder.bp = coder.chunks[coder.cur_buffer_index].data;               \
+          coder.end = coder.bp + coder.chunks[coder.cur_buffer_index].length; \
+          curr = *coder.bp;                                                   \
+        }                                                                     \
+      }                                                                       \
+      else                                                                    \
+      {                                                                       \
+        curr = *coder.bp;                                                     \
+      }                                                                       \
+      if(coder.c == 0xff)                                                     \
+      {                                                                       \
+        if(curr > 0x8f)                                                       \
+        {                                                                     \
+          coder.c = 0xff;                                                     \
+          coder.ct = 8;                                                       \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+          coder.c = curr;                                                     \
+          coder.bp++;                                                         \
+          coder.ct = 7;                                                       \
+        }                                                                     \
+      }                                                                       \
+      else                                                                    \
+      {                                                                       \
+        coder.c = curr;                                                       \
+        coder.bp++;                                                           \
+        coder.ct = 8;                                                         \
+      }                                                                       \
+    }                                                                         \
+    coder.ct--;                                                               \
+    v = ((uint8_t)coder.c >> coder.ct) & 0x1U;                                \
   }

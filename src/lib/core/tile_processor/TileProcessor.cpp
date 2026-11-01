@@ -265,7 +265,7 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
               auto& chunks = cblk->getSegment(0)->data_chunks_;
               if(chunks.size() == 1)
               {
-                blockStream->set_buf(chunks[0]->buf(), length);
+                blockStream->set_buf(chunks[0].data, length);
                 blockStream->set_owns_data(false);
               }
               else if(length)

@@ -19,6 +19,7 @@
 
 #include "mqc_base.h"
 #include "mqc_backup.h"
+#include "t1_common.h"
 
 // the next line must be uncommented in order to support debugging
 // for plugin encode
@@ -80,17 +81,17 @@ struct mqcoder : public mqcoder_base
    * @param bp Pointer to the start of the buffer from which the bytes will be read
    * @param len Length of input buffer
    */
-  void init_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers);
+  void init_dec(const DataChunk* chunks, uint16_t numChunks);
 
-  void init_dec_common(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers);
-  void update_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers);
+  void init_dec_common(const DataChunk* chunks, uint16_t numChunks);
+  void update_dec(const DataChunk* chunks, uint16_t numChunks);
 
   /**
    * @brief Initializes decoder for RAW decoding
    * @param bp Pointer to the start of the buffer from which the bytes will be read
    * @param len Length of input buffer
    */
-  void raw_init_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers);
+  void raw_init_dec(const DataChunk* chunks, uint16_t numChunks);
 
   uint16_t numbytes_enc(void);
   void init_enc(uint8_t* bp);
@@ -112,20 +113,8 @@ struct mqcoder : public mqcoder_base
    */
   uint8_t* end;
 
-  /**
-   * @brief Array of pointers to buffers
-   */
-  uint8_t** buffers;
-
-  /**
-   * @brief Array of buffer lengths
-   */
-  uint32_t* buffer_lengths;
-
-  /**
-   * @brief Number of buffers
-   */
-  uint16_t num_buffers;
+  const DataChunk* chunks;
+  uint16_t numChunks;
 
   /**
    * @brief Index of the current buffer

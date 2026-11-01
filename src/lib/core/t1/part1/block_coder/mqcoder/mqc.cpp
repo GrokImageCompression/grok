@@ -27,9 +27,8 @@ namespace grk::t1
 mqcoder::mqcoder(void) : mqcoder(false) {}
 
 mqcoder::mqcoder(bool cached)
-    : mqcoder_base(cached), start(nullptr), end(nullptr), buffers(nullptr), buffer_lengths(nullptr),
-      num_buffers(0), cur_buffer_index(0), backup_(nullptr), overflow_(false),
-      lut_ctxno_zc_orient(nullptr)
+    : mqcoder_base(cached), start(nullptr), end(nullptr), chunks(nullptr), numChunks(0),
+      cur_buffer_index(0), backup_(nullptr), overflow_(false), lut_ctxno_zc_orient(nullptr)
 {
   if(cached)
     backup_ = new mqcoder_backup();
@@ -53,9 +52,8 @@ mqcoder& mqcoder::operator=(const mqcoder& other)
     overflow_ = other.overflow_;
     start = other.start;
     end = other.end;
-    buffers = other.buffers;
-    buffer_lengths = other.buffer_lengths;
-    num_buffers = other.num_buffers;
+    chunks = other.chunks;
+    numChunks = other.numChunks;
     cur_buffer_index = other.cur_buffer_index;
     lut_ctxno_zc_orient = other.lut_ctxno_zc_orient;
   }
@@ -86,7 +84,7 @@ void mqcoder::print(const std::string& msg)
 {
   mqcoder_base::print(msg);
   printf("%s end=%p,buffer index=%u, num buffers=%u\n", msg.c_str(), end, cur_buffer_index,
-         num_buffers);
+         numChunks);
 }
 
 void mqcoder::backup(void)
@@ -124,23 +122,23 @@ void mqcoder::reinit(void)
   resetstates();
 }
 
-void mqcoder::init_dec_common(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers)
+void mqcoder::init_dec_common(const DataChunk* chunks, uint16_t numChunks)
 {
-  update_dec(buffers, buffer_lengths, num_buffers);
+  update_dec(chunks, numChunks);
   cur_buffer_index = 0;
-  start = buffers ? buffers[0] : nullptr;
-  end = start + (buffer_lengths ? buffer_lengths[0] : 0);
+  start = numChunks ? chunks[0].data : nullptr;
+  end = start + (numChunks ? chunks[0].length : 0);
   bp = start;
 }
 
-void mqcoder::init_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers)
+void mqcoder::init_dec(const DataChunk* chunks, uint16_t numChunks)
 {
   /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
-  init_dec_common(buffers, buffer_lengths, num_buffers);
+  init_dec_common(chunks, numChunks);
   CODER_SETCURCTX(this, 0);
   end_of_byte_stream_counter = 0;
-  c = (uint32_t)(((buffers == nullptr) ? 0xff : *bp) << 16);
-  if(buffers)
+  c = (uint32_t)((numChunks == 0 ? 0xff : *bp) << 16);
+  if(numChunks)
   {
     bool approaching_red = false;
     (void)approaching_red;
@@ -159,16 +157,15 @@ void mqcoder::init_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num
   a = A_MIN;
 }
 
-void mqcoder::update_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers)
+void mqcoder::update_dec(const DataChunk* chunks, uint16_t numChunks)
 {
-  this->buffers = buffers;
-  this->buffer_lengths = buffer_lengths;
-  this->num_buffers = num_buffers;
+  this->chunks = chunks;
+  this->numChunks = numChunks;
 }
 
-void mqcoder::raw_init_dec(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers)
+void mqcoder::raw_init_dec(const DataChunk* chunks, uint16_t numChunks)
 {
-  init_dec_common(buffers, buffer_lengths, num_buffers);
+  init_dec_common(chunks, numChunks);
   c = 0;
   ct = 0;
 }

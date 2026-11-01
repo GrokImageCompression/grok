@@ -25,11 +25,7 @@ namespace grk::t1
 
 struct CodeblockDecompress : public Codeblock
 {
-  explicit CodeblockDecompress(uint16_t numLayers) : Codeblock(numLayers), impl_(nullptr) {}
-  ~CodeblockDecompress()
-  {
-    release();
-  }
+  explicit CodeblockDecompress(uint16_t numLayers) : Codeblock(numLayers), impl_(numLayers) {}
   Buffer8* getCompressedStream(void)
   {
     return getImpl()->getCompressedStream();
@@ -107,21 +103,13 @@ struct CodeblockDecompress : public Codeblock
   {
     return getImpl()->copyDataChunksToContiguous(buffer);
   }
-  void release(void)
-  {
-    delete impl_;
-    impl_ = nullptr;
-  }
-
   CodeblockDecompressImpl* getImpl(void)
   {
-    if(!impl_)
-      impl_ = new CodeblockDecompressImpl(numLayers_);
-    return impl_;
+    return &impl_;
   }
 
 private:
-  CodeblockDecompressImpl* impl_;
+  CodeblockDecompressImpl impl_;
 };
 
 } // namespace grk::t1
