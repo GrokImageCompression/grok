@@ -24,10 +24,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
+#include <atomic>
+#include <condition_variable>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "TFSingleton.h"
 #include "grk_fseek.h"
@@ -338,6 +343,482 @@ namespace
 } // namespace
 #endif
 
+namespace
+{
+  // mercury plans keep a pointer to memReader
+  struct MercuryReaders
+  {
+    MemReader memReader;
+    std::vector<uint8_t> slurped;
+    bool fromPath = false;
+#if defined(_WIN32)
+    Win32PositionedReader win32reader;
+#else
+    int fd = -1;
+    ~MercuryReaders()
+    {
+      if(fd >= 0)
+        close(fd);
+    }
+#endif
+  };
+
+  MercuryPlan* warpPlan(const MercuryMainHeader& header, const MercuryDecodeParams& params,
+                        MercuryReaders& readers, uint8_t* err, size_t errCap)
+  {
+    if(readers.fromPath)
+    {
+#if defined(_WIN32)
+      return mercury_warp_loom(&header, &params, win32ReadAt, &readers.win32reader,
+                               readers.win32reader.size(), err, errCap);
+#else
+      return mercury_warp_loom_fd(&header, &params, readers.fd, err, errCap);
+#endif
+    }
+    return mercury_warp_loom(&header, &params, memReadAt, &readers.memReader,
+                             readers.memReader.size, err, errCap);
+  }
+
+  // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
+  struct MercuryHeaderStorage
+  {
+    std::vector<MercurySizComp> comps;
+    std::vector<MercuryPrecinct> precincts;
+    std::vector<uint8_t> qcdRanges;
+    std::vector<float> qcdSteps;
+    std::vector<MercuryQccOverride> qcc;
+    std::vector<std::vector<uint8_t>> qccRanges;
+    std::vector<std::vector<float>> qccSteps;
+    std::vector<MercuryCocOverride> coc;
+    std::vector<std::vector<MercuryPrecinct>> cocPrecincts;
+    std::vector<MercuryProgressionVolume> poc;
+    std::vector<MercuryTlmEntry> tlm;
+    MercuryMainHeader header;
+    MercuryDecodeParams params;
+  };
+
+  struct AsyncTile
+  {
+    uint16_t index = 0;
+    uint16_t tileY = 0;
+    // decode window of this tile on the full resolution canvas
+    Rect32 window;
+    MercuryPlan* plan = nullptr;
+    // rows written per component, read by swath waits while the weave runs
+    std::unique_ptr<std::atomic<uint32_t>[]> filledRows;
+    bool rowOverflow = false;
+    std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image;
+    bool complete = false;
+  };
+
+  struct MercuryTileState;
+  struct TileSinkCtx
+  {
+    MercuryTileState* state;
+    AsyncTile* tile;
+  };
+
+  template<typename T>
+  void tileRowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps,
+                   uint64_t width);
+  template<typename T>
+  void tileCompRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width);
+
+  // one mercury plan per tile, woven on the taskflow executor under classic's back-pressure
+  struct MercuryTileState final : MercuryAsyncDecode
+  {
+    std::unique_ptr<MercuryHeaderStorage> header;
+    std::unique_ptr<MercuryReaders> readers;
+    const GrkImage* composite = nullptr;
+    grk_data_type outType = GRK_INT_32;
+    bool uniformSubsampling = true;
+    uint32_t threadsPerTile = 1;
+    uint8_t reduce = 0;
+    TileCompletion* completion = nullptr;
+    tf::Executor* executor = nullptr;
+    std::atomic<bool>* success = nullptr;
+    uint16_t numTileCols = 0;
+    uint16_t tileX0 = 0;
+    uint16_t tileX1 = 0;
+    uint16_t tileY0 = 0;
+    bool keepReleasedTiles = false;
+    std::vector<std::unique_ptr<AsyncTile>> tiles;
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::atomic<bool> cancel{false};
+    std::atomic<bool> failed{false};
+    std::thread scheduler;
+    std::vector<tf::Future<void>> decodes;
+    static constexpr int32_t maxRowsAhead = 2;
+    int32_t rowsAhead = maxRowsAhead;
+    std::atomic<uint32_t> inFlight{0};
+    std::atomic<uint32_t> peakInFlight{0};
+    std::atomic<uint64_t> warpNs{0};
+    std::atomic<uint64_t> weaveNs{0};
+    std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
+
+    ~MercuryTileState() override
+    {
+      if(std::getenv("GRK_MERCURY_DEBUG"))
+      {
+        double wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+        fprintf(stderr,
+                "mercury tiles: %u tiles, %u threads/tile, rows ahead %d, peak concurrency %u, "
+                "warp %.1f ms, weave %.1f ms (summed), wall %.1f ms\n",
+                (uint32_t)tiles.size(), threadsPerTile, rowsAhead, peakInFlight.load(),
+                (double)warpNs.load() / 1e6, (double)weaveNs.load() / 1e6, wallMs);
+      }
+      // mercury has no cancel entry, a running weave runs out while the sink drops rows
+      cancel = true;
+      cv.notify_all();
+      stop();
+      for(auto& tile : tiles)
+        if(tile->plan)
+          mercury_unwarp_loom(tile->plan);
+    }
+
+    void stop()
+    {
+      if(scheduler.joinable())
+        scheduler.join();
+      for(auto& decode : decodes)
+        decode.wait();
+      decodes.clear();
+    }
+
+    AsyncTile* tileAt(uint16_t tileIndex)
+    {
+      uint16_t tx = static_cast<uint16_t>(tileIndex % numTileCols);
+      uint16_t ty = static_cast<uint16_t>(tileIndex / numTileCols);
+      if(tx < tileX0 || tx >= tileX1 || ty < tileY0)
+        return nullptr;
+      size_t pos = (size_t)(ty - tileY0) * (tileX1 - tileX0) + (tx - tileX0);
+      return pos < tiles.size() ? tiles[pos].get() : nullptr;
+    }
+
+    MercuryPlan* warp(const Rect32& window, uint8_t* err, size_t errCap)
+    {
+      MercuryDecodeParams params = header->params;
+      params.win_x0 = window.x0;
+      params.win_y0 = window.y0;
+      params.win_x1 = window.x1;
+      params.win_y1 = window.y1;
+      return warpPlan(header->header, params, *readers, err, errCap);
+    }
+
+    // reduced component rectangle of a tile window, mercury's comp_dims rule
+    Rect32 compRect(const Rect32& window, uint16_t c) const
+    {
+      uint32_t dx = composite->comps[c].dx;
+      uint32_t dy = composite->comps[c].dy;
+      return Rect32(ceildivpow2<uint32_t>(ceildiv<uint32_t>(window.x0, dx), reduce),
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(window.y0, dy), reduce),
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(window.x1, dx), reduce),
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(window.y1, dy), reduce));
+    }
+
+    bool planMatchesTile(MercuryPlan* plan, const AsyncTile& tile, const char** why) const
+    {
+      MercuryImageInfo info;
+      if(mercury_loom_info(plan, &info) != MERCURY_OK || info.num_comps != composite->numcomps)
+      {
+        *why = "plan image info disagrees with the headers";
+        return false;
+      }
+      for(uint16_t c = 0; c < composite->numcomps; c++)
+      {
+        uint32_t prec = 0;
+        int32_t sgnd = 0;
+        uint32_t w = 0;
+        uint32_t h = 0;
+        Rect32 rect = compRect(tile.window, c);
+        if(mercury_loom_comp_info(plan, c, &prec, &sgnd, &w, &h) != MERCURY_OK ||
+           prec != composite->comps[c].prec || (sgnd != 0) != composite->comps[c].sgnd ||
+           w != rect.width() || h != rect.height())
+        {
+          *why = "plan component info disagrees with the headers";
+          return false;
+        }
+      }
+      return true;
+    }
+
+    void completeTile(AsyncTile& tile)
+    {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        tile.complete = true;
+      }
+      completion->complete(tile.index);
+      cv.notify_all();
+    }
+
+    void failTile(AsyncTile& tile, const char* why)
+    {
+      if(!cancel)
+        grklog.error("mercury tile %u: %s", (uint32_t)tile.index, why);
+      *success = false;
+      failed = true;
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        tile.image.reset();
+      }
+      completeTile(tile);
+    }
+
+    void decodeTile(AsyncTile& tile)
+    {
+      if(cancel)
+        return;
+      if(failed || tile.window.empty())
+      {
+        completeTile(tile);
+        return;
+      }
+      MercuryPlan* plan = tile.plan;
+      tile.plan = nullptr;
+      uint8_t err[256] = {0};
+      uint32_t running = ++inFlight;
+      uint32_t peak = peakInFlight.load();
+      while(running > peak && !peakInFlight.compare_exchange_weak(peak, running))
+      {
+      }
+      struct InFlightGuard
+      {
+        std::atomic<uint32_t>& count;
+        ~InFlightGuard()
+        {
+          --count;
+        }
+      } inFlightGuard{inFlight};
+      auto warpStart = std::chrono::steady_clock::now();
+      if(!plan)
+        plan = warp(tile.window, err, sizeof err);
+      warpNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - warpStart)
+                    .count();
+      if(!plan)
+      {
+        failTile(tile, (const char*)err);
+        return;
+      }
+      const char* why = nullptr;
+      if(!planMatchesTile(plan, tile, &why))
+      {
+        mercury_unwarp_loom(plan);
+        failTile(tile, why);
+        return;
+      }
+      std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image(new GrkImage(),
+                                                                   RefCountedDeleter<GrkImage>());
+      composite->copyHeaderTo(image.get());
+      image->x0 = tile.window.x0;
+      image->y0 = tile.window.y0;
+      image->x1 = tile.window.x1;
+      image->y1 = tile.window.y1;
+      for(uint16_t c = 0; c < image->numcomps; c++)
+      {
+        auto comp = image->comps + c;
+        Rect32 rect = compRect(tile.window, c);
+        comp->x0 = rect.x0;
+        comp->y0 = rect.y0;
+        comp->w = rect.width();
+        comp->h = rect.height();
+        comp->data_type = outType;
+        comp->data = nullptr;
+        comp->owns_data = false;
+        if(!GrkImage::allocData(comp))
+        {
+          mercury_unwarp_loom(plan);
+          failTile(tile, "tile image allocation failed");
+          return;
+        }
+      }
+      tile.filledRows = std::make_unique<std::atomic<uint32_t>[]>(image->numcomps);
+      tile.rowOverflow = false;
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        tile.image = std::move(image);
+      }
+      TileSinkCtx ctx{this, &tile};
+      bool is16 = outType == GRK_INT_16;
+      auto weaveStart = std::chrono::steady_clock::now();
+      // mercury_weave frees the plan, mercury_unwarp_loom is only for plans never decoded
+      int32_t rc;
+      if(uniformSubsampling)
+        rc = is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, tileRowSink<int16_t>, &ctx,
+                                      threadsPerTile)
+                  : mercury_weave(plan, mercury_grok_t1_decode, tileRowSink<int32_t>, &ctx,
+                                  threadsPerTile);
+      else
+        rc = is16 ? mercury_weave_comps_i16(plan, mercury_grok_t1_decode,
+                                            tileCompRowSink<int16_t>, &ctx, threadsPerTile)
+                  : mercury_weave_comps(plan, mercury_grok_t1_decode, tileCompRowSink<int32_t>,
+                                        &ctx, threadsPerTile);
+      weaveNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+                     std::chrono::steady_clock::now() - weaveStart)
+                     .count();
+      if(cancel)
+        return;
+      if(rc != MERCURY_OK)
+      {
+        failTile(tile, "weave failed");
+        return;
+      }
+      if(tile.rowOverflow)
+      {
+        failTile(tile, "mercury delivered rows outside the tile window");
+        return;
+      }
+      for(uint16_t c = 0; c < tile.image->numcomps; c++)
+        if(tile.filledRows[c].load(std::memory_order_relaxed) != tile.image->comps[c].h)
+        {
+          failTile(tile, "mercury delivered too few rows");
+          return;
+        }
+      completeTile(tile);
+    }
+
+    template<typename T>
+    void row(AsyncTile& tile, uint32_t comp, const T* samples, uint64_t width)
+    {
+      if(cancel || tile.rowOverflow)
+        return;
+      if(comp >= tile.image->numcomps)
+      {
+        tile.rowOverflow = true;
+        return;
+      }
+      auto& c = tile.image->comps[comp];
+      uint32_t done = tile.filledRows[comp].load(std::memory_order_relaxed);
+      if(done >= c.h || width > c.w)
+      {
+        tile.rowOverflow = true;
+        return;
+      }
+      writeRow(c.data, (size_t)done * c.stride, samples, width);
+      tile.filledRows[comp].store(done + 1, std::memory_order_release);
+      // a swath wait inside this tile can proceed once its rows are in
+      if(((done + 1) & 63) == 0)
+        completion->notifyProgress();
+    }
+
+    bool tileRowsReady(uint16_t tileIndex, uint32_t fullResY1)
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      AsyncTile* tile = tileAt(tileIndex);
+      if(!tile)
+        return false;
+      if(tile->complete)
+        return true;
+      GrkImage* image = tile->image.get();
+      if(!image)
+        return false;
+      uint32_t y1 = std::min(fullResY1, tile->window.y1);
+      for(uint16_t c = 0; c < image->numcomps; c++)
+      {
+        uint32_t needed = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, composite->comps[c].dy), reduce);
+        needed = needed > image->comps[c].y0 ? needed - image->comps[c].y0 : 0;
+        if(tile->filledRows[c].load(std::memory_order_acquire) < needed)
+          return false;
+      }
+      return true;
+    }
+
+    void run()
+    {
+      for(auto& tilePtr : tiles)
+      {
+        AsyncTile& tile = *tilePtr;
+        int32_t ty = tile.tileY;
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          // classic's back-pressure: rowsAhead tile rows past the cleared row, or a needed row
+          cv.wait(lock, [&] {
+            return cancel.load() || failed.load() || ty < completion->getNeededTileY1() ||
+                   ty - completion->getLastClearedTileY() <= rowsAhead;
+          });
+        }
+        if(cancel)
+          return;
+        // a single-threaded executor has no workers to run the task
+        if(executor->num_workers() == 0)
+        {
+          decodeTile(tile);
+          continue;
+        }
+        tf::Taskflow flow;
+        flow.emplace([this, &tile]() { decodeTile(tile); });
+        decodes.push_back(executor->run(std::move(flow)));
+      }
+    }
+
+    void start()
+    {
+      scheduler = std::thread([this] { run(); });
+    }
+
+    void onRowsReleased()
+    {
+      int32_t cleared = completion->getLastClearedTileY();
+      if(!keepReleasedTiles)
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        for(auto& tile : tiles)
+          if(tile->complete && static_cast<int32_t>(tile->tileY) <= cleared)
+            tile->image.reset();
+      }
+      cv.notify_all();
+    }
+
+    GrkImage* imageForTile(uint16_t tileIndex) override
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      AsyncTile* tile = tileAt(tileIndex);
+      return tile && tile->complete ? tile->image.get() : nullptr;
+    }
+
+    GrkImage* imageForSwath(uint16_t tileIndex) override
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      AsyncTile* tile = tileAt(tileIndex);
+      return tile ? tile->image.get() : nullptr;
+    }
+
+    void waitForTile(uint16_t tileIndex) override
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      AsyncTile* tile = tileAt(tileIndex);
+      if(!tile)
+        return;
+      cv.wait(lock, [&] { return tile->complete || cancel.load(); });
+    }
+
+    void finish() override
+    {
+      // a full wait lifts the back-pressure limit
+      completion->setLastClearedTileY(INT16_MAX);
+      cv.notify_all();
+      stop();
+    }
+  };
+
+  template<typename T>
+  void tileRowSink(void* c, uint32_t, const T* const* comps, uint32_t numComps, uint64_t width)
+  {
+    auto ctx = static_cast<TileSinkCtx*>(c);
+    for(uint32_t i = 0; i < numComps; i++)
+      ctx->state->row(*ctx->tile, i, comps[i], width);
+  }
+
+  template<typename T>
+  void tileCompRowSink(void* c, uint32_t comp, uint32_t, const T* samples, uint64_t width)
+  {
+    auto ctx = static_cast<TileSinkCtx*>(c);
+    ctx->state->row(*ctx->tile, comp, samples, width);
+  }
+} // namespace
+
 #define MFP_BAIL(msg)                                      \
   do                                                       \
   {                                                        \
@@ -386,7 +867,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // limit, and palette/ICC/channel-definition post-processing are handled;
   // everything else stays on the classic pipeline.
   auto& dec = cs.cp_.codingParams_.dec_;
-  if(dec.skipAllocateComposite_)
+  // the per-tile path below allocates tile images and never needs the composite
+  const bool asyncDecode = cs.cp_.asynchronous_ && cs.cp_.simulate_synchronous_ && cs.tileCompletion_;
+  if(dec.skipAllocateComposite_ && !asyncDecode)
     MFP_BAIL("skipAllocate set");
   // The transcoder drives a T2-only decode to record packet lengths for
   // marker injection — it needs the classic parse, not pixels.
@@ -396,8 +879,12 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // grk_decompress_wait()/swath calls drain via the classic pipeline's
   // TileCompletion signalling. The fast path runs synchronously and never
   // arms that machinery, so a subsequent swath wait would block forever.
-  if(cs.cp_.asynchronous_)
-    MFP_BAIL("asynchronous decode requested");
+  if(cs.cp_.asynchronous_ && !asyncDecode)
+    MFP_BAIL("asynchronous decode without tile completion");
+  if(asyncDecode && cs.cp_.decompressCallback_)
+    MFP_BAIL("asynchronous decode with a tile callback");
+  if(asyncDecode && cs.ioBandCallback_)
+    MFP_BAIL("asynchronous decode with a band callback");
   if(!cs.cp_.compsToDecompress_.empty())
     MFP_BAIL("component filter set");
   auto img = cs.multiTileComposite_.get();
@@ -670,26 +1157,21 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   MercuryPlan* plan = nullptr;
   // these back the read_at source and must outlive the decode below, so they
   // live at function scope. only one is used per call.
-  MemReader memReader;
-  std::vector<uint8_t> slurped;
-#if defined(_WIN32)
-  Win32PositionedReader win32reader;
-#endif
+  auto readers = std::make_unique<MercuryReaders>();
+  MemReader& memReader = readers->memReader;
+  std::vector<uint8_t>& slurped = readers->slurped;
   if(!path.empty())
   {
+    readers->fromPath = true;
 #if defined(_WIN32)
     // POSIX fds don't reach mercury's fd entry, drive it through the read_at
     // callback
-    if(!win32reader.open(path))
+    if(!readers->win32reader.open(path))
       MFP_BAIL("open failed");
-    plan = mercury_warp_loom(&mhdr, &mparams, win32ReadAt, &win32reader, win32reader.size(), err,
-                             sizeof err);
 #else
-    int fd = open(path.c_str(), O_RDONLY);
-    if(fd < 0)
+    readers->fd = open(path.c_str(), O_RDONLY);
+    if(readers->fd < 0)
       MFP_BAIL("open failed");
-    plan = mercury_warp_loom_fd(&mhdr, &mparams, fd, err, sizeof err);
-    close(fd);
 #endif
   }
   else
@@ -741,8 +1223,98 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     if(!ok)
       MFP_BAIL(streamFail);
     memReader.size = len;
-    plan = mercury_warp_loom(&mhdr, &mparams, memReadAt, &memReader, len, err, sizeof err);
   }
+
+  if(asyncDecode)
+  {
+    if(img->decompress_num_comps != img->numcomps)
+      MFP_BAIL("decompress_num_comps != numcomps");
+    // a second decode on this codec joins the previous tiles first
+    cs.mercuryAsync_.reset();
+    auto state = std::make_unique<MercuryTileState>();
+    state->header = std::make_unique<MercuryHeaderStorage>();
+    state->header->header = mhdr;
+    state->header->params = mparams;
+    state->header->comps = std::move(mhComps);
+    state->header->precincts = std::move(mhPrec);
+    state->header->qcdRanges = std::move(qcdRanges);
+    state->header->qcdSteps = std::move(qcdSteps);
+    state->header->qcc = std::move(mhQcc);
+    state->header->qccRanges = std::move(qccRanges);
+    state->header->qccSteps = std::move(qccSteps);
+    state->header->coc = std::move(mhCoc);
+    state->header->cocPrecincts = std::move(cocPrec);
+    state->header->poc = std::move(mhPoc);
+    state->header->tlm = std::move(mhTlm);
+    state->readers = std::move(readers);
+    state->composite = img;
+    state->outType = mercuryOutType(cs.defaultTcp_.get(), img);
+    state->uniformSubsampling = uniformSubsampling;
+    state->reduce = dec.reduce_;
+    state->success = &cs.success_;
+    Rect16 slated = cs.tilesToDecompress_.getSlatedTileRect();
+    state->numTileCols = cs.cp_.t_grid_width_;
+    state->tileX0 = slated.x0;
+    state->tileX1 = slated.x1;
+    state->tileY0 = slated.y0;
+    // per-band reads revisit released tile rows when the tile image cache is on
+    state->keepReleasedTiles = (cs.tileCache_->getStrategy() & GRK_TILE_CACHE_IMAGE) != 0;
+    for(uint16_t ty = slated.y0; ty < slated.y1; ty++)
+      for(uint16_t tx = slated.x0; tx < slated.x1; tx++)
+      {
+        AsyncTile tile;
+        tile.index = static_cast<uint16_t>(ty * cs.cp_.t_grid_width_ + tx);
+        tile.tileY = ty;
+        uint64_t tx0 = (uint64_t)cs.cp_.tx0_ + (uint64_t)tx * cs.cp_.t_width_;
+        uint64_t ty0 = (uint64_t)cs.cp_.ty0_ + (uint64_t)ty * cs.cp_.t_height_;
+        tile.window = Rect32((uint32_t)std::max<uint64_t>(tx0, img->x0),
+                             (uint32_t)std::max<uint64_t>(ty0, img->y0),
+                             (uint32_t)std::min<uint64_t>(tx0 + cs.cp_.t_width_, img->x1),
+                             (uint32_t)std::min<uint64_t>(ty0 + cs.cp_.t_height_, img->y1));
+        state->tiles.push_back(std::make_unique<AsyncTile>(std::move(tile)));
+      }
+    if(state->tiles.empty())
+      MFP_BAIL("no tiles slated");
+    // a stream the plan stage rejects still falls back to classic
+    AsyncTile& first = *state->tiles.front();
+    first.plan = state->warp(first.window, err, sizeof err);
+    if(!first.plan)
+    {
+      grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
+      char bailMsg[300];
+      snprintf(bailMsg, sizeof bailMsg, "plan rejected: %s", (const char*)err);
+      MFP_BAIL(bailMsg);
+    }
+    const char* why = nullptr;
+    if(!state->planMatchesTile(first.plan, first, &why))
+      MFP_BAIL(why);
+    // the executor's workers are shared by the tiles in flight
+    const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
+    const uint32_t inFlight = static_cast<uint32_t>(std::min<size_t>(
+        state->tiles.size(), (size_t)(MercuryTileState::maxRowsAhead + 1) * (slated.x1 - slated.x0)));
+    state->threadsPerTile = std::max<uint32_t>(1, cores / std::max<uint32_t>(1, inFlight));
+    // one thread per weave fills the cores only with about two tiles in flight per core
+    const uint32_t cols = static_cast<uint32_t>(slated.x1 - slated.x0);
+    state->rowsAhead = std::max<int32_t>(MercuryTileState::maxRowsAhead,
+                                         static_cast<int32_t>((2 * cores + cols - 1) / cols));
+    cs.tileCompletion_ = std::make_unique<TileCompletion>(
+        cs.tileCache_.get(), cs.tileGridBounds(), cs.cp_.t_width_, cs.cp_.t_height_, nullptr,
+        [raw = state.get()]() { raw->onRowsReleased(); }, slated);
+    state->completion = cs.tileCompletion_.get();
+    cs.tileCompletion_->setTileRowsReady(
+        [raw = state.get()](uint16_t tileIndex, uint32_t fullResY1) {
+          return raw->tileRowsReady(tileIndex, fullResY1);
+        });
+    state->executor = &TFSingleton::get();
+    cs.success_ = true;
+    state->start();
+    grklog.info("mercury per-tile async path: %u tiles, %u threads per tile",
+                (uint32_t)state->tiles.size(), state->threadsPerTile);
+    cs.mercuryAsync_ = std::move(state);
+    return true;
+  }
+
+  plan = warpPlan(mhdr, mparams, *readers, err, sizeof err);
   if(!plan)
   {
     grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);

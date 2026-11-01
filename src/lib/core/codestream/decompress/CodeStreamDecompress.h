@@ -22,6 +22,7 @@
 #include "CompressedChunkCache.h"
 #include "SelectiveFetchRanges.h"
 #include "WaveletPoolData.h"
+#include "mercury_async.h"
 #include <map>
 #include <atomic>
 
@@ -52,6 +53,8 @@ public:
    */
   ~CodeStreamDecompress()
   {
+    // the mercury tiles complete through tileCompletion_
+    mercuryAsync_.reset();
     if(decompressQueue_)
       decompressQueue_->close();
     if(decompressConsumer_.joinable())
@@ -706,6 +709,7 @@ private:
   bool isHT_ = false;
 
   std::unique_ptr<TileCompletion> tileCompletion_;
+  std::unique_ptr<MercuryAsyncDecode> mercuryAsync_;
 
   std::thread decompressWorker_;
 

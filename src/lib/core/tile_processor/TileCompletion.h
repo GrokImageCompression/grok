@@ -43,6 +43,8 @@ public:
   using RowCompletionCallback = std::function<void(uint16_t tileIndexBegin, uint16_t tileIndexEnd)>;
   // Callback fired after wait() releases tile rows, to trigger deferred scheduling
   using RowsReleasedCallback = std::function<void()>;
+  // true when a tile that is not complete already holds every row below fullResY1
+  using TileRowsReadyCallback = std::function<bool(uint16_t tileIndex, uint32_t fullResY1)>;
 
   // Constructor for full region or subregion
   TileCompletion(TileCache* tileCache, const Rect32& imageBounds, uint32_t tileWidth,
@@ -270,6 +272,7 @@ public:
 
     // Compute all local indices in the swath
     std::vector<uint16_t> swathIndices;
+    std::vector<uint16_t> swathTileIndices;
     for(uint16_t tileY = tileY0; tileY < tileY1; ++tileY)
     {
       for(uint16_t tileX = tileX0; tileX < tileX1; ++tileX)
@@ -278,6 +281,7 @@ public:
         uint16_t localY = tileY - tileY0_;
         uint16_t localIndex = static_cast<uint16_t>(localY * subregionWidth_ + localX);
         swathIndices.push_back(localIndex);
+        swathTileIndices.push_back(static_cast<uint16_t>(tileY * numTileCols_ + tileX));
       }
     }
     uint16_t localEnd = swathIndices.empty() ? 0 : swathIndices.back();
@@ -286,10 +290,13 @@ public:
     {
       std::unique_lock<std::mutex> lock(mutex_);
       auto allCompleted = [&]() {
-        for(uint16_t idx : swathIndices)
+        for(size_t i = 0; i < swathIndices.size(); i++)
         {
-          if(!completedTiles_[idx])
-            return false;
+          if(completedTiles_[swathIndices[i]])
+            continue;
+          if(tileRowsReady_ && tileRowsReady_(swathTileIndices[i], y1))
+            continue;
+          return false;
         }
         return true;
       };
@@ -316,6 +323,18 @@ public:
     grklog.debug("Swath completed: tileX0=%d, tileY0=%d, tileX1=%d, tileY1=%d", swath->tile_x0,
                  swath->tile_y0, swath->tile_x1, swath->tile_y1);
     return finalWait;
+  }
+
+  void setTileRowsReady(TileRowsReadyCallback callback)
+  {
+    tileRowsReady_ = std::move(callback);
+  }
+
+  // wakes a swath wait that may now be satisfied by rows alone
+  void notifyProgress()
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    completionCV_.notify_all();
   }
 
   int32_t getLastClearedTileY() const
@@ -359,6 +378,7 @@ private:
   std::atomic<int32_t> neededTileY1_{0}; // Max tile row the consumer is currently waiting for
   RowCompletionCallback rowCallback_; // Callback for row completion
   RowsReleasedCallback rowsReleasedCallback_; // Callback after wait() releases rows
+  TileRowsReadyCallback tileRowsReady_;
 };
 
 } // namespace grk

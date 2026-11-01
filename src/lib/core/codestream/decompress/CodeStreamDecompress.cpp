@@ -1779,6 +1779,12 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     return;
   }
 
+  if(mercuryAsync_)
+  {
+    mercuryAsync_->finish();
+    return;
+  }
+
   // 2a. Flush batch queues when using non-swath full wait.
   // When tileCompletion_ is active but wait(nullptr) is called (not swath-based),
   // the back-pressure logic in scheduleTileBatch() prevents scheduling queued tiles
@@ -1867,6 +1873,33 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
   if(!swath || !buf || !buf->data || buf->prec == 0)
     return;
 
+  // a single-threaded executor has no workers to run copy tasks
+  const bool copyInline = TFSingleton::get().num_workers() == 0;
+
+  if(mercuryAsync_)
+  {
+    for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
+      for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
+      {
+        const uint16_t tidx = static_cast<uint16_t>(ty * swath->num_tile_cols + tx);
+        GrkImage* tileImg = mercuryAsync_->imageForSwath(tidx);
+        if(!tileImg)
+        {
+          grklog.error("swath copy: tile %u has no decoded image", (uint32_t)tidx);
+          continue;
+        }
+        if(copyInline)
+        {
+          hwy_copy_tile_to_swath(tileImg, buf);
+          continue;
+        }
+        tf::Taskflow tf_copy;
+        tf_copy.emplace([tileImg, buf]() { hwy_copy_tile_to_swath(tileImg, buf); });
+        swathCopyFutureManager_.add(tidx, TFSingleton::get().run(std::move(tf_copy)));
+      }
+    return;
+  }
+
   for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
   {
     for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
@@ -1882,8 +1915,13 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
         // after the swath-based wait (tileCompletion early return).
         // If wait(nullptr) has run instead, scratchImage_ will be empty
         // and callers must use getImage() / multiTileComposite_.
+        // after a full wait the single tile's pixels sit in the composite instead
         if(!tileImg)
-          tileImg = scratchImage_.get();
+        {
+          const bool scratchHasPixels =
+              scratchImage_ && scratchImage_->comps && scratchImage_->comps[0].data;
+          tileImg = scratchHasPixels ? scratchImage_.get() : multiTileComposite_.get();
+        }
       }
       else
         tileImg = multiTileComposite_.get();
@@ -1891,6 +1929,11 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       if(!tileImg)
         continue;
 
+      if(copyInline)
+      {
+        hwy_copy_tile_to_swath(tileImg, buf);
+        continue;
+      }
       // Submit the copy+convert task to the shared Taskflow executor.
       tf::Taskflow tf_copy;
       tf_copy.emplace([tileImg, buf]() { hwy_copy_tile_to_swath(tileImg, buf); });
@@ -2886,6 +2929,12 @@ ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 
 GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
 {
+  if(mercuryAsync_)
+  {
+    if(doWait)
+      mercuryAsync_->waitForTile(tile_index);
+    return mercuryAsync_->imageForTile(tile_index);
+  }
   if(doWait)
     wait(tile_index);
 
