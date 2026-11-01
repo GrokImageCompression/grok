@@ -451,6 +451,8 @@ namespace
     std::vector<tf::Future<void>> decodes;
     static constexpr int32_t maxRowsAhead = 2;
     int32_t rowsAhead = maxRowsAhead;
+    // TileCompletion::wait calls tileRowsReady with its mutex locked
+    int32_t clearedTileY = -1;
     std::atomic<uint32_t> inFlight{0};
     std::atomic<uint32_t> peakInFlight{0};
     std::atomic<uint64_t> warpNs{0};
@@ -736,7 +738,7 @@ namespace
           // classic's back-pressure: rowsAhead tile rows past the cleared row, or a needed row
           cv.wait(lock, [&] {
             return cancel.load() || failed.load() || ty < completion->getNeededTileY1() ||
-                   ty - completion->getLastClearedTileY() <= rowsAhead;
+                   ty - clearedTileY <= rowsAhead;
           });
         }
         if(cancel)
@@ -761,12 +763,13 @@ namespace
     void onRowsReleased()
     {
       int32_t cleared = completion->getLastClearedTileY();
-      if(!keepReleasedTiles)
       {
         std::lock_guard<std::mutex> lock(mutex);
-        for(auto& tile : tiles)
-          if(tile->complete && static_cast<int32_t>(tile->tileY) <= cleared)
-            tile->image.reset();
+        clearedTileY = cleared;
+        if(!keepReleasedTiles)
+          for(auto& tile : tiles)
+            if(tile->complete && static_cast<int32_t>(tile->tileY) <= cleared)
+              tile->image.reset();
       }
       cv.notify_all();
     }
@@ -798,6 +801,10 @@ namespace
     {
       // a full wait lifts the back-pressure limit
       completion->setLastClearedTileY(INT16_MAX);
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        clearedTileY = INT16_MAX;
+      }
       cv.notify_all();
       stop();
     }
