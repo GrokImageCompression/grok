@@ -158,18 +158,18 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   /**
    * @brief Iterator pointing to the beginning
    * of the segments yet to be decompressed.
-   * @return std::vector<Segment>::iterator
+   * @return Segment*
    */
-  std::vector<Segment>::iterator toBeDecompressedBegin()
+  Segment* toBeDecompressedBegin()
   {
     return segs_.begin() + numDecompressedSegments_;
   }
   /**
    * @brief Iterator pointing one location past
    * the last Segment whose data has been parsed
-   * @return std::vector<Segment>::iterator
+   * @return Segment*
    */
-  std::vector<Segment>::iterator toBeDecompressedEnd()
+  Segment* toBeDecompressedEnd()
   {
     return segs_.begin() + numDataParsedSegments_;
   }
@@ -576,11 +576,11 @@ struct CodeblockDecompressImpl : public CodeblockImpl
 
   /**
    * @brief Increments iterator for next segment to be decompressed
-   * @param segIter reference to std::vector<Segment>::iterator
+   * @param segIter reference to Segment*
    * @param coder pointer to block decoder
    */
   template<typename T>
-  void nextToBeDecompressedSegment(std::vector<Segment>::iterator& s, T* coder)
+  void nextToBeDecompressedSegment(Segment*& s, T* coder)
   {
     compressDataOffset_ += s->totalBytes_;
     passno_ = 0;
@@ -725,17 +725,17 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   }
   /**
    * @brief Gets iterator pointing to current segment whose layer data is being parsed
-   * @return std::vector<Segment>::iterator
+   * @return Segment*
    */
-  std::vector<Segment>::iterator currDataParsedSegment(void)
+  Segment* currDataParsedSegment(void)
   {
     return numDataParsedSegments_ ? segs_.begin() + numDataParsedSegments_ - 1 : segs_.end();
   }
   /**
    * @brief Increments to next segment whose data is going to be parsed
-   * @return std::vector<Segment>::iterator
+   * @return Segment*
    */
-  std::vector<Segment>::iterator nextDataParsedSegment(void)
+  Segment* nextDataParsedSegment(void)
   {
     // corrupt stream can signal more layer passes than created segments can hold:
     // saturate so numDataParsedSegments_ never exceeds segs_.size()
@@ -746,9 +746,9 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   }
   /**
    * @brief Gets iterator pointing to current segment being populated by packet header
-   * @return std::vector<Segment>::iterator
+   * @return Segment*
    */
-  std::vector<Segment>::iterator currHeaderParsedSegment(void)
+  Segment* currHeaderParsedSegment(void)
   {
     return segs_.empty() ? segs_.end() : segs_.end() - 1;
   }
@@ -866,7 +866,7 @@ private:
   /**
    * @brief Collection of @ref Segment
    */
-  std::vector<Segment> segs_;
+  SmallVector<Segment, 1> segs_;
 
   /**
    * @brief Remaining bit planes to decompress

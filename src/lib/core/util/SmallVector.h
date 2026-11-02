@@ -17,11 +17,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
-#include <type_traits>
+#include <iterator>
 #include <vector>
 
 namespace grk
@@ -30,8 +30,6 @@ namespace grk
 template<typename T, size_t InlineCapacity>
 class SmallVector
 {
-  static_assert(std::is_trivially_copyable_v<T>);
-
 public:
   size_t size() const
   {
@@ -79,6 +77,11 @@ public:
   {
     return data() + size_;
   }
+  T& emplace_back()
+  {
+    resize(size_ + 1);
+    return back();
+  }
   void push_back(const T& value)
   {
     resize(size_ + 1);
@@ -90,12 +93,12 @@ public:
     if(newSize > InlineCapacity)
     {
       if(size_ <= InlineCapacity)
-        heap_.assign(inline_, inline_ + size_);
+        heap_.assign(std::make_move_iterator(inline_), std::make_move_iterator(inline_ + size_));
       heap_.resize(newSize);
     }
     else
     {
-      memset(inline_ + size_, 0, (newSize - size_) * sizeof(T));
+      std::fill(inline_ + size_, inline_ + newSize, T{});
     }
     size_ = newSize;
   }
