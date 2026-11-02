@@ -407,7 +407,12 @@ namespace
     // rows written per component, read by swath waits while the weave runs
     std::unique_ptr<std::atomic<uint32_t>[]> filledRows;
     bool rowOverflow = false;
-    std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image;
+    bool allocFailed = false;
+    std::vector<uint32_t> compRows;
+    std::vector<std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>> bands;
+    uint32_t bandRows = 0;
+    uint32_t releasedBands = 0;
+    uint32_t neededBands = 0;
     bool complete = false;
   };
 
@@ -457,6 +462,13 @@ namespace
     int32_t rowsAhead = maxRowsAhead;
     // TileCompletion::wait calls tileRowsReady with its mutex locked
     int32_t clearedTileY = -1;
+    static constexpr uint32_t loneTileBandRows = 1024;
+    static constexpr uint32_t maxBandsAhead = 4;
+    bool unbounded = false;
+    // full resolution canvas rows of the latest swath wait
+    bool swathSeen = false;
+    uint32_t swathY0 = 0;
+    uint32_t swathY1 = 0;
     std::atomic<uint32_t> inFlight{0};
     std::atomic<uint32_t> peakInFlight{0};
     std::atomic<uint64_t> warpNs{0};
@@ -567,7 +579,7 @@ namespace
       failed = true;
       {
         std::lock_guard<std::mutex> lock(mutex);
-        tile.image.reset();
+        tile.bands.clear();
       }
       completeTile(tile);
     }
@@ -615,43 +627,50 @@ namespace
         failTile(tile, why);
         return;
       }
-      std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image(new GrkImage(),
-                                                                   RefCountedDeleter<GrkImage>());
-      composite->copyHeaderTo(image.get());
-      image->x0 = tile.window.x0;
-      image->y0 = tile.window.y0;
-      image->x1 = tile.window.x1;
-      image->y1 = tile.window.y1;
-      if(reduceImageBounds)
+      std::vector<uint32_t> compRows(composite->numcomps);
+      uint32_t maxRows = 0;
+      bool hasSamples = false;
+      for(uint16_t c = 0; c < composite->numcomps; c++)
       {
-        image->x0 = ceildivpow2<uint32_t>(image->x0, reduce);
-        image->y0 = ceildivpow2<uint32_t>(image->y0, reduce);
-        image->x1 = ceildivpow2<uint32_t>(image->x1, reduce);
-        image->y1 = ceildivpow2<uint32_t>(image->y1, reduce);
-      }
-      for(uint16_t c = 0; c < image->numcomps; c++)
-      {
-        auto comp = image->comps + c;
         Rect32 rect = compRect(tile.window, c);
-        comp->x0 = rect.x0;
-        comp->y0 = rect.y0;
-        comp->w = rect.width();
-        comp->h = rect.height();
-        comp->data_type = outType;
-        comp->data = nullptr;
-        comp->owns_data = false;
-        if(!GrkImage::allocData(comp))
-        {
-          mercury_unwarp_loom(plan);
-          failTile(tile, "tile image allocation failed");
-          return;
-        }
+        compRows[c] = rect.height();
+        maxRows = std::max(maxRows, compRows[c]);
+        hasSamples = hasSamples || !rect.empty();
       }
-      tile.filledRows = std::make_unique<std::atomic<uint32_t>[]>(image->numcomps);
+      // decode window edges can leave a tile with no samples once subsampled and reduced
+      if(!hasSamples)
+      {
+        mercury_unwarp_loom(plan);
+        completeTile(tile);
+        return;
+      }
+      const bool banded = tiles.size() == 1 && uniformSubsampling && maxRows > loneTileBandRows;
+      const uint32_t bandRows = banded ? loneTileBandRows : maxRows;
+      std::vector<std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>> bands;
+      for(uint32_t top = 0; top < maxRows; top += bandRows)
+      {
+        auto band = emptyTileImage(tile);
+        for(uint16_t c = 0; c < band->numcomps; c++)
+        {
+          auto comp = band->comps + c;
+          uint32_t compTop = std::min(top, compRows[c]);
+          comp->y0 += compTop;
+          comp->h = std::min(bandRows, compRows[c] - compTop);
+        }
+        bands.push_back(std::move(band));
+      }
+      tile.filledRows = std::make_unique<std::atomic<uint32_t>[]>(composite->numcomps);
       tile.rowOverflow = false;
+      tile.allocFailed = false;
       {
         std::lock_guard<std::mutex> lock(mutex);
-        tile.image = std::move(image);
+        tile.compRows = std::move(compRows);
+        tile.bands = std::move(bands);
+        tile.bandRows = bandRows;
+        tile.releasedBands = 0;
+        tile.neededBands = 0;
+        if(swathSeen && tile.bands.size() > 1)
+          releaseBands(tile, swathY0, swathY1);
       }
       TileSinkCtx ctx{this, &tile};
       bool is16 = outType == GRK_INT_16;
@@ -683,38 +702,168 @@ namespace
         failTile(tile, "mercury delivered rows outside the tile window");
         return;
       }
-      for(uint16_t c = 0; c < tile.image->numcomps; c++)
-        if(tile.filledRows[c].load(std::memory_order_relaxed) != tile.image->comps[c].h)
+      if(tile.allocFailed)
+      {
+        failTile(tile, "tile band allocation failed");
+        return;
+      }
+      for(uint16_t c = 0; c < composite->numcomps; c++)
+        if(tile.filledRows[c].load(std::memory_order_relaxed) != tile.compRows[c])
         {
           failTile(tile, "mercury delivered too few rows");
           return;
         }
-      if(compositeOut && !compositeOut->composite(tile.image.get()))
-      {
-        failTile(tile, "composite copy failed");
-        return;
-      }
       completeTile(tile);
+    }
+
+    std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> emptyTileImage(const AsyncTile& tile) const
+    {
+      std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image(new GrkImage(),
+                                                                   RefCountedDeleter<GrkImage>());
+      composite->copyHeaderTo(image.get());
+      image->x0 = tile.window.x0;
+      image->y0 = tile.window.y0;
+      image->x1 = tile.window.x1;
+      image->y1 = tile.window.y1;
+      if(reduceImageBounds)
+      {
+        image->x0 = ceildivpow2<uint32_t>(image->x0, reduce);
+        image->y0 = ceildivpow2<uint32_t>(image->y0, reduce);
+        image->x1 = ceildivpow2<uint32_t>(image->x1, reduce);
+        image->y1 = ceildivpow2<uint32_t>(image->y1, reduce);
+      }
+      for(uint16_t c = 0; c < image->numcomps; c++)
+      {
+        auto comp = image->comps + c;
+        Rect32 rect = compRect(tile.window, c);
+        comp->x0 = rect.x0;
+        comp->y0 = rect.y0;
+        comp->w = rect.width();
+        comp->h = rect.height();
+        comp->data_type = outType;
+        comp->data = nullptr;
+        comp->owns_data = false;
+        comp->stride = 0;
+      }
+      return image;
+    }
+
+    uint32_t tileRowAt(const AsyncTile& tile, uint32_t canvasY) const
+    {
+      Rect32 rect = compRect(tile.window, 0);
+      uint32_t row = ceildivpow2<uint32_t>(ceildiv<uint32_t>(canvasY, composite->comps[0].dy), reduce);
+      return std::min(std::max(row, rect.y0), rect.y1) - rect.y0;
+    }
+
+    void releaseBands(AsyncTile& tile, uint32_t swathY0, uint32_t swathY1)
+    {
+      tile.neededBands = std::max(
+          tile.neededBands, ceildiv<uint32_t>(tileRowAt(tile, swathY1), tile.bandRows));
+      uint32_t released = tileRowAt(tile, swathY0) / tile.bandRows;
+      if(released <= tile.releasedBands)
+        return;
+      if(!keepReleasedTiles)
+        for(uint32_t k = tile.releasedBands; k < released; k++)
+          tile.bands[k].reset();
+      tile.releasedBands = released;
+    }
+
+    bool joinBands(AsyncTile& tile)
+    {
+      if(tile.releasedBands > 0)
+      {
+        grklog.error("mercury tile %u: rows already released by swath waits", (uint32_t)tile.index);
+        return false;
+      }
+      auto whole = emptyTileImage(tile);
+      const size_t elem = outType == GRK_INT_16 ? sizeof(int16_t) : sizeof(int32_t);
+      for(uint16_t c = 0; c < whole->numcomps; c++)
+      {
+        auto comp = whole->comps + c;
+        if(comp->h == 0)
+          continue;
+        if(!GrkImage::allocData(comp))
+        {
+          grklog.error("mercury tile %u: tile image allocation failed", (uint32_t)tile.index);
+          return false;
+        }
+        for(auto& band : tile.bands)
+        {
+          const auto& src = band->comps[c];
+          if(!src.data)
+            continue;
+          if(src.stride != comp->stride)
+          {
+            grklog.error("mercury tile %u: band stride differs from the tile image",
+                         (uint32_t)tile.index);
+            return false;
+          }
+          memcpy(static_cast<uint8_t*>(comp->data) + (size_t)(src.y0 - comp->y0) * comp->stride * elem,
+                 src.data, (size_t)src.h * src.stride * elem);
+        }
+      }
+      tile.bands.clear();
+      tile.bands.push_back(std::move(whole));
+      tile.bandRows = *std::max_element(tile.compRows.begin(), tile.compRows.end());
+      return true;
     }
 
     template<typename T>
     void row(AsyncTile& tile, uint32_t comp, const T* samples, uint64_t width)
     {
-      if(cancel || tile.rowOverflow)
+      if(cancel || tile.rowOverflow || tile.allocFailed)
         return;
-      if(comp >= tile.image->numcomps)
+      if(comp >= composite->numcomps)
       {
         tile.rowOverflow = true;
         return;
       }
-      auto& c = tile.image->comps[comp];
       uint32_t done = tile.filledRows[comp].load(std::memory_order_relaxed);
-      if(done >= c.h || width > c.w)
+      if(done >= tile.compRows[comp])
       {
         tile.rowOverflow = true;
         return;
       }
-      writeRow(c.data, (size_t)done * c.stride, samples, width);
+      const uint32_t band = done / tile.bandRows;
+      bool keep = true;
+      std::unique_lock<std::mutex> lock(mutex, std::defer_lock);
+      // releaseBands frees bands under the mutex
+      if(tile.bands.size() > 1)
+      {
+        auto bandAllowed = [&] {
+          return cancel.load() || unbounded || band < tile.neededBands ||
+                 band < tile.releasedBands + maxBandsAhead;
+        };
+        lock.lock();
+        if(!bandAllowed())
+        {
+          // TileCompletion::wait is only woken every 64 rows
+          lock.unlock();
+          completion->notifyProgress();
+          lock.lock();
+          cv.wait(lock, bandAllowed);
+        }
+        if(cancel)
+          return;
+        keep = keepReleasedTiles || band >= tile.releasedBands;
+      }
+      if(keep)
+      {
+        auto& c = tile.bands[band]->comps[comp];
+        if(width > c.w)
+        {
+          tile.rowOverflow = true;
+          return;
+        }
+        if(!c.data && !GrkImage::allocData(&c))
+        {
+          tile.allocFailed = true;
+          return;
+        }
+        writeRow(c.data, (size_t)(done - band * tile.bandRows) * c.stride, samples, width);
+      }
+      if(lock.owns_lock())
+        lock.unlock();
       tile.filledRows[comp].store(done + 1, std::memory_order_release);
       // a swath wait inside this tile can proceed once its rows are in
       if(((done + 1) & 63) == 0)
@@ -732,14 +881,14 @@ namespace
       // tile images are read without a wait right after a whole-tile swath wait
       if(fullResY1 >= tile->window.y1)
         return false;
-      GrkImage* image = tile->image.get();
-      if(!image)
+      if(tile->bands.empty())
         return false;
       uint32_t y1 = fullResY1;
-      for(uint16_t c = 0; c < image->numcomps; c++)
+      for(uint16_t c = 0; c < composite->numcomps; c++)
       {
         uint32_t needed = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, composite->comps[c].dy), reduce);
-        needed = needed > image->comps[c].y0 ? needed - image->comps[c].y0 : 0;
+        uint32_t compY0 = compRect(tile->window, c).y0;
+        needed = needed > compY0 ? needed - compY0 : 0;
         if(tile->filledRows[c].load(std::memory_order_acquire) < needed)
           return false;
       }
@@ -782,13 +931,22 @@ namespace
     void onRowsReleased()
     {
       int32_t cleared = completion->getLastClearedTileY();
+      uint32_t y0 = completion->getSwathY0();
+      uint32_t y1 = completion->getSwathY1();
       {
         std::lock_guard<std::mutex> lock(mutex);
         clearedTileY = cleared;
-        if(!keepReleasedTiles)
-          for(auto& tile : tiles)
-            if(tile->complete && static_cast<int32_t>(tile->tileY) <= cleared)
-              tile->image.reset();
+        swathSeen = true;
+        swathY0 = y0;
+        swathY1 = y1;
+        for(auto& tile : tiles)
+        {
+          if(tile->bands.size() > 1)
+            releaseBands(*tile, swathY0, swathY1);
+          else if(!keepReleasedTiles && tile->complete &&
+                  static_cast<int32_t>(tile->tileY) <= cleared)
+            tile->bands.clear();
+        }
       }
       cv.notify_all();
     }
@@ -797,19 +955,36 @@ namespace
     {
       std::lock_guard<std::mutex> lock(mutex);
       AsyncTile* tile = tileAt(tileIndex);
-      return tile && tile->complete ? tile->image.get() : nullptr;
+      if(!tile || !tile->complete || tile->bands.empty())
+        return nullptr;
+      if(tile->bands.size() > 1 && !joinBands(*tile))
+        return nullptr;
+      return tile->bands[0].get();
     }
 
-    GrkImage* imageForSwath(uint16_t tileIndex) override
+    void imagesForSwath(uint16_t tileIndex, uint32_t y0, uint32_t y1,
+                        std::vector<GrkImage*>& out) override
     {
       std::lock_guard<std::mutex> lock(mutex);
       AsyncTile* tile = tileAt(tileIndex);
-      return tile ? tile->image.get() : nullptr;
+      if(!tile)
+        return;
+      for(auto& band : tile->bands)
+      {
+        if(!band)
+          continue;
+        const auto& c0 = band->comps[0];
+        if(tile->bands.size() > 1 && (c0.y0 >= y1 || c0.y0 + c0.h <= y0))
+          continue;
+        out.push_back(band.get());
+      }
     }
 
     void waitForTile(uint16_t tileIndex) override
     {
       std::unique_lock<std::mutex> lock(mutex);
+      unbounded = true;
+      cv.notify_all();
       AsyncTile* tile = tileAt(tileIndex);
       if(!tile)
         return;
@@ -823,15 +998,53 @@ namespace
       {
         std::lock_guard<std::mutex> lock(mutex);
         clearedTileY = INT16_MAX;
+        unbounded = true;
       }
       cv.notify_all();
       stop();
-      if(compositeOut)
+    }
+
+    void fillComposite() override
+    {
+      if(!compositeOut)
+        return;
+      GrkImage* out = compositeOut;
+      compositeOut = nullptr;
+      if(!*success)
+        return;
+      for(uint16_t c = 0; c < out->numcomps; c++)
       {
-        if(*success && !postProcessComposite())
+        auto comp = out->comps + c;
+        comp->data_type = outType;
+        if(comp->w && comp->h && !GrkImage::allocData(comp, true))
+        {
+          grklog.error("mercury: composite allocation failed");
           *success = false;
-        compositeOut = nullptr;
+          return;
+        }
       }
+      std::lock_guard<std::mutex> lock(mutex);
+      for(auto& tile : tiles)
+      {
+        bool released = !tile->compRows.empty() &&
+                        (tile->bands.empty() || std::any_of(tile->bands.begin(), tile->bands.end(),
+                                                            [](const auto& band) { return !band; }));
+        if(released)
+        {
+          grklog.error("mercury tile %u: rows already released by swath waits",
+                       (uint32_t)tile->index);
+          *success = false;
+          return;
+        }
+        for(auto& band : tile->bands)
+          if(!out->composite(band.get()))
+          {
+            *success = false;
+            return;
+          }
+      }
+      if(!postProcessComposite())
+        *success = false;
     }
   };
 
@@ -1286,13 +1499,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->reduceImageBounds = cs.cp_.dw_reduced && dec.reduce_ > 0;
     if(!dec.skipAllocateComposite_)
     {
-      for(uint16_t c = 0; c < img->numcomps; c++)
-      {
-        auto comp = img->comps + c;
-        comp->data_type = state->outType;
-        if(comp->w && comp->h && !GrkImage::allocData(comp, true))
-          MFP_BAIL("composite allocation failed");
-      }
       state->compositeOut = img;
       state->postProcessComposite = [&cs, img]() { return cs.postProcess(img); };
     }
@@ -1303,20 +1509,23 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->tileX1 = slated.x1;
     state->tileY0 = slated.y0;
     // per-band reads revisit released tile rows when the tile image cache is on
-    state->keepReleasedTiles = (cs.tileCache_->getStrategy() & GRK_TILE_CACHE_IMAGE) != 0;
+    // grk_decompress_get_image composites every tile after the full wait
+    const bool multiTile = (slated.x1 - slated.x0) * (slated.y1 - slated.y0) > 1;
+    state->keepReleasedTiles = (cs.tileCache_->getStrategy() & GRK_TILE_CACHE_IMAGE) != 0 ||
+                               (!dec.skipAllocateComposite_ && multiTile);
     for(uint16_t ty = slated.y0; ty < slated.y1; ty++)
       for(uint16_t tx = slated.x0; tx < slated.x1; tx++)
       {
-        AsyncTile tile;
-        tile.index = static_cast<uint16_t>(ty * cs.cp_.t_grid_width_ + tx);
-        tile.tileY = ty;
+        auto tile = std::make_unique<AsyncTile>();
+        tile->index = static_cast<uint16_t>(ty * cs.cp_.t_grid_width_ + tx);
+        tile->tileY = ty;
         uint64_t tx0 = (uint64_t)cs.cp_.tx0_ + (uint64_t)tx * cs.cp_.t_width_;
         uint64_t ty0 = (uint64_t)cs.cp_.ty0_ + (uint64_t)ty * cs.cp_.t_height_;
-        tile.window = Rect32((uint32_t)std::max<uint64_t>(tx0, img->x0),
-                             (uint32_t)std::max<uint64_t>(ty0, img->y0),
-                             (uint32_t)std::min<uint64_t>(tx0 + cs.cp_.t_width_, img->x1),
-                             (uint32_t)std::min<uint64_t>(ty0 + cs.cp_.t_height_, img->y1));
-        state->tiles.push_back(std::make_unique<AsyncTile>(std::move(tile)));
+        tile->window = Rect32((uint32_t)std::max<uint64_t>(tx0, img->x0),
+                              (uint32_t)std::max<uint64_t>(ty0, img->y0),
+                              (uint32_t)std::min<uint64_t>(tx0 + cs.cp_.t_width_, img->x1),
+                              (uint32_t)std::min<uint64_t>(ty0 + cs.cp_.t_height_, img->y1));
+        state->tiles.push_back(std::move(tile));
       }
     if(state->tiles.empty())
       MFP_BAIL("no tiles slated");

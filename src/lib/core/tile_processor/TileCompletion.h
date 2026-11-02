@@ -225,6 +225,8 @@ public:
 
     // Tell the scheduler how far ahead we need tiles decompressed
     neededTileY1_.store(static_cast<int32_t>(tileY1), std::memory_order_release);
+    swathY0_.store(y0, std::memory_order_release);
+    swathY1_.store(y1, std::memory_order_release);
 
     // Check if tile row has advanced for clearing previous rows
     {
@@ -354,6 +356,16 @@ public:
     return neededTileY1_.load(std::memory_order_acquire);
   }
 
+  uint32_t getSwathY0() const
+  {
+    return swathY0_.load(std::memory_order_acquire);
+  }
+
+  uint32_t getSwathY1() const
+  {
+    return swathY1_.load(std::memory_order_acquire);
+  }
+
   uint16_t getNumTileCols() const
   {
     return numTileCols_;
@@ -376,6 +388,8 @@ private:
   uint16_t currentTileY_; // Tracks the current swath's starting tile row
   int32_t lastClearedTileY_; // Tracks the last tile row cleared (-1 = none)
   std::atomic<int32_t> neededTileY1_{0}; // Max tile row the consumer is currently waiting for
+  std::atomic<uint32_t> swathY0_{0};
+  std::atomic<uint32_t> swathY1_{0};
   RowCompletionCallback rowCallback_; // Callback for row completion
   RowsReleasedCallback rowsReleasedCallback_; // Callback after wait() releases rows
   TileRowsReadyCallback tileRowsReady_;

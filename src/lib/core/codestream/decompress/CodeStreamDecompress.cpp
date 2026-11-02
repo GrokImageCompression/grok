@@ -1882,19 +1882,24 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
       {
         const uint16_t tidx = static_cast<uint16_t>(ty * swath->num_tile_cols + tx);
-        GrkImage* tileImg = mercuryAsync_->imageForSwath(tidx);
-        if(!tileImg)
+        std::vector<GrkImage*> images;
+        mercuryAsync_->imagesForSwath(tidx, buf->y0, buf->y1, images);
+        if(images.empty())
         {
-          grklog.error("swath copy: tile %u has no decoded image", (uint32_t)tidx);
+          grklog.error("swath copy: tile %u has no decoded rows in the swath", (uint32_t)tidx);
           continue;
         }
         if(copyInline)
         {
-          hwy_copy_tile_to_swath(tileImg, buf);
+          for(GrkImage* img : images)
+            hwy_copy_tile_to_swath(img, buf);
           continue;
         }
         tf::Taskflow tf_copy;
-        tf_copy.emplace([tileImg, buf]() { hwy_copy_tile_to_swath(tileImg, buf); });
+        tf_copy.emplace([images = std::move(images), buf]() {
+          for(GrkImage* img : images)
+            hwy_copy_tile_to_swath(img, buf);
+        });
         swathCopyFutureManager_.add(tidx, TFSingleton::get().run(std::move(tf_copy)));
       }
     return;
@@ -2944,6 +2949,8 @@ GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
 GrkImage* CodeStreamDecompress::getImage()
 {
   wait(nullptr);
+  if(mercuryAsync_)
+    mercuryAsync_->fillComposite();
 
   // Reduce image-level bounds to match component (output) coordinate space.
   // Only when caller passed reduced coordinates (dw_reduced), the
