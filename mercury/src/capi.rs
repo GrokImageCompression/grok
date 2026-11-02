@@ -889,13 +889,12 @@ fn dye_row<T: OutputSample>(row: CompRow<'_>, prec: u32, signed: bool, out: &mut
         CompRow::F32(r) => {
             // normalized floats: sample / 2^prec, signed around 0.
             // round_ties_even matches the classic pipeline's NearestInt.
+            let sc = (1i64 << prec) as f32;
             if signed {
-                let sc = (1i64 << (prec - 1)) as f32;
                 for (o, &s) in out.iter_mut().zip(r) {
                     *o = T::from_i32(((s * sc).round_ties_even() as i32).clamp(-dc, mx - dc));
                 }
             } else {
-                let sc = (1i64 << prec) as f32;
                 for (o, &s) in out.iter_mut().zip(r) {
                     *o = T::from_i32(
                         ((s * sc).round_ties_even() as i32)
