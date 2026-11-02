@@ -18,7 +18,7 @@
 #pragma once
 
 #include <new>
-#include <unordered_map>
+#include "SmallVector.h"
 
 namespace grk
 {
@@ -30,62 +30,47 @@ public:
   BlockCache(uint16_t numLayers, uint32_t maxNumBlocks, P* blockInitializer)
       : chunkSize_(std::min<uint32_t>(maxNumBlocks, 256)), blockInitializer_(blockInitializer),
         numLayers_(numLayers)
-  {}
+  {
+    chunks_.resize((maxNumBlocks + chunkSize_ - 1) / chunkSize_);
+  }
   ~BlockCache(void)
   {
-    for(auto& chunk : chunks_)
+    for(auto chunk : chunks_)
     {
+      if(!chunk)
+        continue;
       for(uint32_t i = 0; i < chunkSize_; ++i)
-        chunk.second[i].~T();
-      ::operator delete(chunk.second, std::align_val_t(alignof(T)));
+        chunk[i].~T();
+      ::operator delete(chunk, std::align_val_t(alignof(T)));
     }
   }
 
   T* tryGet(uint64_t index)
   {
-    uint64_t chunkIndex = index / chunkSize_;
-    if(currChunk_ == nullptr || chunkIndex != currChunkIndex_)
-    {
-      auto iter = chunks_.find(chunkIndex);
-      if(iter == chunks_.end())
-        return nullptr;
-      currChunk_ = iter->second;
-      currChunkIndex_ = chunkIndex;
-    }
-    auto item = currChunk_ + index % chunkSize_;
+    auto chunk = chunks_[index / chunkSize_];
+    if(!chunk)
+      return nullptr;
+    auto item = chunk + index % chunkSize_;
     return item->empty() ? nullptr : item;
   }
 
   T* get(uint64_t index)
   {
-    uint64_t chunkIndex = index / chunkSize_;
-    if(currChunk_ == nullptr || chunkIndex != currChunkIndex_)
+    auto& chunk = chunks_[index / chunkSize_];
+    if(!chunk)
     {
-      currChunkIndex_ = chunkIndex;
-      auto iter = chunks_.find(chunkIndex);
-      if(iter != chunks_.end())
-      {
-        currChunk_ = iter->second;
-      }
-      else
-      {
-        currChunk_ =
-            static_cast<T*>(::operator new(sizeof(T) * chunkSize_, std::align_val_t(alignof(T))));
-        for(uint32_t i = 0; i < chunkSize_; ++i)
-          new(currChunk_ + i) T(numLayers_);
-        chunks_[chunkIndex] = currChunk_;
-      }
+      chunk = static_cast<T*>(::operator new(sizeof(T) * chunkSize_, std::align_val_t(alignof(T))));
+      for(uint32_t i = 0; i < chunkSize_; ++i)
+        new(chunk + i) T(numLayers_);
     }
-    auto item = currChunk_ + index % chunkSize_;
+    auto item = chunk + index % chunkSize_;
     blockInitializer_->initCodeBlock(item, (uint32_t)index);
     return item;
   }
 
 private:
-  std::unordered_map<uint64_t, T*> chunks_;
   uint32_t chunkSize_;
-  T* currChunk_ = nullptr;
-  uint64_t currChunkIndex_ = 0;
+  SmallVector<T*, 1> chunks_;
   P* blockInitializer_;
   uint16_t numLayers_;
 };
