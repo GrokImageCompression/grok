@@ -235,14 +235,18 @@ private:
   Node& nodeAt(uint32_t index)
   {
     uint32_t pageIndex = index >> pageShift_;
-    auto& pageOffset = pageOffset_[pageIndex];
-    if(pageOffset == unallocatedPage)
-    {
-      pageOffset = static_cast<uint32_t>(pool_.size());
-      uint32_t pageNodes = std::min(pageSize(), totalNodes_ - (pageIndex << pageShift_));
-      pool_.resize(pool_.size() + pageNodes, unusedNode());
-    }
+    uint32_t pageOffset = pageOffset_[pageIndex];
+    if(pageOffset == unallocatedPage) [[unlikely]]
+      pageOffset = allocatePage(pageIndex);
     return pool_[pageOffset + (index & (pageSize() - 1))];
+  }
+  uint32_t allocatePage(uint32_t pageIndex)
+  {
+    auto pageOffset = static_cast<uint32_t>(pool_.size());
+    pageOffset_[pageIndex] = pageOffset;
+    uint32_t pageNodes = std::min(pageSize(), totalNodes_ - (pageIndex << pageShift_));
+    pool_.resize(pool_.size() + pageNodes, unusedNode());
+    return pageOffset;
   }
   uint32_t pageSize() const
   {
