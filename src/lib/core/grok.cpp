@@ -36,7 +36,6 @@
 
 #include "MinHeap.h"
 #include "SequentialCache.h"
-#include "SparseCache.h"
 #include "CodeStreamLimits.h"
 #include "geometry.h"
 #include "MemManager.h"

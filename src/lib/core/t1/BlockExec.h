@@ -18,6 +18,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 
 #include "t1_common.h"
 #include "CodeblockCompress.h"
@@ -30,6 +31,8 @@ namespace grk::t1
 struct BlockExec
 {
   BlockExec() = default;
+  BlockExec(BlockExec&&) = default;
+  BlockExec& operator=(BlockExec&&) = default;
   virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
   uint8_t bandIndex = 0;
@@ -64,18 +67,17 @@ using DecompressBlockPostProcessor =
 struct DecompressBlockExec : public BlockExec
 {
   DecompressBlockExec(bool cacheCoder) : shouldCacheCoder_(cacheCoder) {}
-  ~DecompressBlockExec() override
-  {
-    delete cachedCoder_;
-  }
+  DecompressBlockExec(DecompressBlockExec&&) = default;
+  DecompressBlockExec& operator=(DecompressBlockExec&&) = default;
+  ~DecompressBlockExec() override = default;
   bool open(ICoder* coder) override
   {
-    auto activeCoder = cachedCoder_ ? cachedCoder_ : coder;
+    auto activeCoder = cachedCoder_ ? cachedCoder_.get() : coder;
     if(!activeCoder)
       return false;
     bool rc = activeCoder->decompress(this);
     if(needsCachedCoder())
-      cachedCoder_ = coder;
+      cachedCoder_.reset(coder);
 
     return rc;
   }
@@ -92,14 +94,13 @@ struct DecompressBlockExec : public BlockExec
 
   void clearCachedCoder(void)
   {
-    delete cachedCoder_;
-    cachedCoder_ = nullptr;
+    cachedCoder_.reset();
   }
   DecompressBlockPostProcessor<int32_t> postProcessor_;
   CodeblockDecompress* cblk = nullptr;
   uint8_t resno = 0;
   uint8_t roishift = 0;
-  ICoder* cachedCoder_ = nullptr;
+  std::unique_ptr<ICoder> cachedCoder_;
   bool shouldCacheCoder_ = false;
   bool finalLayer_ = false;
 

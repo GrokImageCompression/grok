@@ -238,7 +238,8 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         {
           auto scheduleBlock = [&](uint32_t cblkno) {
             auto cblk = precinct->getDecompressBlock(cblkno);
-            auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
+            resBlocks.blocks_.emplace_back(cacheAll);
+            auto block = &resBlocks.blocks_.back();
             block->x = cblk->x0();
             block->y = cblk->y0();
             bool htBlock = tcp->isHT() && !cblk->isPart1Block();
@@ -267,7 +268,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             if(htBlock)
               block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
             block->R_b = prec_ + gain_b[band->orientation_];
-            resBlocks.blocks_.push_back(block);
           };
           if(wholeTileDecoding)
           {
@@ -284,7 +284,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       if(componentBlocks.size() == 1 && resno == 1 && !resBlocks.blocks_.empty())
       {
         resBlocks.combine(componentBlocks[0]);
-        componentBlocks[0] = resBlocks;
+        componentBlocks[0] = std::move(resBlocks);
         resBlocks.clear();
         continue;
       }
@@ -295,7 +295,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       }
       else if(!resBlocks.blocks_.empty())
       {
-        componentBlocks.push_back(resBlocks);
+        componentBlocks.push_back(std::move(resBlocks));
         resBlocks.clear();
       }
     }
@@ -348,9 +348,9 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       for(auto& block : rblocks.blocks_)
       {
         auto blockFunc = [activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll, finalLayer] {
-          block->finalLayer_ = finalLayer;
+          block.finalLayer_ = finalLayer;
           t1::ICoder* coder = nullptr;
-          if(block->needsCachedCoder())
+          if(block.needsCachedCoder())
           {
             // make a new coder for this block
             coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
@@ -365,12 +365,10 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
           }
           try
           {
-            // a failed block reads as zero downstream
-            block->open(coder);
+            block.open(coder);
           }
           catch(const std::runtime_error& rerr)
           {
-            block.reset();
             grklog.error(rerr.what());
           }
         };

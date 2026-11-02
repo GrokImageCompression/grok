@@ -60,16 +60,16 @@ struct ResBlocks
   /**
    * @brief Combines another ResBlocks into this one
    */
-  void combine(const ResBlocks& other)
+  void combine(ResBlocks& other)
   {
-    // Append blocks from the other ResBlocks to this one
-    blocks_.insert(blocks_.end(), other.blocks_.begin(), other.blocks_.end());
+    blocks_.insert(blocks_.end(), std::make_move_iterator(other.blocks_.begin()),
+                   std::make_move_iterator(other.blocks_.end()));
   }
 
   /**
    * @brief vector of block arrays, indexed by resolution
    */
-  std::vector<std::shared_ptr<t1::DecompressBlockExec>> blocks_;
+  std::vector<t1::DecompressBlockExec> blocks_;
 };
 
 typedef std::vector<ResBlocks> ComponentBlocks;
