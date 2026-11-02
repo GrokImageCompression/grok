@@ -229,6 +229,7 @@ public:
     swathY1_.store(y1, std::memory_order_release);
 
     // Check if tile row has advanced for clearing previous rows
+    std::vector<uint16_t> tilesToRelease;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if(tileY0 > currentTileY_ && static_cast<int32_t>(tileY0) > lastClearedTileY_)
@@ -254,7 +255,7 @@ public:
                 grklog.debug(
                     "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
-                tileCache_->releaseForSwath(tileIndex);
+                tilesToRelease.push_back(tileIndex);
               }
             }
           }
@@ -266,6 +267,9 @@ public:
       grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%d", currentTileY_,
                    lastClearedTileY_);
     }
+    // worker threads block in complete() while mutex_ is held
+    for(uint16_t tileIndex : tilesToRelease)
+      tileCache_->releaseForSwath(tileIndex);
 
     // neededTileY1_ just moved, so the scheduler has to re-check its throttle even
     // when no row was released, or a swath it stopped short of never gets scheduled

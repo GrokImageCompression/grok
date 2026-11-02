@@ -1057,6 +1057,8 @@ void TileProcessor::releaseForSwath()
 
   delete tile_;
   tile_ = nullptr;
+  delete scheduler_;
+  scheduler_ = nullptr;
   // drop mct_'s dangling reference to the freed tile
   if(mct_)
     mct_->setTile(nullptr);
