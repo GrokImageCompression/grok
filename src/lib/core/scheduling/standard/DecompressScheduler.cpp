@@ -341,38 +341,41 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       // 3. decompress
       resno = 0;
     }
+    const size_t samplesPerTask = 64 * 64;
+    const size_t blocksPerTask =
+        cbw && cbh ? std::max<size_t>(1, samplesPerTask / ((size_t)cbw * cbh)) : 1;
     for(auto& rblocks : componentBlocks)
     {
-      Resflow* resFlow = nullptr;
-      resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
-      for(auto& block : rblocks.blocks_)
+      Resflow* resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
+      auto& blocks = rblocks.blocks_;
+      for(size_t first = 0; first < blocks.size(); first += blocksPerTask)
       {
-        auto blockFunc = [activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll, finalLayer] {
-          block.finalLayer_ = finalLayer;
-          t1::ICoder* coder = nullptr;
-          if(block.needsCachedCoder())
+        const size_t last = std::min(blocks.size(), first + blocksPerTask);
+        auto batchFunc = [activePool, tileProcessor, &blocks, first, last, tccp, cbw, cbh, cacheAll,
+                          finalLayer] {
+          std::shared_ptr<t1::ICoder> pooled;
+          if(!cacheAll)
+            pooled = activePool->getCoder((size_t)TFSingleton::get().this_worker_id(),
+                                          tccp->cblkw_expn_, tccp->cblkh_expn_);
+          for(size_t i = first; i < last; i++)
           {
-            // make a new coder for this block
-            coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
-                                                tileProcessor->getTileCacheStrategy());
-          }
-          else if(!cacheAll)
-          {
-            // get coder from pool
-            auto threadnum = TFSingleton::get().this_worker_id();
-            coder =
-                activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_).get();
-          }
-          try
-          {
-            block.open(coder);
-          }
-          catch(const std::runtime_error& rerr)
-          {
-            grklog.error(rerr.what());
+            auto& block = blocks[i];
+            block.finalLayer_ = finalLayer;
+            t1::ICoder* coder = pooled.get();
+            if(block.needsCachedCoder())
+              coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
+                                                  tileProcessor->getTileCacheStrategy());
+            try
+            {
+              block.open(coder);
+            }
+            catch(const std::runtime_error& rerr)
+            {
+              grklog.error(rerr.what());
+            }
           }
         };
-        resFlow->blocks_->nextTask().work(blockFunc);
+        resFlow->blocks_->nextTask().work(batchFunc);
       }
       resno++;
     }
