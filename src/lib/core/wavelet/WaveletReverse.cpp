@@ -402,6 +402,48 @@ namespace HWY_NAMESPACE
     return ShiftRight<1>(a) + ShiftRight<1>(b) + And(And(a, b), Set(di, (int16_t)1));
   }
 
+  static void hwy_h_p0_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
+                             const int16_t* bandH, int16_t* dest)
+  {
+    const HWY_FULL(int16_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const uint32_t sn = (width + 1) >> 1;
+    const uint32_t dn = width >> 1;
+    // dest overlaps bandL and bandH
+    int16_t* even = scratch;
+    int16_t* row = scratch + grk_make_aligned_width<int16_t>(sn);
+
+    even[0] = (int16_t)(bandL[0] - ((bandH[0] + 1) >> 1));
+    uint32_t j = 1;
+    for(; j + L <= dn; j += L)
+    {
+      auto update = update_avg_16_53(di, LoadU(di, bandH + j - 1), LoadU(di, bandH + j));
+      StoreU(LoadU(di, bandL + j) - update, di, even + j);
+    }
+    for(; j < dn; ++j)
+      even[j] = (int16_t)(bandL[j] - ((bandH[j - 1] + bandH[j] + 2) >> 2));
+    if(sn > dn)
+      even[dn] = (int16_t)(bandL[dn] - ((bandH[dn - 1] + 1) >> 1));
+
+    const uint32_t numOddWithNextEven = sn > dn ? dn : dn - 1;
+    j = 0;
+    for(; j + L <= numOddWithNextEven; j += L)
+    {
+      auto evenCurrent = LoadU(di, even + j);
+      auto predict = predict_avg_16_53(di, evenCurrent, LoadU(di, even + j + 1));
+      StoreInterleaved2(evenCurrent, LoadU(di, bandH + j) + predict, di, row + 2 * j);
+    }
+    for(; j < dn; ++j)
+    {
+      int16_t evenNext = j + 1 < sn ? even[j + 1] : even[j];
+      row[2 * j] = even[j];
+      row[2 * j + 1] = (int16_t)(bandH[j] + ((even[j] + evenNext) >> 1));
+    }
+    if(sn > dn)
+      row[width - 1] = even[dn];
+    memcpy(dest, row, (size_t)width * sizeof(int16_t));
+  }
+
   static void hwy_v_final_store_16_53(const int16_t* scratch, const uint32_t height, int16_t* dest,
                                       const size_t strideDest, int16_t dcShift, int16_t dcMin,
                                       int16_t dcMax)
@@ -605,6 +647,7 @@ HWY_EXPORT(hwy_v_p1_53);
 HWY_EXPORT(GetHWY_PLL_COLS_53); // Export GetHWY_PLL_COLS_53
 HWY_EXPORT(hwy_v_p0_16_53);
 HWY_EXPORT(hwy_v_p1_16_53);
+HWY_EXPORT(hwy_h_p0_16_53);
 HWY_EXPORT(GetHWY_PLL_COLS_16_53);
 
 uint32_t get_PLL_COLS_53()
@@ -1415,42 +1458,6 @@ bool WaveletReverse::tile_53(void)
 
 // 16-bit 5/3 DWT kernels ///////////////////////////////////////////////////////////////
 
-void WaveletReverse::load_h_p0_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
-                                     const int16_t* bandH, int16_t* dest)
-{
-  assert(width > 1);
-
-  int16_t s1n = bandL[0];
-  int16_t d1n = bandH[0];
-  int16_t s0n = (int16_t)(s1n - ((d1n + 1) >> 1));
-  uint32_t i = 0;
-  if(width > 2)
-  {
-    for(uint32_t j = 1; i < (width - 3); i += 2, j++)
-    {
-      int16_t d1c = d1n;
-      int16_t s0c = s0n;
-
-      s1n = bandL[j];
-      d1n = bandH[j];
-      s0n = (int16_t)(s1n - ((d1c + d1n + 2) >> 2));
-      scratch[i] = s0c;
-      scratch[i + 1] = (int16_t)(d1c + ((s0c + s0n) >> 1));
-    }
-  }
-  scratch[i] = s0n;
-  if(width & 1)
-  {
-    scratch[width - 1] = (int16_t)(bandL[(width - 1) >> 1] - ((d1n + 1) >> 1));
-    scratch[width - 2] = (int16_t)(d1n + ((s0n + scratch[width - 1]) >> 1));
-  }
-  else
-  {
-    scratch[width - 1] = d1n + s0n;
-  }
-  memcpy(dest, scratch, (size_t)width * sizeof(int16_t));
-}
-
 void WaveletReverse::load_h_p1_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
                                      const int16_t* bandH, int16_t* dest)
 {
@@ -1494,7 +1501,7 @@ void WaveletReverse::load_h_16_53(const dwt_scratch<int16_t>* scratch, int16_t* 
   {
     if(width > 1)
     {
-      load_h_p0_16_53(scratch->mem, width, bandL, bandH, dest);
+      HWY_DYNAMIC_DISPATCH(hwy_h_p0_16_53)(scratch->mem, width, bandL, bandH, dest);
     }
     else
     {

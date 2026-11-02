@@ -917,6 +917,11 @@ target_link_libraries(grk_int32_reversible_53_test ${GROK_CORE_NAME} spdlog::spd
 add_test(NAME grk_int32_reversible_53_test COMMAND grk_int32_reversible_53_test)
 
 # synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
+add_executable(grk_int16_horizontal_53_width_test GrkInt16Horizontal53WidthTest.cpp)
+target_link_libraries(grk_int16_horizontal_53_width_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_int16_horizontal_53_width_test COMMAND grk_int16_horizontal_53_width_test)
+
+# synthesizes its own codestreams, so it needs no GRK_DATA_ROOT
 add_executable(grk_double_decompress_test GrkDoubleDecompressTest.cpp)
 target_link_libraries(grk_double_decompress_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_double_decompress_test COMMAND grk_double_decompress_test)

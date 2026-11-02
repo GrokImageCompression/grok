@@ -214,9 +214,6 @@ private:
   std::unique_ptr<dwt_scratch<int32_t>[]> vertPool_;
 
   // 16-bit 5/3 //////////////////////////////////////////////////////////////////////////////
-  void load_h_p0_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
-                       const int16_t* bandH, int16_t* dest);
-
   void load_h_p1_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
                        const int16_t* bandH, int16_t* dest);
 
