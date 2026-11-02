@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <cstdint>
 #include <limits>
 #include <queue>
@@ -188,7 +187,8 @@ private:
 
   // 16 bit leaf dimensions give at most 16 halvings above the leaves
   static constexpr uint8_t maxLevels = 17;
-  static constexpr uint8_t maxPageShift = 10;
+  static constexpr uint8_t pageShift = 10;
+  static constexpr uint32_t pageSize = 1u << pageShift;
   static constexpr uint32_t unallocatedPage = UINT32_MAX;
 
   uint32_t nodeIndex(uint8_t level, uint32_t row, uint32_t column) const
@@ -234,23 +234,21 @@ private:
   // a huge precinct with a short header must not allocate every node
   Node& nodeAt(uint32_t index)
   {
-    uint32_t pageIndex = index >> pageShift_;
+    if(pageOffset_.empty()) [[likely]]
+      return pool_[index];
+    uint32_t pageIndex = index >> pageShift;
     uint32_t pageOffset = pageOffset_[pageIndex];
     if(pageOffset == unallocatedPage) [[unlikely]]
       pageOffset = allocatePage(pageIndex);
-    return pool_[pageOffset + (index & (pageSize() - 1))];
+    return pool_[pageOffset + (index & (pageSize - 1))];
   }
   uint32_t allocatePage(uint32_t pageIndex)
   {
     auto pageOffset = static_cast<uint32_t>(pool_.size());
     pageOffset_[pageIndex] = pageOffset;
-    uint32_t pageNodes = std::min(pageSize(), totalNodes_ - (pageIndex << pageShift_));
+    uint32_t pageNodes = std::min(pageSize, totalNodes_ - (pageIndex << pageShift));
     pool_.resize(pool_.size() + pageNodes, unusedNode());
     return pageOffset;
-  }
-  uint32_t pageSize() const
-  {
-    return 1u << pageShift_;
   }
   Node unusedNode() const
   {
@@ -274,14 +272,15 @@ private:
       width = (uint16_t)((width + 1) >> 1);
       height = (uint16_t)((height + 1) >> 1);
     } while(nodesInLevel > 1);
-    pageShift_ = std::min<uint8_t>(maxPageShift, (uint8_t)std::bit_width(totalNodes_ - 1));
-    pageOffset_.assign((totalNodes_ + pageSize() - 1) >> pageShift_, unallocatedPage);
+    if(totalNodes_ <= pageSize)
+      pool_.assign(totalNodes_, unusedNode());
+    else
+      pageOffset_.assign((totalNodes_ + pageSize - 1) >> pageShift, unallocatedPage);
   }
 
   uint16_t leavesWidth_;
   uint16_t leavesHeight_;
   uint8_t numLevels_;
-  uint8_t pageShift_;
   uint32_t totalNodes_;
   std::array<uint16_t, maxLevels> levelWidth_;
   std::array<uint16_t, maxLevels> levelHeight_;
