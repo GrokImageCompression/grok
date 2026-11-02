@@ -430,6 +430,10 @@ namespace
     std::unique_ptr<MercuryHeaderStorage> header;
     std::unique_ptr<MercuryReaders> readers;
     const GrkImage* composite = nullptr;
+    // grk_decompress_get_image reads this after the full wait
+    GrkImage* compositeOut = nullptr;
+    std::function<bool()> postProcessComposite;
+    bool reduceImageBounds = false;
     grk_data_type outType = GRK_INT_32;
     bool uniformSubsampling = true;
     uint32_t threadsPerTile = 1;
@@ -618,6 +622,13 @@ namespace
       image->y0 = tile.window.y0;
       image->x1 = tile.window.x1;
       image->y1 = tile.window.y1;
+      if(reduceImageBounds)
+      {
+        image->x0 = ceildivpow2<uint32_t>(image->x0, reduce);
+        image->y0 = ceildivpow2<uint32_t>(image->y0, reduce);
+        image->x1 = ceildivpow2<uint32_t>(image->x1, reduce);
+        image->y1 = ceildivpow2<uint32_t>(image->y1, reduce);
+      }
       for(uint16_t c = 0; c < image->numcomps; c++)
       {
         auto comp = image->comps + c;
@@ -678,6 +689,11 @@ namespace
           failTile(tile, "mercury delivered too few rows");
           return;
         }
+      if(compositeOut && !compositeOut->composite(tile.image.get()))
+      {
+        failTile(tile, "composite copy failed");
+        return;
+      }
       completeTile(tile);
     }
 
@@ -713,10 +729,13 @@ namespace
         return false;
       if(tile->complete)
         return true;
+      // tile images are read without a wait right after a whole-tile swath wait
+      if(fullResY1 >= tile->window.y1)
+        return false;
       GrkImage* image = tile->image.get();
       if(!image)
         return false;
-      uint32_t y1 = std::min(fullResY1, tile->window.y1);
+      uint32_t y1 = fullResY1;
       for(uint16_t c = 0; c < image->numcomps; c++)
       {
         uint32_t needed = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, composite->comps[c].dy), reduce);
@@ -807,6 +826,12 @@ namespace
       }
       cv.notify_all();
       stop();
+      if(compositeOut)
+      {
+        if(*success && !postProcessComposite())
+          *success = false;
+        compositeOut = nullptr;
+      }
     }
   };
 
@@ -1258,6 +1283,19 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->outType = mercuryOutType(cs.defaultTcp_.get(), img);
     state->uniformSubsampling = uniformSubsampling;
     state->reduce = dec.reduce_;
+    state->reduceImageBounds = cs.cp_.dw_reduced && dec.reduce_ > 0;
+    if(!dec.skipAllocateComposite_)
+    {
+      for(uint16_t c = 0; c < img->numcomps; c++)
+      {
+        auto comp = img->comps + c;
+        comp->data_type = state->outType;
+        if(comp->w && comp->h && !GrkImage::allocData(comp, true))
+          MFP_BAIL("composite allocation failed");
+      }
+      state->compositeOut = img;
+      state->postProcessComposite = [&cs, img]() { return cs.postProcess(img); };
+    }
     state->success = &cs.success_;
     Rect16 slated = cs.tilesToDecompress_.getSlatedTileRect();
     state->numTileCols = cs.cp_.t_grid_width_;
