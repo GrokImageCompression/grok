@@ -18,6 +18,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <limits>
@@ -257,17 +258,18 @@ private:
     uint16_t height = leavesHeight_;
     totalNodes_ = 0;
     uint32_t nodesInLevel;
+    numLevels_ = 0;
     do
     {
       nodesInLevel = static_cast<uint32_t>(width) * height;
-      levelWidth_.push_back(width);
-      levelHeight_.push_back(height);
-      levelBase_.push_back(totalNodes_);
+      levelWidth_[numLevels_] = width;
+      levelHeight_[numLevels_] = height;
+      levelBase_[numLevels_] = totalNodes_;
+      numLevels_++;
       totalNodes_ += nodesInLevel;
       width = (uint16_t)((width + 1) >> 1);
       height = (uint16_t)((height + 1) >> 1);
     } while(nodesInLevel > 1);
-    numLevels_ = static_cast<uint8_t>(levelWidth_.size());
     pageShift_ = std::min<uint8_t>(maxPageShift, (uint8_t)std::bit_width(totalNodes_ - 1));
     pageOffset_.assign((totalNodes_ + pageSize() - 1) >> pageShift_, unallocatedPage);
   }
@@ -277,9 +279,9 @@ private:
   uint8_t numLevels_;
   uint8_t pageShift_;
   uint32_t totalNodes_;
-  std::vector<uint16_t> levelWidth_;
-  std::vector<uint16_t> levelHeight_;
-  std::vector<uint32_t> levelBase_;
+  std::array<uint16_t, maxLevels> levelWidth_;
+  std::array<uint16_t, maxLevels> levelHeight_;
+  std::array<uint32_t, maxLevels> levelBase_;
   std::vector<uint32_t> pageOffset_;
   std::vector<Node> pool_;
 };

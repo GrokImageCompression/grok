@@ -1302,6 +1302,20 @@ void WaveletReverse::v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wM
     v_53(scratch, winL, winH, winDest, wMax - j, dcShift);
 }
 
+static uint32_t cappedTasks(uint32_t tasks, uint64_t samples)
+{
+  // TCI with 256 pixel tiles decodes 3 to 5 percent faster with at least 128x128 samples per task
+  const uint64_t minSamplesPerTask = 16384;
+  return (uint32_t)std::max<uint64_t>(1, std::min<uint64_t>(tasks, samples / minSamplesPerTask));
+}
+static uint32_t verticalTaskWidth(uint32_t resWidth, uint32_t simdColumns, uint32_t numThreads)
+{
+  // strips narrower than simdColumns run the scalar column loop
+  uint32_t chunks = (resWidth + simdColumns - 1) / simdColumns;
+  uint32_t tasks = std::min(chunks, numThreads);
+  return ((chunks + tasks - 1) / tasks) * simdColumns;
+}
+
 void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
 {
   if(resWidth == 0)
@@ -1318,8 +1332,8 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
   auto resFlow = imageComponentFlow->getResflow(res - 1);
   if(!resFlow)
     return;
-  const uint32_t numTasks = resWidth < num_threads ? resWidth : num_threads;
-  uint32_t widthIncr = resWidth / numTasks;
+  const uint32_t widthIncr = verticalTaskWidth(resWidth, get_PLL_COLS_53(), num_threads);
+  const uint32_t numTasks = (resWidth + widthIncr - 1) / widthIncr;
   for(uint32_t j = 0; j < numTasks; j++)
   {
     auto wMin = j * widthIncr;
@@ -1543,6 +1557,7 @@ void WaveletReverse::h_16_53(uint8_t res, TileComponentWindow<int16_t>* tileBuff
     numTasks[orient] = height[orient] < num_threads ? height[orient] : num_threads;
     height[orient] = (orient == 0) ? vertPool16_[0].sn : resHeight - vertPool16_[0].sn;
     numTasks[orient] = height[orient] < num_threads ? height[orient] : num_threads;
+    numTasks[orient] = cappedTasks(numTasks[orient], (uint64_t)height[orient] * (horiz16_.sn + horiz16_.dn));
   }
   for(uint32_t orient = 0; orient < 2; ++orient)
   {
@@ -1816,8 +1831,10 @@ void WaveletReverse::v_16_53(uint8_t res, TileComponentWindow<int16_t>* buf, uin
   auto resFlow = imageComponentFlow->getResflow(res - 1);
   if(!resFlow)
     return;
-  const uint32_t numTasks = resWidth < num_threads ? resWidth : num_threads;
-  uint32_t widthIncr = resWidth / numTasks;
+  const uint32_t widthIncr = verticalTaskWidth(
+      resWidth, get_PLL_COLS_16_53(),
+      cappedTasks(num_threads, (uint64_t)resWidth * (vert16_.sn + vert16_.dn)));
+  const uint32_t numTasks = (resWidth + widthIncr - 1) / widthIncr;
   for(uint32_t j = 0; j < numTasks; j++)
   {
     auto wMin = j * widthIncr;
