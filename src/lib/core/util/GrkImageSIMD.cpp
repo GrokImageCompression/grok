@@ -422,6 +422,23 @@ namespace HWY_NAMESPACE
     }
   }
 
+  static void Hwy_copy_i16_to_u8_row(const int16_t* HWY_RESTRICT src, uint8_t* HWY_RESTRICT dst,
+                                     uint32_t n)
+  {
+    const HWY_FULL(int16_t) di16;
+    const hn::Rebind<uint8_t, decltype(di16)> du8;
+    const uint32_t L = (uint32_t)Lanes(di16);
+
+    uint32_t i = 0;
+    for(; i + L <= n; i += L)
+      StoreU(DemoteTo(du8, LoadU(di16, src + i)), du8, dst + i);
+    for(; i < n; ++i)
+    {
+      int16_t v = src[i];
+      dst[i] = v <= 0 ? (uint8_t)0 : v >= 255 ? (uint8_t)255 : (uint8_t)v;
+    }
+  }
+
   /* ─── int32_t row → int16_t row (GDALCopyWords clamp to [-32768, 32767]) ─── */
   static void Hwy_copy_i32_to_i16_row(const int32_t* HWY_RESTRICT src, int16_t* HWY_RESTRICT dst,
                                       uint32_t n)
@@ -871,6 +888,7 @@ HWY_EXPORT(Hwy_packed_to_planar_8);
 HWY_EXPORT(Hwy_planar_to_packed_16);
 HWY_EXPORT(Hwy_packed_to_planar_16);
 HWY_EXPORT(Hwy_copy_i32_to_u8_row);
+HWY_EXPORT(Hwy_copy_i16_to_u8_row);
 HWY_EXPORT(Hwy_copy_i32_to_i16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u32_row);
@@ -1057,13 +1075,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
         if(packed && !doPromote)
         {
           if(buf->prec <= 8)
-          {
-            for(uint32_t x = 0; x < cols; ++x)
-            {
-              int16_t v = srcPtr16[x];
-              dstRowBase[x] = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
-            }
-          }
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i16_to_u8_row)(srcPtr16, dstRowBase, cols);
           else if(buf->prec <= 16 && buf->sgnd)
             memcpy(dstRowBase, srcPtr16, static_cast<size_t>(cols) * sizeof(int16_t));
           else if(buf->prec <= 16)
