@@ -47,13 +47,19 @@ bool Subband::empty()
 {
   return ((x1 - x0 == 0) || (y1 - y0 == 0));
 }
+static std::vector<Precinct*>::iterator precinctLowerBound(std::vector<Precinct*>& precincts,
+                                                           uint64_t precinctIndex)
+{
+  return std::lower_bound(
+      precincts.begin(), precincts.end(), precinctIndex,
+      [](const Precinct* precinct, uint64_t index) { return precinct->precinctIndex_ < index; });
+}
 Precinct* Subband::tryGetPrecinct(uint64_t precinctIndex)
 {
-  if(!precinctMap_.contains(precinctIndex))
+  auto position = precinctLowerBound(precincts_, precinctIndex);
+  if(position == precincts_.end() || (*position)->precinctIndex_ != precinctIndex)
     return nullptr;
-  uint64_t index = precinctMap_[precinctIndex];
-
-  return precincts_[index];
+  return *position;
 }
 static Rect32_16 intersect(const Rect32* bandBounds, const Rect32_16& precinctBounds)
 {
@@ -84,9 +90,9 @@ Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_
                                   Rect32 bandPrecinctPartition, Point8 bandPrecinctExpn,
                                   uint32_t precinctGridWidth, Point8 cblk_expn)
 {
-  auto temp = precinctMap_.find(precinctIndex);
-  if(temp != precinctMap_.end())
-    return precincts_[temp->second];
+  auto position = precinctLowerBound(precincts_, precinctIndex);
+  if(position != precincts_.end() && (*position)->precinctIndex_ == precinctIndex)
+    return *position;
 
   auto bounds = generateBandPrecinctBounds(precinctIndex, bandPrecinctPartition, bandPrecinctExpn,
                                            precinctGridWidth);
@@ -100,13 +106,12 @@ Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_
   {
     // three passes a bit plane, two short on the first
     uint32_t maxPasses = 3U * ((uint32_t)maxBitPlanes_ + 1U) - 2U;
-    currPrec = new PrecinctCompress(numLayers, bounds, cblk_expn,
+    currPrec = new PrecinctCompress(numLayers, precinctIndex, bounds, cblk_expn,
                                     (uint8_t)std::min<uint32_t>(maxPasses, maxCodePassesPerBlock));
   }
   else
-    currPrec = new PrecinctDecompress(numLayers, bounds, cblk_expn);
-  precincts_.push_back(currPrec);
-  precinctMap_[precinctIndex] = precincts_.size() - 1;
+    currPrec = new PrecinctDecompress(numLayers, precinctIndex, bounds, cblk_expn);
+  precincts_.insert(position, currPrec);
 
   return currPrec;
 }

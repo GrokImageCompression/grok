@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <vector>
 
 namespace grk
 {
@@ -108,16 +108,10 @@ struct Subband : public Rect32
   t1::eBandOrientation orientation_ = t1::BAND_ORIENT_LL;
 
   /**
-   * @brief flat vector of precincts
+   * @brief created precincts, sorted by precinct index
    *
    */
   std::vector<Precinct*> precincts_;
-
-  /**
-   * @brief maps global precinct index to precincts vector index
-   *
-   */
-  std::unordered_map<uint64_t, uint64_t> precinctMap_;
 
   /**
    * @brief band max number of bit planes

@@ -224,9 +224,9 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
           //!!!! plugin still uses stepsize/2
           plugin_band->stepsize = band->stepsize_ / 2;
           plugin_band->num_bit_planes = band->maxBitPlanes_;
-          for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+          for(auto prc : band->precincts_)
           {
-            auto prc = band->precincts_[vectorIndex];
+            auto precinctIndex = prc->precinctIndex_;
             auto plugin_prc = plugin_band->precincts[precinctIndex];
             assert(plugin_prc->num_blocks == prc->getNumCblks());
             for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)

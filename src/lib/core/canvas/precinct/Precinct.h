@@ -34,10 +34,11 @@ struct Precinct : public Rect32_16
    * @brief Constructs a new Precinct object
    *
    * @param numLayers number of layers
+   * @param precinctIndex precinct index in the band's precinct grid
    * @param bounds precinct bounds
    * @param cblk_expn log2 of nominal code block dimensions
    */
-  Precinct(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn);
+  Precinct(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds, Point8 cblk_expn);
 
   /**
    * @brief Destroys the Precinct object
@@ -144,6 +145,8 @@ struct Precinct : public Rect32_16
     }
   }
 
+  const uint64_t precinctIndex_;
+
 protected:
   uint16_t numLayers_;
 
@@ -156,8 +159,9 @@ private:
 
 struct PrecinctCompress : public Precinct
 {
-  PrecinctCompress(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn, uint8_t maxPasses)
-      : Precinct(numLayers, bounds, cblk_expn), maxPasses_(maxPasses)
+  PrecinctCompress(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                   Point8 cblk_expn, uint8_t maxPasses)
+      : Precinct(numLayers, precinctIndex, bounds, cblk_expn), maxPasses_(maxPasses)
   {}
 
 private:

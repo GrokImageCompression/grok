@@ -331,9 +331,9 @@ void TileProcessorCompress::syncPluginCodeBlockData()
       for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
       {
         auto band = &res->band[bandIndex];
-        for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+        for(auto prc : band->precincts_)
         {
-          auto prc = band->precincts_[vectorIndex];
+          auto precinctIndex = prc->precinctIndex_;
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
             auto cblk = prc->getCompressBlock(cblkno);
@@ -410,9 +410,9 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
         {
           auto band = &res->band[bandIndex];
-          for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+          for(auto prc : band->precincts_)
           {
-            auto prc = band->precincts_[vectorIndex];
+            auto precinctIndex = prc->precinctIndex_;
             for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
             {
               auto cblk = prc->getCompressBlock(cblkno);
@@ -967,9 +967,9 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
         for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
         {
           auto band = &res->band[bandIndex];
-          for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+          for(auto prc : band->precincts_)
           {
-            auto prc = band->precincts_[vectorIndex];
+            auto precinctIndex = prc->precinctIndex_;
             for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
             {
               auto cblk = prc->getCompressBlock(cblkno);

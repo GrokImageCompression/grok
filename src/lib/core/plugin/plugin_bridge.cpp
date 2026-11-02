@@ -86,9 +86,9 @@ bool tile_equals(grk_plugin_tile* plugin_tile, const Tile* tilePtr)
       {
         auto band = resolution->band + bandIndex;
         auto plugin_band = plugin_resolution->band[bandIndex];
-        for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+        for(auto precinct : band->precincts_)
         {
-          auto precinct = band->precincts_[vectorIndex];
+          auto precinctIndex = precinct->precinctIndex_;
           auto plugin_precinct = plugin_band->precincts[precinctIndex];
           uint64_t num_blocks = precinct->getNumCblks();
           if(num_blocks != plugin_precinct->num_blocks)

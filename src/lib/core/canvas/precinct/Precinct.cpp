@@ -27,8 +27,9 @@
 namespace grk
 {
 
-Precinct::Precinct(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn)
-    : Rect32_16(bounds), numLayers_(numLayers), cblk_expn_(cblk_expn)
+Precinct::Precinct(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                   Point8 cblk_expn)
+    : Rect32_16(bounds), precinctIndex_(precinctIndex), numLayers_(numLayers), cblk_expn_(cblk_expn)
 
 {}
 Precinct::~Precinct()
