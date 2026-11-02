@@ -197,12 +197,12 @@ struct CodeblockDecompressImpl : public CodeblockImpl
   }
   /**
    * @brief Reads packet header
-   * @param bio shared pointer for @ref BitIO
+   * @param bio @ref BitIO
    * @param signalledDataBytes reference to variable holding number of signalled data bytes
    * @param layno layer number
    * @param cblk_sty code block style
    */
-  void readPacketHeader(std::shared_ptr<t1_t2::BitIO> bio, uint32_t& signalledLayerDataBytes,
+  void readPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes,
                         uint16_t layno, uint8_t cblk_sty)
   {
     // 1. read signalled passes in layer
@@ -296,7 +296,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
    * passes share another. In mixed mode a non-zero length where only placeholders
    * could be reveals a Part 1 code block, which then follows the Part 1 rules.
    */
-  void readHTPacketHeader(std::shared_ptr<t1_t2::BitIO> bio, uint32_t& signalledLayerDataBytes,
+  void readHTPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes,
                           uint16_t layno, uint8_t remainingPassesInLayer, uint8_t cblk_sty)
   {
     bool mixed = (cblk_sty & GRK_CBLKSTY_HT_MIXED) == GRK_CBLKSTY_HT_MIXED;
@@ -398,7 +398,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     }
   }
 
-  uint32_t readLength(std::shared_ptr<t1_t2::BitIO> bio, uint8_t bits)
+  uint32_t readLength(t1_t2::BitIO* bio, uint8_t bits)
   {
     if(bits > maxSegmentLengthBits)
     {

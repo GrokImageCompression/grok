@@ -144,11 +144,11 @@ uint32_t PacketParser::readHeader(void)
   if(*remainingBytes == 0)
     throw t1_t2::TruncatedPacketHeaderException();
   auto currentHeaderPtr = *headerStart;
-  std::shared_ptr<t1_t2::BitIO> bio(new t1_t2::BitIO(currentHeaderPtr, *remainingBytes, false));
+  t1_t2::BitIO bio(currentHeaderPtr, *remainingBytes, false);
   auto tccp = tcp->tccps_ + compno_;
   try
   {
-    tagBitsPresent_ = bio->read();
+    tagBitsPresent_ = bio.read();
     // grklog.info("present=%u ", present);
     if(tagBitsPresent_)
     {
@@ -170,7 +170,7 @@ uint32_t PacketParser::readHeader(void)
           if(!cblk || !cblk->numlenbits())
           {
             uint16_t value;
-            incl->decode(bio.get(), cblkno, layno_ + 1, &value);
+            incl->decode(&bio, cblkno, layno_ + 1, &value);
             if(value != incl->getUninitializedValue() && value != layno_)
             {
               grklog.warn("Tile number: %u", tileIndex_ + 1);
@@ -182,7 +182,7 @@ uint32_t PacketParser::readHeader(void)
           }
           else
           {
-            included = bio->read();
+            included = bio.read();
           }
           if(!included)
             return;
@@ -196,7 +196,7 @@ uint32_t PacketParser::readHeader(void)
 
             // see Taubman + Marcellin page 388
             // loop below stops at (# of missing bit planes  + 1)
-            imsb->decode(bio.get(), cblkno, K_msbs, &value);
+            imsb->decode(&bio, cblkno, K_msbs, &value);
             while(value >= K_msbs)
             {
               ++K_msbs;
@@ -207,7 +207,7 @@ uint32_t PacketParser::readHeader(void)
                             K_msbs, maxBitPlanesJ2K);
                 throw t1::CorruptPacketHeaderException();
               }
-              imsb->decode(bio.get(), cblkno, K_msbs, &value);
+              imsb->decode(&bio, cblkno, K_msbs, &value);
             }
             if(K_msbs == 0)
             {
@@ -235,12 +235,12 @@ uint32_t PacketParser::readHeader(void)
             }
             cblk->setNumLenBits(3);
           }
-          cblk->readPacketHeader(bio, signalledLayerDataBytes_, layno_, tccp->cblkStyle_);
+          cblk->readPacketHeader(&bio, signalledLayerDataBytes_, layno_, tccp->cblkStyle_);
         });
       }
     }
-    bio->readFinalHeaderByte();
-    currentHeaderPtr += bio->numBytes();
+    bio.readFinalHeaderByte();
+    currentHeaderPtr += bio.numBytes();
   }
   catch([[maybe_unused]] const t1_t2::InvalidMarkerException& ex)
   {
