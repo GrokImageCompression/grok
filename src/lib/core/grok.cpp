@@ -408,46 +408,13 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
 
 grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
 {
-  // 16- vs 32-bit data-type selection, derived from BIBO (bounded-input
-  // bounded-output) analysis of the inverse wavelet transform.  The int16 path
-  // stores coefficients in a fixed-point representation, so it is only viable when
-  // the sample precision plus the worst-case headroom the transform needs still
-  // fits in the 16-bit container:
-  //     recommended = prec + headroom;   use int16 iff recommended <= 16.
-  //
-  //   Reversible 5/3 (T.800 F.3.4): the lifting is exact integer arithmetic, so no
-  //   fractional bits are required — the only headroom is BIBO dynamic-range growth.
-  //   The 2D inverse 5/3 BIBO gain needs 4 bits, plus 1 more when the reversible
-  //   colour transform (RCT) adds its extra bit of range; a further guard bit is
-  //   reserved once the total already exceeds 16.  int16 is therefore bit-exact for
-  //   5/3 up to prec 12 (non-MCT) / 11 (MCT).
-  //
-  //   Irreversible 9/7 (T.800 F.3.5): the transform is real-valued, so the int16
-  //   fixed-point coefficients must ALSO carry fractional bits, or the per-step
-  //   lifting rounding accumulates into visible error (it compounds across the
-  //   ~10 lifting/scaling ops of a 2D level and across decomposition levels).
-  //   The 8-bit headroom budgets ~3 bits for the 9/7 2D BIBO gain (intermediate
-  //   lifting values exceed the reconstructed sample) and 5 bits of fractional
-  //   precision, which is what keeps the accumulated rounding inside the T.803
-  //   conformance tolerances.  So prec + 8 <= 16  =>  prec <= 8 uses int16; at
-  //   9 bits the fractional margin drops to 4 bits and the deviation from float
-  //   doubles, so 9-bit and up (incl. DCI) decode in 32-bit float — exact.
-  //   See doc/16BitDWT.md and WaveletReverse97_16.cpp.
-  int recommended;
-  if(qmfbid == 1) // reversible 5/3
-  {
-    recommended = (int)prec + (is_mct ? 5 : 4);
-    if(recommended > 16)
-      ++recommended;
-  }
-  else // irreversible 9/7
-  {
-    // the fixed point forward 9/7 rounds at every lifting step
-    if(compress)
-      return GRK_INT_32;
-    recommended = (int)prec + 8;
-  }
-  return recommended <= 16 ? GRK_INT_16 : GRK_INT_32;
+  if(!compress)
+    return prec <= (qmfbid == 1 ? 12 : 10) ? GRK_INT_16 : GRK_INT_32;
+  // forward 9/7 fixed point rounds at every lifting step
+  if(qmfbid != 1)
+    return GRK_INT_32;
+  // forward 5/3 kernels add two samples in an int16 lane
+  return (int)prec + (is_mct ? 5 : 4) <= 16 ? GRK_INT_16 : GRK_INT_32;
 }
 
 grk_image_meta* grk_image_meta_new(void)

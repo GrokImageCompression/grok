@@ -128,15 +128,17 @@ static bool validateDecompressedFrame(const CompressedFrame& frame, size_t frame
   int errorCount = 0;
   for(uint32_t c = 0; c < TEST_SAMPLES; ++c)
   {
-    auto* compData = static_cast<int32_t*>(image->comps[c].data);
-    uint32_t stride = image->comps[c].stride;
+    auto& comp = image->comps[c];
+    uint32_t stride = comp.stride;
     for(uint32_t y = 0; y < TEST_HEIGHT; ++y)
     {
       for(uint32_t x = 0; x < TEST_WIDTH; ++x)
       {
         size_t srcIdx = (y * TEST_WIDTH + x) * TEST_SAMPLES + c;
         int32_t expected = (int32_t)((frameIndex * 100 + srcIdx) & 0x0FFF);
-        int32_t actual = compData[y * stride + x];
+        size_t index = (size_t)y * stride + x;
+        int32_t actual = comp.data_type == GRK_INT_16 ? static_cast<int16_t*>(comp.data)[index]
+                                                      : static_cast<int32_t*>(comp.data)[index];
         int err = abs(actual - expected);
         if(err > 0 && errorCount < 5)
         {

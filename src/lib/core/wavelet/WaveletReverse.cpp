@@ -297,8 +297,7 @@ namespace HWY_NAMESPACE
   //
   // Eligibility (decided in TileProcessor::decompressInit):
   //   - Reversible wavelet (qmfbid == 1), whole-tile decoding only.
-  //   - MCT components (inverse RCT adds ~1 extra bit): prec + 5 <= 16  →  prec <= 11
-  //   - Non-MCT components (DC shift only):              prec + 4 <= 16  →  prec <= 12
+  //   - prec <= 12, with or without inverse RCT.
   //
   // BIBO (Bounded-Input-Bounded-Output) Gain Analysis
   // --------------------------------------------------
@@ -317,10 +316,7 @@ namespace HWY_NAMESPACE
   //   - For ≤5 levels: overall gain < 2^3
   //   - For >5 levels: converges to ~2^3.04
   //
-  // For 16-bit synthesis, headroom includes ~3 bits DWT gain + safety margin:
-  //   - Non-MCT (rct_comp ≤ 1): 4 bits → max prec 12
-  //   - MCT chrominance (rct_comp ≥ 2): 5 bits → max prec 11
-  // See doc/16BitDWT.md for full first-principles derivation.
+  // See doc/16BitDWT.md for the largest int16 value at 12 bits with RCT.
   //
   // Overflow-Safe Averaging
   // -----------------------

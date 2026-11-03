@@ -2825,14 +2825,10 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   // out of the coding params, so a tile can never decode into a sample type the composite
   // buffer was not allocated for.
   bool allEligible = true;
-  bool hasMct = defaultTcp_->mct_ == 1 && headerImage_->numcomps >= 3 &&
-                headerImage_->componentsEqual(3, false);
   for(uint16_t i = 0; i < headerImage_->numcomps; i++)
   {
     auto tccp = defaultTcp_->tccps_ + i;
-    bool isMctComp = hasMct && (i <= 2);
-    if(grk_get_data_type(false, headerImage_->comps[i].prec, isMctComp, tccp->qmfbid_) !=
-           GRK_INT_16 ||
+    if(grk_get_data_type(false, headerImage_->comps[i].prec, false, tccp->qmfbid_) != GRK_INT_16 ||
        tccp->usesPart2Transform())
     {
       allEligible = false;

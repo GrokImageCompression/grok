@@ -15,9 +15,10 @@ The 16-bit path is selected at runtime in `TileProcessor::decompressInit()`
 (TileProcessor.cpp) when all of the following hold:
 
 1. **Precision + headroom ≤ 16 bits**, per `grk_get_data_type`:
-   - Reversible 5/3, MCT components (inverse RCT): `prec + 5 ≤ 16` → max precision 11 bits
-   - Reversible 5/3, non-MCT components: `prec + 4 ≤ 16` → max precision 12 bits
-   - Irreversible 9/7: `prec + 8 ≤ 16` → max precision 8 bits
+   - Decode, reversible 5/3, with or without RCT: max precision 12 bits
+   - Decode, irreversible 9/7: max precision 10 bits
+   - Compress, reversible 5/3: `prec + 4 ≤ 16`, or `prec + 5 ≤ 16` with RCT
+   - Compress, irreversible 9/7: never
 
 A region (partial) decode qualifies on the same terms as a whole-tile decode,
 under either filter, and the mercury fast path applies the same rule, so both
@@ -141,24 +142,15 @@ and the sum is immediately halved).
 
 ### Headroom Calculation
 
-For **16-bit synthesis**:
+For **16-bit synthesis**, a lossless decode retraces the forward transform, so
+the int16 buffers must hold every forward intermediate value. The largest
+magnitude at 12 bits with RCT is 32564, in chroma, over images built from the
+sign of each 5/3 analysis response at five levels. The same search at 13 bits
+gives 65132. This holds only because the update and predict steps below average
+without overflow in an int16 lane.
 
-- **Non-MCT** (`rct_comp ≤ 1`): **4 bits** of headroom.
-  This covers ~3 bits for the DWT BIBO gain (< 2^3 for typical ≤5 levels)
-  plus ~0.5–1 bit safety margin for quantization errors (reversibly processed
-  content can be quantized by code-block truncation).
-  Max precision: `prec + 4 ≤ 16` → prec ≤ 12.
-  For 12-bit: output range 2^12 × 2^3 ≈ 2^15 fits in int16_t.
-
-- **MCT chrominance** (`rct_comp ≥ 2`): **5 bits** of headroom.
-  The inverse RCT (Reversible Colour Transform) has additional BIBO gain
-  of 1.5× for luminance and 2.0× for chrominance (Db/Dr) channels,
-  since `Cr = B - G` and `Cb = R - G` can double the range, and
-  `Y = G + floor((Cb + Cr) / 4)` adds up to 1.5× for luminance.
-  Max precision: `prec + 5 ≤ 16` → prec ≤ 11.
-
-Note: Our implementation conservatively uses 5 bits for ALL MCT components
-(including luminance), simplifying the logic while remaining safe.
+For **16-bit analysis**, the forward kernels add two samples in an int16 lane, so
+RCT needs one more bit of headroom than the synthesis limit.
 
 ## Overflow-Safe SIMD Averaging
 

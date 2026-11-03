@@ -1764,7 +1764,7 @@ int GrkDecompress::shmBatchDecompress(DecompressInitParams* initParams)
         return;
       }
 
-      // copy decompressed pixels (planar int32_t → interleaved 16-bit)
+      // copy decompressed pixels (planar int16_t or int32_t → interleaved 16-bit)
       auto* dst16 = reinterpret_cast<uint16_t*>(uncompressedSlot.framePtr_);
       for(uint32_t y = 0; y < imgHeight; ++y)
       {
@@ -1772,9 +1772,11 @@ int GrkDecompress::shmBatchDecompress(DecompressInitParams* initParams)
         {
           for(uint32_t c = 0; c < imgSpp; ++c)
           {
-            auto* data = static_cast<int32_t*>(image->comps[c].data);
-            uint32_t stride = image->comps[c].stride;
-            dst16[(y * imgWidth + x) * imgSpp + c] = (uint16_t)data[y * stride + x];
+            auto& comp = image->comps[c];
+            size_t index = (size_t)y * comp.stride + x;
+            dst16[(y * imgWidth + x) * imgSpp + c] =
+                comp.data_type == GRK_INT_16 ? (uint16_t)static_cast<int16_t*>(comp.data)[index]
+                                             : (uint16_t)static_cast<int32_t*>(comp.data)[index];
           }
         }
       }

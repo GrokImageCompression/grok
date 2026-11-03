@@ -1074,23 +1074,17 @@ namespace
 
 // Whole-image output sample type, replicating grok's classic decision so the
 // fast path's API-visible comp->data_type matches (test_8bit_mct_produces_int16
-// and friends compare it). grk_get_data_type is the BIBO-headroom rule
-// createDecompressTileComponentWindows feeds into the final image type — it
-// handles 9/7 int16 at prec<=9, unlike activateScratch's reversible-only logic.
+// and friends compare it). grk_get_data_type is the rule
+// createDecompressTileComponentWindows feeds into the final image type.
 // A region decode takes the same rule as a whole decode, matching the classic
 // partial path. Per grok's uniform-type rule, one under-headroom component
 // forces every component to int32.
 static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage* img)
 {
-  // MCT applies (int16 headroom loses a bit) only for a 3+ component RCT/ICT
-  // image whose first three components share dimensions — and then only to
-  // components 0-2, exactly grok's needsMctDecompress(compno)/tcp_->mct_==1.
-  bool mctImage = tcp->mct_ == 1 && img->numcomps >= 3 && img->componentsEqual(3, false);
   for(uint16_t c = 0; c < img->numcomps; c++)
   {
-    bool isMctComp = mctImage && c <= 2;
     uint8_t qmfbid = tcp->tccps_[c].qmfbid_;
-    if(grk_get_data_type(false, img->comps[c].prec, isMctComp, qmfbid) != GRK_INT_16)
+    if(grk_get_data_type(false, img->comps[c].prec, false, qmfbid) != GRK_INT_16)
       return GRK_INT_32;
   }
   return GRK_INT_16;

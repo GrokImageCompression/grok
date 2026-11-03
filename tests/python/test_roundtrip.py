@@ -301,7 +301,7 @@ class TestInt16Gate:
         return image, codec
 
     def test_12bit_mct_produces_int32(self, tmp_path):
-        """12-bit RGB 9/7 + MCT decodes via 32-bit float (prec + 8 = 20 > 16)."""
+        """12-bit RGB 9/7 + MCT decodes via 32-bit float (above the 10-bit limit)."""
         j2k = str(tmp_path / "rgb12_irrev.j2k")
         assert self._compress_irrev_rgb(j2k, 64, 64, 12)
 
@@ -312,7 +312,7 @@ class TestInt16Gate:
         grok_core.grk_object_unref(codec)
 
     def test_8bit_mct_produces_int16(self, tmp_path):
-        """8-bit RGB 9/7 + MCT decodes via the int16 path (prec + 8 = 16 <= 16)."""
+        """8-bit RGB 9/7 + MCT decodes via the int16 path (within the 10-bit limit)."""
         j2k = str(tmp_path / "rgb8_irrev.j2k")
         assert self._compress_irrev_rgb(j2k, 64, 64, 8)
 
@@ -323,23 +323,24 @@ class TestInt16Gate:
         grok_core.grk_object_unref(codec)
 
     def test_grk_get_data_type_irreversible(self):
-        """Irreversible 9/7 (qmfbid=0): int16 iff prec + 8 <= 16, i.e. prec <= 8,
+        """Irreversible 9/7 (qmfbid=0): int16 iff prec <= 10,
         independent of MCT on decode."""
-        # decode, MCT: 8-bit -> int16, 9/12-bit -> int32
-        assert grok_core.grk_get_data_type(False, 8, True, 0) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 9, True, 0) == grok_core.GRK_INT_32
+        # decode, MCT: 10-bit -> int16, 11/12-bit -> int32
+        assert grok_core.grk_get_data_type(False, 10, True, 0) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 11, True, 0) == grok_core.GRK_INT_32
         assert grok_core.grk_get_data_type(False, 12, True, 0) == grok_core.GRK_INT_32
         # decode, non-MCT (single component): same threshold
-        assert grok_core.grk_get_data_type(False, 8, False, 0) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 9, False, 0) == grok_core.GRK_INT_32
+        assert grok_core.grk_get_data_type(False, 10, False, 0) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 11, False, 0) == grok_core.GRK_INT_32
         # compress: MCT 9/7 always int32 (forward ICT is float)
         assert grok_core.grk_get_data_type(True, 8, True, 0) == grok_core.GRK_INT_32
 
     def test_grk_get_data_type_reversible(self):
-        """Reversible 5/3 (qmfbid=1): headroom 4 (non-MCT) / 5 (MCT)."""
-        # non-MCT: prec + 4 <= 16 -> prec <= 12
+        """Reversible 5/3 (qmfbid=1): decode int16 iff prec <= 12, with or without MCT."""
         assert grok_core.grk_get_data_type(False, 12, False, 1) == grok_core.GRK_INT_16
         assert grok_core.grk_get_data_type(False, 13, False, 1) == grok_core.GRK_INT_32
-        # MCT: prec + 5 <= 16 -> prec <= 11
-        assert grok_core.grk_get_data_type(False, 11, True, 1) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 12, True, 1) == grok_core.GRK_INT_32
+        assert grok_core.grk_get_data_type(False, 12, True, 1) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 13, True, 1) == grok_core.GRK_INT_32
+        # compress with MCT keeps one more bit of headroom
+        assert grok_core.grk_get_data_type(True, 11, True, 1) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(True, 12, True, 1) == grok_core.GRK_INT_32
