@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <memory_resource>
 #include <new>
 #include "SmallVector.h"
 
@@ -27,9 +28,10 @@ template<typename T, typename P>
 class BlockCache
 {
 public:
-  BlockCache(uint16_t numLayers, uint32_t maxNumBlocks, P* blockInitializer)
+  BlockCache(uint16_t numLayers, uint32_t maxNumBlocks, P* blockInitializer,
+             std::pmr::memory_resource* arena)
       : chunkSize_(std::min<uint32_t>(maxNumBlocks, 256)), blockInitializer_(blockInitializer),
-        numLayers_(numLayers)
+        arena_(arena), numLayers_(numLayers)
   {
     chunks_.resize((maxNumBlocks + chunkSize_ - 1) / chunkSize_);
   }
@@ -41,7 +43,7 @@ public:
         continue;
       for(uint32_t i = 0; i < chunkSize_; ++i)
         chunk[i].~T();
-      ::operator delete(chunk, std::align_val_t(alignof(T)));
+      arena_->deallocate(chunk, sizeof(T) * chunkSize_, alignof(T));
     }
   }
 
@@ -59,7 +61,7 @@ public:
     auto& chunk = chunks_[index / chunkSize_];
     if(!chunk)
     {
-      chunk = static_cast<T*>(::operator new(sizeof(T) * chunkSize_, std::align_val_t(alignof(T))));
+      chunk = static_cast<T*>(arena_->allocate(sizeof(T) * chunkSize_, alignof(T)));
       for(uint32_t i = 0; i < chunkSize_; ++i)
         new(chunk + i) T(numLayers_);
     }
@@ -72,6 +74,7 @@ private:
   uint32_t chunkSize_;
   SmallVector<T*, 1> chunks_;
   P* blockInitializer_;
+  std::pmr::memory_resource* arena_;
   uint16_t numLayers_;
 };
 

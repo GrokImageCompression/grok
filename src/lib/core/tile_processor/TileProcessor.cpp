@@ -78,7 +78,8 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
     : headerImage_(codeStream->getHeaderImage()),
       current_plugin_tile_(codeStream->getCurrentPluginTile()), cp_(codeStream->getCodingParams()),
       packetLengthCache_(std::make_shared<PacketLengthCache<uint32_t>>(cp_)),
-      tile_(new Tile(headerImage_->numcomps)), tileIndex_(tile_index), tcp_(tcp),
+      tileArenaChunks_(codeStream->getTileArenaChunks()),
+      tile_(new Tile(headerImage_->numcomps, tileArenaChunks_)), tileIndex_(tile_index), tcp_(tcp),
       mct_(new Mct(tile_, headerImage_, tcp_)),
       markerParser_(isCompressor ? nullptr : new MarkerParser()), truncated_(false),
       image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy),
@@ -339,7 +340,7 @@ bool TileProcessor::reinitForReDecompress()
   tcp_->packets_->discardParsers();
 
   // Recreate tile structure
-  tile_ = new Tile(headerImage_->numcomps);
+  tile_ = new Tile(headerImage_->numcomps, tileArenaChunks_);
   // mct_ holds a non-owning Tile*; re-point it at the new tile so the inverse
   // MCT pass does not dereference the previously freed Tile.
   if(mct_)
@@ -1143,7 +1144,11 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))
       return false;
-    tileComp->createWindow(unreducedImageCompWindow);
+    std::pmr::memory_resource* windowArena =
+        (tileCacheStrategy_ & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL
+            ? std::pmr::new_delete_resource()
+            : &tile_->arena_;
+    tileComp->createWindow(unreducedImageCompWindow, windowArena);
   }
 
   return true;
@@ -1372,13 +1377,13 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
           {
             auto res = tilec->resolutions_ + resno;
-            for(const auto& pp : res->packetParser_->allLayerPrecinctParsers_)
+            for(auto& pp : res->packetParser_->allLayerPrecinctParsers_)
             {
-              auto parser = pp.second->parserQueue_.pop();
+              auto parser = pp.second.parserQueue_.pop();
               while(parser != std::nullopt)
               {
                 parser.value()->parsePacketData();
-                parser = pp.second->parserQueue_.pop();
+                parser = pp.second.parserQueue_.pop();
               }
             }
           }
@@ -1474,14 +1479,13 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
         for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
         {
           auto res = tilec->resolutions_ + resno;
-          for(const auto& pp : res->packetParser_->allLayerPrecinctParsers_)
+          for(auto& pp : res->packetParser_->allLayerPrecinctParsers_)
           {
-            const auto& ppair = pp;
-            auto parser = ppair.second->parserQueue_.pop();
+            auto parser = pp.second.parserQueue_.pop();
             while(parser != std::nullopt)
             {
               parser.value()->parsePacketData();
-              parser = ppair.second->parserQueue_.pop();
+              parser = pp.second.parserQueue_.pop();
             }
           }
         }

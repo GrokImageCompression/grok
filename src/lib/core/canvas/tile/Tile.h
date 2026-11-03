@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <memory_resource>
 
 #include "TileComponent.h"
 
@@ -37,9 +38,11 @@ namespace grk
  */
 struct Tile : public Rect32
 {
-  Tile() : Tile(0) {}
+  Tile() : Tile(0, std::pmr::get_default_resource()) {}
 
-  explicit Tile(uint16_t numcomps) : numcomps_(numcomps), comps_(nullptr), distortion_(0)
+  Tile(uint16_t numcomps, std::pmr::memory_resource* arenaChunks)
+      : arena_(firstArenaChunkBytes, arenaChunks), numcomps_(numcomps), comps_(nullptr),
+        distortion_(0)
   {
     if(numcomps)
       comps_ = new TileComponent[numcomps];
@@ -68,6 +71,8 @@ struct Tile : public Rect32
   /**
    * @brief number of components
    */
+  static constexpr size_t firstArenaChunkBytes = 64 * 1024;
+  std::pmr::monotonic_buffer_resource arena_;
   uint16_t numcomps_;
 
   /**

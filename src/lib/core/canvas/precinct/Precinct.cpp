@@ -94,7 +94,7 @@ PrecinctImpl* PrecinctCompress::makeImpl(void)
 }
 PrecinctImpl* PrecinctDecompress::makeImpl(void)
 {
-  return new PrecinctImplDecompress(this, numLayers_);
+  return new(arena_) PrecinctImplDecompress(this, numLayers_, arena_);
 }
 
 } // namespace grk

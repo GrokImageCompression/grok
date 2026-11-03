@@ -103,7 +103,7 @@ bool Resolution::init(grk_plugin_tile* currentPluginTile, bool isCompressor, uin
       {
         if(!curr_band->createPrecinct(isCompressor, numLayers, precinctIndex,
                                       bandPrecinctPartition_, bandPrecinctExpn_,
-                                      precinctGrid_.width(), cblkExpn_))
+                                      precinctGrid_.width(), cblkExpn_, nullptr))
           return false;
       }
     }

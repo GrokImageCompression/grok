@@ -392,6 +392,7 @@ protected:
    * @brief @ref Tile
    *
    */
+  TileArenaChunkPool* tileArenaChunks_;
   Tile* tile_ = nullptr;
 
   /** index of tile being currently compressed/decompressed */

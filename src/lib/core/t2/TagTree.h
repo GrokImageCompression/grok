@@ -19,8 +19,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory_resource>
 #include <queue>
 #include <vector>
 
@@ -40,8 +42,8 @@ public:
    * @return a new tag tree if successful, otherwise nullptr
    */
 
-  TagTree(uint16_t leavesWidth, uint16_t leavesHeight)
-      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight)
+  TagTree(uint16_t leavesWidth, uint16_t leavesHeight, std::pmr::memory_resource* arena)
+      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), pageOffset_(arena), pool_(arena)
   {
     buildLevels();
   }
@@ -131,7 +133,10 @@ public:
   template<typename Visit>
   void forEachLeafThatMayReadBits(Visit visit)
   {
-    PendingLeaves pending;
+    std::array<std::byte, 1024> pendingStorage;
+    std::pmr::monotonic_buffer_resource pendingResource(pendingStorage.data(),
+                                                        pendingStorage.size());
+    PendingLeaves pending(std::greater<uint64_t>{}, std::pmr::vector<uint64_t>(&pendingResource));
     pending.push(0);
     while(!pending.empty())
     {
@@ -183,7 +188,7 @@ private:
     bool known;
   };
   using PendingLeaves =
-      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>>;
+      std::priority_queue<uint64_t, std::pmr::vector<uint64_t>, std::greater<uint64_t>>;
 
   // 16 bit leaf dimensions give at most 16 halvings above the leaves
   static constexpr uint8_t maxLevels = 17;
@@ -285,8 +290,8 @@ private:
   std::array<uint16_t, maxLevels> levelWidth_;
   std::array<uint16_t, maxLevels> levelHeight_;
   std::array<uint32_t, maxLevels> levelBase_;
-  std::vector<uint32_t> pageOffset_;
-  std::vector<Node> pool_;
+  std::pmr::vector<uint32_t> pageOffset_;
+  std::pmr::vector<Node> pool_;
 };
 
 using TagTreeU8 = TagTree<uint8_t>;

@@ -230,6 +230,14 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     for(; resno < resUpperBound; ++resno)
     {
       auto res = tilec->resolutions_ + resno;
+      if(wholeTileDecoding)
+      {
+        size_t numBlocks = resBlocks.blocks_.size();
+        for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
+          for(auto precinct : res->band[bandIndex].precincts_)
+            numBlocks += precinct->getNumCblks();
+        resBlocks.blocks_.reserve(numBlocks);
+      }
       for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;

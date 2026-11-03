@@ -210,9 +210,12 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
       auto band = res->band + bandIndex;
       if(band->empty())
         continue;
+      if(tilec->isWholeTileDecoding())
+        band->precincts_.reserve(res->precinctGrid_.area());
       if(!band->createPrecinct(tileProcessor->isCompressor(), tileProcessor->getTCP()->numLayers_,
                                precinctIndex, res->bandPrecinctPartition_, res->bandPrecinctExpn_,
-                               res->precinctGrid_.width(), res->cblkExpn_))
+                               res->precinctGrid_.width(), res->cblkExpn_,
+                               &tileProcessor->getTile()->arena_))
         return false;
     }
   }

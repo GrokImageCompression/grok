@@ -393,7 +393,7 @@ void AllLayersPrecinctPacketParser::enqueue(PacketParser* parser)
 }
 
 ResolutionPacketParser::ResolutionPacketParser(ITileProcessor* tileProcessor)
-    : tileProcessor_(tileProcessor)
+    : tileProcessor_(tileProcessor), allLayerPrecinctParsers_(&tileProcessor->getTile()->arena_)
 {}
 
 ResolutionPacketParser::~ResolutionPacketParser()
@@ -410,12 +410,8 @@ void ResolutionPacketParser::enqueue(uint64_t precinctIndex, PacketParser* parse
   if(!parser)
     return;
 
-  // Use std::make_unique to create a unique_ptr for AllLayersPrecinctPacketParser
-  auto [it, inserted] = allLayerPrecinctParsers_.try_emplace(
-      precinctIndex, std::make_unique<AllLayersPrecinctPacketParser>(tileProcessor_));
-
-  // Enqueue the parser
-  it->second->enqueue(parser);
+  auto [it, inserted] = allLayerPrecinctParsers_.try_emplace(precinctIndex, tileProcessor_);
+  it->second.enqueue(parser);
 }
 
 } // namespace grk

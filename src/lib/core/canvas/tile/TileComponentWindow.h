@@ -99,9 +99,10 @@ struct TileComponentWindowBase : public ITileComponentWindow
                           Rect32 unreducedTileComp, Rect32 reducedTileComp,
                           Rect32 unreducedImageCompWindow, uint8_t numresolutions,
                           uint8_t reducedNumResolutions, const DecompositionSplit* splits,
-                          const uint8_t* horizontalDepth, const uint8_t* verticalDepth)
-      : unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
-        wholeTileDecompress_(wholeTileDecompress)
+                          const uint8_t* horizontalDepth, const uint8_t* verticalDepth,
+                          std::pmr::memory_resource* arena)
+      : resWindows(arena), unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp),
+        resolution_(arena), compress_(isCompressor), wholeTileDecompress_(wholeTileDecompress)
   {
     assert(reducedNumResolutions > 0);
     // the level whose split makes a resolution's bands, resolution 0 is the coarsest level's LL
@@ -137,10 +138,11 @@ struct TileComponentWindowBase : public ITileComponentWindow
     // create resolution buffers
     uint8_t highestResno = (uint8_t)(reducedNumResolutions - 1U);
     uint8_t highestLevel = levelOfResolution(numresolutions, highestResno);
-    auto highestResWindow = new ResWindow<T>(
+    std::pmr::polymorphic_allocator<> allocator(arena);
+    auto highestResWindow = allocator.new_object<ResWindow<T>>(
         highestResno, nullptr, tileCompAtRes, tileCompAtLowerRes, bounds_, unreducedBounds_,
         unreducedTileComp, wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless),
-        splits[highestLevel], horizontalDepth[highestLevel], verticalDepth[highestLevel]);
+        splits[highestLevel], horizontalDepth[highestLevel], verticalDepth[highestLevel], arena);
     // setting top level prevents allocation of tileCompBandWindows buffers
     if(!useBandWindows())
       highestResWindow->disableBandWindowAllocation();
@@ -153,19 +155,20 @@ struct TileComponentWindowBase : public ITileComponentWindow
       uint8_t level = levelOfResolution(numresolutions, resno);
       auto resWindow = ResSimple::getBandWindow(horizontalDepth[levelsDone],
                                                 verticalDepth[levelsDone], 0, unreducedBounds_);
-      resWindows.push_back(new ResWindow<T>(
+      resWindows.push_back(allocator.new_object<ResWindow<T>>(
           resno, useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
           resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
           unreducedBounds_, unreducedTileComp,
           wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless), splits[level],
-          horizontalDepth[level], verticalDepth[level]));
+          horizontalDepth[level], verticalDepth[level], arena));
     }
     resWindows.push_back(highestResWindow);
   }
   virtual ~TileComponentWindowBase()
   {
+    std::pmr::polymorphic_allocator<> allocator(resWindows.get_allocator().resource());
     for(auto& b : this->resWindows)
-      delete b;
+      allocator.delete_object(b);
   }
   /**
    * Get bounds of tile component (canvas coordinates)
@@ -195,7 +198,7 @@ protected:
     return !this->wholeTileDecompress_;
   }
   // windowed bounds for windowed decompress, otherwise full bounds
-  std::vector<ResWindow<T>*> resWindows;
+  std::pmr::vector<ResWindow<T>*> resWindows;
   /******************************************************/
   // decompress: unreduced/reduced image component window
   // compress:  unreduced/reduced tile component
@@ -203,7 +206,7 @@ protected:
   Rect32 bounds_;
   /******************************************************/
 
-  std::vector<ResSimple> resolution_;
+  std::pmr::vector<ResSimple> resolution_;
   bool compress_;
   bool wholeTileDecompress_;
 };
@@ -216,10 +219,12 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
                       Rect32 unreducedTileComp, Rect32 reducedTileComp,
                       Rect32 unreducedImageCompWindow, uint8_t numresolutions,
                       uint8_t reducedNumResolutions, const DecompositionSplit* splits,
-                      const uint8_t* horizontalDepth, const uint8_t* verticalDepth)
+                      const uint8_t* horizontalDepth, const uint8_t* verticalDepth,
+                      std::pmr::memory_resource* arena)
       : TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress, unreducedTileComp,
                                    reducedTileComp, unreducedImageCompWindow, numresolutions,
-                                   reducedNumResolutions, splits, horizontalDepth, verticalDepth)
+                                   reducedNumResolutions, splits, horizontalDepth, verticalDepth,
+                                   arena)
 
   {}
   ~TileComponentWindow() override = default;

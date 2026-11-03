@@ -48,6 +48,8 @@
 
 #pragma once
 
+#include <memory_resource>
+
 #include "ResSimple.h"
 
 namespace grk
@@ -72,16 +74,19 @@ struct ResWindow
   friend struct TileComponentWindow<T>;
   typedef Buffer2d<T, AllocatorAligned> Buf2dAligned;
 
-private:
+public:
   ResWindow(uint8_t resno, Buf2dAligned* resWindowHighestResREL, ResSimple tileCompAtRes,
             ResSimple tileCompAtLowerRes, Rect32 resWindow, Rect32 tileCompWindowUnreduced,
             Rect32 tileCompUnreduced, uint32_t FILTER_WIDTH, DecompositionSplit split,
-            uint8_t numDecompsX, uint8_t numDecompsY)
-      : allocated_(false), tileCompAtRes_(tileCompAtRes), tileCompAtLowerRes_(tileCompAtLowerRes),
-        resWindowBuffer_(new Buf2dAligned(resWindow)), resWindowBufferSplit_{nullptr, nullptr},
-        resWindowBufferHighestResREL_(resWindowHighestResREL),
-        resWindowBufferREL_(new Buf2dAligned(resWindow.width(), resWindow.height())),
-        resWindowBufferSplitREL_{nullptr, nullptr}
+            uint8_t numDecompsX, uint8_t numDecompsY, std::pmr::memory_resource* arena)
+      : allocator_(arena), allocated_(false), tileCompAtRes_(tileCompAtRes),
+        tileCompAtLowerRes_(tileCompAtLowerRes),
+        resWindowBuffer_(allocator_.new_object<Buf2dAligned>(resWindow)),
+        resWindowBufferSplit_{nullptr, nullptr}, bandWindowsBuffersPadded_(arena),
+        bandWindowsBoundsPadded_(arena), resWindowBufferHighestResREL_(resWindowHighestResREL),
+        resWindowBufferREL_(
+            allocator_.new_object<Buf2dAligned>(resWindow.width(), resWindow.height())),
+        resWindowBufferSplitREL_{nullptr, nullptr}, bandWindowsBuffersPaddedREL_(arena)
   {
     resWindowBuffer_->setOrigin(tileCompAtRes_);
     Rect32 resWindowPadded;
@@ -117,8 +122,10 @@ private:
         for(uint8_t orient = 0; orient < t1::BAND_NUM_ORIENTATIONS; orient++)
         {
           auto bandWindow = bandWindowsBoundsPadded_[orient];
-          bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow, true));
-          bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toRelative(), true));
+          bandWindowsBuffersPadded_.push_back(
+              allocator_.new_object<Buf2dAligned>(bandWindow, true));
+          bandWindowsBuffersPaddedREL_.push_back(
+              allocator_.new_object<Buf2dAligned>(bandWindow.toRelative(), true));
         }
         genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
                               bandWindowsBuffersPadded_[t1::BAND_ORIENT_LL],
@@ -133,20 +140,21 @@ private:
       // slot 0 is a placeholder for LL, the rest stay empty when the level does not split that way
       if(tileCompAtLowerRes_.numTileBandWindows && tileCompAtLowerRes_.valid())
       {
-        bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
-        bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
+        bandWindowsBuffersPadded_.push_back(allocator_.new_object<Buf2dAligned>(0, 0));
+        bandWindowsBuffersPaddedREL_.push_back(allocator_.new_object<Buf2dAligned>(0, 0));
         for(uint8_t orientation = t1::BAND_ORIENT_HL; orientation < t1::BAND_NUM_ORIENTATIONS;
             ++orientation)
         {
           if(!ResSimple::hasBand(split, orientation))
           {
-            bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
-            bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
+            bandWindowsBuffersPadded_.push_back(allocator_.new_object<Buf2dAligned>(0, 0));
+            bandWindowsBuffersPaddedREL_.push_back(allocator_.new_object<Buf2dAligned>(0, 0));
             continue;
           }
           auto band = Rect32(tileCompAtRes_.tileBand + orientation - 1);
-          bandWindowsBuffersPadded_.push_back(new Buf2dAligned(band));
-          bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(band.toRelative()));
+          bandWindowsBuffersPadded_.push_back(allocator_.new_object<Buf2dAligned>(band));
+          bandWindowsBuffersPaddedREL_.push_back(
+              allocator_.new_object<Buf2dAligned>(band.toRelative()));
         }
         bool splitsY = splitsVertically(split);
         for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
@@ -171,26 +179,33 @@ private:
             // a horizontal only level keeps every row in the low split
             splitWindow.y0 = splitWindow.y1;
           }
-          resWindowBufferSplit_[i] = new Buf2dAligned(splitWindow);
-          resWindowBufferSplitREL_[i] = new Buf2dAligned(splitWindow.toRelative());
+          resWindowBufferSplit_[i] = allocator_.new_object<Buf2dAligned>(splitWindow);
+          resWindowBufferSplitREL_[i] =
+              allocator_.new_object<Buf2dAligned>(splitWindow.toRelative());
         }
       }
     }
   }
   ~ResWindow()
   {
-    delete resWindowBufferREL_;
+    auto destroy = [this](Buf2dAligned* buffer) {
+      if(buffer)
+        allocator_.delete_object(buffer);
+    };
+    destroy(resWindowBufferREL_);
     for(auto& b : bandWindowsBuffersPaddedREL_)
-      delete b;
+      destroy(b);
     for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-      delete resWindowBufferSplitREL_[i];
+      destroy(resWindowBufferSplitREL_[i]);
 
-    delete resWindowBuffer_;
+    destroy(resWindowBuffer_);
     for(auto& b : bandWindowsBuffersPadded_)
-      delete b;
+      destroy(b);
     for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-      delete resWindowBufferSplit_[i];
+      destroy(resWindowBufferSplit_[i]);
   }
+
+private:
   void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
                              Buf2dAligned* bandWindowsBuffersPaddedXL,
                              Buf2dAligned* bandWindowsBuffersPaddedXH, bool useRelative)
@@ -205,11 +220,11 @@ private:
 
     // two windows formed by horizontal pass and used as input for vertical pass
     auto splitResWindowBounds = Rect32(resWin.x0, xlBounds.y0, resWin.x1, xlBounds.y1);
-    resWindowBufferSplit[SPLIT_L] = new Buf2dAligned(splitResWindowBounds);
+    resWindowBufferSplit[SPLIT_L] = allocator_.new_object<Buf2dAligned>(splitResWindowBounds);
 
     splitResWindowBounds =
         Rect32(resWin.x0, lowerRes.y1 + xhBounds.y0, resWin.x1, lowerRes.y1 + xhBounds.y1);
-    resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds);
+    resWindowBufferSplit[SPLIT_H] = allocator_.new_object<Buf2dAligned>(splitResWindowBounds);
   }
   bool allocResWindowBuffer(bool clear)
   {
@@ -402,6 +417,7 @@ private:
   {
     return resWindowBufferREL_;
   }
+  std::pmr::polymorphic_allocator<> allocator_;
   bool allocated_;
 
   ResSimple tileCompAtRes_; // numTileBandWindows> 0 will trigger creation of band window buffers
@@ -409,18 +425,18 @@ private:
 
   Buf2dAligned* resWindowBuffer_;
   Buf2dAligned* resWindowBufferSplit_[SPLIT_NUM_ORIENTATIONS];
-  std::vector<Buf2dAligned*> bandWindowsBuffersPadded_;
+  std::pmr::vector<Buf2dAligned*> bandWindowsBuffersPadded_;
 
   /*
   bandWindowsBoundsPadded_ is used for determining which precincts and code blocks overlap
   the window of interest, in each respective resolution
   */
-  std::vector<Rect32> bandWindowsBoundsPadded_;
+  std::pmr::vector<Rect32> bandWindowsBoundsPadded_;
 
   Buf2dAligned* resWindowBufferHighestResREL_;
   Buf2dAligned* resWindowBufferREL_;
   Buf2dAligned* resWindowBufferSplitREL_[SPLIT_NUM_ORIENTATIONS];
-  std::vector<Buf2dAligned*> bandWindowsBuffersPaddedREL_;
+  std::pmr::vector<Buf2dAligned*> bandWindowsBuffersPaddedREL_;
 };
 
 } // namespace grk

@@ -17,7 +17,10 @@
 
 #pragma once
 
+#include <memory_resource>
 #include <vector>
+
+#include "TileArena.h"
 
 namespace grk
 {
@@ -36,7 +39,7 @@ struct PrecinctImpl
    *
    * @param prec @ref Precinct
    */
-  explicit PrecinctImpl(Precinct* prec);
+  PrecinctImpl(Precinct* prec, std::pmr::memory_resource* arena);
 
   /**
    * @brief Destroys the PrecinctImpl
@@ -109,6 +112,7 @@ struct PrecinctImpl
   Precinct* prec_;
 
 protected:
+  std::pmr::memory_resource* arena_;
   bool genCodeBlockGrid(void);
 
 private:
@@ -122,9 +126,9 @@ struct PrecinctImplCompress : public PrecinctImpl
   PrecinctImplCompress(Precinct* prec, uint16_t numLayers, uint8_t maxPasses);
 };
 
-struct PrecinctImplDecompress : public PrecinctImpl
+struct PrecinctImplDecompress : public PrecinctImpl, public TileArenaObject
 {
-  PrecinctImplDecompress(Precinct* prec, uint16_t numLayers);
+  PrecinctImplDecompress(Precinct* prec, uint16_t numLayers, std::pmr::memory_resource* arena);
 };
 
 } // namespace grk

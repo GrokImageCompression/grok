@@ -156,7 +156,8 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     bool isMctComponent = tcp_->mct_ == 1 && compno < 3;
     bool use16BitWindow = use16BitDwt && imageComp->data_type == GRK_INT_16 && tcp_->mct_ != 2 &&
                           (!isMctComponent || use16BitMctWindows);
-    tileComp->createWindow(Rect32(unreducedTileComp), use16BitWindow);
+    tileComp->createWindow(Rect32(unreducedTileComp), use16BitWindow,
+                           std::pmr::new_delete_resource());
   }
   uint32_t numTiles = (uint32_t)cp_->t_grid_height_ * cp_->t_grid_width_;
 

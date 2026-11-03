@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <memory_resource>
 #include <vector>
 
 namespace grk
@@ -99,7 +100,8 @@ struct Subband : public Rect32
    */
   Precinct* createPrecinct(bool isCompressor, uint16_t numLayers, uint64_t precinctIndex,
                            Rect32 bandPrecinctPartition, Point8 bandPrecinctExpn,
-                           uint32_t precinctGridWidth, Point8 cblk_expn);
+                           uint32_t precinctGridWidth, Point8 cblk_expn,
+                           std::pmr::memory_resource* tileArena);
 
   /**
    * @brief band orientation

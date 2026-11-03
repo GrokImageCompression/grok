@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include <memory_resource>
+
+#include "TileArena.h"
+
 namespace grk
 {
 
@@ -169,12 +173,16 @@ private:
   uint8_t maxPasses_;
 };
 
-struct PrecinctDecompress : public Precinct
+struct PrecinctDecompress : public Precinct, public TileArenaObject
 {
-  using Precinct::Precinct;
+  PrecinctDecompress(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                     Point8 cblk_expn, std::pmr::memory_resource* arena)
+      : Precinct(numLayers, precinctIndex, bounds, cblk_expn), arena_(arena)
+  {}
 
 private:
   PrecinctImpl* makeImpl(void) override;
+  std::pmr::memory_resource* arena_;
 };
 
 } // namespace grk

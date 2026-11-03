@@ -189,7 +189,8 @@ struct TileComponent : public Rect32
    *
    * @param unreducedTileCompOrImageCompWindow window bounds
    */
-  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, bool use16BitWindow)
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, bool use16BitWindow,
+                    std::pmr::memory_resource* arena)
   {
     dealloc();
     uses16BitWindow_ = use16BitWindow;
@@ -200,7 +201,7 @@ struct TileComponent : public Rect32
           Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
           Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
           isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
-          tccp_->horizontalDepth_, tccp_->verticalDepth_);
+          tccp_->horizontalDepth_, tccp_->verticalDepth_, arena);
     }
     else
     {
@@ -209,12 +210,12 @@ struct TileComponent : public Rect32
           Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
           Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
           isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
-          tccp_->horizontalDepth_, tccp_->verticalDepth_);
+          tccp_->horizontalDepth_, tccp_->verticalDepth_, arena);
     }
   }
-  void createWindow(Rect32 unreducedTileCompOrImageCompWindow)
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, std::pmr::memory_resource* arena)
   {
-    createWindow(unreducedTileCompOrImageCompWindow, use16BitDwt_);
+    createWindow(unreducedTileCompOrImageCompWindow, use16BitDwt_, arena);
   }
 
   /**

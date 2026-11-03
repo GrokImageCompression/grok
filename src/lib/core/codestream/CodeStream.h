@@ -22,6 +22,7 @@
 
 #include "grok.h"
 #include "CodingParams.h"
+#include "TileArena.h"
 
 namespace grk
 {
@@ -117,6 +118,10 @@ public:
   IStream* getStream();
   GrkImage* getHeaderImage(void);
   grk_plugin_tile* getCurrentPluginTile();
+  TileArenaChunkPool* getTileArenaChunks()
+  {
+    return &tileArenaChunks_;
+  }
   CodingParams* getCodingParams(void);
   virtual grk_io_band_callback getBandCallback() const
   {
@@ -142,6 +147,7 @@ protected:
   IStream* stream_;
   std::unordered_map<uint32_t, ITileProcessor*> processors_;
   grk_plugin_tile* current_plugin_tile;
+  TileArenaChunkPool tileArenaChunks_;
 };
 
 } // namespace grk

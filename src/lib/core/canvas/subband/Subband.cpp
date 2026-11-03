@@ -88,7 +88,8 @@ Rect32_16 Subband::generateBandPrecinctBounds(uint64_t precinctIndex, Rect32 ban
 }
 Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_t precinctIndex,
                                   Rect32 bandPrecinctPartition, Point8 bandPrecinctExpn,
-                                  uint32_t precinctGridWidth, Point8 cblk_expn)
+                                  uint32_t precinctGridWidth, Point8 cblk_expn,
+                                  std::pmr::memory_resource* tileArena)
 {
   auto position = precinctLowerBound(precincts_, precinctIndex);
   if(position != precincts_.end() && (*position)->precinctIndex_ == precinctIndex)
@@ -110,7 +111,8 @@ Precinct* Subband::createPrecinct(bool isCompressor, uint16_t numLayers, uint64_
                                     (uint8_t)std::min<uint32_t>(maxPasses, maxCodePassesPerBlock));
   }
   else
-    currPrec = new PrecinctDecompress(numLayers, precinctIndex, bounds, cblk_expn);
+    currPrec =
+        new(tileArena) PrecinctDecompress(numLayers, precinctIndex, bounds, cblk_expn, tileArena);
   precincts_.insert(position, currPrec);
 
   return currPrec;

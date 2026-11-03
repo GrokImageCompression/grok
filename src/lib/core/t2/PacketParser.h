@@ -18,10 +18,12 @@
 #pragma once
 
 #include <cstdint>
+#include <memory_resource>
 #include <unordered_map>
 #include <queue>
 #include <optional>
 
+#include "SmallVector.h"
 #include "SparseBuffer.h"
 
 namespace grk
@@ -180,9 +182,10 @@ public:
    * @brief Constructs a LimitedQueue
    * @param maxSize maximum size of queue
    */
-  LimitedQueue(std::size_t maxSize)
-      : elements(std::make_unique<T*[]>(maxSize)), currentSize(0), maxSize(maxSize), popIndex(-1)
-  {}
+  LimitedQueue(std::size_t maxSize) : currentSize(0), maxSize(maxSize), popIndex(-1)
+  {
+    elements.resize(maxSize);
+  }
 
   /**
    * @brief Destroys a LimitedQueue
@@ -222,7 +225,7 @@ private:
   /**
    * @brief array of queue elements
    */
-  std::unique_ptr<T*[]> elements;
+  SmallVector<T*, 1> elements;
 
   /**
    * @brief current size of queue
@@ -307,8 +310,7 @@ struct ResolutionPacketParser
   /**
    * @brief map of @ref AllLayersPrecinctPacketParser, indexed by precinct index
    */
-  std::unordered_map<uint64_t, std::unique_ptr<AllLayersPrecinctPacketParser>>
-      allLayerPrecinctParsers_;
+  std::pmr::unordered_map<uint64_t, AllLayersPrecinctPacketParser> allLayerPrecinctParsers_;
 };
 
 } // namespace grk
