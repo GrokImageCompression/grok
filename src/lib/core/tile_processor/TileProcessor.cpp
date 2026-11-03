@@ -1307,6 +1307,10 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
         }
       }
       deallocBuffers();
+      // linux reloads released file pages from the page cache on the next read
+      for(size_t i = 0; i < tilePartSeq_.size(); ++i)
+        getStream()->memAdvise(tilePartSeq_[i]->offset_, tilePartSeq_[i]->length_,
+                               GrkAccessPattern::ACCESS_DONTNEED);
     }
   }
 }
