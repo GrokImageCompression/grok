@@ -530,6 +530,7 @@ private:
   bool swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1);
   bool waitedRowsFullyScheduled(void);
   void scheduleQueuedForWaitedRows(void);
+  void scheduleQueuedSequentialForWaitedRows(void);
   void scheduleRemainingTiles(void);
 
   /**

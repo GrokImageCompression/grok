@@ -1111,13 +1111,15 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       batchTileUnscheduledSequential_--;
     }
     // the caller is blocked on a row whose tiles are not all scheduled yet
-    else if(!waitedRowsFullyScheduled())
+    else if(batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
     {
       batchTileUnscheduledSequential_--;
     }
     else
     {
       batchTileQueueSequential_.push(tileProcessor);
+      // queued tiles precede this one in parse order and may belong to a waited row
+      scheduleQueuedSequentialForWaitedRows();
       // Block the parser until the queue drains, preventing all compressed
       // tile data from being loaded into memory at once.
       // The queue drains when scheduleTileBatch() calls batchDequeueSequential().
@@ -2028,17 +2030,22 @@ void CodeStreamDecompress::scheduleQueuedForWaitedRows(void)
     }
     else
     {
-      while(!batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
-      {
-        auto tileProcessor = batchTileQueueSequential_.front();
-        batchTileQueueSequential_.pop();
-        batchTileUnscheduledSequential_--;
-        if(!schedule(tileProcessor, true) && !success_)
-          break;
-      }
+      scheduleQueuedSequentialForWaitedRows();
     }
   }
   batchTileQueueCondition_.notify_one();
+}
+
+void CodeStreamDecompress::scheduleQueuedSequentialForWaitedRows(void)
+{
+  while(!batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
+  {
+    auto tileProcessor = batchTileQueueSequential_.front();
+    batchTileQueueSequential_.pop();
+    batchTileUnscheduledSequential_--;
+    if(!schedule(tileProcessor, true) && !success_)
+      break;
+  }
 }
 
 // the last tile row can complete before the parser queues the last tiles
