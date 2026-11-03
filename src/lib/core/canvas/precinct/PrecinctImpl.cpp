@@ -165,7 +165,7 @@ PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayer
   {
     dec_ = std::pmr::polymorphic_allocator<>(arena_)
                .new_object<BlockCache<t1::CodeblockDecompress, PrecinctImpl>>(
-                   numLayers, (uint32_t)num_blocks, this, arena_);
+                   numLayers, cblk_grid_.width(), cblk_grid_.height(), this, arena_);
   }
 }
 
