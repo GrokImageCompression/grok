@@ -66,6 +66,10 @@ extern "C" {
  *     4 — adds debug output
  *     5 — adds trace output
  *
+ * GRK_MERCURY
+ *   0 decodes with the classic pipeline, 1 decodes every eligible image with
+ *   the mercury pipeline. Unset, mercury decodes single-tile images only.
+ *
  * GRK_NO_PLUGIN
  *   When set (to any value), grk_initialize() skips grk_plugin_load(). This
  *   forces the CPU codec for the whole process — useful for `make test` and

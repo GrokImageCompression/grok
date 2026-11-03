@@ -1095,6 +1095,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   const char* mercuryEnv = std::getenv("GRK_MERCURY");
   if(mercuryEnv && std::strcmp(mercuryEnv, "0") == 0)
     return false;
+  const bool mercuryForced = mercuryEnv && std::strcmp(mercuryEnv, "1") == 0;
+  // mercury plans every tile up front, which costs more than it saves on tiled images
+  if(!mercuryForced && cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ > 1)
+    MFP_BAIL("multi-tile image");
   auto* headerTcp = cs.defaultTcp_.get();
   for(uint16_t c = 0; c < headerTcp->numComps_; ++c)
     if(headerTcp->tccps_[c].usesPart2Transform())

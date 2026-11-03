@@ -690,6 +690,7 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
 
   uint8_t numTileParts;
   grk_read(&headerData, &numTileParts);
+  numTileParts = cp_->correctedNumTileParts(numTileParts);
 
   validateTilePartIndex(tileIndex_, tilePartInfo.tilePart_, numTileParts);
 

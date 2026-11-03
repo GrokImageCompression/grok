@@ -434,6 +434,8 @@ private:
 
   TilePartInfo currTilePartInfo_;
   int32_t currTileIndex_ = -1;
+  bool numTilePartsChecked_ = false;
+  void detectShortNumTileParts(void);
 
   /**
    * @brief Default @ref TileCodingParams

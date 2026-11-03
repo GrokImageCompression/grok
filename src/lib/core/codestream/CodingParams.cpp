@@ -215,6 +215,13 @@ bool CodingParams::hasTLM(void) const noexcept
 {
   return this->tlmMarkers_ && tlmMarkers_->valid();
 }
+uint8_t CodingParams::correctedNumTileParts(uint8_t signalledNumTileParts) const noexcept
+{
+  // TNsot of 0 means the count is unknown
+  if(signalledNumTileParts == 0 || signalledNumTileParts == UINT8_MAX)
+    return signalledNumTileParts;
+  return uint8_t(signalledNumTileParts + numTilePartsCorrection_);
+}
 uint8_t CodingParams::numTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno)
 {
   uint64_t numTileParts = 1;

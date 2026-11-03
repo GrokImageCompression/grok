@@ -15,8 +15,8 @@
  *
  */
 
-// a stream whose last tile part of every tile has TPsot == TNsot must be
-// rejected. the parse thread notices that only after every tile has been
+// a stream whose TNsot is two below the tile parts written for every tile must
+// be rejected. the parse thread notices that only after every tile has been
 // scheduled, so it sets the failure flag while per-tile completions are still
 // running, and a completion that overwrote the flag used to erase the failure.
 // round-robin tile parts across many tiles is what makes the overlap wide.
@@ -213,8 +213,8 @@ bool collectTileParts(const std::vector<uint8_t>& codestream, size_t& mainHeader
   return true;
 }
 
-// round-robins the tile parts across tiles and patches every TNsot down by one,
-// so the last tile part of each tile carries TPsot == TNsot
+// round-robins the tile parts across tiles and patches every TNsot down by two,
+// since grok accepts a TNsot that is one too low
 bool makeIllegalStream(const std::vector<uint8_t>& codestream, std::vector<uint8_t>& patched,
                        size_t& numTiles, uint8_t& tilePartsPerTile)
 {
@@ -238,7 +238,7 @@ bool makeIllegalStream(const std::vector<uint8_t>& codestream, std::vector<uint8
       size_t start = patched.size();
       patched.insert(patched.end(), codestream.begin() + (long)part.offset,
                      codestream.begin() + (long)(part.offset + part.length));
-      patched[start + TNSOT_OFFSET] = (uint8_t)(tilePartsPerTile - 1);
+      patched[start + TNSOT_OFFSET] = (uint8_t)(tilePartsPerTile - 2);
     }
   }
   patched.push_back((uint8_t)(EOC >> 8));
@@ -311,7 +311,7 @@ int main(void)
     printf("%u decodes of %zu tiles with %u tile parts each all rejected the stream\n", DECODES,
            numTiles, tilePartsPerTile);
   else if(decodesThatSucceeded)
-    fprintf(stderr, "%u of %u decodes accepted a stream with TPsot == TNsot\n",
+    fprintf(stderr, "%u of %u decodes accepted a stream with TNsot two too low\n",
             decodesThatSucceeded, DECODES);
 
   grk_deinitialize();

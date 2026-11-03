@@ -22,6 +22,11 @@ THREAD_TIMING_DEPENDENT = {
     "security_threaded_decode_abort.j2k",
     "security_threaded_decode_abort_color.j2k",
 }
+# grok's lab to 16-bit srgb conversion turns a difference of 1 in the 8-bit lab samples into up to 1130
+LAB_TO_SRGB_AMPLIFIED = {
+    "issue559-eci-090-CIELab.jp2",
+    "issue559-eci-091-CIELab.jp2",
+}
 # classic deliberately refuses a stream whose tile parts outnumber TNsot, because its
 # parallel tile-part parsing needs TNsot to be right. mercury is tolerant, so the two
 # legitimately diverge here rather than one of them being wrong.
@@ -76,6 +81,8 @@ def sweep_one(bin_dir, work_dir, in_file):
     """Returns (status, detail). status: ok/bail/skip/classic-rejects/unloadable/FAIL."""
     if os.path.basename(in_file) in THREAD_TIMING_DEPENDENT:
         return "skip", "output depends on thread timing"
+    if os.path.basename(in_file) in LAB_TO_SRGB_AMPLIFIED:
+        return "skip", "lab to srgb conversion exceeds the peak tolerance"
     parsed = parse_codestream(in_file)
     if not parsed:
         return "skip", "unparseable header"

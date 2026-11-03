@@ -492,6 +492,11 @@ struct CodingParams
 
   bool hasTLM(void) const noexcept;
 
+  uint8_t correctedNumTileParts(uint8_t signalledNumTileParts) const noexcept;
+
+  // some encoders signal TNsot one lower than the tile parts they write
+  uint8_t numTilePartsCorrection_ = 0;
+
   // true when the layers or reduce changed
   bool init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
 

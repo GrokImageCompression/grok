@@ -79,6 +79,15 @@ jobs:
         ln -s ${{ github.workspace }}/build/bin/compare_images sde-bin/compare_images
         python3 tests/mercury_ab_sweep.py sde-bin build/sweepwork-avx512 sde-corpus
 
+    - name: ctest with classic forced
+      # mercury_ab_sweep.py already compares classic and mercury pixels over the whole corpus
+      working-directory: ${{ github.workspace }}/build
+      run: GRK_MERCURY=0 ctest --output-on-failure -j$(nproc) -E "decode-md5|compare2base"
+
+    - name: ctest with mercury forced
+      working-directory: ${{ github.workspace }}/build
+      run: GRK_MERCURY=1 ctest --output-on-failure -j$(nproc) -E "decode-md5|compare2base"
+
     - name: upload failing outputs
       if: failure()
       uses: actions/upload-artifact@v4

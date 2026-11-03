@@ -403,7 +403,7 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
     uint8_t tilePart, numTileParts;
     grk_read(&sotFields, &tilePart);
     grk_read(&sotFields, &numTileParts);
-    validateTilePartIndex(tileIndex, tilePart, numTileParts);
+    validateTilePartIndex(tileIndex, tilePart, cp_.correctedNumTileParts(numTileParts));
     currTileIndex_ = -1;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))

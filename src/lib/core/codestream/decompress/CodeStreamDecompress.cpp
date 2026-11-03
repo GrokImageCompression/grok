@@ -34,6 +34,7 @@
 #include "TileFutureManager.h"
 #include "FlowComponent.h"
 #include "IStream.h"
+#include "StreamIO.h"
 #include "MarkerCache.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
@@ -909,8 +910,49 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
 
 // Sequential /////////////////////////////////////////////////////////////////////
 
+void CodeStreamDecompress::detectShortNumTileParts(void)
+{
+  numTilePartsChecked_ = true;
+  if(cp_.hasTLM() || stream_->getFetcher())
+    return;
+  const uint64_t streamEnd = stream_->tell() + stream_->numBytesLeft();
+  uint64_t position = markerCache_->getTileStreamStart();
+  for(bool firstSOT = true;; firstSOT = false)
+  {
+    uint8_t sot[sotMarkerSegmentLen];
+    if(position + sotMarkerSegmentLen > streamEnd || !stream_->seek(position) ||
+       stream_->read(sot, nullptr, sotMarkerSegmentLen) != sotMarkerSegmentLen)
+      return;
+    uint8_t* fields = sot;
+    uint16_t marker, segmentLength, tileIndex;
+    uint32_t tilePartLength;
+    uint8_t tilePart, numTileParts;
+    grk_read(&fields, &marker);
+    grk_read(&fields, &segmentLength);
+    grk_read(&fields, &tileIndex);
+    grk_read(&fields, &tilePartLength);
+    grk_read(&fields, &tilePart);
+    grk_read(&fields, &numTileParts);
+    if(marker != SOT)
+      return;
+    if(firstSOT && numTileParts <= 1)
+      return;
+    // TPsot == TNsot means TNsot is one too low for every tile
+    if(numTileParts && tilePart == numTileParts)
+    {
+      cp_.numTilePartsCorrection_ = 1;
+      return;
+    }
+    if(tilePartLength == 0)
+      return;
+    position += tilePartLength;
+  }
+}
+
 void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
+  if(!numTilePartsChecked_)
+    detectShortNumTileParts();
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
   markerParser_.setSOT();
   // the walk restarts at the first SOT, so the tile a previous walk stopped on
