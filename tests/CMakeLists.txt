@@ -1063,6 +1063,11 @@ if(UNIX)
   target_link_libraries(grk_perf_bench ${GROK_CORE_NAME})
 endif()
 
+add_executable(grk_tlm_segments_test GrkTlmSegmentsTest.cpp)
+target_link_libraries(grk_tlm_segments_test ${GROK_CORE_NAME})
+add_test(NAME grk_tlm_segments_test COMMAND grk_tlm_segments_test)
+set_tests_properties(grk_tlm_segments_test PROPERTIES TIMEOUT 120)
+
 add_executable(grk_callback_stream_test GrkCallbackStreamTest.cpp)
 target_link_libraries(grk_callback_stream_test ${GROK_CORE_NAME})
 add_test(NAME grk_callback_stream_test COMMAND grk_callback_stream_test)

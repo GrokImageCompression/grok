@@ -37,6 +37,11 @@ const uint32_t sotMarkerSegmentLen = 12U;
 const uint32_t SPCodSPCocLen = 5U;
 const uint32_t codSocLen = 5U;
 const uint32_t tlmMarkerBytesPerTilePart = 6;
+// TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
+const uint32_t tlm_marker_start_bytes = 6;
+// Ltlm is 16 bits and excludes the 2 byte marker id
+const uint32_t maxTilePartsPerTlmSegment =
+    (UINT16_MAX - (tlm_marker_start_bytes - 2)) / tlmMarkerBytesPerTilePart;
 
 const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKW = 64;
 const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKH = 64;

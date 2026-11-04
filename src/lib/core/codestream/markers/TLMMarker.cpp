@@ -59,9 +59,6 @@ struct TilePartLengthPOD
   uint32_t length_;
 };
 
-// TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
-const uint32_t tlm_marker_start_bytes = 6;
-
 TLMMarker::TLMMarker(uint16_t numSignalledTiles)
     : markerManager_(std::make_unique<TLMMarkerManager>()), numSignalledTiles_(numSignalledTiles)
 {
@@ -322,40 +319,55 @@ TilePartLength<uint32_t>* TLMMarker::next(bool peek)
 bool TLMMarker::writeBegin(uint32_t numTilePartsTotal)
 {
   streamStart = stream_->tell();
+  numTilePartsTotal_ = numTilePartsTotal;
+
+  uint64_t numSegments =
+      (numTilePartsTotal + maxTilePartsPerTlmSegment - 1) / maxTilePartsPerTlmSegment;
+  /* make room for segment headers and tile part lengths */
+  if(!stream_->skip((int64_t)(numSegments * tlm_marker_start_bytes +
+                              (uint64_t)tlmMarkerBytesPerTilePart * numTilePartsTotal)))
+  {
+    grklog.error("Failed to skip space for TLM markers");
+    return false;
+  }
+
+  return true;
+}
+
+bool TLMMarker::writeSegmentHeader(IStream* stream, uint32_t segmentIndex, uint32_t numTileParts)
+{
+  if(segmentIndex > UINT8_MAX)
+  {
+    grklog.error("Too many tile parts for 256 TLM marker segments");
+    return false;
+  }
 
   /* TLM */
-  if(!stream_->write(TLM))
+  if(!stream->write(TLM))
   {
     grklog.error("Failed to write TLM marker");
     return false;
   }
 
   /* Ltlm */
-  uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTilePartsTotal;
-  if(!stream_->write(static_cast<uint16_t>(tlm_size - MARKER_BYTES)))
+  uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTileParts;
+  if(!stream->write(static_cast<uint16_t>(tlm_size - MARKER_BYTES)))
   {
     grklog.error("Failed to write Ltlm length");
     return false;
   }
 
-  /* Ztlm=0 */
-  if(!stream_->write8u(0))
+  /* Ztlm */
+  if(!stream->write8u(static_cast<uint8_t>(segmentIndex)))
   {
     grklog.error("Failed to write Ztlm value");
     return false;
   }
 
-  /* Stlm ST=1(8bits-255 tiles max), SP=1(Ptlm=32bits) */
-  if(!stream_->write8u(0x60))
+  /* Stlm ST=2(16 bit tile indices), SP=1(Ptlm=32bits) */
+  if(!stream->write8u(0x60))
   {
     grklog.error("Failed to write Stlm value");
-    return false;
-  }
-
-  /* make room for tile part lengths */
-  if(!stream_->skip(tlmMarkerBytesPerTilePart * numTilePartsTotal))
-  {
-    grklog.error("Failed to skip space for tile part lengths");
     return false;
   }
 
@@ -379,25 +391,44 @@ void TLMMarker::clearTilePartLengths() noexcept
 bool TLMMarker::writeEnd()
 {
   uint64_t current_position = stream_->tell();
-  if(!stream_->seek(streamStart + tlm_marker_start_bytes))
+  if(!stream_->seek(streamStart))
   {
-    grklog.error("Failed to seek to start of TLM marker data");
+    grklog.error("Failed to seek to start of TLM markers");
     return false;
   }
 
   markerManager_->reset();
-  while(auto tilePart = markerManager_->next(false))
+  uint32_t segmentIndex = 0;
+  for(uint32_t tilePartsLeft = numTilePartsTotal_; tilePartsLeft > 0;)
   {
-    if(!stream_->write(tilePart->tileIndex_))
-    {
-      grklog.error("Failed to write tile index");
+    uint32_t numInSegment = std::min(tilePartsLeft, maxTilePartsPerTlmSegment);
+    if(!writeSegmentHeader(stream_, segmentIndex++, numInSegment))
       return false;
-    }
-    if(!stream_->write(tilePart->length_))
+    for(uint32_t i = 0; i < numInSegment; ++i)
     {
-      grklog.error("Failed to write tile part length");
-      return false;
+      auto tilePart = markerManager_->next(false);
+      if(!tilePart)
+      {
+        grklog.error("TLM: fewer tile parts written than the %u signalled", numTilePartsTotal_);
+        return false;
+      }
+      if(!stream_->write(tilePart->tileIndex_))
+      {
+        grklog.error("Failed to write tile index");
+        return false;
+      }
+      if(!stream_->write(tilePart->length_))
+      {
+        grklog.error("Failed to write tile part length");
+        return false;
+      }
     }
+    tilePartsLeft -= numInSegment;
+  }
+  if(markerManager_->next(true))
+  {
+    grklog.error("TLM: more tile parts written than the %u signalled", numTilePartsTotal_);
+    return false;
   }
 
   if(!stream_->seek(current_position))

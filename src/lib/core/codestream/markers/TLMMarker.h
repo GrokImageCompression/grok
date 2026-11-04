@@ -233,6 +233,8 @@ struct TLMMarker
    */
   bool writeBegin(uint32_t numTilePartsTotal);
 
+  static bool writeSegmentHeader(IStream* stream, uint32_t segmentIndex, uint32_t numTileParts);
+
   /**
    * @brief Adds a new tile part(decompression)
    *
@@ -269,6 +271,8 @@ struct TLMMarker
 
 private:
   std::unique_ptr<TLMMarkerManager> markerManager_;
+
+  uint32_t numTilePartsTotal_ = 0;
 
   /**
    * @brief stores tile part info sequence for each tile

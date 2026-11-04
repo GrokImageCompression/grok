@@ -40,6 +40,7 @@ namespace grk
 struct ITileProcessor;
 }
 #include "CodeStream.h"
+#include "TLMMarker.h"
 #include "PacketLengthCache.h"
 #include "ICoder.h"
 #include "CoderPool.h"
@@ -1269,13 +1270,6 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   }
 
   uint32_t numTileParts = (uint32_t)tileParts.size();
-  // Max entries for single TLM marker: (65535 - 4) / 6 = 10921
-  if(numTileParts > 10921)
-  {
-    grklog.error("transcode: too many tile parts (%u) for a single TLM marker (max 10921)",
-                 numTileParts);
-    return 0;
-  }
 
   // --- Phase 2.5: Extract packet info (if any packet-level feature is active) ---
   bool needPacketInfo = write_plt_transcode_ || write_sop_transcode_ || write_eph_transcode_ ||
@@ -1658,22 +1652,15 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   //      the source already had TLM or if TLM was explicitly requested)
   if(writeTlm)
   {
-    uint16_t Ltlm = (uint16_t)(4 + tlmMarkerBytesPerTilePart * numTileParts);
-    if(!dstStream->write(TLM))
-      return 0;
-    totalWritten += 2;
-    if(!dstStream->write(Ltlm))
-      return 0;
-    totalWritten += 2;
-    if(!dstStream->write8u(0)) // Ztlm = 0
-      return 0;
-    totalWritten += 1;
-    if(!dstStream->write8u(0x60)) // Stlm: ST=2 (16-bit indices), SP=1 (32-bit lengths)
-      return 0;
-    totalWritten += 1;
-
     for(uint32_t i = 0; i < numTileParts; ++i)
     {
+      if(i % maxTilePartsPerTlmSegment == 0)
+      {
+        uint32_t numInSegment = std::min(numTileParts - i, maxTilePartsPerTlmSegment);
+        if(!TLMMarker::writeSegmentHeader(dstStream, i / maxTilePartsPerTlmSegment, numInSegment))
+          return 0;
+        totalWritten += tlm_marker_start_bytes;
+      }
       if(!dstStream->write(tileParts[i].tileIndex))
         return 0;
       totalWritten += 2;
