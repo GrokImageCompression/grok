@@ -156,10 +156,13 @@ d44d079ea8ffd0309ef1fdc09022a1fe  p1_04_1.j2k.png
 c0bff1d3b9639aba210326dfba74b542  p1_04_2.j2k.png
 53e9c388bfd6cb42468eb9afb5a1cc32  p1_04_3.j2k.png
 c8cffa324a6159e813686bf170c0a466  p1_04_3.j2k.png
+3ecd7baedce6c6791a286d561ae4412a  p1_04_3.j2k.png
 08755c5fb46572174f10a74d2bbf39df  p1_04_4.j2k.png
 26affe3c1bab8663e4d6cc21c1b66eb9  p1_04_4.j2k.png
+8d57fc2ae82fe39bc18cf6edbe99e4ec  p1_04_4.j2k.png
 6053f7be44ea6d1e3cdadccd2761b996  p1_04_5.j2k.png
 2dee70a86e8b7a27e36fd9d8af945de0  p1_04_5.j2k.png
+0720e5fa1c82b2fab0b1a81b3fc36e66  p1_04_5.j2k.png
 c89f69ae72c987b1aff53e629b47b4c6  p1_04_6.j2k.png
 66d5946a9baa2da7724f2f7b9b8dae5f  p1_04_6.j2k.png
 edb685efd9085082743d571d7614d7cf  p1_04_10.j2k.png
