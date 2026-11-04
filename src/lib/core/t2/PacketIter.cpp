@@ -304,6 +304,13 @@ bool PacketIter::genPrecinctInfoOPT(void)
     if(compno > 0 && comp->numresolutions != comps->numresolutions)
       return false;
   }
+  const bool spatialProgression =
+      prog.progression == GRK_RPCL || prog.progression == GRK_PCRL || prog.progression == GRK_CPRL;
+  const uint32_t coarsestScale = 1U << (comps->numresolutions - 1U);
+  // spatial OPT iterators visit an extra column from a tile origin off the coarsest grid
+  if(spatialProgression &&
+     ((tb.x0 & (coarsestScale - 1U)) != 0 || (tb.y0 & (coarsestScale - 1U)) != 0))
+    return false;
   switch(prog.progression)
   {
     case GRK_LRCP:
@@ -1175,7 +1182,6 @@ bool PacketIter::next_cprl(SparseBuffer*)
 {
   for(; compno < prog.comp_e; compno++)
   {
-    auto comp = comps + compno;
     for(; y < prog.ty1;)
     {
       // no precinct starts on this row
@@ -1218,9 +1224,12 @@ bool PacketIter::next_cprl(SparseBuffer*)
       dyActive = dy;
     }
     y = prog.ty0;
-    dx = 0;
-    dy = 0;
-    update_dxy_for_comp(comp, true);
+    if(compno + 1 < prog.comp_e)
+    {
+      dx = 0;
+      dy = 0;
+      update_dxy_for_comp(comps + compno + 1, true);
+    }
   }
 
   return false;
