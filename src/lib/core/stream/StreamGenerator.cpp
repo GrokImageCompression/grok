@@ -56,6 +56,7 @@ IStream* StreamGenerator::createCallbackStream(void)
   auto stream = new BufferedStream(nullptr, initialDoubleBufferLen, doubleBufferLen, readStream);
   uint64_t dataLen = readStream ? streamParams_.stream_len : 0;
   stream->setUserData(streamParams_.user_data, streamParams_.free_user_data_fn, dataLen);
+  stream->setFromNetwork(streamParams_.from_network);
   StreamCallbacks callbacks(&streamParams_);
   stream->setCallbacks(callbacks);
 

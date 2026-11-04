@@ -1056,3 +1056,18 @@ add_executable(grk_async_swath_backlog_test GrkAsyncSwathBacklogTest.cpp)
 target_link_libraries(grk_async_swath_backlog_test ${GROK_CORE_NAME})
 add_test(NAME grk_async_swath_backlog_test COMMAND grk_async_swath_backlog_test)
 set_tests_properties(grk_async_swath_backlog_test PROPERTIES TIMEOUT 60)
+
+# GrkPerfBench.cpp uses pread and getrusage
+if(UNIX)
+  add_executable(grk_perf_bench GrkPerfBench.cpp)
+  target_link_libraries(grk_perf_bench ${GROK_CORE_NAME})
+endif()
+
+add_executable(grk_callback_stream_test GrkCallbackStreamTest.cpp)
+target_link_libraries(grk_callback_stream_test ${GROK_CORE_NAME})
+add_test(NAME grk_callback_stream_test COMMAND grk_callback_stream_test)
+set_tests_properties(grk_callback_stream_test PROPERTIES TIMEOUT 120)
+if(GRK_ENABLE_MERCURY)
+  add_test(NAME grk_callback_stream_mercury_test COMMAND grk_callback_stream_test mercury)
+  set_tests_properties(grk_callback_stream_mercury_test PROPERTIES TIMEOUT 120)
+endif()

@@ -1036,6 +1036,8 @@ void TileProcessor::release(uint32_t strategy)
   {
     grk_unref(image_);
     image_ = nullptr;
+    if(!isCompressor_)
+      tcp_->packets_->discardPacketData();
   }
 
   if(tilePartFetchSeq_ && !(strategy & GRK_TILE_CACHE_LRU))
@@ -1064,6 +1066,8 @@ void TileProcessor::releaseForSwath()
   // drop mct_'s dangling reference to the freed tile
   if(mct_)
     mct_->setTile(nullptr);
+  if(tileCacheStrategy_ == GRK_TILE_CACHE_NONE)
+    tcp_->packets_->discardPacketData();
 }
 void TileProcessor::release(void)
 {

@@ -121,6 +121,12 @@ public:
     return chunks.empty();
   }
 
+protected:
+  /**
+   * @brief Cleans up resources
+   */
+  void cleanup(void);
+
 private:
   enum class Mode
   {
@@ -146,11 +152,6 @@ private:
    * @return true if successful
    */
   bool copyDataChunksToContiguous(uint8_t* buffer);
-
-  /**
-   * @brief Cleans up resources
-   */
-  void cleanup(void);
 
   /**
    * @brief Gets offset of current chunk

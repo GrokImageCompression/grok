@@ -266,9 +266,11 @@ struct StreamWin<'f> {
     buf_off: u64,
     /// Valid bytes in buf.
     valid: usize,
+    header_bytes_since_refill: usize,
 }
 
 const WIN_SIZE: usize = 4 << 20;
+const MIN_WINDOW_READ: usize = 4 << 10;
 
 impl<'f> StreamWin<'f> {
     fn warp(file: &'f dyn ReadAt) -> std::io::Result<Self> {
@@ -279,6 +281,7 @@ impl<'f> StreamWin<'f> {
             buf: vec![0u8; WIN_SIZE],
             buf_off: 0,
             valid: 0,
+            header_bytes_since_refill: 0,
         })
     }
 
@@ -291,11 +294,14 @@ impl<'f> StreamWin<'f> {
         }
         let covered = off >= self.buf_off && off < self.buf_off + self.valid as u64;
         if !covered {
-            let n = WIN_SIZE.min((self.file_len - off) as usize);
+            let read_len = (self.header_bytes_since_refill * 2).clamp(MIN_WINDOW_READ, WIN_SIZE);
+            let n = read_len.min((self.file_len - off) as usize);
             self.file.draw_at(&mut self.buf[..n], off)?;
             self.buf_off = off;
             self.valid = n;
+            self.header_bytes_since_refill = 0;
         }
+        self.header_bytes_since_refill += 1;
         Ok(self.buf[(off - self.buf_off) as usize])
     }
 }
@@ -1985,6 +1991,61 @@ mod tests {
             panic!("a plan must not point a block past the end of the stream");
         };
         assert!(msg.contains("packet stream overrun"), "got {msg}");
+    }
+
+    struct CountingFile {
+        bytes: Vec<u8>,
+        bytes_read: std::sync::atomic::AtomicU64,
+        reads: std::sync::atomic::AtomicU64,
+    }
+
+    impl ReadAt for CountingFile {
+        fn draw_at(&self, buf: &mut [u8], off: u64) -> std::io::Result<()> {
+            use std::sync::atomic::Ordering::Relaxed;
+            self.bytes_read.fetch_add(buf.len() as u64, Relaxed);
+            self.reads.fetch_add(1, Relaxed);
+            self.bytes.draw_at(buf, off)
+        }
+
+        fn extent(&self) -> std::io::Result<u64> {
+            self.bytes.extent()
+        }
+    }
+
+    fn counting_file(len: usize) -> CountingFile {
+        CountingFile {
+            bytes: (0..len).map(|i| (i % 251) as u8).collect(),
+            bytes_read: Default::default(),
+            reads: Default::default(),
+        }
+    }
+
+    #[test]
+    fn sparse_headers_skip_the_packet_bodies() {
+        let packet_len = 1 << 20;
+        let packets = 8;
+        let file = counting_file(packet_len * packets);
+        let mut win = StreamWin::warp(&file).unwrap();
+        for packet in 0..packets {
+            let off = packet * packet_len;
+            assert_eq!(win.byte_at(off as u64).unwrap(), (off % 251) as u8);
+        }
+        let bytes_read = file.bytes_read.load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(bytes_read, (packets * MIN_WINDOW_READ) as u64);
+    }
+
+    #[test]
+    fn dense_headers_grow_the_read() {
+        let len = 8 * WIN_SIZE;
+        let file = counting_file(len);
+        let mut win = StreamWin::warp(&file).unwrap();
+        for off in 0..len {
+            assert_eq!(win.byte_at(off as u64).unwrap(), (off % 251) as u8);
+        }
+        let reads = file.reads.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(reads < 32, "{reads} reads");
+        let bytes_read = file.bytes_read.load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(bytes_read, len as u64);
     }
 
     #[test]

@@ -90,6 +90,10 @@ struct IStream : public t1_t2::IStreamWriter
   */
   virtual size_t read(uint8_t* buffer, uint8_t** zero_copy_buffer, size_t len) = 0;
 
+  virtual bool readAt(uint64_t offset, uint8_t* buffer, size_t len) = 0;
+
+  virtual bool isFromNetwork(void) = 0;
+
   /**
    * @brief Writes 3 bytes from uint32_t as big endian
    * @param value uint32_t to write

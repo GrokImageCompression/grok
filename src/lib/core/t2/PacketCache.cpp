@@ -70,6 +70,12 @@ void PacketCache::discardParsers(void)
   iter_ = parsers_.begin();
 }
 
+void PacketCache::discardPacketData(void)
+{
+  discardParsers();
+  cleanup();
+}
+
 PacketParser* PacketCache::gen(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber,
                                uint16_t compno, uint8_t resno, uint64_t precinctIndex,
                                uint16_t layno, uint32_t cachedLength)

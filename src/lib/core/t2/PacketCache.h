@@ -73,6 +73,8 @@ public:
    */
   void discardParsers(void);
 
+  void discardPacketData(void);
+
   /**
    * @brief Generates a PacketParser if it doesn't exist
    * @param tileProcessor @ref TileProcssor

@@ -6,6 +6,7 @@
 //! byte-stuffed bit reader (after 0xFF, only 7 bits used).
 
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 
 use crate::codec::params::CodingModes;
 
@@ -98,17 +99,47 @@ impl BlockState {
     }
 }
 
+#[derive(Default)]
+pub(crate) struct MultiplyHasher(u64);
+
+impl Hasher for MultiplyHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.write_u64(byte as u64);
+        }
+    }
+
+    fn write_u32(&mut self, value: u32) {
+        self.write_u64(value as u64);
+    }
+
+    fn write_usize(&mut self, value: usize) {
+        self.write_u64(value as u64);
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+
+    fn finish(&self) -> u64 {
+        // hashbrown picks buckets from the low bits, which a multiply mixes least
+        self.0.rotate_left(26)
+    }
+}
+
+pub(crate) type PacketHashMap<K, V> = HashMap<K, V, BuildHasherDefault<MultiplyHasher>>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BandBlocks {
     count: usize,
-    states: HashMap<usize, BlockState>,
+    states: PacketHashMap<usize, BlockState>,
 }
 
 impl BandBlocks {
     pub fn warp(count: usize) -> Self {
         Self {
             count,
-            states: HashMap::new(),
+            states: PacketHashMap::default(),
         }
     }
 

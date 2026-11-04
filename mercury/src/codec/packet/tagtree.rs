@@ -3,9 +3,9 @@
 //! A tag tree hierarchically codes integer values per code-block in a precinct.
 //! Two per precinct-band: one for inclusion layer, one for missing MSBs.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 
-use super::PacketError;
+use super::{PacketError, PacketHashMap};
 use super::bitread::{HeaderBytes, PacketBitReader};
 
 /// One node's persistent state.
@@ -35,7 +35,7 @@ struct NodeId {
 
 #[derive(Debug, Clone, Default)]
 struct NodeStore {
-    nodes: HashMap<NodeId, TagNode>,
+    nodes: PacketHashMap<NodeId, TagNode>,
 }
 
 impl NodeStore {

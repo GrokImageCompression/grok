@@ -28,6 +28,7 @@
 #include <condition_variable>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -265,6 +266,20 @@ namespace
     memcpy(buf, self->base + off, (size_t)len);
     return 1;
   }
+
+  struct StreamReader
+  {
+    IStream* stream = nullptr;
+    uint64_t size = 0;
+    std::mutex mutex;
+  };
+  int32_t streamReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
+  {
+    auto* self = static_cast<StreamReader*>(ctx);
+    // grk_stream_read_fn and grk_stream_seek_fn share one cursor in user_data
+    std::lock_guard<std::mutex> lock(self->mutex);
+    return self->stream->readAt(off, buf, (size_t)len) ? 1 : 0;
+  }
 } // namespace
 
 #if defined(_WIN32)
@@ -345,11 +360,12 @@ namespace
 
 namespace
 {
-  // mercury plans keep a pointer to memReader
+  // mercury plans keep a pointer to memReader or streamReader
   struct MercuryReaders
   {
     MemReader memReader;
-    std::vector<uint8_t> slurped;
+    std::vector<uint8_t> networkStreamBytes;
+    StreamReader streamReader;
     bool fromPath = false;
 #if defined(_WIN32)
     Win32PositionedReader win32reader;
@@ -375,6 +391,9 @@ namespace
       return mercury_warp_loom_fd(&header, &params, readers.fd, err, errCap);
 #endif
     }
+    if(readers.streamReader.stream)
+      return mercury_warp_loom(&header, &params, streamReadAt, &readers.streamReader,
+                               readers.streamReader.size, err, errCap);
     return mercury_warp_loom(&header, &params, memReadAt, &readers.memReader,
                              readers.memReader.size, err, errCap);
   }
@@ -1402,7 +1421,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // live at function scope. only one is used per call.
   auto readers = std::make_unique<MercuryReaders>();
   MemReader& memReader = readers->memReader;
-  std::vector<uint8_t>& slurped = readers->slurped;
   if(!path.empty())
   {
     readers->fromPath = true;
@@ -1441,24 +1459,34 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       memReader.base = stream->currPtr();
       ok = memReader.base != nullptr;
     }
-    else if(ok)
+    else if(ok && stream->isFromNetwork())
     {
-      // slurp once so read_at has lock-free random access. len is
-      // app-declared and untrusted, so an oversized value falls back
+      // on demand reads of a 812 MB tile over http took more than 900 s, one whole read took 11 s
+      auto& bytes = readers->networkStreamBytes;
       try
       {
-        slurped.resize(len);
+        bytes.resize(len);
+        ok = stream->readAt(0, bytes.data(), len);
       }
-      catch(const std::exception&)
+      catch(const std::bad_alloc&)
       {
         ok = false;
-        streamFail = "declared stream length too large";
       }
-      if(ok)
+      catch(const std::length_error&)
       {
-        ok = stream->read(slurped.data(), nullptr, len) == len;
-        memReader.base = slurped.data();
+        ok = false;
       }
+      memReader.base = bytes.data();
+      streamFail = "declared stream length too large";
+    }
+    else if(ok)
+    {
+      readers->streamReader.stream = stream;
+      readers->streamReader.size = len;
+      // stream_len is declared by the application and can exceed the real length
+      uint8_t lastByte;
+      ok = stream->readAt(len - 1, &lastByte, 1);
+      streamFail = "declared stream length too large";
     }
     if(!stream->seek(savedPos))
       grklog.warn("mercury fast path: failed to restore stream position %llu",

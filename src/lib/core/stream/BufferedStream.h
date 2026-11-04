@@ -112,6 +112,16 @@ struct BufferedStream : public IStream
     return fetcher_;
   }
 
+  void setFromNetwork(bool fromNetwork)
+  {
+    fromNetwork_ = fromNetwork;
+  }
+
+  bool isFromNetwork(void) override
+  {
+    return fromNetwork_;
+  }
+
   void setMemAdvisor(MemAdvisor* advisor)
   {
     memAdvisor_ = advisor;
@@ -161,6 +171,23 @@ struct BufferedStream : public IStream
 
     return read(nullptr, len);
   }
+  bool readAt(uint64_t offset, uint8_t* buffer, size_t len) override
+  {
+    if(!callbacks_.seekCallback_(offset, userData_))
+      return false;
+    size_t done = 0;
+    while(done < len)
+    {
+      size_t got = callbacks_.readCallback_(buffer + done, len - done, userData_);
+      if(got == 0)
+        break;
+      done += got;
+    }
+    // buffered reads continue from the media cursor
+    bool restored = callbacks_.seekCallback_(streamOffset_ + bufferedBytes_, userData_);
+    return restored && done == len;
+  }
+
   bool write24u(uint32_t value) override
   {
     return write_non_template((const uint8_t*)&value, sizeof(uint32_t), 3);
@@ -683,6 +710,7 @@ private:
   // read in the last media read.
   // We always have buffered_bytes_ <= read_bytes_seekable_
   size_t readBytesSeekable_ = 0;
+  bool fromNetwork_ = false;
 
   // number of bytes read/written from the beginning of the stream
   uint64_t streamOffset_ = 0;
