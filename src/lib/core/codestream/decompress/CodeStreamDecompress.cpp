@@ -967,6 +967,7 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
 void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendingTiles)
 {
   bool foundUnknownMarker = false;
+  auto firstUnparsedTile = pendingTiles.begin();
   while(!markerParser_.endOfCodeStream() && !foundUnknownMarker && success_)
   {
     // 1. parse and schedule tile
@@ -976,8 +977,8 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
       {
         // If we've exhausted all pending tiles' markers or the codestream
         // ran out of data (truncated image), stop gracefully.
-        if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles) || markerParser_.endOfCodeStream() ||
-           stream_->numBytesLeft() == 0)
+        if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile) ||
+           markerParser_.endOfCodeStream() || stream_->numBytesLeft() == 0)
           break;
         success_ = false;
         break;
@@ -1011,14 +1012,15 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
 
     // check for corrupt Adobe files where 5 tile parts per tile are signalled
     // but there are actually 6.
-    if(markerParser_.currId() == SOT && tileCache_->allSlatedSOTMarkersParsed(pendingTiles) &&
+    if(markerParser_.currId() == SOT &&
+       tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile) &&
        markerParser_.checkForIllegalTilePart())
     {
       success_ = false;
       break;
     }
 
-    if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles))
+    if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile))
       break;
   }
 

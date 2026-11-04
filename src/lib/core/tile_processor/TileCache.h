@@ -313,17 +313,18 @@ public:
     }
   }
 
-  bool allSlatedSOTMarkersParsed(const std::set<uint16_t>& tilesSlatedForDecompression)
+  bool allSlatedSOTMarkersParsed(const std::set<uint16_t>& tilesSlatedForDecompression,
+                                 std::set<uint16_t>::const_iterator& firstUnparsedTile)
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    return std::all_of(tilesSlatedForDecompression.begin(), tilesSlatedForDecompression.end(),
-                       [this](uint16_t tileId) {
-                         if(tileId >= cache_.size())
-                           return false;
-                         auto* entry = cache_[tileId];
-                         return entry && entry->processor() &&
-                                entry->processor()->allSOTMarkersParsed();
-                       });
+    firstUnparsedTile = std::find_if_not(
+        firstUnparsedTile, tilesSlatedForDecompression.end(), [this](uint16_t tileId) {
+          if(tileId >= cache_.size())
+            return false;
+          auto* entry = cache_[tileId];
+          return entry && entry->processor() && entry->processor()->allSOTMarkersParsed();
+        });
+    return firstUnparsedTile == tilesSlatedForDecompression.end();
   }
 
   /**
