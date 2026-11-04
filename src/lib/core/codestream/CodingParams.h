@@ -546,8 +546,16 @@ struct CodingParams
     uint64_t precinctIndex;
     uint32_t totalLength; /* header + data */
     uint32_t headerLength; /* header only (for EPH injection) */
+    uint64_t positionX; /* precinct origin on the reference grid */
+    uint64_t positionY;
+    uint64_t srcOffset;
+    uint32_t srcTilePart;
+    uint8_t numResolutions;
+    bool missingFromStream;
+    std::vector<uint8_t> packedHeader;
   };
   bool recordPacketLengths_ = false;
+  bool recordMissingPackets_ = false;
   std::vector<std::vector<RecordedPacketInfo>> recordedPacketInfo_; /* [tileIndex] → packets */
 };
 

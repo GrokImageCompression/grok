@@ -21,6 +21,7 @@
 
 namespace grk
 {
+struct CodingParams;
 
 /**
  * @struct IDecompressor
@@ -58,6 +59,8 @@ public:
    *
    */
   virtual void wait(grk_wait_swath* swath) = 0;
+
+  virtual CodingParams* getCodingParams(void) = 0;
 
   /**
    * @brief Initializes decompressor

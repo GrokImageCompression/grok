@@ -31,6 +31,8 @@ public:
 
   /* Transcode: write JP2 boxes then copy raw codestream from source */
   uint64_t transcode(IStream* srcStream);
+  uint64_t transcodeToRawCodestream(const grk_cparameters* parameters, IStream* srcStream);
+  static bool startsWithCodestream(IStream* stream);
 
 protected:
   GrkImage* getHeaderImage(void) override;
@@ -84,6 +86,14 @@ private:
   uint8_t max_res_transcode_ = 0;
   GRK_PROG_ORDER transcode_prog_order_ = GRK_PROG_UNKNOWN;
   grk_stream_params transcode_src_{};
+  struct CodestreamExtent
+  {
+    uint64_t offset;
+    uint64_t length;
+  };
+  void setTranscodeOptions(const grk_cparameters* parameters);
+  CodestreamExtent locateCodestream(IStream* srcStream);
+  uint64_t writeTranscodedCodestream(IStream* srcStream, CodestreamExtent extent);
   uint64_t transcodeCodestream(IStream* srcStream, uint64_t csStart, uint64_t csLength);
 };
 

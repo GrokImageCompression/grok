@@ -737,6 +737,10 @@ bool FileFormatMJ2Decompress::decompressTile(uint16_t tile_index)
 void FileFormatMJ2Decompress::dump([[maybe_unused]] uint32_t flag,
                                    [[maybe_unused]] FILE* outputFileStream) {};
 void FileFormatMJ2Decompress::wait([[maybe_unused]] grk_wait_swath* swath) {}
+CodingParams* FileFormatMJ2Decompress::getCodingParams(void)
+{
+  throw std::runtime_error("MJ2 has one code stream per sample, not one set of coding parameters");
+}
 void FileFormatMJ2Decompress::setBandCallback(grk_io_band_callback callback, void* user_data)
 {
   for(auto& sc : sampleCodeStreams_)

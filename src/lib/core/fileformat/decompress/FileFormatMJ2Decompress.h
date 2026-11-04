@@ -41,6 +41,7 @@ public:
   bool decompressTile(uint16_t tile_index) override;
   void dump(uint32_t flag, FILE* outputFileStream) override;
   void wait(grk_wait_swath* swath) override;
+  CodingParams* getCodingParams(void) override;
 
   void setBandCallback(grk_io_band_callback callback, void* user_data) override;
 

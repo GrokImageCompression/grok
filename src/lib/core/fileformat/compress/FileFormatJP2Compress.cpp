@@ -46,7 +46,6 @@ struct ITileProcessor;
 #include "CoderPool.h"
 #include "FileFormatJP2Family.h"
 #include "FileFormatJP2Compress.h"
-#include "FileFormatJP2Decompress.h"
 #include "CodecScheduler.h"
 #include "CodeblockCompress.h"
 #include "Codec.h"
@@ -54,6 +53,7 @@ struct ITileProcessor;
 #include <algorithm>
 #include "ITileProcessor.h"
 #include "ITileProcessorCompress.h"
+#include "FileFormatJP2Decompress.h"
 #include "CodeStreamCompress.h"
 
 namespace grk
@@ -702,6 +702,18 @@ bool FileFormatJP2Compress::start(void)
 
   return codeStream->start();
 }
+void FileFormatJP2Compress::setTranscodeOptions(const grk_cparameters* parameters)
+{
+  write_tlm_transcode_ = parameters->write_tlm;
+  write_plt_transcode_ = parameters->write_plt;
+  write_sop_transcode_ = parameters->write_sop;
+  write_eph_transcode_ = parameters->write_eph;
+  max_layers_transcode_ = parameters->max_layers_transcode;
+  max_res_transcode_ = parameters->max_res_transcode;
+  transcode_prog_order_ = parameters->transcode_prog_order;
+  transcode_src_ = parameters->transcode_src;
+}
+
 bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
 {
   uint16_t i;
@@ -716,16 +728,7 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
   inputImage_ = grk_ref(image);
   transcode_mode_ = parameters->transcode;
   if(transcode_mode_)
-  {
-    write_tlm_transcode_ = parameters->write_tlm;
-    write_plt_transcode_ = parameters->write_plt;
-    write_sop_transcode_ = parameters->write_sop;
-    write_eph_transcode_ = parameters->write_eph;
-    max_layers_transcode_ = parameters->max_layers_transcode;
-    max_res_transcode_ = parameters->max_res_transcode;
-    transcode_prog_order_ = parameters->transcode_prog_order;
-    transcode_src_ = parameters->transcode_src;
-  }
+    setTranscodeOptions(parameters);
 
   cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 
@@ -976,60 +979,39 @@ uint64_t FileFormatJP2Compress::compress(grk_plugin_tile* tile)
 
   return rc;
 }
-uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
+bool FileFormatJP2Compress::startsWithCodestream(IStream* stream)
 {
-  if(!srcStream)
-  {
-    grklog.error("transcode: source stream cannot be null");
-    return 0;
-  }
+  uint8_t first[2];
+  const bool isCodestream =
+      stream->read(first, nullptr, 2) == 2 && ((first[0] << 8) | first[1]) == SOC;
+  if(!stream->seek(0))
+    throw std::runtime_error("transcode: failed to seek to start of source");
+  return isCodestream;
+}
 
-  /* Scan source box headers to find JP2C offset and length */
-  uint64_t jp2cDataOffset = 0;
-  uint64_t jp2cDataLength = 0;
-  bool found_jp2c = false;
+FileFormatJP2Compress::CodestreamExtent FileFormatJP2Compress::locateCodestream(IStream* srcStream)
+{
+  if(startsWithCodestream(srcStream))
+    return {0, srcStream->numBytesLeft()};
+
   Box box;
   uint32_t boxHeaderBytesRead;
-  bool codeStreamBoxWasRead = false;
-
-  try
+  const bool codeStreamBoxWasRead = false;
+  while(read_box_header(&box, srcStream, &boxHeaderBytesRead, codeStreamBoxWasRead))
   {
-    while(read_box_header(&box, srcStream, &boxHeaderBytesRead, codeStreamBoxWasRead))
-    {
-      if(box.type == JP2_JP2C)
-      {
-        jp2cDataOffset = srcStream->tell();
-        jp2cDataLength = box.length - boxHeaderBytesRead;
-        found_jp2c = true;
-        codeStreamBoxWasRead = true;
-        break;
-      }
-      /* skip over this box's data */
-      uint64_t dataLen = box.length - boxHeaderBytesRead;
-      if(dataLen > 0)
-      {
-        if(!srcStream->skip((int64_t)dataLen))
-        {
-          grklog.error("transcode: failed to skip box data in source");
-          return 0;
-        }
-      }
-    }
+    const uint64_t dataLength = box.length - boxHeaderBytesRead;
+    if(box.type == JP2_JP2C)
+      return {srcStream->tell(), dataLength};
+    if(dataLength > 0 && !srcStream->skip((int64_t)dataLength))
+      throw std::runtime_error("transcode: failed to skip box data in source");
   }
-  catch(const std::exception& e)
-  {
-    grklog.error("transcode: error scanning source boxes: %s", e.what());
-    return 0;
-  }
+  throw std::runtime_error("transcode: no JP2C (codestream) box found in source");
+}
 
-  if(!found_jp2c)
-  {
-    grklog.error("transcode: no JP2C (codestream) box found in source");
-    return 0;
-  }
-
-  /* Seek source to the start of codestream data */
-  if(!srcStream->seek(jp2cDataOffset))
+uint64_t FileFormatJP2Compress::writeTranscodedCodestream(IStream* srcStream,
+                                                          CodestreamExtent extent)
+{
+  if(!srcStream->seek(extent.offset))
   {
     grklog.error("transcode: failed to seek to codestream in source");
     return 0;
@@ -1048,14 +1030,14 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
                             max_res_transcode_ > 0 || transcode_prog_order_ != GRK_PROG_UNKNOWN;
   if(needMarkerPatching)
   {
-    totalWritten = transcodeCodestream(srcStream, jp2cDataOffset, jp2cDataLength);
+    totalWritten = transcodeCodestream(srcStream, extent.offset, extent.length);
   }
   else
   {
     /* Copy the raw codestream verbatim */
     const size_t copyBufSize = 1024 * 1024;
     auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
-    uint64_t remaining = jp2cDataLength;
+    uint64_t remaining = extent.length;
 
     while(remaining > 0)
     {
@@ -1076,6 +1058,12 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
     }
   }
 
+  return totalWritten;
+}
+
+uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
+{
+  const uint64_t totalWritten = writeTranscodedCodestream(srcStream, locateCodestream(srcStream));
   if(totalWritten == 0)
     return 0;
 
@@ -1083,11 +1071,22 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
   if(!end())
     return 0;
 
-  if(!dstStream->flush())
+  if(!codeStream->getStream()->flush())
     return 0;
 
   return totalWritten;
 }
+
+uint64_t FileFormatJP2Compress::transcodeToRawCodestream(const grk_cparameters* parameters,
+                                                         IStream* srcStream)
+{
+  setTranscodeOptions(parameters);
+  const uint64_t totalWritten = writeTranscodedCodestream(srcStream, locateCodestream(srcStream));
+  if(totalWritten == 0 || !codeStream->getStream()->flush())
+    return 0;
+  return totalWritten;
+}
+
 uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t csStart,
                                                     uint64_t csLength)
 {
@@ -1109,6 +1108,11 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     *val =
         (uint32_t)(((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3]);
     return true;
+  };
+
+  // 0xFF30 to 0xFF3F markers have no marker segment in the standard
+  auto markerHasNoSegment = [](uint16_t markerCode) {
+    return markerCode >= 0xFF30 && markerCode <= 0xFF3F;
   };
 
   srcStream->seek(csStart);
@@ -1145,8 +1149,8 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
       break;
     }
 
-    uint16_t segLen;
-    if(!readU16(&segLen))
+    uint16_t segLen = 0;
+    if(!markerHasNoSegment(marker) && !readU16(&segLen))
     {
       grklog.error("transcode: failed to read marker segment length");
       return 0;
@@ -1245,8 +1249,8 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
         tp.dataSize = (uint32_t)(tpEnd - (mPos + 2));
         break;
       }
-      uint16_t sl;
-      if(!readU16(&sl))
+      uint16_t sl = 0;
+      if(!markerHasNoSegment(marker) && !readU16(&sl))
         break;
       TilePartHeaderMarker tphm;
       tphm.offset = mPos;
@@ -1276,13 +1280,58 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
                         max_layers_transcode_ > 0 || max_res_transcode_ > 0 ||
                         transcode_prog_order_ != GRK_PROG_UNKNOWN;
 
+  const bool stripPoc = transcode_prog_order_ != GRK_PROG_UNKNOWN;
+  auto readScod = [srcStream](uint64_t codOffset) {
+    uint8_t scod = 0;
+    if(!srcStream->seek(codOffset + 4) || srcStream->read(&scod, nullptr, 1) != 1)
+      throw std::runtime_error("transcode: failed to read COD marker");
+    return scod;
+  };
+  uint8_t mainScod = 0;
+  uint16_t numComponents = 0;
+  for(const auto& mhm : mainHeaderMarkers)
+  {
+    if(mhm.type == COD)
+      mainScod = readScod(mhm.offset);
+    // SIZ layout: Csiz follows 38 bytes of marker, length, Rsiz and eight 32 bit fields
+    if(mhm.type == SIZ && (!srcStream->seek(mhm.offset + 38) || !readU16(&numComponents)))
+      throw std::runtime_error("transcode: failed to read SIZ marker");
+    if(mhm.type == SIZ && (transcode_prog_order_ == GRK_RPCL || transcode_prog_order_ == GRK_PCRL))
+    {
+      // SIZ layout: Ssiz(1) XRsiz(1) YRsiz(1) per component, from byte 40
+      for(uint16_t component = 0; component < numComponents; ++component)
+      {
+        uint8_t subsampling[3];
+        if(!srcStream->seek(mhm.offset + 40 + 3ULL * component) ||
+           srcStream->read(subsampling, nullptr, 3) != 3)
+          throw std::runtime_error("transcode: failed to read SIZ marker");
+        if((subsampling[1] & (subsampling[1] - 1)) || (subsampling[2] & (subsampling[2] - 1)))
+          throw std::runtime_error("transcode: RPCL and PCRL are illegal when component "
+                                   "subsampling is not a power of two");
+      }
+    }
+  }
+  uint8_t resolutionsRemoved = 0;
+
   // Per-tile-part packet info (for PLT generation and packet-level copy)
   struct TilePartPacket
   {
+    uint64_t srcOffset;
     uint32_t totalLength; // original total length of this packet
     uint32_t headerLength; // header bytes (for EPH injection point)
+    uint16_t sopNumber; // the standard restarts this count at zero in each tile
+    bool sourceHasSop;
+    bool injectSop;
+    bool injectEph;
+    std::vector<uint8_t> packedHeader;
+    uint32_t outputLength() const
+    {
+      return totalLength + (uint32_t)packedHeader.size() + (injectSop ? 6U : 0U) +
+             (injectEph ? 2U : 0U);
+    }
   };
   std::vector<std::vector<TilePartPacket>> tpPackets(numTileParts);
+  std::vector<bool> tilePartRewritten(numTileParts, false);
   std::vector<uint32_t> pltMarkerSizes(numTileParts, 0);
 
   if(needPacketInfo)
@@ -1305,9 +1354,10 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     }
     // Enable packet info recording
     auto* codecImpl = Codec::getImpl(decCodec);
-    auto* decomp = static_cast<FileFormatJP2Decompress*>(codecImpl->decompressor_);
-    auto* cp = decomp->getCodingParams();
+    auto* cp = codecImpl->decompressor_->getCodingParams();
     cp->recordPacketLengths_ = true;
+    cp->recordMissingPackets_ = transcode_prog_order_ != GRK_PROG_UNKNOWN;
+    cp->recordedPacketInfo_.resize((size_t)cp->t_grid_width_ * cp->t_grid_height_);
 
     // T2-only decompress to drive packet parsing (T1 skipped via recordPacketLengths_)
     if(!grk_decompress(decCodec, nullptr))
@@ -1319,6 +1369,36 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
 
     // Map recorded packet info to tile parts
     auto& recordedInfo = cp->recordedPacketInfo_;
+    uint8_t mostResolutions = 0;
+    for(const auto& packets : recordedInfo)
+      for(const auto& pkt : packets)
+        mostResolutions = std::max(mostResolutions, pkt.numResolutions);
+    if(max_res_transcode_ > 0 && mostResolutions > max_res_transcode_)
+      resolutionsRemoved = (uint8_t)(mostResolutions - max_res_transcode_);
+    // Part 2 DFS levels split one axis or both
+    const bool hasDfs = std::any_of(mainHeaderMarkers.begin(), mainHeaderMarkers.end(),
+                                    [](const MainHeaderMarker& m) { return m.type == DFS; });
+    if(resolutionsRemoved > 0 && hasDfs)
+    {
+      grk_object_unref(decCodec);
+      throw std::runtime_error("transcode: --max-res does not support Part 2 DFS markers");
+    }
+    const uint32_t reducedGridMask = (1U << resolutionsRemoved) - 1U;
+    if((uint32_t)cp->t_grid_width_ * cp->t_grid_height_ > 1 &&
+       ((cp->t_width_ | cp->t_height_) & reducedGridMask))
+    {
+      grk_object_unref(decCodec);
+      throw std::runtime_error(
+          "transcode: --max-res needs a tile size that is a multiple of the removed scale");
+    }
+    for(const auto& packets : recordedInfo)
+      for(const auto& pkt : packets)
+        if(pkt.numResolutions <= resolutionsRemoved)
+        {
+          grk_object_unref(decCodec);
+          throw std::runtime_error(
+              "transcode: --max-res removes more resolutions than a component has");
+        }
     std::map<uint16_t, std::vector<uint32_t>> tpIndicesByTile;
     for(uint32_t tpIdx = 0; tpIdx < numTileParts; ++tpIdx)
       tpIndicesByTile[tileParts[tpIdx].tileIndex].push_back(tpIdx);
@@ -1330,13 +1410,30 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
 
       auto& packets = recordedInfo[tileIdx];
 
+      size_t tilePartPosition = 0;
+      uint64_t bytesConsumed = 0;
+      for(auto& pkt : packets)
+      {
+        while(tilePartPosition < tpIndices.size() &&
+              bytesConsumed + pkt.totalLength > tileParts[tpIndices[tilePartPosition]].dataSize)
+        {
+          ++tilePartPosition;
+          bytesConsumed = 0;
+        }
+        if(tilePartPosition == tpIndices.size())
+          throw std::runtime_error("transcode: packets exceed the tile part data in source");
+        pkt.srcTilePart = tpIndices[tilePartPosition];
+        pkt.srcOffset = tileParts[pkt.srcTilePart].sodOffset + 2 + bytesConsumed;
+        bytesConsumed += pkt.totalLength;
+      }
+
       // Apply filtering (layer truncation and resolution stripping)
       std::vector<CodingParams::RecordedPacketInfo> filtered;
       for(auto& pkt : packets)
       {
         if(max_layers_transcode_ > 0 && pkt.layno >= max_layers_transcode_)
           continue;
-        if(max_res_transcode_ > 0 && pkt.resno >= max_res_transcode_)
+        if(pkt.resno + resolutionsRemoved >= pkt.numResolutions)
           continue;
         filtered.push_back(pkt);
       }
@@ -1368,14 +1465,18 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
                              case GRK_RPCL:
                                if(a.resno != b.resno)
                                  return a.resno < b.resno;
-                               if(a.precinctIndex != b.precinctIndex)
-                                 return a.precinctIndex < b.precinctIndex;
+                               if(a.positionY != b.positionY)
+                                 return a.positionY < b.positionY;
+                               if(a.positionX != b.positionX)
+                                 return a.positionX < b.positionX;
                                if(a.compno != b.compno)
                                  return a.compno < b.compno;
                                return a.layno < b.layno;
                              case GRK_PCRL:
-                               if(a.precinctIndex != b.precinctIndex)
-                                 return a.precinctIndex < b.precinctIndex;
+                               if(a.positionY != b.positionY)
+                                 return a.positionY < b.positionY;
+                               if(a.positionX != b.positionX)
+                                 return a.positionX < b.positionX;
                                if(a.compno != b.compno)
                                  return a.compno < b.compno;
                                if(a.resno != b.resno)
@@ -1384,8 +1485,10 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
                              case GRK_CPRL:
                                if(a.compno != b.compno)
                                  return a.compno < b.compno;
-                               if(a.precinctIndex != b.precinctIndex)
-                                 return a.precinctIndex < b.precinctIndex;
+                               if(a.positionY != b.positionY)
+                                 return a.positionY < b.positionY;
+                               if(a.positionX != b.positionX)
+                                 return a.positionX < b.positionX;
                                if(a.resno != b.resno)
                                  return a.resno < b.resno;
                                return a.layno < b.layno;
@@ -1395,43 +1498,30 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
                          });
       }
 
-      // Map filtered/sorted packets to tile parts.
-      // When filtering or reordering, all packets go to the first tile part.
-      bool reorganizing = max_layers_transcode_ > 0 || max_res_transcode_ > 0 ||
-                          transcode_prog_order_ != GRK_PROG_UNKNOWN;
+      uint8_t tileScod = mainScod;
+      for(const auto& hm : tileParts[tpIndices[0]].headerMarkers)
+        if(hm.type == COD)
+          tileScod = readScod(hm.offset);
 
-      if(reorganizing)
+      const bool reorganizing = max_layers_transcode_ > 0 || max_res_transcode_ > 0 ||
+                                transcode_prog_order_ != GRK_PROG_UNKNOWN;
+      uint32_t sopNumber = 0;
+      for(const auto& pkt : filtered)
       {
-        // All filtered packets go to the first tile part of this tile
-        uint32_t firstTpIdx = tpIndices[0];
-        for(const auto& pkt : filtered)
-        {
-          TilePartPacket tpp;
-          tpp.totalLength = pkt.totalLength;
-          tpp.headerLength = pkt.headerLength;
-          tpPackets[firstTpIdx].push_back(tpp);
-        }
+        TilePartPacket tpp{};
+        tpp.srcOffset = pkt.srcOffset;
+        tpp.totalLength = pkt.totalLength;
+        tpp.headerLength = pkt.headerLength;
+        tpp.sopNumber = (uint16_t)(sopNumber++ & 0xFFFF);
+        tpp.sourceHasSop = tileScod & CP_CSTY_SOP;
+        tpp.injectSop = write_sop_transcode_ && !tpp.sourceHasSop;
+        tpp.injectEph = pkt.missingFromStream ? (write_eph_transcode_ || (tileScod & CP_CSTY_EPH))
+                                              : (write_eph_transcode_ && !(tileScod & CP_CSTY_EPH));
+        tpp.packedHeader = pkt.packedHeader;
+        tpPackets[reorganizing ? tpIndices[0] : pkt.srcTilePart].push_back(tpp);
       }
-      else
-      {
-        // Preserve original tile-part mapping
-        size_t pktOffset = 0;
-        for(auto tpIdx : tpIndices)
-        {
-          const auto& tp = tileParts[tpIdx];
-          uint32_t cumulated = 0;
-          while(pktOffset < filtered.size() && cumulated < tp.dataSize)
-          {
-            const auto& pkt = filtered[pktOffset];
-            TilePartPacket tpp;
-            tpp.totalLength = pkt.totalLength;
-            tpp.headerLength = pkt.headerLength;
-            tpPackets[tpIdx].push_back(tpp);
-            cumulated += pkt.totalLength;
-            pktOffset++;
-          }
-        }
-      }
+      for(auto tpIdx : tpIndices)
+        tilePartRewritten[tpIdx] = true;
     }
 
     // Compute PLT marker sizes (using adjusted packet lengths)
@@ -1444,14 +1534,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
         PLMarker pltSizer;
         pltSizer.pushInit(true);
         for(const auto& tpp : tpPackets[tpIdx])
-        {
-          uint32_t adjLen = tpp.totalLength;
-          if(write_sop_transcode_)
-            adjLen += 6;
-          if(write_eph_transcode_)
-            adjLen += 2;
-          pltSizer.pushPL(adjLen);
-        }
+          pltSizer.pushPL(tpp.outputLength());
         pltMarkerSizes[tpIdx] = pltSizer.getTotalBytesWritten();
       }
     }
@@ -1459,43 +1542,72 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     grk_object_unref(decCodec);
   }
 
+  auto droppedFromTilePart = [stripPoc, needPacketInfo](uint16_t type) {
+    return type == PLT || (stripPoc && type == POC) || (needPacketInfo && type == PPT);
+  };
+  // COD: marker(2) Lcod(2) Scod(1) SGcod(4) levels(1) ... one precinct size per resolution
+  // COC: marker(2) Lcoc(2) Ccoc(1 or 2) Scoc(1) levels(1) ... one precinct size per resolution
+  // QCD: marker(2) Lqcd(2) Sqcd(1) SPqcd, QCC: marker(2) Lqcc(2) Cqcc(1 or 2) Sqcc(1) SPqcc
+  const uint32_t componentIndexBytes = numComponents < 257 ? 1 : 2;
+  auto removeResolutionsFromMarker = [resolutionsRemoved, componentIndexBytes](
+                                         uint8_t* buf, uint16_t type, uint32_t markerTotalLen) {
+    if(resolutionsRemoved == 0 || (type != COD && type != COC && type != QCD && type != QCC))
+      return markerTotalLen;
+    if(type == COD || type == COC)
+    {
+      const uint32_t stylePosition = type == COD ? 4 : 4 + componentIndexBytes;
+      const uint32_t levelsPosition = type == COD ? 9 : stylePosition + 1;
+      if(buf[levelsPosition] < resolutionsRemoved)
+        throw std::runtime_error(
+            "transcode: --max-res removes more resolutions than a component has");
+      buf[levelsPosition] = (uint8_t)(buf[levelsPosition] - resolutionsRemoved);
+      if(buf[stylePosition] & CP_CSTY_PRT)
+        markerTotalLen -= resolutionsRemoved;
+    }
+    else
+    {
+      const uint32_t stylePosition = type == QCD ? 4 : 4 + componentIndexBytes;
+      const uint8_t quantizationStyle = buf[stylePosition] & 0x1F;
+      // derived quantization signals one value that applies at every decomposition count
+      if(quantizationStyle == 1)
+        return markerTotalLen;
+      const uint32_t bytesPerBand = quantizationStyle == 0 ? 1 : 2;
+      const uint32_t bytesRemoved = 3U * resolutionsRemoved * bytesPerBand;
+      if(markerTotalLen < stylePosition + 1 + bytesRemoved + bytesPerBand)
+        throw std::runtime_error("transcode: quantization marker has too few bands");
+      markerTotalLen -= bytesRemoved;
+    }
+    buf[2] = (uint8_t)((markerTotalLen - 2) >> 8);
+    buf[3] = (uint8_t)(markerTotalLen - 2);
+    return markerTotalLen;
+  };
+
   // Compute adjusted tile-part lengths
   std::vector<uint32_t> adjustedLengths(numTileParts);
   for(uint32_t i = 0; i < numTileParts; ++i)
   {
-    uint32_t existingPltSize = 0;
+    uint32_t newLength = sotMarkerSegmentLen + pltMarkerSizes[i] + 2;
     for(const auto& hm : tileParts[i].headerMarkers)
     {
-      if(hm.type == PLT)
-        existingPltSize += 2 + hm.segLen; // marker(2) + segment
+      if(droppedFromTilePart(hm.type))
+        continue;
+      uint32_t markerLength = 2U + hm.segLen;
+      if(resolutionsRemoved > 0)
+      {
+        std::vector<uint8_t> marker(markerLength);
+        if(!srcStream->seek(hm.offset) ||
+           srcStream->read(marker.data(), nullptr, markerLength) != markerLength)
+          throw std::runtime_error("transcode: failed to read tile-part header marker");
+        markerLength = removeResolutionsFromMarker(marker.data(), hm.type, markerLength);
+      }
+      newLength += markerLength;
     }
-
-    if(needPacketInfo && !tpPackets[i].empty())
-    {
-      // Compute new data size from packet-level info
-      uint32_t newDataSize = 0;
+    if(tilePartRewritten[i])
       for(const auto& tpp : tpPackets[i])
-      {
-        newDataSize += tpp.totalLength;
-        if(write_sop_transcode_)
-          newDataSize += 6;
-        if(write_eph_transcode_)
-          newDataSize += 2;
-      }
-      // newLength = SOT(12) + headerMarkers(non-PLT,non-SOP-related) + PLT + SOD(2) + newData
-      uint32_t headerSize = sotMarkerSegmentLen;
-      for(const auto& hm : tileParts[i].headerMarkers)
-      {
-        if(hm.type == PLT)
-          continue;
-        headerSize += 2 + hm.segLen;
-      }
-      adjustedLengths[i] = headerSize + pltMarkerSizes[i] + 2 + newDataSize;
-    }
+        newLength += tpp.outputLength();
     else
-    {
-      adjustedLengths[i] = tileParts[i].length + pltMarkerSizes[i] - existingPltSize;
-    }
+      newLength += tileParts[i].dataSize;
+    adjustedLengths[i] = newLength;
   }
 
   // --- Phase 3: Write new codestream ---
@@ -1524,9 +1636,29 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   const size_t copyBufSize = 1024 * 1024;
   auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
 
+  // COD layout: marker(2) + Lcod(2) + Scod(1) + SGcod(4: progOrder(1) + numLayers(2) + mct(1))
+  //             + SPcod(variable)
+  auto patchCod = [this](uint8_t* buf, uint32_t markerTotalLen) {
+    if(markerTotalLen < 9)
+      return;
+    if(write_sop_transcode_)
+      buf[4] |= CP_CSTY_SOP;
+    if(write_eph_transcode_)
+      buf[4] |= CP_CSTY_EPH;
+    if(transcode_prog_order_ != GRK_PROG_UNKNOWN)
+      buf[5] = (uint8_t)transcode_prog_order_;
+    const uint16_t signalledLayers = (uint16_t)((buf[6] << 8) | buf[7]);
+    if(max_layers_transcode_ > 0 && max_layers_transcode_ < signalledLayers)
+    {
+      buf[6] = (uint8_t)(max_layers_transcode_ >> 8);
+      buf[7] = (uint8_t)(max_layers_transcode_);
+    }
+  };
+
   for(auto& mhm : mainHeaderMarkers)
   {
-    if(mhm.type == TLM)
+    if(mhm.type == TLM || (needPacketInfo && (mhm.type == PLM || mhm.type == PPM)) ||
+       (stripPoc && mhm.type == POC))
       continue;
 
     uint32_t markerTotalLen = 2 + mhm.segLen;
@@ -1550,59 +1682,17 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
       return 0;
     }
 
-    // Patch COD marker: SOP/EPH flags, progression order, num layers
-    // COD layout: marker(2) + Lcod(2) + Scod(1) + SGcod(4: progOrder(1) + numLayers(2) + mct(1))
-    //             + SPcod(variable)
-    if(mhm.type == COD && markerTotalLen >= 9)
-    {
-      if(write_sop_transcode_)
-        buf[4] |= CP_CSTY_SOP;
-      if(write_eph_transcode_)
-        buf[4] |= CP_CSTY_EPH;
-      if(transcode_prog_order_ != GRK_PROG_UNKNOWN)
-        buf[5] = (uint8_t)transcode_prog_order_;
-      if(max_layers_transcode_ > 0)
-      {
-        buf[6] = (uint8_t)(max_layers_transcode_ >> 8);
-        buf[7] = (uint8_t)(max_layers_transcode_);
-      }
-      // Patch number of decomposition levels if resolution stripping
-      // SPcod starts at buf[9]: first byte is numDecompLevels
-      if(max_res_transcode_ > 0 && markerTotalLen >= 10)
-      {
-        uint8_t origLevels = buf[9];
-        uint8_t maxLevels = (uint8_t)(max_res_transcode_ - 1);
-        if(maxLevels < origLevels)
-          buf[9] = maxLevels;
-      }
-    }
+    if(mhm.type == COD)
+      patchCod(buf, markerTotalLen);
+    markerTotalLen = removeResolutionsFromMarker(buf, mhm.type, markerTotalLen);
 
     // Patch SIZ marker: image dimensions if resolution stripping
     // SIZ layout: marker(2) + Lsiz(2) + Rsiz(2) + Xsiz(4) + Ysiz(4)
     //             + XOsiz(4) + YOsiz(4) + XTsiz(4) + YTsiz(4) + XTOsiz(4) + YTOsiz(4) + ...
-    if(mhm.type == SIZ && max_res_transcode_ > 0 && markerTotalLen >= 42)
+    if(mhm.type == SIZ && resolutionsRemoved > 0 && markerTotalLen >= 42)
     {
-      // Read original COD to get original num decomp levels
-      uint8_t origDecompLevels = 0;
-      for(auto& m : mainHeaderMarkers)
       {
-        if(m.type == COD)
-        {
-          uint64_t savedPos = srcStream->tell();
-          srcStream->seek(m.offset);
-          uint8_t codBuf[11];
-          if(srcStream->read(codBuf, nullptr, std::min((uint32_t)11, (uint32_t)(2 + m.segLen))) >=
-             10)
-            origDecompLevels = codBuf[9];
-          srcStream->seek(savedPos);
-          break;
-        }
-      }
-      uint8_t origResolutions = origDecompLevels + 1;
-      if(max_res_transcode_ < origResolutions)
-      {
-        uint8_t reductionLevels = origResolutions - max_res_transcode_;
-        uint32_t divFactor = 1u << reductionLevels;
+        uint32_t divFactor = 1u << resolutionsRemoved;
 
         // Helper to read/write big-endian u32 from buffer
         auto readBE32 = [](const uint8_t* p) -> uint32_t {
@@ -1671,7 +1761,6 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   }
 
   // 3d. Write tile parts with PLT insertion and packet-level processing
-  uint16_t sopSequenceNumber = 0;
   for(uint32_t tpIdx = 0; tpIdx < numTileParts; ++tpIdx)
   {
     auto& tp = tileParts[tpIdx];
@@ -1697,32 +1786,10 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     }
     totalWritten += sotMarkerSegmentLen;
 
-    // Write PLT markers for this tile part
-    if(pltMarkerSizes[tpIdx] > 0 && !tpPackets[tpIdx].empty())
-    {
-      PLMarker pltWriter(dstStream);
-      pltWriter.pushInit(true);
-      for(const auto& tpp : tpPackets[tpIdx])
-      {
-        uint32_t adjLen = tpp.totalLength;
-        if(write_sop_transcode_)
-          adjLen += 6;
-        if(write_eph_transcode_)
-          adjLen += 2;
-        pltWriter.pushPL(adjLen);
-      }
-      if(!pltWriter.write())
-      {
-        grklog.error("transcode: failed to write PLT markers");
-        return 0;
-      }
-      totalWritten += pltWriter.getTotalBytesWritten();
-    }
-
-    // Copy non-PLT tile-part header markers from source
+    // Copy kept tile-part header markers from source
     for(auto& hm : tp.headerMarkers)
     {
-      if(hm.type == PLT)
+      if(droppedFromTilePart(hm.type))
         continue;
       uint32_t hmLen = 2 + hm.segLen;
       srcStream->seek(hm.offset);
@@ -1740,6 +1807,9 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
         grklog.error("transcode: failed to read tile-part header marker");
         return 0;
       }
+      if(hm.type == COD)
+        patchCod(buf, hmLen);
+      hmLen = removeResolutionsFromMarker(buf, hm.type, hmLen);
       if(dstStream->writeBytes(buf, hmLen) != hmLen)
       {
         grklog.error("transcode: failed to write tile-part header marker");
@@ -1748,35 +1818,53 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
       totalWritten += hmLen;
     }
 
+    // Write PLT markers for this tile part
+    if(pltMarkerSizes[tpIdx] > 0 && !tpPackets[tpIdx].empty())
+    {
+      PLMarker pltWriter(dstStream);
+      pltWriter.pushInit(true);
+      for(const auto& tpp : tpPackets[tpIdx])
+        pltWriter.pushPL(tpp.outputLength());
+      if(!pltWriter.write())
+      {
+        grklog.error("transcode: failed to write PLT markers");
+        return 0;
+      }
+      totalWritten += pltWriter.getTotalBytesWritten();
+    }
+
     // Write SOD
     if(!dstStream->write(SOD))
       return 0;
     totalWritten += 2;
 
     // Copy packet data — either packet-by-packet or as a blob
-    if(needPacketInfo && !tpPackets[tpIdx].empty())
+    if(tilePartRewritten[tpIdx])
     {
       // Packet-level copy: read each packet from source, inject SOP/EPH
-      srcStream->seek(tp.sodOffset + 2); // skip SOD in source
       for(const auto& tpp : tpPackets[tpIdx])
       {
+        if(srcStream->tell() != tpp.srcOffset && !srcStream->seek(tpp.srcOffset))
+        {
+          grklog.error("transcode: failed to seek to packet in source");
+          return 0;
+        }
         // Write SOP marker before packet
-        if(write_sop_transcode_)
+        if(tpp.injectSop)
         {
           uint8_t sop[6];
           sop[0] = 0xFF;
           sop[1] = 0x91;
           sop[2] = 0x00;
           sop[3] = 0x04;
-          sop[4] = (uint8_t)(sopSequenceNumber >> 8);
-          sop[5] = (uint8_t)(sopSequenceNumber);
+          sop[4] = (uint8_t)(tpp.sopNumber >> 8);
+          sop[5] = (uint8_t)(tpp.sopNumber);
           if(dstStream->writeBytes(sop, 6) != 6)
           {
             grklog.error("transcode: failed to write SOP marker");
             return 0;
           }
           totalWritten += 6;
-          sopSequenceNumber = (uint16_t)((sopSequenceNumber + 1) & 0xFFFF);
         }
 
         // Copy packet header bytes
@@ -1795,6 +1883,13 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
               grklog.error("transcode: unexpected end of source stream reading packet header");
               return 0;
             }
+            // SOP numbers in the source follow the source packet order
+            if(tpp.sourceHasSop && remaining == hdrLen && bytesRead >= 6 && copyBuf[0] == 0xFF &&
+               copyBuf[1] == 0x91)
+            {
+              copyBuf[4] = (uint8_t)(tpp.sopNumber >> 8);
+              copyBuf[5] = (uint8_t)(tpp.sopNumber);
+            }
             if(dstStream->writeBytes(copyBuf.get(), bytesRead) != bytesRead)
             {
               grklog.error("transcode: failed to write packet header");
@@ -1805,8 +1900,19 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
           }
         }
 
+        if(!tpp.packedHeader.empty())
+        {
+          const auto packedLength = tpp.packedHeader.size();
+          if(dstStream->writeBytes(tpp.packedHeader.data(), packedLength) != packedLength)
+          {
+            grklog.error("transcode: failed to write packet header");
+            return 0;
+          }
+          totalWritten += packedLength;
+        }
+
         // Write EPH marker after packet header
-        if(write_eph_transcode_)
+        if(tpp.injectEph)
         {
           uint8_t eph[2] = {0xFF, 0x92};
           if(dstStream->writeBytes(eph, 2) != 2)

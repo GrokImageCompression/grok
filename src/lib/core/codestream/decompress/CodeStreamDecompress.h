@@ -48,6 +48,11 @@ public:
    */
   explicit CodeStreamDecompress(IStream* stream);
 
+  CodingParams* getCodingParams(void) override
+  {
+    return CodeStream::getCodingParams();
+  }
+
   /**
    * @brief Destroys a CodeStreamDecompress
    */

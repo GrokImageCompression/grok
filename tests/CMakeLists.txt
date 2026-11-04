@@ -1068,6 +1068,24 @@ target_link_libraries(grk_tlm_segments_test ${GROK_CORE_NAME})
 add_test(NAME grk_tlm_segments_test COMMAND grk_tlm_segments_test)
 set_tests_properties(grk_tlm_segments_test PROPERTIES TIMEOUT 120)
 
+add_executable(grk_transcode_packets_test GrkTranscodePacketsTest.cpp)
+target_link_libraries(grk_transcode_packets_test ${GROK_CORE_NAME})
+add_test(NAME grk_transcode_packets_test COMMAND grk_transcode_packets_test)
+# mercury rounds lossy samples differently from classic
+set_tests_properties(grk_transcode_packets_test PROPERTIES TIMEOUT 120 ENVIRONMENT GRK_MERCURY=0)
+if(GRK_DATA_ROOT)
+  set(GRK_CONFORMANCE_DIR ${GRK_DATA_ROOT}/input/conformance)
+  add_test(NAME grk_transcode_packets_conformance_test
+    COMMAND grk_transcode_packets_test ${GRK_CONFORMANCE_DIR}/g1_colr.j2c
+      ${GRK_CONFORMANCE_DIR}/g4_colr.j2c ${GRK_CONFORMANCE_DIR}/p1_06.j2k
+      ${GRK_CONFORMANCE_DIR}/f1_mono.j2c ${GRK_CONFORMANCE_DIR}/p0_13.j2k
+      ${GRK_CONFORMANCE_DIR}/p0_02.j2k ${GRK_CONFORMANCE_DIR}/b3_mono.j2c
+      ${GRK_CONFORMANCE_DIR}/ds0_hm_06_b11.j2k ${GRK_CONFORMANCE_DIR}/p1_02.j2k
+      ${GRK_CONFORMANCE_DIR}/p1_04.j2k)
+  set_tests_properties(grk_transcode_packets_conformance_test PROPERTIES TIMEOUT 300
+    ENVIRONMENT GRK_MERCURY=0)
+endif()
+
 add_executable(grk_callback_stream_test GrkCallbackStreamTest.cpp)
 target_link_libraries(grk_callback_stream_test ${GROK_CORE_NAME})
 add_test(NAME grk_callback_stream_test COMMAND grk_callback_stream_test)

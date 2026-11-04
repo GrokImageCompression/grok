@@ -1059,8 +1059,9 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
 
   grk_initialize(nullptr, UINT32_MAX, nullptr);
 
-  /* Force JP2 format and transcode mode */
-  parameters->cod_format = GRK_FMT_JP2;
+  const bool rawOutput = parameters->cod_format == GRK_FMT_J2K;
+  if(!rawOutput)
+    parameters->cod_format = GRK_FMT_JP2;
   parameters->transcode = true;
   parameters->transcode_src = *srcStream;
 
@@ -1101,23 +1102,6 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
     return 0;
   }
 
-  /* Initialize the compressor (transcode mode: skips codestream encoding setup) */
-  if(!compressor->init(parameters, (GrkImage*)image))
-  {
-    grklog.error("grk_transcode: failed to initialize compressor");
-    grk_object_unref(codecWrapper);
-    return 0;
-  }
-
-  /* Write JP2 boxes to destination (signature, ftyp, jp2h, metadata, skip_jp2c) */
-  if(!compressor->start())
-  {
-    grklog.error("grk_transcode: failed to start compressor");
-    grk_object_unref(codecWrapper);
-    return 0;
-  }
-
-  /* Copy the raw codestream from source and finalize */
   srcStream->is_read_stream = true;
   StreamGenerator srcSg(srcStream);
   grk::IStream* inStream = nullptr;
@@ -1139,7 +1123,31 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
   }
   std::unique_ptr<grk::IStream> srcStreamGuard(inStream);
 
-  uint64_t bytesWritten = compressor->transcode(inStream);
+  uint64_t bytesWritten = 0;
+  try
+  {
+    if(rawOutput)
+    {
+      bytesWritten = compressor->transcodeToRawCodestream(parameters, inStream);
+    }
+    else
+    {
+      if(FileFormatJP2Compress::startsWithCodestream(inStream))
+        throw std::runtime_error(
+            "grk_transcode: raw codestream source requires GRK_FMT_J2K output");
+      /* transcode mode skips codestream encoding setup */
+      if(!compressor->init(parameters, (GrkImage*)image))
+        throw std::runtime_error("grk_transcode: failed to initialize compressor");
+      /* signature, ftyp, jp2h, metadata, skip_jp2c */
+      if(!compressor->start())
+        throw std::runtime_error("grk_transcode: failed to start compressor");
+      bytesWritten = compressor->transcode(inStream);
+    }
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("%s", e.what());
+  }
   grk_object_unref(codecWrapper);
 
   return bytesWritten;

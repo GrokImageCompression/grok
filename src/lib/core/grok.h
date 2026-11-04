@@ -2055,7 +2055,9 @@ GRK_API uint16_t GRK_CALLCONV grk_compress_get_slope_threshold(grk_object* codec
  * @param parameters  compression / transcode settings
  *                    (see @ref grk_cparameters); box-level fields
  *                    (jpx_branding, write_rreq, geoboxes_after_jp2c,
- *                    resolution, etc.) are honoured
+ *                    resolution, etc.) are honoured; cod_format
+ *                    GRK_FMT_J2K writes a raw codestream with no boxes and
+ *                    is the only output a raw codestream source accepts
  * @param image       source image carrying component info and metadata
  *                    (see @ref grk_image)
  * @return number of bytes written to the destination stream, or 0 on failure

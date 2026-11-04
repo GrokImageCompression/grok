@@ -66,7 +66,7 @@ public:
   void scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf) override;
   void waitSwathCopy() override;
   void setBandCallback(grk_io_band_callback callback, void* user_data) override;
-  CodingParams* getCodingParams(void);
+  CodingParams* getCodingParams(void) override;
 
 private:
   GrkImage* getHeaderImage(void) override;
