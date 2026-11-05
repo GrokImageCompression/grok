@@ -461,6 +461,19 @@ namespace
     AsyncTile* tile;
   };
 
+  struct TileWeave
+  {
+    TileSinkCtx sink;
+    std::chrono::steady_clock::time_point started;
+  };
+
+  void submitToExecutor(void* executor, mercury_host_run_fn run, void* pass)
+  {
+    static_cast<tf::Executor*>(executor)->silent_async([run, pass]() { run(pass); });
+  }
+
+  void tileWeaveDone(void* ctx, int32_t rc);
+
   template<typename T>
   void tileRowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps,
                    uint64_t width);
@@ -487,7 +500,6 @@ namespace
     grk_data_type outType = GRK_INT_32;
     TileSamples tileSamples = TileSamples::Int32;
     bool uniformSubsampling = true;
-    uint32_t threadsPerTile = 1;
     uint8_t reduce = 0;
     TileCompletion* completion = nullptr;
     tf::Executor* executor = nullptr;
@@ -505,6 +517,7 @@ namespace
     std::thread scheduler;
     std::vector<tf::Future<void>> decodes;
     static constexpr int32_t maxRowsAhead = 2;
+    uint32_t maxTilesInFlight = 1;
     int32_t rowsAhead = maxRowsAhead;
     // TileCompletion::wait calls tileRowsReady with its mutex locked
     int32_t clearedTileY = -1;
@@ -527,10 +540,10 @@ namespace
       {
         double wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
         fprintf(stderr,
-                "mercury tiles: %u tiles, %u threads/tile, rows ahead %d, peak concurrency %u, "
+                "mercury tiles: %u tiles, rows ahead %d, peak concurrency %u, "
                 "warp %.1f ms, weave %.1f ms (summed), wall %.1f ms\n",
-                (uint32_t)tiles.size(), threadsPerTile, rowsAhead, peakInFlight.load(),
-                (double)warpNs.load() / 1e6, (double)weaveNs.load() / 1e6, wallMs);
+                (uint32_t)tiles.size(), rowsAhead, peakInFlight.load(), (double)warpNs.load() / 1e6,
+                (double)weaveNs.load() / 1e6, wallMs);
       }
       // mercury has no cancel entry, a running weave runs out while the sink drops rows
       cancel = true;
@@ -548,6 +561,17 @@ namespace
       for(auto& decode : decodes)
         decode.wait();
       decodes.clear();
+      std::unique_lock<std::mutex> lock(mutex);
+      cv.wait(lock, [&] { return inFlight.load() == 0; });
+    }
+
+    void endTileDecode()
+    {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        --inFlight;
+      }
+      cv.notify_all();
     }
 
     AsyncTile* tileAt(uint16_t tileIndex)
@@ -632,6 +656,16 @@ namespace
 
     void decodeTile(AsyncTile& tile)
     {
+      struct TileDecodeEnd
+      {
+        MercuryTileState& state;
+        bool handedToWeave = false;
+        ~TileDecodeEnd()
+        {
+          if(!handedToWeave)
+            state.endTileDecode();
+        }
+      } end{*this};
       if(cancel)
         return;
       if(failed || tile.window.empty())
@@ -642,19 +676,6 @@ namespace
       MercuryPlan* plan = tile.plan;
       tile.plan = nullptr;
       uint8_t err[256] = {0};
-      uint32_t running = ++inFlight;
-      uint32_t peak = peakInFlight.load();
-      while(running > peak && !peakInFlight.compare_exchange_weak(peak, running))
-      {
-      }
-      struct InFlightGuard
-      {
-        std::atomic<uint32_t>& count;
-        ~InFlightGuard()
-        {
-          --count;
-        }
-      } inFlightGuard{inFlight};
       auto warpStart = std::chrono::steady_clock::now();
       if(!plan)
         plan = warp(tile.window, err, sizeof err);
@@ -718,30 +739,79 @@ namespace
         if(swathSeen && tile.bands.size() > 1)
           releaseBands(tile, swathY0, swathY1);
       }
-      TileSinkCtx ctx{this, &tile};
-      auto weaveStart = std::chrono::steady_clock::now();
+      auto weave = std::make_unique<TileWeave>(
+          TileWeave{TileSinkCtx{this, &tile}, std::chrono::steady_clock::now()});
       // mercury_weave frees the plan, mercury_unwarp_loom is only for plans never decoded
-      int32_t rc;
+      if(executor->num_workers() == 0)
+      {
+        int32_t rc = weaveInline(plan, &weave->sink);
+        finishTile(std::move(weave), rc);
+        return;
+      }
+      MercuryHostedWeave hosted = {};
+      hosted.t1 = mercury_grok_t1_decode;
+      hosted.per_component = !uniformSubsampling;
       if(tileSamples == TileSamples::Int16)
-        rc = uniformSubsampling
-                 ? mercury_weave_i16(plan, mercury_grok_t1_decode, tileRowSink<int16_t>, &ctx,
-                                     threadsPerTile)
-                 : mercury_weave_comps_i16(plan, mercury_grok_t1_decode, tileCompRowSink<int16_t>,
-                                           &ctx, threadsPerTile);
+      {
+        hosted.samples = MERCURY_ROWS_I16;
+        hosted.row_fn = uniformSubsampling
+                            ? reinterpret_cast<const void*>(&tileRowSink<int16_t>)
+                            : reinterpret_cast<const void*>(&tileCompRowSink<int16_t>);
+      }
       else if(tileSamples == TileSamples::Uint16)
-        rc = uniformSubsampling
-                 ? mercury_weave_u16(plan, mercury_grok_t1_decode, tileRowSink<uint16_t>, &ctx,
-                                     threadsPerTile)
-                 : mercury_weave_comps_u16(plan, mercury_grok_t1_decode, tileCompRowSink<uint16_t>,
-                                           &ctx, threadsPerTile);
+      {
+        hosted.samples = MERCURY_ROWS_U16;
+        hosted.row_fn = uniformSubsampling
+                            ? reinterpret_cast<const void*>(&tileRowSink<uint16_t>)
+                            : reinterpret_cast<const void*>(&tileCompRowSink<uint16_t>);
+      }
       else
-        rc = uniformSubsampling
-                 ? mercury_weave(plan, mercury_grok_t1_decode, tileRowSink<int32_t>, &ctx,
-                                 threadsPerTile)
-                 : mercury_weave_comps(plan, mercury_grok_t1_decode, tileCompRowSink<int32_t>, &ctx,
-                                       threadsPerTile);
+      {
+        hosted.samples = MERCURY_ROWS_I32;
+        hosted.row_fn = uniformSubsampling
+                            ? reinterpret_cast<const void*>(&tileRowSink<int32_t>)
+                            : reinterpret_cast<const void*>(&tileCompRowSink<int32_t>);
+      }
+      hosted.row_ctx = &weave->sink;
+      hosted.submit = submitToExecutor;
+      hosted.submit_ctx = executor;
+      hosted.done = tileWeaveDone;
+      hosted.done_ctx = weave.get();
+      // tileWeaveDone can run on a worker before mercury_weave_hosted returns
+      end.handedToWeave = true;
+      TileWeave* handed = weave.release();
+      int32_t rc = mercury_weave_hosted(plan, &hosted);
+      if(rc == MERCURY_OK)
+        return;
+      end.handedToWeave = false;
+      finishTile(std::unique_ptr<TileWeave>(handed), rc);
+    }
+
+    int32_t weaveInline(MercuryPlan* plan, TileSinkCtx* ctx)
+    {
+      const uint32_t threads = 1;
+      if(tileSamples == TileSamples::Int16)
+        return uniformSubsampling ? mercury_weave_i16(plan, mercury_grok_t1_decode,
+                                                      tileRowSink<int16_t>, ctx, threads)
+                                  : mercury_weave_comps_i16(plan, mercury_grok_t1_decode,
+                                                            tileCompRowSink<int16_t>, ctx, threads);
+      if(tileSamples == TileSamples::Uint16)
+        return uniformSubsampling
+                   ? mercury_weave_u16(plan, mercury_grok_t1_decode, tileRowSink<uint16_t>, ctx,
+                                       threads)
+                   : mercury_weave_comps_u16(plan, mercury_grok_t1_decode,
+                                             tileCompRowSink<uint16_t>, ctx, threads);
+      return uniformSubsampling
+                 ? mercury_weave(plan, mercury_grok_t1_decode, tileRowSink<int32_t>, ctx, threads)
+                 : mercury_weave_comps(plan, mercury_grok_t1_decode, tileCompRowSink<int32_t>, ctx,
+                                       threads);
+    }
+
+    void finishTile(std::unique_ptr<TileWeave> weave, int32_t rc)
+    {
+      AsyncTile& tile = *weave->sink.tile;
       weaveNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
-                     std::chrono::steady_clock::now() - weaveStart)
+                     std::chrono::steady_clock::now() - weave->started)
                      .count();
       if(cancel)
         return;
@@ -958,12 +1028,15 @@ namespace
           std::unique_lock<std::mutex> lock(mutex);
           // classic's back-pressure: rowsAhead tile rows past the cleared row, or a needed row
           cv.wait(lock, [&] {
-            return cancel.load() || failed.load() || ty < completion->getNeededTileY1() ||
-                   ty - clearedTileY <= rowsAhead;
+            return cancel.load() || failed.load() ||
+                   (inFlight.load() < maxTilesInFlight &&
+                    (ty < completion->getNeededTileY1() || ty - clearedTileY <= rowsAhead));
           });
+          if(cancel)
+            return;
+          uint32_t running = ++inFlight;
+          peakInFlight = std::max(peakInFlight.load(), running);
         }
-        if(cancel)
-          return;
         // a single-threaded executor has no workers to run the task
         if(executor->num_workers() == 0)
         {
@@ -1151,6 +1224,14 @@ namespace
   {
     auto ctx = static_cast<TileSinkCtx*>(c);
     ctx->state->row(*ctx->tile, comp, samples, width);
+  }
+
+  void tileWeaveDone(void* ctx, int32_t rc)
+  {
+    std::unique_ptr<TileWeave> weave(static_cast<TileWeave*>(ctx));
+    MercuryTileState* state = weave->sink.state;
+    state->finishTile(std::move(weave), rc);
+    state->endTileDecode();
   }
 } // namespace
 
@@ -1672,11 +1753,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     const char* why = nullptr;
     if(!state->planMatchesTile(first.plan, first, &why))
       MFP_BAIL(why);
-    // the executor's workers are shared by the tiles in flight
     const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
-    const uint32_t inFlight = static_cast<uint32_t>(std::min<size_t>(
-        state->tiles.size(), (size_t)(MercuryTileState::maxRowsAhead + 1) * (slated.x1 - slated.x0)));
-    state->threadsPerTile = std::max<uint32_t>(1, cores / std::max<uint32_t>(1, inFlight));
+    // each tile in flight holds its tile image from its first row
+    state->maxTilesInFlight = std::max<uint32_t>(1, cores);
     // one thread per weave fills the cores only with about two tiles in flight per core
     const uint32_t cols = static_cast<uint32_t>(slated.x1 - slated.x0);
     state->rowsAhead = std::max<int32_t>(MercuryTileState::maxRowsAhead,
@@ -1692,8 +1771,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->executor = &TFSingleton::get();
     cs.success_ = true;
     state->start();
-    grklog.info("mercury per-tile async path: %u tiles, %u threads per tile",
-                (uint32_t)state->tiles.size(), state->threadsPerTile);
+    grklog.info("mercury per-tile async path: %u tiles", (uint32_t)state->tiles.size());
     cs.mercuryAsync_ = std::move(state);
     return true;
   }

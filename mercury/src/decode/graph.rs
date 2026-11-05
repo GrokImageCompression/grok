@@ -43,7 +43,7 @@ use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
 use crate::weft::Node;
 use crate::weft::ring::{Consumer, Producer, spin};
-use crate::weft::rt::{Builder, Ctx, NodeId, Runtime};
+use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId};
 
 /// Ring capacity in rows per subband: two block-row stripes so T1 always has
 /// a full stripe of working room ahead of the tree (1.5 stripes saves ~6 MB
@@ -868,7 +868,7 @@ impl<T: Sample> Node for CompMergeSinkNode<T> {
 // ============================================================================
 
 pub struct WeftDecoder {
-    rt: Runtime,
+    loom: Builder,
     kick: Vec<NodeId>,
     /// Rows this tile row emits, per component.
     pub rows_total: Vec<u32>,
@@ -876,13 +876,17 @@ pub struct WeftDecoder {
 
 impl WeftDecoder {
     /// Run the decode to completion (blocks the calling thread).
-    pub fn weave(&self) -> Result<(), DecodeError> {
+    fn weave(self, workers: usize) -> Result<Vec<u32>, DecodeError> {
+        let rt = self.loom.dress(workers);
         for &id in &self.kick {
-            self.rt.tug(id);
+            rt.tug(id);
         }
-        self.rt.await_stillness().map_err(DecodeError::Logic)
+        rt.await_stillness().map_err(DecodeError::Logic)?;
+        Ok(self.rows_total)
     }
 }
+
+pub type WovenFn = Box<dyn FnOnce(Result<Vec<u64>, DecodeError>) + Send>;
 
 /// Where a decode hands its rows: one joint callback per image row, or one
 /// callback per component row.
@@ -911,30 +915,21 @@ pub fn weave_with_coder(
     sink: RowSink,
     coder: BlockCoder,
 ) -> Result<u64, DecodeError> {
+    let sink = joint_sink(&plan, sink)?;
+    let rows = weave_sink(file, plan, workers, sink, coder)?;
+    Ok(rows.first().copied().unwrap_or(0))
+}
+
+fn joint_sink(plan: &DecodePlan, sink: RowSink) -> Result<EmitSink, DecodeError> {
     if !uniform_subsampling(&plan.siz) {
         return Err(DecodeError::Logic(
             "weft graph: one joint row cannot carry components of different sizes".into(),
         ));
     }
-    let rows = weave_sink(
-        file,
-        plan,
-        workers,
-        EmitSink::Joint(Arc::new(Mutex::new(sink))),
-        coder,
-    )?;
-    Ok(rows.first().copied().unwrap_or(0))
+    Ok(EmitSink::Joint(Arc::new(Mutex::new(sink))))
 }
 
-/// [`weave_with_coder`] delivering one component row at a time, which is what
-/// subsampled components need. Returns the rows emitted per component.
-pub fn weave_comps_with_coder(
-    file: Arc<dyn ReadAt>,
-    plan: DecodePlan,
-    workers: usize,
-    sink: CompRowSink,
-    coder: BlockCoder,
-) -> Result<Vec<u64>, DecodeError> {
+fn per_comp_sink(plan: &DecodePlan, sink: CompRowSink) -> Result<EmitSink, DecodeError> {
     // grok skips the color transform when components 0-2 differ in size; when
     // they agree it applies one, and only the joint sink can carry it
     let c = &plan.siz.components;
@@ -949,25 +944,89 @@ pub fn weave_comps_with_coder(
             "weft graph: per-component rows cannot carry the color transform".into(),
         ));
     }
-    weave_sink(
-        file,
-        plan,
-        workers,
-        EmitSink::PerComp(Arc::new(Mutex::new(sink))),
-        coder,
-    )
+    Ok(EmitSink::PerComp(Arc::new(Mutex::new(sink))))
 }
 
-fn weave_sink(
+/// [`weave_with_coder`] delivering one component row at a time, which is what
+/// subsampled components need. Returns the rows emitted per component.
+pub fn weave_comps_with_coder(
     file: Arc<dyn ReadAt>,
     plan: DecodePlan,
     workers: usize,
-    sink: EmitSink,
+    sink: CompRowSink,
     coder: BlockCoder,
 ) -> Result<Vec<u64>, DecodeError> {
+    let sink = per_comp_sink(&plan, sink)?;
+    weave_sink(file, plan, workers, sink, coder)
+}
+
+pub fn launch_with_coder(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    host: HostExecutor,
+    sink: RowSink,
+    coder: BlockCoder,
+    woven: WovenFn,
+) -> Result<(), DecodeError> {
+    let sink = joint_sink(&plan, sink)?;
+    launch_sink(file, plan, host, sink, coder, woven)
+}
+
+pub fn launch_comps_with_coder(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    host: HostExecutor,
+    sink: CompRowSink,
+    coder: BlockCoder,
+    woven: WovenFn,
+) -> Result<(), DecodeError> {
+    let sink = per_comp_sink(&plan, sink)?;
+    launch_sink(file, plan, host, sink, coder, woven)
+}
+
+fn launch_sink(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    host: HostExecutor,
+    sink: EmitSink,
+    coder: BlockCoder,
+    woven: WovenFn,
+) -> Result<(), DecodeError> {
     let mut plan = plan;
+    let path = sample_path(&plan);
     let ntx = plan.siz.tiles_across() as usize;
     let nty = plan.siz.tiles_down() as usize;
+    let mut tiles = std::collections::VecDeque::from(std::mem::take(&mut plan.tiles));
+    let mut tile_rows: Vec<Vec<TilePlan>> = (0..nty)
+        .map(|_| tiles.drain(..ntx).flatten().collect::<Vec<TilePlan>>())
+        .filter(|row| !row.is_empty())
+        .collect();
+    if tile_rows.len() != 1 {
+        return Err(DecodeError::Logic(format!(
+            "weft host: a hosted weave decodes one tile row, the plan has {}",
+            tile_rows.len()
+        )));
+    }
+    let row_tiles = tile_rows.pop().unwrap();
+    let Some(dec) = dress_tile_loom(file, &plan, row_tiles, path, coder, &sink)? else {
+        woven(Ok(vec![0; plan.siz.comp_count()]));
+        return Ok(());
+    };
+    let rows_total = dec.rows_total;
+    dec.loom.dress_hosted(host).launch(
+        &dec.kick,
+        Box::new(move |result| {
+            woven(
+                result
+                    .map(|()| rows_total.iter().map(|&rows| rows as u64).collect())
+                    .map_err(DecodeError::Logic),
+            )
+        }),
+    );
+    Ok(())
+}
+
+fn sample_path(plan: &DecodePlan) -> Path {
     // Sample-width selection mirrors grok's grk_get_data_type() BIBO
     // (bounded-input-bounded-output) rule, NOT a coefficient-magnitude
     // (k_max') test: the int16 lifting buffers must hold `prec` bits PLUS the
@@ -981,7 +1040,7 @@ fn weave_sink(
     // i32 choice still matches grok bit-for-bit. Irreversible 9/7 always takes
     // the float path: it never overflows and is at least as accurate as grok's
     // int16 fixed-point 9/7.
-    let path = if !plan.cod.comps[0].reversible {
+    if !plan.cod.comps[0].reversible {
         if plan.q13 { Path::Q13 } else { Path::F32 }
     } else {
         let num_comps = plan.siz.comp_count();
@@ -997,7 +1056,20 @@ fn weave_sink(
         } else {
             Path::I32
         }
-    };
+    }
+}
+
+fn weave_sink(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    workers: usize,
+    sink: EmitSink,
+    coder: BlockCoder,
+) -> Result<Vec<u64>, DecodeError> {
+    let mut plan = plan;
+    let ntx = plan.siz.tiles_across() as usize;
+    let nty = plan.siz.tiles_down() as usize;
+    let path = sample_path(&plan);
     let mut tiles = std::collections::VecDeque::from(std::mem::take(&mut plan.tiles));
     let mut emitted = vec![0u64; plan.siz.comp_count()];
     for _ty in 0..nty {
@@ -1007,15 +1079,7 @@ fn weave_sink(
         if row_tiles.is_empty() {
             continue;
         }
-        let dec = dress_tile_loom(
-            Arc::clone(&file),
-            &plan,
-            row_tiles,
-            workers,
-            path,
-            coder,
-            &sink,
-        )?;
+        let dec = dress_tile_loom(Arc::clone(&file), &plan, row_tiles, path, coder, &sink)?;
         let Some(dec) = dec else {
             continue;
         };
@@ -1026,8 +1090,8 @@ fn weave_sink(
                 dec.rows_total
             );
         }
-        dec.weave()?;
-        for (total, rows) in emitted.iter_mut().zip(&dec.rows_total) {
+        let rows_total = dec.weave(workers)?;
+        for (total, rows) in emitted.iter_mut().zip(&rows_total) {
             *total += *rows as u64;
         }
     }
@@ -1041,7 +1105,6 @@ fn dress_tile_loom(
     file: Arc<dyn ReadAt>,
     plan: &DecodePlan,
     row_tiles: Vec<TilePlan>,
-    workers: usize,
     path: Path,
     coder: BlockCoder,
     sink: &EmitSink,
@@ -1526,7 +1589,7 @@ fn dress_tile_loom(
     assert_eq!(got_sink, sink_id);
 
     Ok(Some(WeftDecoder {
-        rt: b.dress(workers),
+        loom: b,
         kick,
         rows_total,
     }))

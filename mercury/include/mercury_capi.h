@@ -263,6 +263,29 @@ int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_com
 int32_t mercury_weave_comps_u16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_u16_fn row_fn,
                                 void* row_ctx, uint32_t threads);
 
+#define MERCURY_ROWS_I32 0u
+#define MERCURY_ROWS_I16 1u
+#define MERCURY_ROWS_U16 2u
+
+typedef void (*mercury_host_run_fn)(void* pass);
+typedef void (*mercury_host_submit_fn)(void* ctx, mercury_host_run_fn run, void* pass);
+typedef void (*mercury_weave_done_fn)(void* ctx, int32_t rc);
+
+typedef struct MercuryHostedWeave
+{
+  mercury_t1_fn t1;
+  uint32_t samples;
+  bool per_component;
+  const void* row_fn;
+  void* row_ctx;
+  mercury_host_submit_fn submit;
+  void* submit_ctx;
+  mercury_weave_done_fn done;
+  void* done_ctx;
+} MercuryHostedWeave;
+
+int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave);
+
 /* layer_rate 0 derives the rate from max_cs_size */
 int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
                            uint32_t height, bool four_k, uint32_t source_precision,

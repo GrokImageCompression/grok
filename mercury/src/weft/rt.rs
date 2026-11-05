@@ -13,6 +13,7 @@
 
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
+use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
@@ -36,6 +37,21 @@ impl NodeId {
 /// Bounds worker stack growth; depth 2 covers the hot producer→consumer hop
 /// plus one more (e.g. T1 stripe publish → synthesis → sink).
 const CHAIN_DEPTH_CAP: u8 = 2;
+
+pub type HostRunFn = extern "C" fn(pass: *mut c_void);
+pub type HostSubmitFn = extern "C" fn(ctx: *mut c_void, run: HostRunFn, pass: *mut c_void);
+
+#[derive(Clone, Copy)]
+pub struct HostExecutor {
+    pub submit: HostSubmitFn,
+    pub ctx: *mut c_void,
+}
+
+// Safety: hosts accept submitted passes from any thread.
+unsafe impl Send for HostExecutor {}
+unsafe impl Sync for HostExecutor {}
+
+pub type StillnessFn = Box<dyn FnOnce(Result<(), String>) + Send>;
 
 pub struct Builder {
     nodes: Vec<Box<dyn Node>>,
@@ -63,23 +79,7 @@ impl Builder {
     /// is spawned: `await_stillness` runs the passes on the calling thread.
     pub fn dress(self, workers: usize) -> Runtime {
         assert!(workers >= 1, "weft runtime needs at least one worker");
-        let inner = Arc::new(Inner {
-            slots: self
-                .nodes
-                .into_iter()
-                .map(|n| Slot {
-                    state: NodeState::warp(),
-                    node: UnsafeCell::new(n),
-                })
-                .collect(),
-            queue: Mutex::new(VecDeque::new()),
-            work_cv: Condvar::new(),
-            done_cv: Condvar::new(),
-            outstanding: AtomicUsize::new(0),
-            shutdown: AtomicBool::new(false),
-            failed: AtomicBool::new(false),
-            failure: Mutex::new(None),
-        });
+        let inner = self.into_inner(None);
         if workers == 1 {
             return Runtime {
                 inner,
@@ -96,6 +96,35 @@ impl Builder {
             })
             .collect();
         Runtime { inner, threads }
+    }
+
+    pub fn dress_hosted(self, host: HostExecutor) -> HostedRuntime {
+        HostedRuntime {
+            inner: self.into_inner(Some(host)),
+        }
+    }
+
+    fn into_inner(self, host: Option<HostExecutor>) -> Arc<Inner> {
+        Arc::new(Inner {
+            slots: self
+                .nodes
+                .into_iter()
+                .map(|n| Slot {
+                    state: NodeState::warp(),
+                    node: UnsafeCell::new(n),
+                })
+                .collect(),
+            queue: Mutex::new(VecDeque::new()),
+            work_cv: Condvar::new(),
+            done_cv: Condvar::new(),
+            outstanding: AtomicUsize::new(0),
+            shutdown: AtomicBool::new(false),
+            failed: AtomicBool::new(false),
+            failure: Mutex::new(None),
+            host,
+            host_tasks: AtomicUsize::new(0),
+            on_still: Mutex::new(None),
+        })
     }
 }
 
@@ -122,11 +151,15 @@ struct Inner {
     /// releases await_stillness, which can no longer trust `outstanding`.
     failed: AtomicBool,
     failure: Mutex<Option<String>>,
+    host: Option<HostExecutor>,
+    // passes submitted to the host and not finished, plus one while launch kicks the graph
+    host_tasks: AtomicUsize,
+    on_still: Mutex<Option<StillnessFn>>,
 }
 
 /// Slice context: how a node notifies its ring peers.
 pub struct Ctx<'a> {
-    rt: &'a Inner,
+    rt: &'a Arc<Inner>,
     /// Tail-chain candidate claimed during this pass.
     chain: Option<NodeId>,
     depth: u8,
@@ -171,14 +204,48 @@ impl Inner {
         self.done_cv.notify_all();
     }
 
-    fn spool(&self, id: NodeId) {
+    fn spool(self: &Arc<Self>, id: NodeId) {
+        if let Some(host) = self.host {
+            self.host_tasks.fetch_add(1, Ordering::AcqRel);
+            let pass = Box::into_raw(Box::new((Arc::clone(self), id)));
+            (host.submit)(host.ctx, run_host_pass, pass.cast());
+            return;
+        }
         let mut q = self.queue.lock().unwrap();
         q.push_back(id);
         drop(q);
         self.work_cv.notify_one();
     }
 
-    fn treadle_loop(&self) {
+    fn tug_external(self: &Arc<Self>, id: NodeId) {
+        if self.slots[id.0 as usize].state.tug() {
+            self.outstanding.fetch_add(1, Ordering::AcqRel);
+            self.spool(id);
+        }
+    }
+
+    fn end_host_task(&self) {
+        if self.host_tasks.fetch_sub(1, Ordering::AcqRel) != 1 {
+            return;
+        }
+        let on_still = self.on_still.lock().unwrap().take();
+        if let Some(on_still) = on_still {
+            on_still(self.stillness());
+        }
+    }
+
+    fn stillness(&self) -> Result<(), String> {
+        if self.failed.load(Ordering::Acquire) {
+            let msg = self.failure.lock().unwrap().clone();
+            return Err(msg.unwrap_or_else(|| "weft node failed".to_string()));
+        }
+        if self.outstanding.load(Ordering::Acquire) != 0 {
+            return Err("weft host: passes outstanding with no task running".to_string());
+        }
+        Ok(())
+    }
+
+    fn treadle_loop(self: &Arc<Self>) {
         loop {
             let id = {
                 let mut q = self.queue.lock().unwrap();
@@ -198,7 +265,7 @@ impl Inner {
 
     /// Drain the queue on the calling thread. Only valid with no workers,
     /// where nothing else can pop the queue or run a pass.
-    fn treadle_inline(&self) {
+    fn treadle_inline(self: &Arc<Self>) {
         loop {
             let id = {
                 let mut q = self.queue.lock().unwrap();
@@ -214,7 +281,7 @@ impl Inner {
         }
     }
 
-    fn treadle(&self, id: NodeId) {
+    fn treadle(self: &Arc<Self>, id: NodeId) {
         // a panicking node never decrements `outstanding`, so the counter
         // is dead after this. fail() is what releases await_stillness.
         if let Err(payload) =
@@ -226,7 +293,7 @@ impl Inner {
 
     /// Run passes of `id` until it finishes cleanly, executing at most one
     /// tail-chained successor per pass. Decrements `outstanding` on exit.
-    fn ply_node(&self, id: NodeId, depth: u8) {
+    fn ply_node(self: &Arc<Self>, id: NodeId, depth: u8) {
         let slot = &self.slots[id.0 as usize];
         loop {
             slot.state.open_shed();
@@ -253,6 +320,14 @@ impl Inner {
     }
 }
 
+extern "C" fn run_host_pass(pass: *mut c_void) {
+    let (inner, id) = *unsafe { Box::from_raw(pass.cast::<(Arc<Inner>, NodeId)>()) };
+    if !inner.shutdown.load(Ordering::Acquire) {
+        inner.treadle(id);
+    }
+    inner.end_host_task();
+}
+
 fn panic_text(payload: &(dyn std::any::Any + Send)) -> &str {
     if let Some(s) = payload.downcast_ref::<&'static str>() {
         s
@@ -272,10 +347,7 @@ impl Runtime {
     /// External tug (e.g. the initial kick of source nodes, or the sink
     /// consumer returning slots from outside the pool).
     pub fn tug(&self, id: NodeId) {
-        if self.inner.slots[id.0 as usize].state.tug() {
-            self.inner.outstanding.fetch_add(1, Ordering::AcqRel);
-            self.inner.spool(id);
-        }
+        self.inner.tug_external(id);
     }
 
     /// Block the calling (non-worker) thread until the graph is quiescent:
@@ -298,11 +370,23 @@ impl Runtime {
                 q = self.inner.done_cv.wait(q).unwrap();
             }
         }
-        if self.inner.failed.load(Ordering::Acquire) {
-            let msg = self.inner.failure.lock().unwrap().clone();
-            return Err(msg.unwrap_or_else(|| "weft node failed".to_string()));
+        self.inner.stillness()
+    }
+}
+
+pub struct HostedRuntime {
+    inner: Arc<Inner>,
+}
+
+impl HostedRuntime {
+    pub fn launch(self, kick: &[NodeId], on_still: StillnessFn) {
+        *self.inner.on_still.lock().unwrap() = Some(on_still);
+        // passes that finish while the kick is still spooling must not report stillness
+        self.inner.host_tasks.fetch_add(1, Ordering::AcqRel);
+        for &id in kick {
+            self.inner.tug_external(id);
         }
-        Ok(())
+        self.inner.end_host_task();
     }
 }
 
@@ -341,6 +425,45 @@ mod tests {
                 ctx.tug(next);
             }
         }
+    }
+
+    extern "C" fn spawn_pass(_ctx: *mut c_void, run: HostRunFn, pass: *mut c_void) {
+        let pass = pass as usize;
+        std::thread::spawn(move || run(pass as *mut c_void));
+    }
+
+    #[test]
+    fn hosted_graph_reports_stillness_after_its_passes() {
+        let passes = Arc::new(AtomicUsize::new(0));
+        let ran_on = Arc::new(Mutex::new(Vec::new()));
+        let mut b = Builder::warp();
+        let first = b.mount(Box::new(Counter {
+            passes: Arc::clone(&passes),
+            ran_on: Arc::clone(&ran_on),
+            next: Some(NodeId::heddle(1)),
+        }));
+        b.mount(Box::new(Counter {
+            passes: Arc::clone(&passes),
+            ran_on: Arc::clone(&ran_on),
+            next: None,
+        }));
+        let host = HostExecutor {
+            submit: spawn_pass,
+            ctx: std::ptr::null_mut(),
+        };
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let seen = Arc::clone(&passes);
+        b.dress_hosted(host).launch(
+            &[first],
+            Box::new(move |result| {
+                sender.send((result, seen.load(Ordering::SeqCst))).unwrap();
+            }),
+        );
+        let (result, passes_at_stillness) = receiver.recv().unwrap();
+        assert_eq!(result, Ok(()));
+        assert_eq!(passes_at_stillness, 2);
+        let caller = std::thread::current().id();
+        assert!(ran_on.lock().unwrap().iter().all(|id| *id != caller));
     }
 
     #[test]

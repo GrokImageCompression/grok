@@ -118,6 +118,11 @@ Grok drives the engine through [include/mercury_capi.h](include/mercury_capi.h):
    components of up to 16 bits. Components of different sizes have no
    full-width row, so those plans take `mercury_weave_comps{,_i16,_u16}`,
    which delivers one component row per call.
+4. `mercury_weave_hosted(plan, &weave)` decodes a plan of one tile row on the
+   host's thread pool. Every node pass goes through `weave.submit`, the call
+   returns once the graph is started, and `weave.done` runs once when it is
+   still. Grok's per-tile path submits passes to its Taskflow executor, so a
+   tile holds no worker thread while it decodes.
 
 Grok's per-tile path stores tile images in 16 bits when only the swath copy
 reads them: int16 when every sample fits, uint16 for unsigned 16-bit. This
