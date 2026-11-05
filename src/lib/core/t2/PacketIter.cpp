@@ -306,7 +306,8 @@ bool PacketIter::genPrecinctInfoOPT(void)
   }
   const bool spatialProgression =
       prog.progression == GRK_RPCL || prog.progression == GRK_PCRL || prog.progression == GRK_CPRL;
-  const uint32_t coarsestScale = 1U << (comps->numresolutions - 1U);
+  // 33 resolutions put the coarsest scale at 2^32
+  const uint64_t coarsestScale = 1ULL << (comps->numresolutions - 1U);
   // spatial OPT iterators visit an extra column from a tile origin off the coarsest grid
   if(spatialProgression &&
      ((tb.x0 & (coarsestScale - 1U)) != 0 || (tb.y0 & (coarsestScale - 1U)) != 0))
