@@ -1030,7 +1030,8 @@ namespace
           cv.wait(lock, [&] {
             return cancel.load() || failed.load() ||
                    (inFlight.load() < maxTilesInFlight &&
-                    (ty < completion->getNeededTileY1() || ty - clearedTileY <= rowsAhead));
+                    (unbounded || ty < completion->getNeededTileY1() ||
+                     ty - clearedTileY <= rowsAhead));
           });
           if(cancel)
             return;
