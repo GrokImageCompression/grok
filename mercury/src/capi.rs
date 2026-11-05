@@ -89,6 +89,9 @@ pub type MercuryRowFn =
 pub type MercuryRowI16Fn =
     extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const i16, num_comps: u32, width: u64);
 
+pub type MercuryRowU16Fn =
+    extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const u16, num_comps: u32, width: u64);
+
 /// One component's row: `samples` points at `width` samples of component
 /// `comp`, valid only for the duration of the call. Rows of one component
 /// arrive in order; components interleave in no fixed order.
@@ -98,6 +101,9 @@ pub type MercuryCompRowFn =
 /// [`MercuryCompRowFn`] for output that fits signed i16.
 pub type MercuryCompRowI16Fn =
     extern "C" fn(ctx: *mut c_void, comp: u32, row: u32, samples: *const i16, width: u64);
+
+pub type MercuryCompRowU16Fn =
+    extern "C" fn(ctx: *mut c_void, comp: u32, row: u32, samples: *const u16, width: u64);
 
 pub const MERCURY_OK: i32 = 0;
 pub const MERCURY_EBADARG: i32 = -1;
@@ -930,6 +936,7 @@ pub extern "C" fn mercury_bench_dwt(
 
 const I16_SIGNED_PRECISION_BITS: u32 = 16;
 const I16_UNSIGNED_PRECISION_BITS: u32 = 15;
+const U16_PRECISION_BITS: u32 = 16;
 
 trait OutputSample: Copy + Default + Send + 'static {
     fn from_i32(value: i32) -> Self;
@@ -943,6 +950,16 @@ impl OutputSample for i32 {
 
     fn supports(_precision: u32, _signed: bool) -> bool {
         true
+    }
+}
+
+impl OutputSample for u16 {
+    fn from_i32(value: i32) -> Self {
+        value as u16
+    }
+
+    fn supports(precision: u32, signed: bool) -> bool {
+        !signed && precision <= U16_PRECISION_BITS
     }
 }
 
@@ -1239,6 +1256,17 @@ pub extern "C" fn mercury_weave_i16(
     weave_rows(plan, t1, row_fn, row_ctx, threads)
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_u16(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryRowU16Fn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
 /// Decode `plan` to completion, streaming i32 rows one component at a time.
 /// Subsampled components need this entry; an image whose components share a
 /// rectangle may use it too, unless the codestream signals a color transform
@@ -1261,6 +1289,17 @@ pub extern "C" fn mercury_weave_comps_i16(
     plan: *mut MercuryPlan,
     t1: Option<MercuryT1Fn>,
     row_fn: Option<MercuryCompRowI16Fn>,
+    row_ctx: *mut c_void,
+    threads: u32,
+) -> i32 {
+    weave_comp_rows(plan, t1, row_fn, row_ctx, threads)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_comps_u16(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    row_fn: Option<MercuryCompRowU16Fn>,
     row_ctx: *mut c_void,
     threads: u32,
 ) -> i32 {

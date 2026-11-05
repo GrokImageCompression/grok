@@ -114,9 +114,19 @@ Grok drives the engine through [include/mercury_capi.h](include/mercury_capi.h):
    decodes the image, calling `t1_fn` per code-block and `row_fn` for each finished
    full-width row (in order). The i16 entry avoids an i32 staging row when
    the final samples fit signed i16. A null `t1_fn` is rejected. The host
-   must supply tier-1. Components of different sizes have no full-width row,
-   so those plans take `mercury_weave_comps{,_i16}`, which delivers one
-   component row per call.
+   must supply tier-1. `mercury_weave_u16` does the same for unsigned
+   components of up to 16 bits. Components of different sizes have no
+   full-width row, so those plans take `mercury_weave_comps{,_i16,_u16}`,
+   which delivers one component row per call.
+
+Grok's per-tile path stores tile images in 16 bits when only the swath copy
+reads them: int16 when every sample fits, uint16 for unsigned 16-bit. This
+halves their memory. `grk_decompress_get_tile_image` widens them to int32,
+the type classic returns for the same file.
+
+TODO: return int16 tile images without widening when every sample fits int16.
+Mercury and classic would then report different types for one file. Unsigned
+16-bit would also need a `GRK_UINT_16` data type.
 
 [examples/capi_smoke.c](examples/capi_smoke.c) exercises all three surfaces.
 

@@ -61,6 +61,10 @@ typedef void (*mercury_comp_row_fn)(void* ctx, uint32_t comp, uint32_t row, cons
                                     uint64_t width);
 typedef void (*mercury_comp_row_i16_fn)(void* ctx, uint32_t comp, uint32_t row,
                                         const int16_t* samples, uint64_t width);
+typedef void (*mercury_row_u16_fn)(void* ctx, uint32_t row, const uint16_t* const* comps,
+                                   uint32_t num_comps, uint64_t width);
+typedef void (*mercury_comp_row_u16_fn)(void* ctx, uint32_t comp, uint32_t row,
+                                        const uint16_t* samples, uint64_t width);
 
 /* Main header, parsed by the host codec and handed in; mercury does not parse
  * it. Every pointer is borrowed for the mercury_warp_loom{,_fd} call only;
@@ -243,6 +247,8 @@ int32_t mercury_weave(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_fn row_fn
                       uint32_t threads);
 int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_fn row_fn,
                           void* row_ctx, uint32_t threads);
+int32_t mercury_weave_u16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_u16_fn row_fn,
+                          void* row_ctx, uint32_t threads);
 
 /* Per-component row delivery. mercury_weave{,_i16} return MERCURY_EBADARG on a
  * plan whose components differ in subsampling, because one joint row cannot
@@ -253,6 +259,8 @@ int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_f
 int32_t mercury_weave_comps(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_fn row_fn,
                             void* row_ctx, uint32_t threads);
 int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_i16_fn row_fn,
+                                void* row_ctx, uint32_t threads);
+int32_t mercury_weave_comps_u16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_u16_fn row_fn,
                                 void* row_ctx, uint32_t threads);
 
 /* layer_rate 0 derives the rate from max_cs_size */

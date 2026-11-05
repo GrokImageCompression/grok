@@ -1031,6 +1031,9 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
     if(!comp.data)
       continue;
     const bool src16 = (comp.data_type == GRK_INT_16);
+    // unsigned 16-bit components in a 16-bit plane hold uint16 samples
+    const bool srcUint16 = src16 && !comp.sgnd && comp.prec > 15;
+    const bool dstUint16 = buf->prec > 8 && buf->prec <= 16 && !buf->sgnd;
 
     // Clip to swath y range
     const uint32_t tileY0 = comp.y0;
@@ -1072,7 +1075,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
         const int16_t* srcPtr16 = static_cast<const int16_t*>(comp.data) +
                                   static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
 
-        if(packed && !doPromote)
+        if(packed && !doPromote && (!srcUint16 || dstUint16))
         {
           if(buf->prec <= 8)
             HWY_DYNAMIC_DISPATCH(Hwy_copy_i16_to_u8_row)(srcPtr16, dstRowBase, cols);
@@ -1095,7 +1098,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
         {
           for(uint32_t x = 0; x < cols; ++x)
           {
-            int32_t v = srcPtr16[x];
+            int32_t v = srcUint16 ? static_cast<uint16_t>(srcPtr16[x]) : srcPtr16[x];
             if(doPromote)
               v *= 255;
             uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;

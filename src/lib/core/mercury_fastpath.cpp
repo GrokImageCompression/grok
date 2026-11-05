@@ -467,6 +467,13 @@ namespace
   template<typename T>
   void tileCompRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width);
 
+  enum class TileSamples
+  {
+    Int32,
+    Int16,
+    Uint16
+  };
+
   // one mercury plan per tile, woven on the taskflow executor under classic's back-pressure
   struct MercuryTileState final : MercuryAsyncDecode
   {
@@ -478,6 +485,7 @@ namespace
     std::function<bool()> postProcessComposite;
     bool reduceImageBounds = false;
     grk_data_type outType = GRK_INT_32;
+    TileSamples tileSamples = TileSamples::Int32;
     bool uniformSubsampling = true;
     uint32_t threadsPerTile = 1;
     uint8_t reduce = 0;
@@ -711,20 +719,27 @@ namespace
           releaseBands(tile, swathY0, swathY1);
       }
       TileSinkCtx ctx{this, &tile};
-      bool is16 = outType == GRK_INT_16;
       auto weaveStart = std::chrono::steady_clock::now();
       // mercury_weave frees the plan, mercury_unwarp_loom is only for plans never decoded
       int32_t rc;
-      if(uniformSubsampling)
-        rc = is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, tileRowSink<int16_t>, &ctx,
-                                      threadsPerTile)
-                  : mercury_weave(plan, mercury_grok_t1_decode, tileRowSink<int32_t>, &ctx,
-                                  threadsPerTile);
+      if(tileSamples == TileSamples::Int16)
+        rc = uniformSubsampling
+                 ? mercury_weave_i16(plan, mercury_grok_t1_decode, tileRowSink<int16_t>, &ctx,
+                                     threadsPerTile)
+                 : mercury_weave_comps_i16(plan, mercury_grok_t1_decode, tileCompRowSink<int16_t>,
+                                           &ctx, threadsPerTile);
+      else if(tileSamples == TileSamples::Uint16)
+        rc = uniformSubsampling
+                 ? mercury_weave_u16(plan, mercury_grok_t1_decode, tileRowSink<uint16_t>, &ctx,
+                                     threadsPerTile)
+                 : mercury_weave_comps_u16(plan, mercury_grok_t1_decode, tileCompRowSink<uint16_t>,
+                                           &ctx, threadsPerTile);
       else
-        rc = is16 ? mercury_weave_comps_i16(plan, mercury_grok_t1_decode,
-                                            tileCompRowSink<int16_t>, &ctx, threadsPerTile)
-                  : mercury_weave_comps(plan, mercury_grok_t1_decode, tileCompRowSink<int32_t>,
-                                        &ctx, threadsPerTile);
+        rc = uniformSubsampling
+                 ? mercury_weave(plan, mercury_grok_t1_decode, tileRowSink<int32_t>, &ctx,
+                                 threadsPerTile)
+                 : mercury_weave_comps(plan, mercury_grok_t1_decode, tileCompRowSink<int32_t>, &ctx,
+                                       threadsPerTile);
       weaveNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
                      std::chrono::steady_clock::now() - weaveStart)
                      .count();
@@ -778,7 +793,7 @@ namespace
         comp->y0 = rect.y0;
         comp->w = rect.width();
         comp->h = rect.height();
-        comp->data_type = outType;
+        comp->data_type = tileSamples == TileSamples::Int32 ? GRK_INT_32 : GRK_INT_16;
         comp->data = nullptr;
         comp->owns_data = false;
         comp->stride = 0;
@@ -814,7 +829,7 @@ namespace
         return false;
       }
       auto whole = emptyTileImage(tile);
-      const size_t elem = outType == GRK_INT_16 ? sizeof(int16_t) : sizeof(int32_t);
+      const size_t elem = tileSamples == TileSamples::Int32 ? sizeof(int32_t) : sizeof(int16_t);
       for(uint16_t c = 0; c < whole->numcomps; c++)
       {
         auto comp = whole->comps + c;
@@ -997,7 +1012,44 @@ namespace
         return nullptr;
       if(tile->bands.size() > 1 && !joinBands(*tile))
         return nullptr;
+      if(outType == GRK_INT_32 && tileSamples != TileSamples::Int32 && !widenTileImage(*tile))
+        return nullptr;
       return tile->bands[0].get();
+    }
+
+    template<typename T>
+    static void widenRows(const grk_image_comp& narrow, grk_image_comp* wide)
+    {
+      for(uint32_t y = 0; y < narrow.h; y++)
+      {
+        auto src = static_cast<const T*>(narrow.data) + (size_t)y * narrow.stride;
+        auto dst = static_cast<int32_t*>(wide->data) + (size_t)y * wide->stride;
+        std::copy(src, src + narrow.w, dst);
+      }
+    }
+
+    bool widenTileImage(AsyncTile& tile)
+    {
+      auto wide = emptyTileImage(tile);
+      const GrkImage* narrow = tile.bands[0].get();
+      for(uint16_t c = 0; c < wide->numcomps; c++)
+      {
+        auto comp = wide->comps + c;
+        comp->data_type = GRK_INT_32;
+        if(!narrow->comps[c].data)
+          continue;
+        if(!GrkImage::allocData(comp))
+        {
+          grklog.error("mercury tile %u: tile image allocation failed", (uint32_t)tile.index);
+          return false;
+        }
+        if(tileSamples == TileSamples::Uint16)
+          widenRows<uint16_t>(narrow->comps[c], comp);
+        else
+          widenRows<int16_t>(narrow->comps[c], comp);
+      }
+      tile.bands[0] = std::move(wide);
+      return true;
     }
 
     void imagesForSwath(uint16_t tileIndex, uint32_t y0, uint32_t y1,
@@ -1109,6 +1161,23 @@ namespace
       fprintf(stderr, "mercury fastpath bail: %s\n", msg); \
     return false;                                          \
   } while(0)
+
+static TileSamples narrowestTileSamples(const GrkImage* img)
+{
+  bool fitInt16 = true;
+  bool fitUint16 = true;
+  for(uint16_t c = 0; c < img->numcomps; c++)
+  {
+    const auto& comp = img->comps[c];
+    fitInt16 = fitInt16 && comp.prec <= (comp.sgnd ? 16 : 15);
+    fitUint16 = fitUint16 && !comp.sgnd && comp.prec <= 16;
+  }
+  if(fitInt16)
+    return TileSamples::Int16;
+  if(fitUint16)
+    return TileSamples::Uint16;
+  return TileSamples::Int32;
+}
 
 // Whole-image output sample type, replicating grok's classic decision so the
 // fast path's API-visible comp->data_type matches (test_8bit_mct_produces_int16
@@ -1570,6 +1639,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     const bool multiTile = (slated.x1 - slated.x0) * (slated.y1 - slated.y0) > 1;
     state->keepReleasedTiles = (cs.tileCache_->getStrategy() & GRK_TILE_CACHE_IMAGE) != 0 ||
                                (!dec.skipAllocateComposite_ && multiTile);
+    state->tileSamples = state->outType == GRK_INT_16 ? TileSamples::Int16 : TileSamples::Int32;
+    // only the swath copy and imageForTile read these tile images
+    if(multiTile && !state->keepReleasedTiles)
+      state->tileSamples = narrowestTileSamples(img);
     for(uint16_t ty = slated.y0; ty < slated.y1; ty++)
       for(uint16_t tx = slated.x0; tx < slated.x1; tx++)
       {
