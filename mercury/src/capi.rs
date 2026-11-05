@@ -34,7 +34,7 @@ use crate::codec::tile_geom::Dims;
 use crate::decode::graph::{
     CompRow, Rows, uniform_subsampling, weave_comps_with_coder, weave_with_coder,
 };
-use crate::decode::plan::{DecodePlan, MainHeaderIn, TlmEntry, draft};
+use crate::decode::plan::{DecodePlan, MainHeaderIn, TlmEntry, chart_tile_parts, draft};
 use crate::decode::read_at::ReadAt;
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 
@@ -187,7 +187,7 @@ pub struct MercuryTlmEntry {
     /// Absolute file offset of the tile-part's SOT marker.
     pub offset: u64,
     /// Tile-part length (Psot).
-    pub length: u32,
+    pub length: u64,
     pub tile: u16,
 }
 
@@ -571,6 +571,108 @@ pub extern "C" fn mercury_warp_loom_fd(
             std::ptr::null_mut()
         }
     }
+}
+
+fn chart_parts(
+    hdr: *const MercuryMainHeader,
+    src: &dyn ReadAt,
+    parts: *mut *mut MercuryTlmEntry,
+    count: *mut u32,
+    err_buf: *mut u8,
+    err_cap: usize,
+) -> i32 {
+    if parts.is_null() || count.is_null() {
+        return MERCURY_EBADARG;
+    }
+    let header = match unsafe { draft_header_in(hdr) } {
+        Ok(h) => h,
+        Err(e) => {
+            stamp_err(err_buf, err_cap, &e);
+            return MERCURY_EBADARG;
+        }
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        chart_tile_parts(src, &header)
+    }));
+    let charted = match r {
+        Ok(Ok(charted)) => charted,
+        Ok(Err(e)) => {
+            stamp_err(err_buf, err_cap, &format!("{e:?}"));
+            return MERCURY_EDECODE;
+        }
+        Err(_) => {
+            stamp_err(err_buf, err_cap, "panic in chart_tile_parts");
+            return MERCURY_EPANIC;
+        }
+    };
+    let Ok(n) = u32::try_from(charted.len()) else {
+        stamp_err(err_buf, err_cap, "more than 2^32 tile-parts");
+        return MERCURY_EDECODE;
+    };
+    let entries: Box<[MercuryTlmEntry]> = charted
+        .into_iter()
+        .map(|e| MercuryTlmEntry {
+            offset: e.offset,
+            length: e.length,
+            tile: e.tile,
+        })
+        .collect();
+    unsafe {
+        *parts = Box::into_raw(entries) as *mut MercuryTlmEntry;
+        *count = n;
+    }
+    MERCURY_OK
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_chart_tile_parts(
+    hdr: *const MercuryMainHeader,
+    read_at: Option<MercuryReadAtFn>,
+    ctx: *mut c_void,
+    len: u64,
+    parts: *mut *mut MercuryTlmEntry,
+    count: *mut u32,
+    err_buf: *mut u8,
+    err_cap: usize,
+) -> i32 {
+    let Some(read_at) = read_at else {
+        stamp_err(err_buf, err_cap, "null read_at");
+        return MERCURY_EBADARG;
+    };
+    chart_parts(
+        hdr,
+        &CallbackReader { read_at, ctx, len },
+        parts,
+        count,
+        err_buf,
+        err_cap,
+    )
+}
+
+#[cfg(unix)]
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_chart_tile_parts_fd(
+    hdr: *const MercuryMainHeader,
+    fd: i32,
+    parts: *mut *mut MercuryTlmEntry,
+    count: *mut u32,
+    err_buf: *mut u8,
+    err_cap: usize,
+) -> i32 {
+    let file = std::mem::ManuallyDrop::new(unsafe {
+        <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(fd)
+    });
+    chart_parts(hdr, &*file, parts, count, err_buf, err_cap)
+}
+
+/// # Safety
+/// `parts` and `count` must come from one `mercury_chart_tile_parts{,_fd}` call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_free_tile_parts(parts: *mut MercuryTlmEntry, count: u32) {
+    if parts.is_null() {
+        return;
+    }
+    drop(unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(parts, count as usize)) });
 }
 
 #[repr(C)]

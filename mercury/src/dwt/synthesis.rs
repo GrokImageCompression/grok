@@ -25,6 +25,7 @@ use crate::ffi_dwt::MercuryLiftingStep;
 
 use std::alloc::{self, Layout};
 use std::ptr;
+use std::sync::Arc;
 
 // ============================================================================
 // VliftLine — Row buffer with two phases (even/odd horizontal positions)
@@ -124,14 +125,40 @@ pub struct AlignedVec {
     ptr: *mut u8,
     layout: Layout,
     len: usize,
+    block: Option<Arc<RingBlock>>,
 }
+
+struct RingBlock(AlignedVec);
+
+// Safety: the block is only freed through the Arc, never read through it.
+unsafe impl Send for RingBlock {}
+unsafe impl Sync for RingBlock {}
 
 impl AlignedVec {
     pub fn bare(len: usize) -> Self {
         let layout = Layout::from_size_align(len.max(1), simd_align()).unwrap();
         let ptr = unsafe { alloc::alloc_zeroed(layout) };
         assert!(!ptr.is_null(), "allocation failed");
-        Self { ptr, layout, len }
+        Self {
+            ptr,
+            layout,
+            len,
+            block: None,
+        }
+    }
+
+    pub fn ring_slots(count: usize, len: usize) -> Vec<AlignedVec> {
+        let stride = len.max(1).next_multiple_of(simd_align());
+        // glibc grows thread heaps by one mprotect per small allocation, which stalls behind page faults
+        let block = Arc::new(RingBlock(AlignedVec::bare(stride * count)));
+        (0..count)
+            .map(|i| AlignedVec {
+                ptr: unsafe { block.0.ptr.add(i * stride) },
+                layout: block.0.layout,
+                len,
+                block: Some(Arc::clone(&block)),
+            })
+            .collect()
     }
     pub fn len(&self) -> usize {
         self.len
@@ -149,7 +176,9 @@ unsafe impl Send for AlignedVec {}
 
 impl Drop for AlignedVec {
     fn drop(&mut self) {
-        unsafe { alloc::dealloc(self.ptr, self.layout) };
+        if self.block.is_none() {
+            unsafe { alloc::dealloc(self.ptr, self.layout) };
+        }
     }
 }
 
@@ -1276,6 +1305,25 @@ impl Synthesis {
                     *p.add(k as usize) = *p.sub(1);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ring_slots_are_aligned_and_disjoint() {
+        let len = 100;
+        let mut slots = AlignedVec::ring_slots(5, len);
+        for (i, slot) in slots.iter_mut().enumerate() {
+            assert_eq!(slot.as_ptr() as usize % simd_align(), 0);
+            unsafe { ptr::write_bytes(slot.as_mut_ptr(), i as u8 + 1, len) };
+        }
+        for (i, slot) in slots.iter().enumerate() {
+            let bytes = unsafe { std::slice::from_raw_parts(slot.as_ptr(), len) };
+            assert!(bytes.iter().all(|&b| b == i as u8 + 1));
         }
     }
 }

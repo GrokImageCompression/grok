@@ -398,6 +398,25 @@ namespace
                              readers.memReader.size, err, errCap);
   }
 
+  int32_t chartTileParts(const MercuryMainHeader& header, MercuryReaders& readers,
+                         MercuryTlmEntry** parts, uint32_t* count, uint8_t* err, size_t errCap)
+  {
+    if(readers.fromPath)
+    {
+#if defined(_WIN32)
+      return mercury_chart_tile_parts(&header, win32ReadAt, &readers.win32reader,
+                                      readers.win32reader.size(), parts, count, err, errCap);
+#else
+      return mercury_chart_tile_parts_fd(&header, readers.fd, parts, count, err, errCap);
+#endif
+    }
+    if(readers.streamReader.stream)
+      return mercury_chart_tile_parts(&header, streamReadAt, &readers.streamReader,
+                                      readers.streamReader.size, parts, count, err, errCap);
+    return mercury_chart_tile_parts(&header, memReadAt, &readers.memReader, readers.memReader.size,
+                                    parts, count, err, errCap);
+  }
+
   // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
   struct MercuryHeaderStorage
   {
@@ -1392,7 +1411,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       if(!tileParts[t])
         continue;
       for(const auto& part : *tileParts[t])
-        mhTlm.push_back({part->offset_, (uint32_t)part->length_, (uint16_t)t});
+        mhTlm.push_back({part->offset_, part->length_, (uint16_t)t});
     }
   }
   mhdr.tlm = mhTlm.empty() ? nullptr : mhTlm.data();
@@ -1500,6 +1519,18 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   {
     if(img->decompress_num_comps != img->numcomps)
       MFP_BAIL("decompress_num_comps != numcomps");
+    // without TLM every per-tile plan walks the whole SOT chain
+    if(mhTlm.empty())
+    {
+      MercuryTlmEntry* parts = nullptr;
+      uint32_t count = 0;
+      if(chartTileParts(mhdr, *readers, &parts, &count, err, sizeof err) != MERCURY_OK)
+        MFP_BAIL((const char*)err);
+      mhTlm.assign(parts, parts + count);
+      mercury_free_tile_parts(parts, count);
+      mhdr.tlm = mhTlm.data();
+      mhdr.num_tlm = count;
+    }
     // a second decode on this codec joins the previous tiles first
     cs.mercuryAsync_.reset();
     auto state = std::make_unique<MercuryTileState>();

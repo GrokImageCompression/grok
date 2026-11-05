@@ -35,7 +35,7 @@ pub struct TlmEntry {
     /// Absolute file offset of the tile-part's SOT marker.
     pub offset: u64,
     /// Tile-part length (Psot).
-    pub length: u32,
+    pub length: u64,
 }
 
 /// The main-header coding parameters the host codec parsed and handed in
@@ -278,7 +278,7 @@ impl<'f> StreamWin<'f> {
         Ok(StreamWin {
             file,
             file_len,
-            buf: vec![0u8; WIN_SIZE],
+            buf: Vec::new(),
             buf_off: 0,
             valid: 0,
             header_bytes_since_refill: 0,
@@ -296,6 +296,9 @@ impl<'f> StreamWin<'f> {
         if !covered {
             let read_len = (self.header_bytes_since_refill * 2).clamp(MIN_WINDOW_READ, WIN_SIZE);
             let n = read_len.min((self.file_len - off) as usize);
+            if self.buf.len() < n {
+                self.buf.resize(n, 0);
+            }
             self.file.draw_at(&mut self.buf[..n], off)?;
             self.buf_off = off;
             self.valid = n;
@@ -439,6 +442,76 @@ fn window_block_rect(bounds: Dims, window: Dims, block_w: u32, block_h: u32) -> 
     }
 }
 
+fn codestream_end(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<u64, DecodeError> {
+    let file_len = file.extent().map_err(io_snag)?;
+    // for a jp2c box followed by more boxes the codestream ends before the file does
+    if hdr.codestream_len == 0 {
+        return Ok(file_len);
+    }
+    Ok(hdr
+        .codestream_off
+        .saturating_add(hdr.codestream_len)
+        .min(file_len))
+}
+
+pub fn chart_tile_parts(
+    file: &dyn ReadAt,
+    hdr: &MainHeaderIn,
+) -> Result<Vec<TlmEntry>, DecodeError> {
+    let codestream_end = codestream_end(file, hdr)?;
+    let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
+    let mut parts = Vec::new();
+    let mut sot_pos = hdr.first_sot_off;
+    loop {
+        let mut sot = [0u8; 10];
+        file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
+        if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
+            return Err(DecodeError::Logic(format!("expected SOT at {sot_pos}")));
+        }
+        let isot = u16::from_be_bytes([sot[4], sot[5]]);
+        let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
+        if isot as usize >= num_tiles {
+            return Err(DecodeError::Logic(format!(
+                "plan: SOT tile index {isot} out of range"
+            )));
+        }
+        // A.4.2: only the last tile-part may carry Psot=0, and it runs to the EOC
+        let last = psot == 0;
+        let psot = if last {
+            let mut span = codestream_end.saturating_sub(sot_pos);
+            if span >= 2 {
+                let mut m = [0u8; 2];
+                file.draw_at(&mut m, codestream_end - 2).map_err(io_snag)?;
+                if u16::from_be_bytes(m) == 0xFFD9 {
+                    span -= 2;
+                }
+            }
+            span
+        } else {
+            psot
+        };
+        parts.push(TlmEntry {
+            tile: isot,
+            offset: sot_pos,
+            length: psot,
+        });
+        if last {
+            break;
+        }
+        sot_pos += psot;
+        if sot_pos + 2 > codestream_end {
+            break;
+        }
+        // classic ignores whatever follows a tile-part if it is not an SOT
+        let mut m = [0u8; 2];
+        file.draw_at(&mut m, sot_pos).map_err(io_snag)?;
+        if u16::from_be_bytes(m) != 0xFF90 {
+            break;
+        }
+    }
+    Ok(parts)
+}
+
 /// `max_layers` keeps only the first that many quality layers (0 = all),
 /// truncating the coding passes the dropped layers carry. `use_plt` lets the
 /// parse hop over non-contributing packets by their PLT lengths. `window`
@@ -456,15 +529,7 @@ pub fn draft(
 ) -> Result<DecodePlan, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
-    let file_len = file.extent().map_err(io_snag)?;
-    // for a jp2c box followed by more boxes the codestream ends before the file does
-    let codestream_end = if hdr.codestream_len == 0 {
-        file_len
-    } else {
-        hdr.codestream_off
-            .saturating_add(hdr.codestream_len)
-            .min(file_len)
-    };
+    let codestream_end = codestream_end(file, hdr)?;
 
     check_coding_style(&hdr.cod, hdr.siz.comp_count(), reduce, "")?;
 
@@ -512,107 +577,51 @@ pub fn draft(
     // the tile-part that opens a tile may carry those markers. TPsot names it,
     // but streams with a wrong TPsot decode anyway, so stream order decides.
     let mut tile_opened = vec![false; num_tiles];
-    if !hdr.tlm.is_empty() {
-        for e in &hdr.tlm {
-            let t = e.tile as usize;
-            if t >= num_tiles {
-                return Err(DecodeError::Logic(format!(
-                    "plan: TLM tile index {} out of range",
-                    e.tile
-                )));
-            }
-            if !tile_in_window[t] {
-                continue;
-            }
-            if e.length < 14 {
-                return Err(DecodeError::Logic("plan: TLM tile-part too short".into()));
-            }
-            let mut sot = [0u8; 12];
-            file.draw_at(&mut sot, e.offset).map_err(io_snag)?;
-            if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90
-                || u16::from_be_bytes([sot[4], sot[5]]) != e.tile
-            {
-                return Err(DecodeError::Logic(format!(
-                    "plan: TLM entry for tile {} does not point at its SOT",
-                    e.tile
-                )));
-            }
-            let seg = comb_tile_part(
-                file,
-                codestream_end,
-                e.offset,
-                e.length as u64,
-                sot[10],
-                TilePartMarkerSinks {
-                    packet_lengths: use_plt.then(|| &mut tile_plt[t]),
-                    coding_parameters: (!std::mem::replace(&mut tile_opened[t], true))
-                        .then(|| &mut tile_styles[t]),
-                    progression_changes: &mut tile_pocs[t],
-                },
-            )?;
-            tile_segs[t].push(seg);
-        }
+    let walked_parts;
+    let parts = if hdr.tlm.is_empty() {
+        walked_parts = chart_tile_parts(file, hdr)?;
+        &walked_parts
     } else {
-        // walk the SOT chain
-        let mut sot_pos = hdr.first_sot_off;
-        loop {
-            let mut sot = [0u8; 12];
-            file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
-            if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
-                return Err(DecodeError::Logic(format!("expected SOT at {sot_pos}")));
-            }
-            let isot = u16::from_be_bytes([sot[4], sot[5]]) as usize;
-            let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
-            if isot >= num_tiles {
-                return Err(DecodeError::Logic(format!(
-                    "plan: SOT tile index {isot} out of range"
-                )));
-            }
-            // A.4.2: only the last tile-part may carry Psot=0, and it runs to the EOC
-            let last = psot == 0;
-            let psot = if last {
-                let mut span = codestream_end.saturating_sub(sot_pos);
-                if span >= 2 {
-                    let mut m = [0u8; 2];
-                    file.draw_at(&mut m, codestream_end - 2).map_err(io_snag)?;
-                    if u16::from_be_bytes(m) == 0xFFD9 {
-                        span -= 2;
-                    }
-                }
-                span
-            } else {
-                psot
-            };
-            if tile_in_window[isot] {
-                let seg = comb_tile_part(
-                    file,
-                    codestream_end,
-                    sot_pos,
-                    psot,
-                    sot[10],
-                    TilePartMarkerSinks {
-                        packet_lengths: use_plt.then(|| &mut tile_plt[isot]),
-                        coding_parameters: (!std::mem::replace(&mut tile_opened[isot], true))
-                            .then(|| &mut tile_styles[isot]),
-                        progression_changes: &mut tile_pocs[isot],
-                    },
-                )?;
-                tile_segs[isot].push(seg);
-            }
-            if last {
-                break;
-            }
-            sot_pos += psot;
-            if sot_pos + 2 > codestream_end {
-                break;
-            }
-            // classic ignores whatever follows a tile-part if it is not an SOT
-            let mut m = [0u8; 2];
-            file.draw_at(&mut m, sot_pos).map_err(io_snag)?;
-            if u16::from_be_bytes(m) != 0xFF90 {
-                break;
-            }
+        &hdr.tlm
+    };
+    for e in parts {
+        let t = e.tile as usize;
+        if t >= num_tiles {
+            return Err(DecodeError::Logic(format!(
+                "plan: TLM tile index {} out of range",
+                e.tile
+            )));
         }
+        if !tile_in_window[t] {
+            continue;
+        }
+        if e.length < 14 {
+            return Err(DecodeError::Logic("plan: TLM tile-part too short".into()));
+        }
+        let mut sot = [0u8; 12];
+        file.draw_at(&mut sot, e.offset).map_err(io_snag)?;
+        if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90
+            || u16::from_be_bytes([sot[4], sot[5]]) != e.tile
+        {
+            return Err(DecodeError::Logic(format!(
+                "plan: TLM entry for tile {} does not point at its SOT",
+                e.tile
+            )));
+        }
+        let seg = comb_tile_part(
+            file,
+            codestream_end,
+            e.offset,
+            e.length,
+            sot[10],
+            TilePartMarkerSinks {
+                packet_lengths: use_plt.then(|| &mut tile_plt[t]),
+                coding_parameters: (!std::mem::replace(&mut tile_opened[t], true))
+                    .then(|| &mut tile_styles[t]),
+                progression_changes: &mut tile_pocs[t],
+            },
+        )?;
+        tile_segs[t].push(seg);
     }
 
     // --- per-tile plans ---

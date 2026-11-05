@@ -1922,32 +1922,49 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
   // a single-threaded executor has no workers to run copy tasks
   const bool copyInline = TFSingleton::get().num_workers() == 0;
 
+  auto copyInRowBands = [&](const std::shared_ptr<std::vector<GrkImage*>>& tileImages) {
+    if(copyInline)
+    {
+      for(GrkImage* tileImg : *tileImages)
+        hwy_copy_tile_to_swath(tileImg, buf);
+      return;
+    }
+
+    // linux counts a fault on every thread whose first write lands on a page another thread is faulting in
+    const uint32_t swathRows = buf->y1 - buf->y0;
+    const auto numRowBands =
+        static_cast<uint32_t>(std::min<size_t>(TFSingleton::get().num_workers(), swathRows));
+    tf::Taskflow tf_copy;
+    for(uint32_t band = 0; band < numRowBands; ++band)
+    {
+      grk_swath_buffer rowBand = *buf;
+      rowBand.y0 = buf->y0 + swathRows * band / numRowBands;
+      rowBand.y1 = buf->y0 + swathRows * (band + 1) / numRowBands;
+      rowBand.data = static_cast<uint8_t*>(buf->data) +
+                     static_cast<int64_t>(rowBand.y0 - buf->y0) * buf->line_space;
+      tf_copy.emplace([tileImages, rowBand]() {
+        for(GrkImage* tileImg : *tileImages)
+          hwy_copy_tile_to_swath(tileImg, &rowBand);
+      });
+    }
+    const uint16_t firstTileIndex =
+        static_cast<uint16_t>(swath->tile_y0 * swath->num_tile_cols + swath->tile_x0);
+    swathCopyFutureManager_.add(firstTileIndex, TFSingleton::get().run(std::move(tf_copy)));
+  };
+
   if(mercuryAsync_)
   {
+    auto tileImages = std::make_shared<std::vector<GrkImage*>>();
     for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
       for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
       {
         const uint16_t tidx = static_cast<uint16_t>(ty * swath->num_tile_cols + tx);
-        std::vector<GrkImage*> images;
-        mercuryAsync_->imagesForSwath(tidx, buf->y0, buf->y1, images);
-        if(images.empty())
-        {
+        const size_t before = tileImages->size();
+        mercuryAsync_->imagesForSwath(tidx, buf->y0, buf->y1, *tileImages);
+        if(tileImages->size() == before)
           grklog.error("swath copy: tile %u has no decoded rows in the swath", (uint32_t)tidx);
-          continue;
-        }
-        if(copyInline)
-        {
-          for(GrkImage* img : images)
-            hwy_copy_tile_to_swath(img, buf);
-          continue;
-        }
-        tf::Taskflow tf_copy;
-        tf_copy.emplace([images = std::move(images), buf]() {
-          for(GrkImage* img : images)
-            hwy_copy_tile_to_swath(img, buf);
-        });
-        swathCopyFutureManager_.add(tidx, TFSingleton::get().run(std::move(tf_copy)));
       }
+    copyInRowBands(tileImages);
     return;
   }
 
@@ -1983,33 +2000,7 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
     }
   }
 
-  if(copyInline)
-  {
-    for(GrkImage* tileImg : *tileImages)
-      hwy_copy_tile_to_swath(tileImg, buf);
-    return;
-  }
-
-  // linux counts a fault on every thread whose first write lands on a page another thread is faulting in
-  const uint32_t swathRows = buf->y1 - buf->y0;
-  const auto numRowBands =
-      static_cast<uint32_t>(std::min<size_t>(TFSingleton::get().num_workers(), swathRows));
-  tf::Taskflow tf_copy;
-  for(uint32_t band = 0; band < numRowBands; ++band)
-  {
-    grk_swath_buffer rowBand = *buf;
-    rowBand.y0 = buf->y0 + swathRows * band / numRowBands;
-    rowBand.y1 = buf->y0 + swathRows * (band + 1) / numRowBands;
-    rowBand.data = static_cast<uint8_t*>(buf->data) +
-                   static_cast<int64_t>(rowBand.y0 - buf->y0) * buf->line_space;
-    tf_copy.emplace([tileImages, rowBand]() {
-      for(GrkImage* tileImg : *tileImages)
-        hwy_copy_tile_to_swath(tileImg, &rowBand);
-    });
-  }
-  const uint16_t firstTileIndex =
-      static_cast<uint16_t>(swath->tile_y0 * swath->num_tile_cols + swath->tile_x0);
-  swathCopyFutureManager_.add(firstTileIndex, TFSingleton::get().run(std::move(tf_copy)));
+  copyInRowBands(tileImages);
 }
 
 void CodeStreamDecompress::waitSwathCopy()

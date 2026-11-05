@@ -1265,9 +1265,7 @@ fn dress_tile_loom(
                         let c0 = col0.max(bwl_x0);
                         let c1 = col1.min(bwl_x1);
                         let slot_bytes = slice_samples * sb + 64;
-                        let slots: Vec<AlignedVec> = (0..cap_rows)
-                            .map(|_| AlignedVec::bare(slot_bytes))
-                            .collect();
+                        let slots = AlignedVec::ring_slots(cap_rows, slot_bytes);
                         let (prod, con) = spin(slots);
                         // Node id assigned later == index in band_nodes.
                         let node_id = NodeId::heddle(band_nodes.len() as u32);
@@ -1367,15 +1365,11 @@ fn dress_tile_loom(
                 let (out_prod, out_con) = if is_top {
                     // Top level: full-width tile rows to the merge sink. Sized
                     // by the engine so the interleave's tail stores fit.
-                    let slots: Vec<AlignedVec> = (0..OUT_RING_ROWS)
-                        .map(|_| AlignedVec::bare(engine.hem_row_bytes()))
-                        .collect();
+                    let slots = AlignedVec::ring_slots(OUT_RING_ROWS, engine.hem_row_bytes());
                     spin(slots)
                 } else {
                     // Intermediate: LL rows for the level above.
-                    let slots: Vec<AlignedVec> = (0..LL_RING_ROWS)
-                        .map(|_| AlignedVec::bare(engine.hem_row_bytes()))
-                        .collect();
+                    let slots = AlignedVec::ring_slots(LL_RING_ROWS, engine.hem_row_bytes());
                     spin(slots)
                 };
                 level_nodes.push(LevelNode {

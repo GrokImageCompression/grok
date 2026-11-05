@@ -132,7 +132,7 @@ typedef struct MercuryProgressionVolume
 typedef struct MercuryTlmEntry
 {
   uint64_t offset; /* absolute file offset of the tile-part's SOT marker */
-  uint32_t length; /* tile-part length (Psot) */
+  uint64_t length; /* tile-part length (Psot) */
   uint16_t tile;
 } MercuryTlmEntry;
 
@@ -207,6 +207,16 @@ MercuryPlan* mercury_warp_loom(const MercuryMainHeader* hdr, const MercuryDecode
 MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
                                   int32_t fd, uint8_t* err_buf, size_t err_cap);
 #endif
+
+int32_t mercury_chart_tile_parts(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
+                                 void* ctx, uint64_t len, MercuryTlmEntry** parts, uint32_t* count,
+                                 uint8_t* err_buf, size_t err_cap);
+#if !defined(_WIN32)
+int32_t mercury_chart_tile_parts_fd(const MercuryMainHeader* hdr, int32_t fd,
+                                    MercuryTlmEntry** parts, uint32_t* count, uint8_t* err_buf,
+                                    size_t err_cap);
+#endif
+void mercury_free_tile_parts(MercuryTlmEntry* parts, uint32_t count);
 
 /* width/height are the decoded output dims on the canvas plane, i.e. already
  * reduced. Per-component dims come from mercury_loom_comp_info. */
