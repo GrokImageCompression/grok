@@ -485,32 +485,44 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let (reduce, max_layers, use_plt, window, slice_blocks) = if params.is_null() {
-        (0, 0, true, None, 0)
-    } else {
-        let p = unsafe { &*params };
-        let window = (p.win_x1 > p.win_x0 && p.win_y1 > p.win_y0).then_some(Dims {
-            x0: p.win_x0,
-            y0: p.win_y0,
-            x1: p.win_x1,
-            y1: p.win_y1,
-        });
-        (
-            p.reduce,
-            p.max_layers,
-            !p.disable_plt,
-            window,
-            p.slice_blocks,
-        )
-    };
+    let (reduce, max_layers, use_plt, window, slice_blocks, int16_dwt, int16_irreversible) =
+        if params.is_null() {
+            (0, 0, true, None, 0, false, false)
+        } else {
+            let p = unsafe { &*params };
+            let window = (p.win_x1 > p.win_x0 && p.win_y1 > p.win_y0).then_some(Dims {
+                x0: p.win_x0,
+                y0: p.win_y0,
+                x1: p.win_x1,
+                y1: p.win_y1,
+            });
+            (
+                p.reduce,
+                p.max_layers,
+                !p.disable_plt,
+                window,
+                p.slice_blocks,
+                p.int16_dwt,
+                p.int16_irreversible,
+            )
+        };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        draft(&*src, &header, reduce, max_layers, use_plt, window)
+        draft(
+            &*src,
+            &header,
+            reduce,
+            max_layers,
+            use_plt,
+            window,
+            int16_irreversible,
+        )
     }));
     match r {
         Ok(Ok(mut plan)) => {
             if slice_blocks != 0 {
                 plan.slice_blocks = slice_blocks;
             }
+            plan.int16_dwt = int16_dwt;
             Box::into_raw(Box::new(MercuryPlan { plan, src }))
         }
         Ok(Err(e)) => {
@@ -543,6 +555,8 @@ pub struct MercuryDecodeParams {
     pub win_x1: u32,
     pub win_y1: u32,
     pub slice_blocks: u32,
+    pub int16_dwt: bool,
+    pub int16_irreversible: bool,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),

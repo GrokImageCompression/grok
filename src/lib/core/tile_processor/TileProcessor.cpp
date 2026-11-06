@@ -1140,7 +1140,7 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     // sample peak at 2^12 leaves 3 bits for lifting intermediates that reach ~4x
     // the peak, and 5 fractional bits at 8 bits, which the conformance tolerances need
     // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
-    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec < 12 &&
+    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec <= 13 &&
        tileComp->num_resolutions_ > 1)
       tileComp->setQShift((uint8_t)(13 - imageComp->prec));
     else

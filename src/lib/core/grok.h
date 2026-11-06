@@ -772,6 +772,8 @@ typedef struct _grk_decompress_core_params
    */
   uint16_t* comps_to_decode;
   uint16_t num_comps_to_decode;
+  /* int16 9/7 up to 13 bits instead of 10, outside the T.803 tolerances above 10 bits */
+  bool irreversible_int16;
 } grk_decompress_core_params;
 
 /**

@@ -194,21 +194,25 @@ bool CodingParams::init(grk_decompress_parameters* parameters,
   decompressCallback_ = parameters->decompress_callback;
   decompressCallbackUserData_ = parameters->decompress_callback_user_data;
   auto core = &parameters->core;
-  bool decodeDepthChanged = core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
-                            core->reduce != codingParams_.dec_.reduce_;
-  if(decodeDepthChanged)
+  // irreversible_int16 changes the sample type of cached tiles
+  bool decodeSettingsChanged =
+      core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
+      core->reduce != codingParams_.dec_.reduce_ ||
+      core->irreversible_int16 != codingParams_.dec_.irreversibleInt16_;
+  if(decodeSettingsChanged)
     tileCache->setDirty(true);
   codingParams_.dec_.reduce_ = core->reduce;
   codingParams_.dec_.disableRandomAccessFlags_ = core->disable_random_access_flags;
   codingParams_.dec_.skipAllocateComposite_ = core->skip_allocate_composite;
   codingParams_.dec_.layersToDecompress_ = core->layers_to_decompress;
+  codingParams_.dec_.irreversibleInt16_ = core->irreversible_int16;
   if(core->num_comps_to_decode > 0 && core->comps_to_decode)
     compsToDecompress_.assign(core->comps_to_decode,
                               core->comps_to_decode + core->num_comps_to_decode);
   else
     compsToDecompress_.clear();
 
-  return decodeDepthChanged;
+  return decodeSettingsChanged;
 }
 
 bool CodingParams::hasTLM(void) const noexcept

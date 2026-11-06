@@ -1391,24 +1391,6 @@ static TileSamples narrowestTileSamples(const GrkImage* img)
   return TileSamples::Int32;
 }
 
-// Whole-image output sample type, replicating grok's classic decision so the
-// fast path's API-visible comp->data_type matches (test_8bit_mct_produces_int16
-// and friends compare it). grk_get_data_type is the rule
-// createDecompressTileComponentWindows feeds into the final image type.
-// A region decode takes the same rule as a whole decode, matching the classic
-// partial path. Per grok's uniform-type rule, one under-headroom component
-// forces every component to int32.
-static grk_data_type mercuryOutType(const TileCodingParams* tcp, const GrkImage* img)
-{
-  for(uint16_t c = 0; c < img->numcomps; c++)
-  {
-    uint8_t qmfbid = tcp->tccps_[c].qmfbid_;
-    if(grk_get_data_type(false, img->comps[c].prec, false, qmfbid) != GRK_INT_16)
-      return GRK_INT_32;
-  }
-  return GRK_INT_16;
-}
-
 bool mercuryFastPath(CodeStreamDecompress& cs)
 {
   const char* mercuryEnv = std::getenv("GRK_MERCURY");
@@ -1705,6 +1687,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   MercuryDecodeParams mparams;
   memset(&mparams, 0, sizeof mparams);
   mparams.reduce = dec.reduce_;
+  mparams.int16_dwt = wholeImageUses16BitDwt(cs.defaultTcp_.get(), img, dec.irreversibleInt16_);
+  mparams.int16_irreversible = dec.irreversibleInt16_ && mparams.int16_dwt;
   // same contract as classic's T2 packet skip: 0 decodes every layer, and a
   // limit at or above the stream's layer count is a full decode
   mparams.max_layers = dec.layersToDecompress_;
@@ -1837,7 +1821,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->header->tlm = std::move(mhTlm);
     state->readers = std::move(readers);
     state->composite = img;
-    state->outType = mercuryOutType(cs.defaultTcp_.get(), img);
+    state->outType = mparams.int16_dwt ? GRK_INT_16 : GRK_INT_32;
     state->uniformSubsampling = uniformSubsampling;
     state->reduce = dec.reduce_;
     state->reduceImageBounds = cs.cp_.dw_reduced && dec.reduce_ > 0;
@@ -1980,7 +1964,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       MFP_BAIL("decompress_num_comps != numcomps");
     }
     // Match grok's whole-image sample type (see composite branch below).
-    grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
+    grk_data_type outType = mparams.int16_dwt ? GRK_INT_16 : GRK_INT_32;
     bool is16 = outType == GRK_INT_16;
     auto scratch = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
         new GrkImage(), RefCountedDeleter<GrkImage>());
@@ -2122,7 +2106,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
   // Match grok's whole-image sample type so the API-visible comp->data_type
   // (and thus writers / grk_image consumers) is identical to the classic path.
-  grk_data_type outType = mercuryOutType(cs.defaultTcp_.get(), img);
+  grk_data_type outType = mparams.int16_dwt ? GRK_INT_16 : GRK_INT_32;
   bool is16 = outType == GRK_INT_16;
 
   // Allocate planes (int16 or int32 per outType) and stream rows into them.

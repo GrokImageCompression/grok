@@ -1023,31 +1023,13 @@ fn launch_sink(
 }
 
 fn sample_path(plan: &DecodePlan) -> Path {
-    // Sample-width selection mirrors grok's grk_get_data_type() BIBO
-    // (bounded-input-bounded-output) rule, NOT a coefficient-magnitude
-    // (k_max') test: the int16 lifting buffers must hold `prec` bits PLUS the
-    // inverse transform's dynamic-range growth, or the transform overflows
-    // int16 even though the coefficients themselves fit. Reversible 5/3 needs
-    // 4 bits of headroom (non-MCT) or 5 (MCT — RCT adds a bit of range), so
-    // int16 is exact only while `prec + headroom <= 16` (non-MCT prec <= 12,
-    // MCT prec <= 11). Grok decides this per component and forces one output
-    // type image-wide, so a single under-headroom component pulls everything
-    // to i32. 5/3 is exact integer arithmetic either way, so a conservative
-    // i32 choice still matches grok bit-for-bit. Irreversible 9/7 always takes
-    // the float path: it never overflows and is at least as accurate as grok's
-    // int16 fixed-point 9/7.
+    // f32 9/7 never overflows and is at least as accurate as grok's int16 fixed point 9/7
     if !plan.cod.comps[0].reversible {
         if plan.q13 { Path::Q13 } else { Path::F32 }
     } else {
-        let num_comps = plan.siz.comp_count();
-        let mct = plan.cod.use_ycc && num_comps >= 3;
-        let all_i16 = plan.siz.components.iter().enumerate().all(|(c, comp)| {
-            let headroom = if mct && c < 3 { 5 } else { 4 };
-            comp.precision as u32 + headroom <= 16
-        });
         let force_i16 = std::env::var_os("MERCURY_FORCE_I16").is_some();
         let force_i32 = std::env::var_os("MERCURY_FORCE_I32").is_some();
-        if force_i16 || (all_i16 && !force_i32) {
+        if force_i16 || (plan.int16_dwt && !force_i32) {
             Path::I16
         } else {
             Path::I32

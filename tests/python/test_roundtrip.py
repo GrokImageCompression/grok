@@ -274,12 +274,13 @@ class TestInt16Gate:
         grok_core.grk_object_unref(image.obj)
         return length > 0
 
-    def _decompress(self, path):
+    def _decompress(self, path, irreversible_int16=False):
         """Decompress fully and return (image, codec)."""
         stream = grok_core.grk_stream_params()
         stream.file = path
 
         params = grok_core.grk_decompress_parameters()
+        params.core.irreversible_int16 = irreversible_int16
         codec = grok_core.grk_decompress_init(stream, params)
         if codec is None:
             return None, None
@@ -321,6 +322,38 @@ class TestInt16Gate:
         for c in range(3):
             assert image.comps[c].data_type == grok_core.GRK_INT_16
         grok_core.grk_object_unref(codec)
+
+    @pytest.mark.parametrize("mercury", ["0", "1"])
+    def test_12bit_irreversible_int16_opt_in(self, tmp_path, monkeypatch, mercury):
+        j2k = str(tmp_path / "rgb12_irrev_int16.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 12)
+        monkeypatch.setenv("GRK_MERCURY", mercury)
+        # measured 12 on classic and 10 on mercury for this image, 16 at 256 x 256
+        max_int16_error = 16
+
+        float_image, float_codec = self._decompress(j2k)
+        int16_image, int16_codec = self._decompress(j2k, irreversible_int16=True)
+        assert float_image is not None and int16_image is not None
+        worst = 0
+        for c in range(3):
+            float_comp, int16_comp = float_image.comps[c], int16_image.comps[c]
+            assert float_comp.data_type == grok_core.GRK_INT_32
+            assert int16_comp.data_type == grok_core.GRK_INT_16
+            floats = ctypes.cast(
+                int(float_comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (float_comp.h * float_comp.stride)),
+            ).contents
+            int16s = ctypes.cast(
+                int(int16_comp.data),
+                ctypes.POINTER(ctypes.c_int16 * (int16_comp.h * int16_comp.stride)),
+            ).contents
+            for y in range(float_comp.h):
+                for x in range(float_comp.w):
+                    difference = floats[y * float_comp.stride + x] - int16s[y * int16_comp.stride + x]
+                    worst = max(worst, abs(difference))
+        assert worst <= max_int16_error
+        grok_core.grk_object_unref(float_codec)
+        grok_core.grk_object_unref(int16_codec)
 
     def test_grk_get_data_type_irreversible(self):
         """Irreversible 9/7 (qmfbid=0): int16 iff prec <= 10,

@@ -403,7 +403,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   uint8_t reduce = 0;
   uint16_t layer = 0;
   int32_t deviceId = 0;
-  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, applyPalette = false;
+  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, applyPalette = false,
+       irreversibleInt16 = false;
 
   auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output directory");
   auto compressionOpt = cmd.add_option("-c,--compression", compression, "Output compression type");
@@ -421,6 +422,9 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto deviceIdOpt = cmd.add_option("-G,--device-id", deviceId, "Device ID");
   auto numThreadsOpt = cmd.add_option("-H,--num-threads", numThreads, "Number of threads");
   auto inputFileOpt = cmd.add_option("-i,--in-file", inputFile, "Input file");
+  cmd.add_flag("--irreversible-int16", irreversibleInt16,
+               "Decode irreversible 9/7 on int16 fixed point up to 13 bit precision instead of 10. "
+               "Faster, but above 10 bits the rounding exceeds the T.803 conformance tolerances");
   auto kernelBuildOptionsOpt =
       cmd.add_option("-k,--kernel-build", kernelBuildOptions, "Kernel build options");
   auto layerOpt = cmd.add_option("-l,--layers", layer, "Number of layers to decompress")
@@ -672,6 +676,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   }
   if(randomAccessOpt->count() > 0)
     parameters->core.disable_random_access_flags = disableRandomAccess;
+  parameters->core.irreversible_int16 = irreversibleInt16;
   parameters->single_tile_decompress = tileOpt->count() > 0;
   if(tileOpt->count() > 0)
     parameters->tile_index = (uint16_t)tile;

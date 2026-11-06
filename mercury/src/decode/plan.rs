@@ -238,18 +238,7 @@ pub struct DecodePlan {
     /// accumulated normalization.
     pub q13: bool,
     pub slice_blocks: u32,
-}
-
-/// The int16 fixed-point 9/7 path fits when every component's precision is
-/// at most 8 bits (grok's grk_get_data_type rule, prec + 8 <= 16): below
-/// that the Q13 fractional margin absorbs the lifting rounding, above it the
-/// accumulated rounding shows against the T.803 tolerances.
-/// MERCURY_FORCE_F32 keeps the float path for A/B comparison.
-pub fn q13_97(cod: &CodParams, siz: &SizParams) -> bool {
-    // every component's kernel is the same; draft rejects mixed ones
-    !cod.comps[0].reversible
-        && siz.components.iter().all(|c| c.precision <= 8)
-        && std::env::var_os("MERCURY_FORCE_F32").is_none()
+    pub int16_dwt: bool,
 }
 
 /// `ceil(a / 2^b)`, the canvas reduction of T.800 Annex B.
@@ -547,12 +536,17 @@ pub fn draft(
     max_layers: u16,
     use_plt: bool,
     window: Option<Dims>,
+    int16_irreversible: bool,
 ) -> Result<DecodePlan, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
     let codestream_end = codestream_end(file, hdr)?;
 
     check_coding_style(&hdr.cod, hdr.siz.comp_count(), reduce, "")?;
+    // int16 fixed point 9/7 meets the T.803 tolerances only up to 8 bits
+    let q13 = !hdr.cod.comps[0].reversible
+        && (int16_irreversible || hdr.siz.components.iter().all(|c| c.precision <= 8))
+        && std::env::var_os("MERCURY_FORCE_F32").is_none();
 
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
@@ -730,6 +724,7 @@ pub fn draft(
             max_layers,
             plt.as_deref(),
             tile_wins.as_deref(),
+            q13,
         )?;
         tiles.push(Some(TilePlan {
             comps,
@@ -769,8 +764,9 @@ pub fn draft(
         cod: hdr.cod.clone(),
         siz: hdr.siz.clone(),
         reduce,
-        q13: q13_97(&hdr.cod, &hdr.siz),
+        q13,
         slice_blocks: DEFAULT_SLICE_BLOCKS,
+        int16_dwt: false,
     })
 }
 
@@ -1043,6 +1039,7 @@ fn comb_tile(
     max_layers: u16,
     plt: Option<&[u32]>,
     wins: Option<&[TileCompWindow]>,
+    q13: bool,
 ) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
     let num_comps = geom.components.len();
     // Resolution counts and the reduce target are per component (COC).
@@ -1168,7 +1165,6 @@ fn comb_tile(
     // decoder's delta is the raw QCD step times that accumulated range.
     if !cod.comps[0].reversible {
         let (low, high) = crate::dwt::level_builder::w9x7_gains();
-        let q13 = q13_97(cod, siz);
         for c in 0..num_comps {
             let tc = &geom.components[c];
             let steps = &quant[c].steps;
@@ -1556,7 +1552,8 @@ mod tests {
     fn reduce_past_the_last_level_is_rejected() {
         let empty: Vec<u8> = Vec::new();
         for reduce in [NUM_LEVELS, NUM_LEVELS + 1, 200] {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0, true, None)
+            let Err(DecodeError::Logic(msg)) =
+                draft(&empty, &header(), reduce, 0, true, None, false)
             else {
                 panic!("reduce {reduce} must be rejected");
             };
@@ -1570,7 +1567,8 @@ mod tests {
         // what matters is that the failure is not the reduce rejection
         let empty: Vec<u8> = Vec::new();
         for reduce in 0..NUM_LEVELS {
-            let Err(DecodeError::Logic(msg)) = draft(&empty, &header(), reduce, 0, true, None)
+            let Err(DecodeError::Logic(msg)) =
+                draft(&empty, &header(), reduce, 0, true, None, false)
             else {
                 panic!("there is no SOT to walk");
             };
@@ -1907,7 +1905,7 @@ mod tests {
         let per_layer = (BLOCKS_PER_LAYER * BODY_LEN) as usize;
 
         for keep in 1..=LAYERS {
-            let plan = draft(&stream, &hdr, 0, keep, true, None).expect("plan must build");
+            let plan = draft(&stream, &hdr, 0, keep, true, None, false).expect("plan must build");
             assert_eq!(
                 coded_bytes(&plan),
                 per_layer * keep as usize,
@@ -1925,10 +1923,12 @@ mod tests {
     fn zero_and_oversized_layer_limits_decode_everything() {
         let stream = synth_stream();
         let hdr = synth_header();
-        let full =
-            coded_bytes(&draft(&stream, &hdr, 0, LAYERS, true, None).expect("plan must build"));
+        let full = coded_bytes(
+            &draft(&stream, &hdr, 0, LAYERS, true, None, false).expect("plan must build"),
+        );
         for max_layers in [0, LAYERS + 1, u16::MAX] {
-            let plan = draft(&stream, &hdr, 0, max_layers, true, None).expect("plan must build");
+            let plan =
+                draft(&stream, &hdr, 0, max_layers, true, None, false).expect("plan must build");
             assert_eq!(coded_bytes(&plan), full, "max_layers {max_layers}");
         }
     }
@@ -1942,7 +1942,7 @@ mod tests {
         let stream = synth_stream();
         let mut hdr = synth_header();
         hdr.cod.num_layers = OVERSIZED_LAYERS;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
             panic!("a tile declaring {OVERSIZED_LAYERS} layers of packets must be rejected");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
@@ -1959,8 +1959,10 @@ mod tests {
     #[test]
     fn a_zero_psot_tile_part_runs_to_the_eoc() {
         let hdr = synth_header();
-        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
-        let plan = draft(&zero_psot_stream(), &hdr, 0, 0, true, None).expect("plan must build");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let plan =
+            draft(&zero_psot_stream(), &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -1971,14 +1973,14 @@ mod tests {
 
     #[test]
     fn a_zero_psot_tile_part_stops_at_the_codestream_end() {
-        let baseline =
-            draft(&synth_stream(), &synth_header(), 0, 0, true, None).expect("baseline must build");
+        let baseline = draft(&synth_stream(), &synth_header(), 0, 0, true, None, false)
+            .expect("baseline must build");
         let mut stream = zero_psot_stream();
         let mut hdr = synth_header();
         hdr.codestream_len = stream.len() as u64;
         stream.extend([0x5A; TRAILING_BYTES]);
 
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -1987,7 +1989,7 @@ mod tests {
         let packet_bytes = hdr.codestream_len as usize - 16;
         // one layer past two packets per layer
         hdr.cod.num_layers = ((packet_bytes / 2) + 1) as u16;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
             panic!("the trailing bytes must not pad the tile's packet bytes");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
@@ -1996,15 +1998,15 @@ mod tests {
     // issue775.j2k: the last Psot ends 4 bytes short of the codestream end
     #[test]
     fn the_walk_ends_at_bytes_that_are_not_an_sot() {
-        let baseline =
-            draft(&synth_stream(), &synth_header(), 0, 0, true, None).expect("baseline must build");
+        let baseline = draft(&synth_stream(), &synth_header(), 0, 0, true, None, false)
+            .expect("baseline must build");
         for trailing in [4usize, TRAILING_BYTES] {
             let mut stream = synth_stream();
             stream.truncate(stream.len() - 2); // drop the EOC
             stream.extend(std::iter::repeat_n(0x5A, trailing));
             let mut hdr = synth_header();
             hdr.codestream_len = stream.len() as u64;
-            let plan = draft(&stream, &hdr, 0, 0, true, None)
+            let plan = draft(&stream, &hdr, 0, 0, true, None, false)
                 .unwrap_or_else(|e| panic!("{trailing} trailing bytes: {e:?}"));
             assert_eq!(block_offsets(&plan), block_offsets(&baseline), "{trailing}");
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "{trailing}");
@@ -2018,7 +2020,7 @@ mod tests {
         stream.truncate(stream.len() - 3); // drop the EOC and the last body byte
         let mut hdr = synth_header();
         hdr.codestream_len = stream.len() as u64;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
             panic!("a plan must not point a block past the end of the stream");
         };
         assert!(msg.contains("packet stream overrun"), "got {msg}");
@@ -2139,7 +2141,8 @@ mod tests {
         let packets = synth_packets();
         let layer0 = &packets[..2];
         let hdr = synth_header();
-        let baseline = draft(&synth_stream(), &hdr, 0, 1, true, None).expect("baseline must build");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 1, true, None, false).expect("baseline must build");
         for use_plt in [false, true] {
             let plt = if use_plt {
                 vec![(0, plt_encode(&packet_lengths(&packets)))]
@@ -2147,7 +2150,7 @@ mod tests {
                 Vec::new()
             };
             let stream = assemble_stream(layer0, &plt);
-            let plan = draft(&stream, &hdr, 0, 1, use_plt, None)
+            let plan = draft(&stream, &hdr, 0, 1, use_plt, None, false)
                 .expect("plan must stop before the missing packets");
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "plt {use_plt}");
             assert_eq!(passes(&plan), passes(&baseline), "plt {use_plt}");
@@ -2171,7 +2174,7 @@ mod tests {
             .collect();
         let baseline_stream = assemble_stream(&clean, &[]);
         let baseline =
-            draft(&baseline_stream, &hdr, 0, 1, false, None).expect("baseline must build");
+            draft(&baseline_stream, &hdr, 0, 1, false, None, false).expect("baseline must build");
 
         let mut packets = clean;
         for garbaged in &mut packets[1..=2] {
@@ -2180,7 +2183,7 @@ mod tests {
         }
         let plt = plt_encode(&packet_lengths(&packets));
         let stream = assemble_stream(&packets, &[(0, plt)]);
-        let plan = draft(&stream, &hdr, 0, 1, true, None)
+        let plan = draft(&stream, &hdr, 0, 1, true, None, false)
             .expect("plan must hop the garbaged dropped layers");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -2195,8 +2198,9 @@ mod tests {
         let stream = assemble_stream(&packets, &[(0, plt)]);
         let hdr = synth_header();
 
-        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2206,8 +2210,8 @@ mod tests {
     fn full_cover_window_changes_nothing() {
         let stream = synth_stream();
         let hdr = synth_header();
-        let full = draft(&stream, &hdr, 0, 0, true, None).expect("baseline must build");
-        let windowed = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)))
+        let full = draft(&stream, &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let windowed = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)), false)
             .expect("windowed plan must build");
         assert_eq!(coded_bytes(&windowed), coded_bytes(&full));
         assert_eq!(passes(&windowed), passes(&full));
@@ -2279,14 +2283,14 @@ mod tests {
     fn a_subsampled_component_gets_its_own_output_dims() {
         let stream = subsampled_stream();
         let hdr = subsampled_header();
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(plan.comp_dims[0], d(0, 0, 12, 12));
         assert_eq!(plan.comp_dims[1], d(0, 0, 6, 6));
         assert_eq!((plan.width, plan.height), (12, 12));
 
         // an odd window origin rounds up onto the subsampled component
-        let windowed =
-            draft(&stream, &hdr, 0, 0, true, Some(d(3, 5, 12, 12))).expect("plan must build");
+        let windowed = draft(&stream, &hdr, 0, 0, true, Some(d(3, 5, 12, 12)), false)
+            .expect("plan must build");
         assert_eq!(windowed.comp_dims[0], d(3, 5, 12, 12));
         assert_eq!(windowed.comp_dims[1], d(2, 3, 6, 6));
     }
@@ -2309,7 +2313,7 @@ mod tests {
 
         let stream = subsampled_stream();
         let hdr = subsampled_header();
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         let expected: Vec<(u32, u32)> = plan
             .comp_dims
             .iter()
@@ -2373,13 +2377,13 @@ mod tests {
         let mut whole = tile_part(0, true);
         whole.extend(tile_part(1, true));
         whole.extend([0xFF, 0xD9]);
-        let baseline = draft(&whole, &hdr, 0, 0, true, None).expect("baseline must build");
+        let baseline = draft(&whole, &hdr, 0, 0, true, None, false).expect("baseline must build");
 
         let mut cut = tile_part(0, true);
         cut.extend(tile_part(1, false));
         cut.extend([0xFF, 0xD9]); // EOC where tile 1's packet bytes should be
         let win = Some(d(0, 0, 8, 8));
-        let plan = draft(&cut, &hdr, 0, 0, true, win).expect("tile 1 must never be touched");
+        let plan = draft(&cut, &hdr, 0, 0, true, win, false).expect("tile 1 must never be touched");
         assert!(plan.tiles[1].is_none());
         assert_eq!((plan.width, plan.height), (8, 8));
         // tile 0's records match the whole-image parse
@@ -2398,7 +2402,7 @@ mod tests {
         assert_eq!(tile0_passes(&plan), tile0_passes(&baseline));
 
         assert!(
-            draft(&cut, &hdr, 0, 0, true, None).is_err(),
+            draft(&cut, &hdr, 0, 0, true, None, false).is_err(),
             "a whole-image parse needs tile 1's missing bytes"
         );
     }
@@ -2410,7 +2414,7 @@ mod tests {
             *p = synth_empty_packet();
         }
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)))
+        let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)), false)
             .expect("empty out-of-window packets must not block the plan");
         assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
@@ -2421,7 +2425,7 @@ mod tests {
         let (hdr, packets) = tall_rlcp();
         let plt = plt_encode(&packet_lengths(&packets));
         let stream = assemble_stream(&packets, &[(0, plt)]);
-        let plan = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)))
+        let plan = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)), false)
             .expect("PLT must hop the out-of-window packets");
         assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
@@ -2480,9 +2484,9 @@ mod tests {
                 height: 8,
             },
         ];
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("clamped blocks must plan");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("clamped blocks must plan");
         let baseline =
-            draft(&stream, &synth_header(), 0, 0, true, None).expect("baseline must build");
+            draft(&stream, &synth_header(), 0, 0, true, None, false).expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         let spans: Vec<(u32, u32)> = plan.tiles[0].as_ref().unwrap().comps[0]
             .iter()
@@ -2525,7 +2529,7 @@ mod tests {
             packets.push(synth_packet(first, 3)); // res 2, comp 1
         }
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
 
         const BLOCKS: usize = 11; // comp 0: 1 + 3, comp 1: 1 + 3 + 3
         assert_eq!(
@@ -2562,7 +2566,8 @@ mod tests {
         let mut second = hdr.cod.comps[0].clone();
         second.reversible = false;
         hdr.cod.comps.push(second);
-        let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None, false)
+        else {
             panic!("mixed kernels must be rejected");
         };
         assert!(msg.contains("mixed wavelet kernels"), "got {msg}");
@@ -2593,7 +2598,7 @@ mod tests {
             ..volume
         });
         let stream = marked_stream(&[poc_segment(&[volume])], &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("tile-part POC must plan");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("tile-part POC must plan");
         let tile = plan.tiles[0].as_ref().expect("tile must be present");
 
         assert_eq!(tile.cod.pocs.len(), 1);
@@ -2631,7 +2636,7 @@ mod tests {
         stream.extend(tile_part(1, 2, &[poc_segment(&[second])], &second_packets));
         stream.extend([0xFF, 0xD9]);
 
-        let plan = draft(&stream, &synth_header(), 0, 0, true, None)
+        let plan = draft(&stream, &synth_header(), 0, 0, true, None, false)
             .expect("later tile-part POC must plan");
         let tile = plan.tiles[0].as_ref().expect("tile must be present");
         assert_eq!(tile.cod.pocs.len(), 2);
@@ -2639,7 +2644,7 @@ mod tests {
         assert_eq!(tile.cod.pocs[1].res_s, 1);
         assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS_PER_LAYER as usize]);
 
-        let limited = draft(&stream, &synth_header(), 0, 1, true, None)
+        let limited = draft(&stream, &synth_header(), 0, 1, true, None, false)
             .expect("layer-limited tile-part POC must plan");
         assert_eq!(passes(&limited), vec![1; BLOCKS_PER_LAYER as usize]);
     }
@@ -2694,7 +2699,7 @@ mod tests {
             synth_packet(false, 3), // 11: comp 1, res 1, layer 2
         ];
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("POC plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("POC plan must build");
 
         const BLOCKS: usize = 8; // two components of LL + HL + LH + HH
         assert_eq!(
@@ -2746,10 +2751,10 @@ mod tests {
             order: ProgressionOrder::Lrcp,
         }];
         let stream = synth_stream();
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("clamped POC must plan");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("clamped POC must plan");
         let mut lrcp = synth_header();
         lrcp.cod.order = ProgressionOrder::Lrcp;
-        let baseline = draft(&stream, &lrcp, 0, 0, true, None).expect("baseline must build");
+        let baseline = draft(&stream, &lrcp, 0, 0, true, None, false).expect("baseline must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2777,7 +2782,8 @@ mod tests {
         for vol in empty_volumes {
             let mut hdr = synth_header();
             hdr.cod.pocs = vec![vol];
-            let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None)
+            let Err(DecodeError::Logic(msg)) =
+                draft(&synth_stream(), &hdr, 0, 0, true, None, false)
             else {
                 panic!("an empty POC volume must be rejected");
             };
@@ -2797,7 +2803,8 @@ mod tests {
         let psot =
             u32::from_be_bytes([spliced[6], spliced[7], spliced[8], spliced[9]]) + RGN.len() as u32;
         spliced[6..10].copy_from_slice(&psot.to_be_bytes());
-        let Err(DecodeError::Logic(msg)) = draft(&spliced, &synth_header(), 0, 0, true, None)
+        let Err(DecodeError::Logic(msg)) =
+            draft(&spliced, &synth_header(), 0, 0, true, None, false)
         else {
             panic!("a tile-part RGN must be rejected");
         };
@@ -2810,7 +2817,8 @@ mod tests {
         let mut lengths = packet_lengths(&packets);
         lengths[0] += 1;
         let stream = assemble_stream(&packets, &[(0, plt_encode(&lengths))]);
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        else {
             panic!("a lying PLT must be rejected");
         };
         assert!(msg.contains("PLT length"), "got {msg}");
@@ -2824,8 +2832,10 @@ mod tests {
         let stream = assemble_stream(&packets, &[(0, data)]);
         let hdr = synth_header();
 
-        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must parse without PLT");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let plan =
+            draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must parse without PLT");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
     }
 
@@ -2939,7 +2949,7 @@ mod tests {
         const TILE_LAYERS: u16 = 2;
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(TILE_LAYERS, 1, 0)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, TILE_LAYERS);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 4);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_height, 4);
@@ -2952,8 +2962,8 @@ mod tests {
 
         // the 4x4 bands hold one code-block either way, so the packets are the
         // main header's stream cut to the tile's layer count
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, TILE_LAYERS, true, None).expect("baseline must build");
+        let baseline = draft(&synth_stream(), &hdr, 0, TILE_LAYERS, true, None, false)
+            .expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2964,9 +2974,10 @@ mod tests {
     fn a_tile_part_cod_cannot_raise_the_layer_count() {
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(LAYERS + 4, 1, 4)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, LAYERS);
-        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2977,10 +2988,11 @@ mod tests {
     fn a_tile_part_qcd_replaces_the_tile_quantization() {
         let hdr = synth_header();
         let stream = marked_stream(&[quant_segment(0x5C, None, 3, 10)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
 
-        let baseline = draft(&synth_stream(), &hdr, 0, 0, true, None).expect("baseline must build");
+        let baseline =
+            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
         assert_eq!(k_max_primes(&baseline, 0), vec![2 + 8 - 1; 4]);
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
     }
@@ -3022,7 +3034,7 @@ mod tests {
             );
         }
         let stream = marked_stream(&[coc_segment(1, 2, 0)], &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
 
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].num_levels, 1);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 64);
@@ -3049,7 +3061,7 @@ mod tests {
             quant_segment(0x5D, Some(1), 1, 5),
         ];
         let stream = marked_stream(&markers, &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None).expect("plan must build");
+        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
         assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
         assert_eq!(k_max_primes(&plan, 1), vec![1 + 5 - 1; 4]);
     }
@@ -3063,7 +3075,8 @@ mod tests {
         let mut stream = tile_part(0, 2, &[], first);
         stream.extend(tile_part(1, 2, &[cod_segment(2, 1, 0)], second));
         stream.extend([0xFF, 0xD9]);
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        else {
             panic!("a later tile-part must not carry a COD");
         };
         assert!(msg.contains("outside the first tile-part"), "got {msg}");
@@ -3076,7 +3089,8 @@ mod tests {
         let mut irreversible = cod_segment(LAYERS, 1, 4);
         *irreversible.last_mut().unwrap() = 0x00;
         let stream = marked_stream(&[irreversible], &synth_packets());
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None) else {
+        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        else {
             panic!("a tile-part kernel change must be rejected");
         };
         assert!(msg.contains("changes the wavelet kernel"), "got {msg}");

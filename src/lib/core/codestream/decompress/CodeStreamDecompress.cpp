@@ -2853,6 +2853,23 @@ void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
   scratch->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
 }
 
+bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
+                            bool irreversibleInt16)
+{
+  for(uint16_t i = 0; i < image->numcomps; i++)
+  {
+    auto tccp = tcp->tccps_ + i;
+    uint8_t prec = image->comps[i].prec;
+    // int16 9/7 has no fraction bits left above 13 bit samples
+    bool forcedIrreversible = irreversibleInt16 && tccp->qmfbid_ == 0 && prec <= 13;
+    bool int16 =
+        forcedIrreversible || grk_get_data_type(false, prec, false, tccp->qmfbid_) == GRK_INT_16;
+    if(!int16 || tccp->usesPart2Transform())
+      return false;
+  }
+  return true;
+}
+
 bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
@@ -2866,17 +2883,8 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   // The single 16-bit DWT eligibility decision for this decode. TileProcessor reads it back
   // out of the coding params, so a tile can never decode into a sample type the composite
   // buffer was not allocated for.
-  bool allEligible = true;
-  for(uint16_t i = 0; i < headerImage_->numcomps; i++)
-  {
-    auto tccp = defaultTcp_->tccps_ + i;
-    if(grk_get_data_type(false, headerImage_->comps[i].prec, false, tccp->qmfbid_) != GRK_INT_16 ||
-       tccp->usesPart2Transform())
-    {
-      allEligible = false;
-      break;
-    }
-  }
+  bool allEligible = wholeImageUses16BitDwt(defaultTcp_.get(), headerImage_,
+                                            cp_.codingParams_.dec_.irreversibleInt16_);
   cp_.codingParams_.dec_.use16BitDwt_ = allEligible;
 
   // Decide the composite sample type from the same inputs TileProcessor uses, and set it

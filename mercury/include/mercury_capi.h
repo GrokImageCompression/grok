@@ -201,6 +201,8 @@ typedef struct MercuryDecodeParams
    * synthesis rows the window never needs are skipped. */
   uint32_t win_x0, win_y0, win_x1, win_y1;
   uint32_t slice_blocks; /* code blocks per subband column slice, 0 means 16 */
+  bool int16_dwt; /* nonzero runs the reversible 5/3 on int16 samples */
+  bool int16_irreversible; /* nonzero runs the 9/7 on int16 fixed point above 8 bits */
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
