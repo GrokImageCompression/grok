@@ -268,6 +268,10 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(grk_mercury_tile_samples_test ${GROK_CORE_NAME})
   add_test(NAME grk_mercury_tile_samples_test COMMAND grk_mercury_tile_samples_test)
 
+  add_executable(grk_mercury_tile_bytes_test GrkMercuryTileBytesTest.cpp)
+  target_link_libraries(grk_mercury_tile_bytes_test ${GROK_CORE_NAME})
+  add_test(NAME grk_mercury_tile_bytes_test COMMAND grk_mercury_tile_bytes_test)
+
   # synthesizes its own codestream, so it needs no GRK_DATA_ROOT
   add_executable(grk_mercury_tile_row_race_test GrkMercuryTileRowRaceTest.cpp)
   target_link_libraries(grk_mercury_tile_row_race_test ${GROK_CORE_NAME} spdlog::spdlog)

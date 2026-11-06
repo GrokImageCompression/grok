@@ -379,6 +379,54 @@ namespace
 #endif
   };
 
+  struct ReadSource
+  {
+    mercury_read_at_fn read = nullptr;
+    void* ctx = nullptr;
+    uint64_t size = 0;
+  };
+
+  struct TileBytes
+  {
+    struct Span
+    {
+      uint64_t fileOffset;
+      uint64_t length;
+      uint64_t bufferOffset;
+    };
+    std::vector<Span> spans;
+    std::vector<uint8_t> bytes;
+    ReadSource source;
+    std::atomic<uint64_t>& bufferedBytes;
+    uint64_t reserved;
+    TileBytes(ReadSource source, std::atomic<uint64_t>& bufferedBytes, uint64_t reserved)
+        : source(source), bufferedBytes(bufferedBytes), reserved(reserved)
+    {}
+    ~TileBytes()
+    {
+      bufferedBytes -= reserved;
+    }
+  };
+
+  int32_t tileBytesReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
+  {
+    auto* self = static_cast<TileBytes*>(ctx);
+    auto after = std::upper_bound(
+        self->spans.begin(), self->spans.end(), off,
+        [](uint64_t offset, const TileBytes::Span& span) { return offset < span.fileOffset; });
+    if(after != self->spans.begin())
+    {
+      const auto& span = *(after - 1);
+      if(off + len <= span.fileOffset + span.length)
+      {
+        memcpy(buf, self->bytes.data() + span.bufferOffset + (off - span.fileOffset), (size_t)len);
+        return 1;
+      }
+    }
+    // packet header windows can run past the end of a tile-part
+    return self->source.read(self->source.ctx, buf, off, len);
+  }
+
   MercuryPlan* warpPlan(const MercuryMainHeader& header, const MercuryDecodeParams& params,
                         MercuryReaders& readers, uint8_t* err, size_t errCap)
   {
@@ -441,7 +489,10 @@ namespace
     uint16_t tileY = 0;
     // decode window of this tile on the full resolution canvas
     Rect32 window;
+    std::vector<MercuryTlmEntry> parts;
     MercuryPlan* plan = nullptr;
+    // plan reads point into these bytes until the weave ends
+    std::unique_ptr<TileBytes> bytes;
     // rows written per component, read by swath waits while the weave runs
     std::unique_ptr<std::atomic<uint32_t>[]> filledRows;
     bool rowOverflow = false;
@@ -532,6 +583,9 @@ namespace
     std::atomic<uint32_t> peakInFlight{0};
     std::atomic<uint64_t> warpNs{0};
     std::atomic<uint64_t> weaveNs{0};
+    static constexpr uint64_t maxBufferedTileBytes = 256ull << 20;
+    std::atomic<uint64_t> bufferedTileBytes{0};
+    std::optional<ReadSource> tileByteSource;
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 
     ~MercuryTileState() override
@@ -584,13 +638,66 @@ namespace
       return pos < tiles.size() ? tiles[pos].get() : nullptr;
     }
 
-    MercuryPlan* warp(const Rect32& window, uint8_t* err, size_t errCap)
+    std::unique_ptr<TileBytes> readTileBytes(std::vector<MercuryTlmEntry> parts,
+                                             const ReadSource& source)
+    {
+      std::sort(parts.begin(), parts.end(), [](const MercuryTlmEntry& a, const MercuryTlmEntry& b) {
+        return a.offset < b.offset;
+      });
+      uint64_t total = 0;
+      for(const auto& part : parts)
+        total += part.length;
+      if(bufferedTileBytes.fetch_add(total) + total > maxBufferedTileBytes)
+      {
+        bufferedTileBytes -= total;
+        return nullptr;
+      }
+      auto tileBytes = std::make_unique<TileBytes>(source, bufferedTileBytes, total);
+      tileBytes->bytes.resize(total);
+      uint64_t bufferOffset = 0;
+      for(const auto& part : parts)
+      {
+        auto& spans = tileBytes->spans;
+        if(!spans.empty() && spans.back().fileOffset + spans.back().length == part.offset)
+          spans.back().length += part.length;
+        else
+          spans.push_back({part.offset, part.length, bufferOffset});
+        bufferOffset += part.length;
+      }
+      for(const auto& span : tileBytes->spans)
+        if(!source.read(source.ctx, tileBytes->bytes.data() + span.bufferOffset, span.fileOffset,
+                        span.length))
+          throw std::runtime_error("tile-part read failed");
+      return tileBytes;
+    }
+
+    MercuryPlan* warp(AsyncTile& tile, uint8_t* err, size_t errCap)
     {
       MercuryDecodeParams params = header->params;
-      params.win_x0 = window.x0;
-      params.win_y0 = window.y0;
-      params.win_x1 = window.x1;
-      params.win_y1 = window.y1;
+      params.win_x0 = tile.window.x0;
+      params.win_y0 = tile.window.y0;
+      params.win_x1 = tile.window.x1;
+      params.win_y1 = tile.window.y1;
+      if(tileByteSource)
+      {
+        try
+        {
+          tile.bytes = readTileBytes(tile.parts, *tileByteSource);
+        }
+        catch(const std::bad_alloc&)
+        {
+          snprintf((char*)err, errCap, "tile-part buffer allocation failed");
+          return nullptr;
+        }
+        catch(const std::runtime_error& e)
+        {
+          snprintf((char*)err, errCap, "%s", e.what());
+          return nullptr;
+        }
+      }
+      if(tile.bytes)
+        return mercury_warp_loom(&header->header, &params, tileBytesReadAt, tile.bytes.get(),
+                                 tileByteSource->size, err, errCap);
       return warpPlan(header->header, params, *readers, err, errCap);
     }
 
@@ -633,6 +740,7 @@ namespace
 
     void completeTile(AsyncTile& tile)
     {
+      tile.bytes.reset();
       {
         std::lock_guard<std::mutex> lock(mutex);
         tile.complete = true;
@@ -678,7 +786,7 @@ namespace
       uint8_t err[256] = {0};
       auto warpStart = std::chrono::steady_clock::now();
       if(!plan)
-        plan = warp(tile.window, err, sizeof err);
+        plan = warp(tile, err, sizeof err);
       warpNs += (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::steady_clock::now() - warpStart)
                     .count();
@@ -1285,8 +1393,14 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   if(mercuryEnv && std::strcmp(mercuryEnv, "0") == 0)
     return false;
   const bool mercuryForced = mercuryEnv && std::strcmp(mercuryEnv, "1") == 0;
-  // mercury plans every tile up front, which costs more than it saves on tiled images
-  if(!mercuryForced && cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ > 1)
+  // the per-tile path below allocates tile images and never needs the composite
+  const bool asyncDecode =
+      cs.cp_.asynchronous_ && cs.cp_.simulate_synchronous_ && cs.tileCompletion_;
+  IStream* inputStream = cs.getStream();
+  const bool callbackInput = cs.inputFilePath_.empty() && inputStream &&
+                             !inputStream->isMemStream() && !inputStream->isFromNetwork();
+  if(!mercuryForced && cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ > 1 &&
+     !(callbackInput && asyncDecode))
     MFP_BAIL("multi-tile image");
   auto* headerTcp = cs.defaultTcp_.get();
   for(uint16_t c = 0; c < headerTcp->numComps_; ++c)
@@ -1299,8 +1413,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // limit, and palette/ICC/channel-definition post-processing are handled;
   // everything else stays on the classic pipeline.
   auto& dec = cs.cp_.codingParams_.dec_;
-  // the per-tile path below allocates tile images and never needs the composite
-  const bool asyncDecode = cs.cp_.asynchronous_ && cs.cp_.simulate_synchronous_ && cs.tileCompletion_;
   if(dec.skipAllocateComposite_ && !asyncDecode)
     MFP_BAIL("skipAllocate set");
   // The transcoder drives a T2-only decode to record packet lengths for
@@ -1713,6 +1825,11 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->success = &cs.success_;
     Rect16 slated = cs.tilesToDecompress_.getSlatedTileRect();
     state->numTileCols = cs.cp_.t_grid_width_;
+    auto& streamReader = state->readers->streamReader;
+    // the one tile of a single-tile image is the whole code stream
+    if(streamReader.stream && cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ > 1)
+      // streamReadAt takes one mutex per read
+      state->tileByteSource = ReadSource{streamReadAt, &streamReader, streamReader.size};
     state->tileX0 = slated.x0;
     state->tileX1 = slated.x1;
     state->tileY0 = slated.y0;
@@ -1741,9 +1858,12 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       }
     if(state->tiles.empty())
       MFP_BAIL("no tiles slated");
+    for(const auto& part : state->header->tlm)
+      if(AsyncTile* tile = state->tileAt(part.tile))
+        tile->parts.push_back(part);
     // a stream the plan stage rejects still falls back to classic
     AsyncTile& first = *state->tiles.front();
-    first.plan = state->warp(first.window, err, sizeof err);
+    first.plan = state->warp(first, err, sizeof err);
     if(!first.plan)
     {
       grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
