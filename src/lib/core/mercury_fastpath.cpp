@@ -502,7 +502,9 @@ namespace
     uint32_t bandRows = 0;
     uint32_t releasedBands = 0;
     uint32_t neededBands = 0;
+    bool started = false;
     bool complete = false;
+    uint64_t imageBytes = 0;
   };
 
   struct MercuryTileState;
@@ -537,6 +539,11 @@ namespace
     Int16,
     Uint16
   };
+
+  size_t tileSampleBytes(TileSamples samples)
+  {
+    return samples == TileSamples::Int32 ? sizeof(int32_t) : sizeof(int16_t);
+  }
 
   // one mercury plan per tile, woven on the taskflow executor under classic's back-pressure
   struct MercuryTileState final : MercuryAsyncDecode
@@ -586,6 +593,7 @@ namespace
     static constexpr uint64_t maxBufferedTileBytes = 256ull << 20;
     std::atomic<uint64_t> bufferedTileBytes{0};
     std::optional<ReadSource> tileByteSource;
+    uint64_t maxHeldTileBytes = 0;
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 
     ~MercuryTileState() override
@@ -1007,7 +1015,7 @@ namespace
         return false;
       }
       auto whole = emptyTileImage(tile);
-      const size_t elem = tileSamples == TileSamples::Int32 ? sizeof(int32_t) : sizeof(int16_t);
+      const size_t elem = tileSampleBytes(tileSamples);
       for(uint16_t c = 0; c < whole->numcomps; c++)
       {
         auto comp = whole->comps + c;
@@ -1126,6 +1134,17 @@ namespace
       return true;
     }
 
+    bool heldBytesAllow(const AsyncTile& next) const
+    {
+      if(maxHeldTileBytes == 0)
+        return true;
+      uint64_t held = 0;
+      for(const auto& tile : tiles)
+        if(tile->started && !(tile->complete && tile->bands.empty()))
+          held += tile->imageBytes;
+      return held == 0 || held + next.imageBytes <= maxHeldTileBytes;
+    }
+
     void run()
     {
       for(auto& tilePtr : tiles)
@@ -1139,10 +1158,11 @@ namespace
             return cancel.load() || failed.load() ||
                    (inFlight.load() < maxTilesInFlight &&
                     (unbounded || ty < completion->getNeededTileY1() ||
-                     ty - clearedTileY <= rowsAhead));
+                     (ty - clearedTileY <= rowsAhead && heldBytesAllow(tile))));
           });
           if(cancel)
             return;
+          tile.started = true;
           uint32_t running = ++inFlight;
           peakInFlight = std::max(peakInFlight.load(), running);
         }
@@ -1861,6 +1881,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     for(const auto& part : state->header->tlm)
       if(AsyncTile* tile = state->tileAt(part.tile))
         tile->parts.push_back(part);
+    for(auto& tile : state->tiles)
+      for(uint16_t c = 0; c < img->numcomps; c++)
+        tile->imageBytes +=
+            state->compRect(tile->window, c).area() * tileSampleBytes(state->tileSamples);
+    // SPOT6 translate on 48 cores took 3.5 s at 512 MB, 3.9 s at 1024 MB and 4.4 s uncapped
+    if(!state->keepReleasedTiles)
+      state->maxHeldTileBytes = 512ull << 20;
     // a stream the plan stage rejects still falls back to classic
     AsyncTile& first = *state->tiles.front();
     first.plan = state->warp(first, err, sizeof err);
