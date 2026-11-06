@@ -1130,7 +1130,8 @@ fn dress_tile_loom(
 
     // Column slices per band: enough that the big full-res bands fan out
     // across all workers; small bands stay whole. Work-stealing balances.
-    let slice_count = |blocks_wide: u32| -> u32 { blocks_wide.div_ceil(16).clamp(1, 16) };
+    let slice_count =
+        |blocks_wide: u32| -> u32 { blocks_wide.div_ceil(plan.slice_blocks).clamp(1, 16) };
 
     struct ChainSpec {
         /// Per-level engines, bottom first, with each level's output height.

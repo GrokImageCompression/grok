@@ -201,6 +201,7 @@ typedef struct MercuryDecodeParams
    * all-zero (or empty) decodes the whole image. Tiles, precincts, and
    * synthesis rows the window never needs are skipped. */
   uint32_t win_x0, win_y0, win_x1, win_y1;
+  uint32_t slice_blocks; /* code blocks per subband column slice, 0 means 16 */
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.

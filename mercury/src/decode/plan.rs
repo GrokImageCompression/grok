@@ -237,6 +237,7 @@ pub struct DecodePlan {
     /// (see dwt::fixed97). Band deltas are then one-level gains, not the
     /// accumulated normalization.
     pub q13: bool,
+    pub slice_blocks: u32,
 }
 
 /// The int16 fixed-point 9/7 path fits when every component's precision is
@@ -530,6 +531,8 @@ pub fn chart_tile_parts(
     Ok(parts)
 }
 
+const DEFAULT_SLICE_BLOCKS: u32 = 16;
+
 /// `max_layers` keeps only the first that many quality layers (0 = all),
 /// truncating the coding passes the dropped layers carry. `use_plt` lets the
 /// parse hop over non-contributing packets by their PLT lengths. `window`
@@ -767,6 +770,7 @@ pub fn draft(
         siz: hdr.siz.clone(),
         reduce,
         q13: q13_97(&hdr.cod, &hdr.siz),
+        slice_blocks: DEFAULT_SLICE_BLOCKS,
     })
 }
 

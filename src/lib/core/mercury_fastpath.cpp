@@ -1892,6 +1892,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     // SPOT6 translate on 48 cores took 3.5 s at 512 MB, 3.9 s at 1024 MB and 4.4 s uncapped
     if(!state->keepReleasedTiles)
       state->maxHeldTileBytes = 512ull << 20;
+    const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
+    // at 16 code blocks per slice one 2048 tile decodes on about 4 cores
+    if(state->tiles.size() < cores)
+      state->header->params.slice_blocks = 2;
     // a stream the plan stage rejects still falls back to classic
     AsyncTile& first = *state->tiles.front();
     first.plan = state->warp(first, err, sizeof err);
@@ -1905,7 +1909,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     const char* why = nullptr;
     if(!state->planMatchesTile(first.plan, first, &why))
       MFP_BAIL(why);
-    const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
     // each tile in flight holds its tile image from its first row
     state->maxTilesInFlight = std::max<uint32_t>(1, cores);
     // one thread per weave fills the cores only with about two tiles in flight per core
