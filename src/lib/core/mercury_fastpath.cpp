@@ -1401,10 +1401,16 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   const bool asyncDecode =
       cs.cp_.asynchronous_ && cs.cp_.simulate_synchronous_ && cs.tileCompletion_;
   IStream* inputStream = cs.getStream();
-  const bool callbackInput = cs.inputFilePath_.empty() && inputStream &&
-                             !inputStream->isMemStream() && !inputStream->isFromNetwork();
+  const bool networkInput = inputStream && inputStream->isFromNetwork();
+  const bool callbackInput =
+      cs.inputFilePath_.empty() && inputStream && !inputStream->isMemStream() && !networkInput;
+  auto headerImage = cs.getHeaderImage();
+  // mercury downloads a network stream whole before decoding it
+  const bool localPartialWindow =
+      !networkInput && !cs.region_.empty() &&
+      cs.region_ != Rect32(headerImage->x0, headerImage->y0, headerImage->x1, headerImage->y1);
   if(!mercuryForced && cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ > 1 &&
-     !(callbackInput && asyncDecode))
+     !(callbackInput && asyncDecode) && !localPartialWindow)
     MFP_BAIL("multi-tile image");
   auto* headerTcp = cs.defaultTcp_.get();
   for(uint16_t c = 0; c < headerTcp->numComps_; ++c)
