@@ -447,22 +447,24 @@ namespace
   }
 
   int32_t chartTileParts(const MercuryMainHeader& header, MercuryReaders& readers,
-                         MercuryTlmEntry** parts, uint32_t* count, uint8_t* err, size_t errCap)
+                         const MercuryTileRect& tiles, MercuryTlmEntry** parts, uint32_t* count,
+                         uint8_t* err, size_t errCap)
   {
     if(readers.fromPath)
     {
 #if defined(_WIN32)
       return mercury_chart_tile_parts(&header, win32ReadAt, &readers.win32reader,
-                                      readers.win32reader.size(), parts, count, err, errCap);
+                                      readers.win32reader.size(), &tiles, parts, count, err,
+                                      errCap);
 #else
-      return mercury_chart_tile_parts_fd(&header, readers.fd, parts, count, err, errCap);
+      return mercury_chart_tile_parts_fd(&header, readers.fd, &tiles, parts, count, err, errCap);
 #endif
     }
     if(readers.streamReader.stream)
       return mercury_chart_tile_parts(&header, streamReadAt, &readers.streamReader,
-                                      readers.streamReader.size, parts, count, err, errCap);
+                                      readers.streamReader.size, &tiles, parts, count, err, errCap);
     return mercury_chart_tile_parts(&header, memReadAt, &readers.memReader, readers.memReader.size,
-                                    parts, count, err, errCap);
+                                    &tiles, parts, count, err, errCap);
   }
 
   // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
@@ -1807,7 +1809,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     {
       MercuryTlmEntry* parts = nullptr;
       uint32_t count = 0;
-      if(chartTileParts(mhdr, *readers, &parts, &count, err, sizeof err) != MERCURY_OK)
+      Rect16 slatedTiles = cs.tilesToDecompress_.getSlatedTileRect();
+      MercuryTileRect tiles{slatedTiles.x0, slatedTiles.y0, slatedTiles.x1, slatedTiles.y1};
+      if(chartTileParts(mhdr, *readers, tiles, &parts, &count, err, sizeof err) != MERCURY_OK)
         MFP_BAIL((const char*)err);
       mhTlm.assign(parts, parts + count);
       mercury_free_tile_parts(parts, count);

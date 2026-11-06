@@ -457,23 +457,40 @@ fn codestream_end(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<u64, DecodeEr
 pub fn chart_tile_parts(
     file: &dyn ReadAt,
     hdr: &MainHeaderIn,
+    needed: &[bool],
 ) -> Result<Vec<TlmEntry>, DecodeError> {
     let codestream_end = codestream_end(file, hdr)?;
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let mut parts = Vec::new();
+    let mut parts_seen = vec![0u8; num_tiles];
+    let mut tiles_pending = needed.iter().filter(|&&n| n).count();
+    let mut trust_tnsot = false;
     let mut sot_pos = hdr.first_sot_off;
     loop {
-        let mut sot = [0u8; 10];
+        let first = parts.is_empty();
+        // classic ignores whatever follows a tile-part if it is not a whole SOT segment
+        if !first && sot_pos + 12 > codestream_end {
+            break;
+        }
+        let mut sot = [0u8; 12];
         file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
         if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
+            if !first {
+                break;
+            }
             return Err(DecodeError::Logic(format!("expected SOT at {sot_pos}")));
         }
         let isot = u16::from_be_bytes([sot[4], sot[5]]);
         let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
+        let tnsot = sot[11];
         if isot as usize >= num_tiles {
             return Err(DecodeError::Logic(format!(
                 "plan: SOT tile index {isot} out of range"
             )));
+        }
+        // classic trusts TNsot unchecked only when the first tile-part signals one part
+        if first {
+            trust_tnsot = tnsot == 1;
         }
         // A.4.2: only the last tile-part may carry Psot=0, and it runs to the EOC
         let last = psot == 0;
@@ -495,19 +512,20 @@ pub fn chart_tile_parts(
             offset: sot_pos,
             length: psot,
         });
+        let tile = isot as usize;
+        if trust_tnsot && needed[tile] {
+            parts_seen[tile] = parts_seen[tile].saturating_add(1);
+            if parts_seen[tile] == tnsot {
+                tiles_pending -= 1;
+                if tiles_pending == 0 {
+                    break;
+                }
+            }
+        }
         if last {
             break;
         }
         sot_pos += psot;
-        if sot_pos + 2 > codestream_end {
-            break;
-        }
-        // classic ignores whatever follows a tile-part if it is not an SOT
-        let mut m = [0u8; 2];
-        file.draw_at(&mut m, sot_pos).map_err(io_snag)?;
-        if u16::from_be_bytes(m) != 0xFF90 {
-            break;
-        }
     }
     Ok(parts)
 }
@@ -579,7 +597,7 @@ pub fn draft(
     let mut tile_opened = vec![false; num_tiles];
     let walked_parts;
     let parts = if hdr.tlm.is_empty() {
-        walked_parts = chart_tile_parts(file, hdr)?;
+        walked_parts = chart_tile_parts(file, hdr, &tile_in_window)?;
         &walked_parts
     } else {
         &hdr.tlm
@@ -3056,5 +3074,66 @@ mod tests {
             panic!("a tile-part kernel change must be rejected");
         };
         assert!(msg.contains("changes the wavelet kernel"), "got {msg}");
+    }
+
+    struct CountingReader {
+        bytes: Vec<u8>,
+        reads: std::sync::atomic::AtomicU32,
+    }
+
+    impl ReadAt for CountingReader {
+        fn draw_at(&self, buf: &mut [u8], off: u64) -> std::io::Result<()> {
+            self.reads
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.bytes.draw_at(buf, off)
+        }
+
+        fn extent(&self) -> std::io::Result<u64> {
+            Ok(self.bytes.len() as u64)
+        }
+    }
+
+    fn sot_chain(tnsot: u8) -> CountingReader {
+        let num_tiles = siz().tiles_across() * siz().tiles_down();
+        let psot: u32 = 40;
+        let mut bytes = Vec::new();
+        for tile in 0..num_tiles as u16 {
+            bytes.extend_from_slice(&[0xFF, 0x90, 0, 10]);
+            bytes.extend_from_slice(&tile.to_be_bytes());
+            bytes.extend_from_slice(&psot.to_be_bytes());
+            bytes.extend_from_slice(&[0, tnsot]);
+            bytes.resize(bytes.len() + psot as usize - 12, 0);
+        }
+        CountingReader {
+            bytes,
+            reads: std::sync::atomic::AtomicU32::new(0),
+        }
+    }
+
+    fn only_tile(tile: usize) -> Vec<bool> {
+        let mut needed = vec![false; (siz().tiles_across() * siz().tiles_down()) as usize];
+        needed[tile] = true;
+        needed
+    }
+
+    #[test]
+    fn chart_stops_after_the_last_needed_tile() {
+        let file = sot_chain(1);
+        let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
+        assert_eq!(
+            parts.iter().map(|p| p.tile).collect::<Vec<_>>(),
+            (0..=5).collect::<Vec<_>>()
+        );
+        assert_eq!(file.reads.into_inner(), 6);
+    }
+
+    #[test]
+    fn chart_walks_every_tile_part_when_tnsot_is_unknown() {
+        let file = sot_chain(0);
+        let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
+        assert_eq!(
+            parts.len(),
+            (siz().tiles_across() * siz().tiles_down()) as usize
+        );
     }
 }

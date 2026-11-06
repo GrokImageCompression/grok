@@ -189,6 +189,14 @@ pub struct MercuryProgressionVolume {
     pub order: u8,
 }
 
+#[repr(C)]
+pub struct MercuryTileRect {
+    pub x0: u16,
+    pub y0: u16,
+    pub x1: u16,
+    pub y1: u16,
+}
+
 /// One tile-part's position, from the host's parsed TLM markers.
 #[repr(C)]
 pub struct MercuryTlmEntry {
@@ -584,6 +592,7 @@ pub extern "C" fn mercury_warp_loom_fd(
 fn chart_parts(
     hdr: *const MercuryMainHeader,
     src: &dyn ReadAt,
+    tiles: *const MercuryTileRect,
     parts: *mut *mut MercuryTlmEntry,
     count: *mut u32,
     err_buf: *mut u8,
@@ -592,6 +601,9 @@ fn chart_parts(
     if parts.is_null() || count.is_null() {
         return MERCURY_EBADARG;
     }
+    let Some(tiles) = (unsafe { tiles.as_ref() }) else {
+        return MERCURY_EBADARG;
+    };
     let header = match unsafe { draft_header_in(hdr) } {
         Ok(h) => h,
         Err(e) => {
@@ -599,8 +611,17 @@ fn chart_parts(
             return MERCURY_EBADARG;
         }
     };
+    let tiles_across = header.siz.tiles_across();
+    let num_tiles = tiles_across * header.siz.tiles_down();
+    let needed: Vec<bool> = (0..num_tiles)
+        .map(|t| {
+            let (tx, ty) = (t % tiles_across, t / tiles_across);
+            (tiles.x0 as u32..tiles.x1 as u32).contains(&tx)
+                && (tiles.y0 as u32..tiles.y1 as u32).contains(&ty)
+        })
+        .collect();
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        chart_tile_parts(src, &header)
+        chart_tile_parts(src, &header, &needed)
     }));
     let charted = match r {
         Ok(Ok(charted)) => charted,
@@ -638,6 +659,7 @@ pub extern "C" fn mercury_chart_tile_parts(
     read_at: Option<MercuryReadAtFn>,
     ctx: *mut c_void,
     len: u64,
+    tiles: *const MercuryTileRect,
     parts: *mut *mut MercuryTlmEntry,
     count: *mut u32,
     err_buf: *mut u8,
@@ -650,6 +672,7 @@ pub extern "C" fn mercury_chart_tile_parts(
     chart_parts(
         hdr,
         &CallbackReader { read_at, ctx, len },
+        tiles,
         parts,
         count,
         err_buf,
@@ -662,6 +685,7 @@ pub extern "C" fn mercury_chart_tile_parts(
 pub extern "C" fn mercury_chart_tile_parts_fd(
     hdr: *const MercuryMainHeader,
     fd: i32,
+    tiles: *const MercuryTileRect,
     parts: *mut *mut MercuryTlmEntry,
     count: *mut u32,
     err_buf: *mut u8,
@@ -670,7 +694,7 @@ pub extern "C" fn mercury_chart_tile_parts_fd(
     let file = std::mem::ManuallyDrop::new(unsafe {
         <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(fd)
     });
-    chart_parts(hdr, &*file, parts, count, err_buf, err_cap)
+    chart_parts(hdr, &*file, tiles, parts, count, err_buf, err_cap)
 }
 
 /// # Safety

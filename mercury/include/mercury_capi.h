@@ -132,6 +132,11 @@ typedef struct MercuryProgressionVolume
   uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
 } MercuryProgressionVolume;
 
+typedef struct MercuryTileRect
+{
+  uint16_t x0, y0, x1, y1; /* tile indices, x1 and y1 exclusive */
+} MercuryTileRect;
+
 /* One tile-part's position, from the host's parsed TLM markers. */
 typedef struct MercuryTlmEntry
 {
@@ -213,12 +218,13 @@ MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDec
 #endif
 
 int32_t mercury_chart_tile_parts(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
-                                 void* ctx, uint64_t len, MercuryTlmEntry** parts, uint32_t* count,
-                                 uint8_t* err_buf, size_t err_cap);
+                                 void* ctx, uint64_t len, const MercuryTileRect* tiles,
+                                 MercuryTlmEntry** parts, uint32_t* count, uint8_t* err_buf,
+                                 size_t err_cap);
 #if !defined(_WIN32)
 int32_t mercury_chart_tile_parts_fd(const MercuryMainHeader* hdr, int32_t fd,
-                                    MercuryTlmEntry** parts, uint32_t* count, uint8_t* err_buf,
-                                    size_t err_cap);
+                                    const MercuryTileRect* tiles, MercuryTlmEntry** parts,
+                                    uint32_t* count, uint8_t* err_buf, size_t err_cap);
 #endif
 void mercury_free_tile_parts(MercuryTlmEntry* parts, uint32_t count);
 
