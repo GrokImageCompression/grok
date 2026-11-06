@@ -78,9 +78,9 @@ struct ITileProcessor;
 
 /* grok's part-1 block coder behind mercury's BlockCoder contract —
  * compiled into libgrokj2k on this branch (t1/part1/mercury_t1_shim.cpp). */
-extern "C" int32_t mercury_grok_t1_decode(const uint8_t*, int32_t, int32_t, int32_t, int32_t,
-                                          int32_t, int32_t, int32_t, int32_t, const int32_t*,
-                                          int32_t, int32_t*);
+extern "C" const int32_t* mercury_grok_t1_decode(const uint8_t*, int32_t, int32_t, int32_t, int32_t,
+                                                 int32_t, int32_t, int32_t, int32_t, const int32_t*,
+                                                 int32_t);
 
 namespace grk
 {

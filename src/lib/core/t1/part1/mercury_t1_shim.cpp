@@ -1,15 +1,11 @@
 /*
- * LOCAL-ONLY (never pushed): extern "C" adapter exposing grok's part-1 T1
- * block decoder to mercury's bench_t1 A/B harness, matching mercury's
- * stripe_decoder::BlockCoder contract (see mercury src/decode/stripe_decoder.rs):
- * output is row-major sign-magnitude i32, bit 31 = sign, magnitude
- * left-aligned so the reversible sample is mag >> (31 - k_max_prime).
+ * extern "C" adapter exposing grok's part-1 T1 block decoder to mercury,
+ * matching mercury's stripe_decoder::BlockCoder contract (see mercury
+ * src/decode/stripe_decoder.rs).
  *
  * grok's BlockCoder decodes two's-complement values at x2 scale (the
- * implicit T1_NMSEDEC fractional bit; its ShiftFilter divides by 2), with
- * the block's MSB plane at bit numbps. Conversion is therefore
- * mag = |v| << (30 - k_max_prime), which also carries the half-bit
- * reconstruction into the fractional positions mercury's f32 path reads.
+ * implicit T1_NMSEDEC fractional bit, classic's ShiftFilter divides by 2),
+ * which is the contract's format, so the coder's buffer is returned as is.
  */
 
 #include <cstdint>
@@ -22,12 +18,12 @@
 #include "BlockCoder.h"
 #include "CodeblockDecompress.h"
 
-extern "C" int32_t mercury_grok_t1_decode(const uint8_t* coded_data, int32_t coded_length,
-                                          int32_t num_passes, int32_t missing_msbs,
-                                          int32_t k_max_prime, int32_t orientation, int32_t modes,
-                                          int32_t num_cols, int32_t num_rows,
-                                          const int32_t* segment_lengths, int32_t num_segments,
-                                          int32_t* out)
+extern "C" const int32_t* mercury_grok_t1_decode(const uint8_t* coded_data, int32_t coded_length,
+                                                 int32_t num_passes, int32_t missing_msbs,
+                                                 int32_t k_max_prime, int32_t orientation,
+                                                 int32_t modes, int32_t num_cols, int32_t num_rows,
+                                                 const int32_t* segment_lengths,
+                                                 int32_t num_segments)
 {
   using namespace grk;
   using namespace grk::t1;
@@ -40,7 +36,7 @@ extern "C" int32_t mercury_grok_t1_decode(const uint8_t* coded_data, int32_t cod
 
   int32_t numbps = k_max_prime - missing_msbs;
   if(numbps <= 0 || num_cols <= 0 || num_rows <= 0)
-    return 0;
+    return nullptr;
 
   static const bool dbg = getenv("MERCURY_SHIM_DEBUG") != nullptr;
   CodeblockDecompress cblk(1 /*numLayers*/);
@@ -52,7 +48,7 @@ extern "C" int32_t mercury_grok_t1_decode(const uint8_t* coded_data, int32_t cod
     if(dbg)
       fprintf(stderr, "shim: directInit failed: numbps=%d passes=%d segs=%d len=%d modes=%#x\n",
               numbps, num_passes, num_segments, coded_length, modes);
-    return 0;
+    return nullptr;
   }
 
   coder->setFinalLayer(true);
@@ -62,29 +58,8 @@ extern "C" int32_t mercury_grok_t1_decode(const uint8_t* coded_data, int32_t cod
       fprintf(stderr,
               "shim: decompress_cblk failed: numbps=%d passes=%d segs=%d len=%d modes=%#x\n",
               numbps, num_passes, num_segments, coded_length, modes);
-    return 0;
+    return nullptr;
   }
 
-  const int32_t* src = coder->getUncompressedData();
-  const int32_t shift = 30 - k_max_prime;
-  const size_t n = (size_t)num_cols * (size_t)num_rows;
-  if(shift >= 0)
-  {
-    for(size_t i = 0; i < n; ++i)
-    {
-      int32_t v = src[i];
-      uint32_t mag = (uint32_t)(v < 0 ? -v : v) << shift;
-      out[i] = (int32_t)((v < 0 ? 0x80000000u : 0u) | mag);
-    }
-  }
-  else
-  {
-    for(size_t i = 0; i < n; ++i)
-    {
-      int32_t v = src[i];
-      uint32_t mag = (uint32_t)(v < 0 ? -v : v) >> -shift;
-      out[i] = (int32_t)((v < 0 ? 0x80000000u : 0u) | mag);
-    }
-  }
-  return 1;
+  return coder->getUncompressedData();
 }

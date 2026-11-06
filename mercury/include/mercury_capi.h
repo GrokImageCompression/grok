@@ -31,15 +31,14 @@ enum
 typedef int32_t (*mercury_read_at_fn)(void* ctx, uint8_t* buf, uint64_t off, uint64_t len);
 
 /* Substitute tier-1 block decoder (BlockCoder contract, see mercury
- * src/decode/stripe_decoder.rs): write row-major sign-magnitude i32
- * (bit 31 sign, magnitude left-aligned so the reversible sample is
- * mag >> (31 - k_max_prime)) into out, which has room for
- * num_cols * 4*ceil(num_rows/4) samples. Nonzero on success. */
-typedef int32_t (*mercury_t1_fn)(const uint8_t* coded_data, int32_t coded_length,
-                                 int32_t num_passes, int32_t missing_msbs, int32_t k_max_prime,
-                                 int32_t orientation, int32_t modes, int32_t num_cols,
-                                 int32_t num_rows, const int32_t* segment_lengths,
-                                 int32_t num_segments, int32_t* out);
+ * src/decode/stripe_decoder.rs): returns the decoder's row-major i32 samples,
+ * num_cols per row, two's complement at twice the sample scale, valid until
+ * the next call on the same thread. NULL on failure. */
+typedef const int32_t* (*mercury_t1_fn)(const uint8_t* coded_data, int32_t coded_length,
+                                        int32_t num_passes, int32_t missing_msbs,
+                                        int32_t k_max_prime, int32_t orientation, int32_t modes,
+                                        int32_t num_cols, int32_t num_rows,
+                                        const int32_t* segment_lengths, int32_t num_segments);
 
 /* Row delivery: comps[c] points at width i32 samples of component c, valid
  * only during the call. Rows arrive in order, one call at a time, on a decode

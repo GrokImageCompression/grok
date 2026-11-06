@@ -224,7 +224,6 @@ impl SubbandDecodeNode {
                     infos.len() as i32,
                     dst_lines.as_ptr() as *const *mut f32,
                     stripe_rows,
-                    band.k_max_prime,
                     band.delta,
                     coder,
                 ),
@@ -233,7 +232,6 @@ impl SubbandDecodeNode {
                     infos.len() as i32,
                     dst_lines.as_ptr() as *const *mut i32,
                     stripe_rows,
-                    band.k_max_prime,
                     coder,
                 ),
                 Path::I16 => mercury_weave_stripe16(
@@ -241,7 +239,6 @@ impl SubbandDecodeNode {
                     infos.len() as i32,
                     dst_lines.as_ptr() as *const *mut i16,
                     stripe_rows,
-                    band.k_max_prime,
                     coder,
                 ),
                 Path::Q13 => mercury_weave_stripe16_q13(
@@ -249,7 +246,6 @@ impl SubbandDecodeNode {
                     infos.len() as i32,
                     dst_lines.as_ptr() as *const *mut i16,
                     stripe_rows,
-                    band.k_max_prime,
                     band.delta,
                     coder,
                 ),

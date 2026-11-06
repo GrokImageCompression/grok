@@ -2295,9 +2295,11 @@ mod tests {
     /// counts and widths, which the synthesis produces from geometry alone.
     unsafe fn zero_coder(
         blk: &crate::decode::stripe_decoder::MercuryStripeBlockInfo,
-    ) -> Option<Vec<i32>> {
-        let stripes = (blk.num_rows + 3) >> 2;
-        Some(vec![0i32; ((stripes << 2) * blk.num_cols) as usize])
+    ) -> Option<*const i32> {
+        // JPEG 2000 code-blocks hold at most 4096 samples
+        static ZEROS: [i32; 4096] = [0; 4096];
+        assert!((blk.num_cols * blk.num_rows) as usize <= ZEROS.len());
+        Some(ZEROS.as_ptr())
     }
 
     #[test]

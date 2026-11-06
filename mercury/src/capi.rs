@@ -46,8 +46,8 @@ use crate::weft::rt::{HostExecutor, HostSubmitFn};
 pub type MercuryReadAtFn = extern "C" fn(ctx: *mut c_void, buf: *mut u8, off: u64, len: u64) -> i32;
 
 /// Substitute tier-1 block decoder; see the `BlockCoder` contract in
-/// `stripe_decoder.rs`. `out` has room for `num_cols * 4*ceil(num_rows/4)`
-/// samples; write row-major sign-magnitude i32. Return nonzero on success.
+/// `stripe_decoder.rs`. Returns the decoder's row-major double-scale i32
+/// samples, valid until the next call on the same thread, or null on failure.
 pub type MercuryT1Fn = extern "C" fn(
     coded_data: *const u8,
     coded_length: i32,
@@ -60,8 +60,7 @@ pub type MercuryT1Fn = extern "C" fn(
     num_rows: i32,
     segment_lengths: *const i32,
     num_segments: i32,
-    out: *mut i32,
-) -> i32;
+) -> *const i32;
 
 // a tier-1 block encoder with mercury_t1_encode_block's contract
 pub type MercuryT1EncodeFn = unsafe extern "C" fn(
@@ -804,11 +803,9 @@ pub unsafe extern "C" fn mercury_unwarp_loom(plan: *mut MercuryPlan) {
 /// `mercury_weave` before the graph runs.
 static EXTERN_T1: AtomicUsize = AtomicUsize::new(0);
 
-unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
+unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<*const i32> {
     let f: MercuryT1Fn = unsafe { std::mem::transmute(EXTERN_T1.load(Ordering::Relaxed)) };
-    let stripes = (blk.num_rows + 3) >> 2;
-    let mut out = vec![0i32; ((stripes as usize) << 2) * (blk.num_cols as usize)];
-    let ok = f(
+    let samples = f(
         blk.coded_data,
         blk.coded_length,
         blk.num_passes,
@@ -820,9 +817,8 @@ unsafe fn extern_t1_weave(blk: &MercuryStripeBlockInfo) -> Option<Vec<i32>> {
         blk.num_rows,
         blk.segment_lengths,
         blk.num_segments,
-        out.as_mut_ptr(),
     );
-    (ok != 0).then_some(out)
+    (!samples.is_null()).then_some(samples)
 }
 
 /// DWT-only benchmark: run a full multi-level inverse synthesis pyramid on

@@ -1,6 +1,6 @@
 //! Stripe decoder — decodes a horizontal row of code-blocks into output
 //! stripe lines. One generic driver: T1-decode each block (via the embedding
-//! codec's [`BlockCoder`]) into a sign-magnitude buffer, then transfer with
+//! codec's [`BlockCoder`]) into the codec's buffer, then transfer with
 //! the path's dequantization (i16/i32 reversible, f32 irreversible).
 
 #![allow(unsafe_op_in_unsafe_fn)]
@@ -37,21 +37,21 @@ pub struct MercuryStripeBlockInfo {
 /// its own T1 (e.g. grok's `ICoder`, which also brings HTJ2K to the streaming
 /// path).
 ///
-/// Contract: decode `blk`'s coded bytes into a fresh sign-magnitude buffer —
-/// - row-major, `num_cols` wide, `4 * ceil(num_rows / 4)` rows (EBCOT stripes
-///   are 4 rows; only the first `num_rows` are read);
-/// - bit 31 = sign, bits [30..0] = magnitude, left-aligned so the reversible
-///   sample is `mag >> (31 - k_max)`, the irreversible one
-///   `mag as f32 * delta / 2^(31 - k_max)`;
+/// Contract: decode `blk`'s coded bytes and return the coder's own buffer —
+/// - row-major, `num_cols` wide, at least `num_rows` rows;
+/// - two's complement at twice the sample scale (one fraction bit for the
+///   half-bit reconstruction), so the reversible sample is `v / 2`, the
+///   irreversible one `v as f32 * delta / 2`;
+/// - valid until the next call on the same thread;
 /// - `num_passes == 0` blocks never arrive (they zero-fill upstream);
 /// - multi-segment blocks (bypass/restart) list per-segment byte lengths in
 ///   `segment_lengths`; otherwise one segment of `coded_length` bytes.
 ///
 /// Returns None on a malformed codeword.
-pub type BlockCoder = unsafe fn(&MercuryStripeBlockInfo) -> Option<Vec<i32>>;
+pub type BlockCoder = unsafe fn(&MercuryStripeBlockInfo) -> Option<*const i32>;
 
 /// Decode every block of a stripe row into `dst_lines` using `coder`,
-/// converting each sign-magnitude sample with `xfer`. Blocks absent from
+/// converting each double-scale sample with `xfer`. Blocks absent from
 /// every packet (`num_passes == 0`) decode to zeros.
 unsafe fn weave_stripe<T>(
     blocks: *const MercuryStripeBlockInfo,
@@ -80,7 +80,7 @@ unsafe fn weave_stripe<T>(
         };
         for row in 0..rows {
             let dst = *dst_lines.add(row as usize);
-            let src = samples.as_ptr().add((row * cols) as usize);
+            let src = samples.add((row * cols) as usize);
             for col in 0..cols {
                 *dst.add((offset + col) as usize) = xfer(*src.add(col as usize));
             }
@@ -89,8 +89,7 @@ unsafe fn weave_stripe<T>(
     true
 }
 
-/// Decode a stripe row to i16 lines, reversible dequant (sign-magnitude →
-/// two's complement, `>> (31 - k_max)`).
+/// Decode a stripe row to i16 lines, reversible dequant (`v / 2`).
 ///
 /// # Safety
 /// - `blocks`: `num_blocks` valid `MercuryStripeBlockInfo`s with valid
@@ -102,16 +101,10 @@ pub unsafe fn mercury_weave_stripe16(
     num_blocks: i32,
     dst_lines: *const *mut i16,
     stripe_height: i32,
-    k_max: i32,
     coder: BlockCoder,
 ) -> bool {
-    let downshift = 31 - k_max;
     weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
-        if val < 0 {
-            -(((val & 0x7FFF_FFFF) >> downshift) as i16)
-        } else {
-            (val >> downshift) as i16
-        }
+        (val / 2) as i16
     })
 }
 
@@ -125,21 +118,15 @@ pub unsafe fn mercury_weave_stripe32(
     num_blocks: i32,
     dst_lines: *const *mut i32,
     stripe_height: i32,
-    k_max: i32,
     coder: BlockCoder,
 ) -> bool {
-    let downshift = 31 - k_max;
     weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
-        if val < 0 {
-            -((val & 0x7FFF_FFFF) >> downshift)
-        } else {
-            val >> downshift
-        }
+        val / 2
     })
 }
 
 /// Decode a stripe row to i16 Q13 lines, irreversible fixed-point dequant:
-/// out = sat_i16(round_ties_even(±|mag| · δ · 2^13 / 2^(31−K_max))).
+/// out = sat_i16(round_ties_even(v · δ · 2^13 / 2)).
 /// `delta` = band's raw QCD step size × ONE level's 2D gain — unlike the f32
 /// path's accumulated normalization; the Q13 path rescales LL rows between
 /// levels instead (graph::LevelInputs), keeping every level's intermediates
@@ -152,26 +139,19 @@ pub unsafe fn mercury_weave_stripe16_q13(
     num_blocks: i32,
     dst_lines: *const *mut i16,
     stripe_height: i32,
-    k_max: i32,
     delta: f32,
     coder: BlockCoder,
 ) -> bool {
     let q13 = (1u32 << crate::dwt::fixed97::Q13_FRACTION_BITS) as f32;
-    let fscale = if k_max <= 31 {
-        delta * q13 / (1u64 << (31 - k_max)) as f32
-    } else {
-        delta * q13 * (1u64 << (k_max - 31)) as f32
-    };
+    let fscale = delta * q13 / 2.0;
     weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
-        let mag = (val & 0x7FFF_FFFF) as f32 * fscale;
-        let signed = if val < 0 { -mag } else { mag };
         // `as i32` saturates on overflow; clamp narrows to the i16 range
-        (signed.round_ties_even() as i32).clamp(-32768, 32767) as i16
+        ((val as f32 * fscale).round_ties_even() as i32).clamp(-32768, 32767) as i16
     })
 }
 
 /// Decode a stripe row to f32 lines, irreversible dequant (normalized):
-/// out = ±(|mag| · δ / 2^(31−K_max)), sign bit OR'd back onto the float.
+/// out = v · δ / 2.
 /// `delta` = band's raw QCD step size × accumulated synthesis-gain normalization.
 ///
 /// # Safety
@@ -181,18 +161,11 @@ pub unsafe fn mercury_weave_stripe_f32(
     num_blocks: i32,
     dst_lines: *const *mut f32,
     stripe_height: i32,
-    k_max: i32,
     delta: f32,
     coder: BlockCoder,
 ) -> bool {
-    let fscale = if k_max <= 31 {
-        delta / (1u64 << (31 - k_max)) as f32
-    } else {
-        delta * (1u64 << (k_max - 31)) as f32
-    };
+    let fscale = delta / 2.0;
     weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
-        let val = val as u32;
-        let mag = (val & 0x7FFF_FFFF) as f32 * fscale;
-        f32::from_bits(mag.to_bits() | (val & 0x8000_0000))
+        val as f32 * fscale
     })
 }
