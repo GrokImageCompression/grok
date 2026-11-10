@@ -2120,6 +2120,7 @@ namespace
 struct BatchDecompressMemoryState
 {
   std::atomic_bool running{false};
+  std::atomic_bool pulling{false};
   // T2 runs on a codec per frame, each on its own inline executor
   grk_decompress_parameters parameters = {};
   GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK pull = nullptr;
@@ -2147,7 +2148,7 @@ bool outputThresholdsNeverDecrease(const float* thresholds)
 // the plugin's workers ask here, the caller answers
 bool batchDecompressMemoryPull(void*, const uint8_t** codestream, size_t* length, void** frameUser)
 {
-  if(!batchDecompress.running || !batchDecompress.pull)
+  if(!batchDecompress.pulling || !batchDecompress.pull)
     return false;
   return batchDecompress.pull(batchDecompress.user, codestream, length, frameUser);
 }
@@ -2263,6 +2264,7 @@ GRK_API int32_t GRK_CALLCONV
   s_originalDecompressParams = &batchDecompress.parameters;
   // the plugin's workers start pulling inside begin
   batchDecompress.running = true;
+  batchDecompress.pulling = true;
   int32_t rc = begin(&gpupInfo, grk_plugin_internal_decode_callback);
   gpup_image_free_shell(gpupInfo.image);
   grk_object_unref(codec);
@@ -2270,6 +2272,7 @@ GRK_API int32_t GRK_CALLCONV
     *info.rgb8_on_device = rc == 0 && gpupInfo.rgb8_on_device;
   if(rc != 0)
   {
+    batchDecompress.pulling = false;
     batchDecompress.running = false;
     decodeCallback = nullptr;
     s_originalDecompressParams = nullptr;
@@ -2287,12 +2290,14 @@ GRK_API bool GRK_CALLCONV grk_plugin_batch_decompress_memory_end(void)
   auto end =
       (PLUGIN_BATCH_DECODE_MEMORY_END)batchMemorySymbol(plugin_batch_decode_memory_end_method_name);
   // the workers' pulls return false from here on
-  batchDecompress.running = false;
+  batchDecompress.pulling = false;
+  // the plugin hands frames back through decodeCallback until end returns
   bool drained = end && end();
   decodeCallback = nullptr;
   s_originalDecompressParams = nullptr;
   batchDecompress.pull = nullptr;
   batchDecompress.callback = nullptr;
+  batchDecompress.running = false;
 
   return drained;
 }
