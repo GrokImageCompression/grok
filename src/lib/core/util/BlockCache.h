@@ -19,6 +19,7 @@
 
 #include <memory_resource>
 #include <new>
+#include <unordered_map>
 #include "SmallVector.h"
 #include "intmath.h"
 
@@ -31,15 +32,19 @@ class BlockCache
 public:
   BlockCache(uint16_t numLayers, uint32_t gridWidth, uint32_t gridHeight, P* blockInitializer,
              std::pmr::memory_resource* arena)
-      : gridWidth_(gridWidth), blockInitializer_(blockInitializer), arena_(arena),
-        numLayers_(numLayers)
+      : gridWidth_(gridWidth), sparseBlocks_(arena), blockInitializer_(blockInitializer),
+        arena_(arena), numLayers_(numLayers)
   {
     chunksPerRow_ = ceildiv<uint32_t>(gridWidth, 16);
     chunkWidth_ = ceildiv<uint32_t>(gridWidth, chunksPerRow_);
     uint32_t chunksPerColumn = ceildiv<uint32_t>(gridHeight, 256 / chunkWidth_);
     chunkHeight_ = ceildiv<uint32_t>(gridHeight, chunksPerColumn);
     chunkSize_ = chunkWidth_ * chunkHeight_;
-    chunks_.resize((size_t)chunksPerRow_ * chunksPerColumn);
+    constexpr size_t maxDenseTableBytes = 4096;
+    size_t numChunks = (size_t)chunksPerRow_ * chunksPerColumn;
+    // dense tables over huge precinct grids run out of memory
+    if(numChunks * sizeof(T*) <= maxDenseTableBytes)
+      chunks_.resize(numChunks);
   }
   ~BlockCache(void)
   {
@@ -70,25 +75,44 @@ private:
 public:
   T* tryGet(uint64_t index)
   {
-    auto slot = locate(index);
-    auto chunk = chunks_[slot.chunk];
-    if(!chunk)
-      return nullptr;
-    auto item = chunk + slot.offset;
+    T* item;
+    if(chunks_.empty())
+    {
+      auto iter = sparseBlocks_.find(index);
+      if(iter == sparseBlocks_.end())
+        return nullptr;
+      item = &iter->second;
+    }
+    else
+    {
+      auto slot = locate(index);
+      auto chunk = chunks_[slot.chunk];
+      if(!chunk)
+        return nullptr;
+      item = chunk + slot.offset;
+    }
     return item->empty() ? nullptr : item;
   }
 
   T* get(uint64_t index)
   {
-    auto slot = locate(index);
-    auto& chunk = chunks_[slot.chunk];
-    if(!chunk)
+    T* item;
+    if(chunks_.empty())
     {
-      chunk = static_cast<T*>(arena_->allocate(sizeof(T) * chunkSize_, alignof(T)));
-      for(uint32_t i = 0; i < chunkSize_; ++i)
-        new(chunk + i) T(numLayers_);
+      item = &sparseBlocks_.try_emplace(index, numLayers_).first->second;
     }
-    auto item = chunk + slot.offset;
+    else
+    {
+      auto slot = locate(index);
+      auto& chunk = chunks_[slot.chunk];
+      if(!chunk)
+      {
+        chunk = static_cast<T*>(arena_->allocate(sizeof(T) * chunkSize_, alignof(T)));
+        for(uint32_t i = 0; i < chunkSize_; ++i)
+          new(chunk + i) T(numLayers_);
+      }
+      item = chunk + slot.offset;
+    }
     blockInitializer_->initCodeBlock(item, (uint32_t)index);
     return item;
   }
@@ -100,6 +124,7 @@ private:
   uint32_t chunkSize_;
   uint32_t chunksPerRow_;
   SmallVector<T*, 1> chunks_;
+  std::pmr::unordered_map<uint64_t, T> sparseBlocks_;
   P* blockInitializer_;
   std::pmr::memory_resource* arena_;
   uint16_t numLayers_;

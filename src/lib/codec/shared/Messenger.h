@@ -48,6 +48,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <cinttypes>
+#include <climits>
 
 #ifdef _WIN32
 #include <windows.h>

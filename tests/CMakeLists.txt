@@ -199,6 +199,21 @@ if(GRK_DATA_ROOT)
             ${GRK_DATA_ROOT}/input/nonregression/oom-a7167864c261ba3ab1e31def07c9e813d725c92e)
 endif()
 
+# OSS-Fuzz OOM: 1400 precincts of 8192x8192 code blocks, block and tag tree tables must hold only touched entries
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_huge_precinct_directory_memory_test
+    COMMAND grk_decode_peak_memory_test
+            ${GRK_DATA_ROOT}/input/nonregression/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4675574644408320)
+endif()
+
+add_executable(grk_huge_grid_touch_memory_test GrkHugeGridTouchMemoryTest.cpp)
+target_include_directories(grk_huge_grid_touch_memory_test PRIVATE
+  ${GROK_SOURCE_DIR}/src/lib/core/t1_t2
+  ${GROK_SOURCE_DIR}/src/lib/core/t2
+  ${GROK_SOURCE_DIR}/src/lib/core/util
+)
+add_test(NAME grk_huge_grid_touch_memory_test COMMAND grk_huge_grid_touch_memory_test)
+
 # OSS-Fuzz OOM: 65535 tiles of 257 components
 if(GRK_DATA_ROOT)
   add_test(NAME grk_many_tiles_mercury_memory_test

@@ -24,6 +24,7 @@
 #include <limits>
 #include <memory_resource>
 #include <queue>
+#include <unordered_map>
 #include <vector>
 
 namespace grk
@@ -43,7 +44,8 @@ public:
    */
 
   TagTree(uint16_t leavesWidth, uint16_t leavesHeight, std::pmr::memory_resource* arena)
-      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), pageOffset_(arena), pool_(arena)
+      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), pageOffset_(arena),
+        sparsePageOffset_(arena), pool_(arena)
   {
     buildLevels();
   }
@@ -194,6 +196,7 @@ private:
   static constexpr uint8_t maxLevels = 17;
   static constexpr uint8_t pageShift = 10;
   static constexpr uint32_t pageSize = 1u << pageShift;
+  static constexpr uint8_t sparsePageShift = 4;
   static constexpr uint32_t unallocatedPage = UINT32_MAX;
 
   uint32_t nodeIndex(uint8_t level, uint32_t row, uint32_t column) const
@@ -239,21 +242,24 @@ private:
   // a huge precinct with a short header must not allocate every node
   Node& nodeAt(uint32_t index)
   {
-    if(pageOffset_.empty()) [[likely]]
+    if(totalNodes_ <= pageSize) [[likely]]
       return pool_[index];
-    uint32_t pageIndex = index >> pageShift;
-    uint32_t pageOffset = pageOffset_[pageIndex];
-    if(pageOffset == unallocatedPage) [[unlikely]]
-      pageOffset = allocatePage(pageIndex);
-    return pool_[pageOffset + (index & (pageSize - 1))];
+    if(pageOffset_.empty())
+      return nodeInPage(
+          sparsePageOffset_.try_emplace(index >> sparsePageShift, unallocatedPage).first->second,
+          index, sparsePageShift);
+    return nodeInPage(pageOffset_[index >> pageShift], index, pageShift);
   }
-  uint32_t allocatePage(uint32_t pageIndex)
+  Node& nodeInPage(uint32_t& pageOffset, uint32_t index, uint8_t shift)
   {
-    auto pageOffset = static_cast<uint32_t>(pool_.size());
-    pageOffset_[pageIndex] = pageOffset;
-    uint32_t pageNodes = std::min(pageSize, totalNodes_ - (pageIndex << pageShift));
-    pool_.resize(pool_.size() + pageNodes, unusedNode());
-    return pageOffset;
+    uint32_t pageNodes = 1u << shift;
+    if(pageOffset == unallocatedPage) [[unlikely]]
+    {
+      pageOffset = static_cast<uint32_t>(pool_.size());
+      uint32_t firstNode = index & ~(pageNodes - 1);
+      pool_.resize(pool_.size() + std::min(pageNodes, totalNodes_ - firstNode), unusedNode());
+    }
+    return pool_[pageOffset + (index & (pageNodes - 1))];
   }
   Node unusedNode() const
   {
@@ -277,10 +283,12 @@ private:
       width = (uint16_t)((width + 1) >> 1);
       height = (uint16_t)((height + 1) >> 1);
     } while(nodesInLevel > 1);
+    constexpr size_t maxDensePageTableBytes = 4096;
+    uint32_t numPages = (totalNodes_ + pageSize - 1) >> pageShift;
     if(totalNodes_ <= pageSize)
       pool_.assign(totalNodes_, unusedNode());
-    else
-      pageOffset_.assign((totalNodes_ + pageSize - 1) >> pageShift, unallocatedPage);
+    else if(numPages * sizeof(uint32_t) <= maxDensePageTableBytes)
+      pageOffset_.assign(numPages, unallocatedPage);
   }
 
   uint16_t leavesWidth_;
@@ -291,6 +299,7 @@ private:
   std::array<uint16_t, maxLevels> levelHeight_;
   std::array<uint32_t, maxLevels> levelBase_;
   std::pmr::vector<uint32_t> pageOffset_;
+  std::pmr::unordered_map<uint32_t, uint32_t> sparsePageOffset_;
   std::pmr::vector<Node> pool_;
 };
 
