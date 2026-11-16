@@ -115,6 +115,7 @@ public:
    * @return @ref ITileProcessor
    */
   ITileProcessor* getTileProcessor(uint16_t tile_index);
+  bool replaySkippedTileParts(uint16_t tileIndex);
 
   /**
    * @brief Initializes tile completeness set
@@ -438,6 +439,14 @@ private:
   ITileProcessor* currTileProcessor_ = nullptr;
 
   TilePartInfo currTilePartInfo_;
+  struct SkippedTilePart
+  {
+    uint64_t offset_;
+    uint32_t length_;
+    uint8_t tilePart_;
+    uint8_t numTileParts_;
+  };
+  std::unordered_map<uint16_t, std::vector<SkippedTilePart>> skippedTileParts_;
   int32_t currTileIndex_ = -1;
   bool numTilePartsChecked_ = false;
   void detectShortNumTileParts(void);

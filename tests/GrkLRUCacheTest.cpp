@@ -561,6 +561,62 @@ static bool testLRUEvictionReDecompress(const std::string& testFile)
   return true;
 }
 
+static bool testTilesDecodedAfterLastTile(const std::string& testFile)
+{
+  spdlog::info("=== Test: tiles decoded after the last tile, same codec ===");
+
+  auto refData = decompressTileByTile(testFile, GRK_TILE_CACHE_IMAGE, 0);
+  if(refData.empty())
+  {
+    spdlog::error("Reference tile-by-tile decompression produced no data");
+    return false;
+  }
+
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto streamParams = make_stream_params();
+  safe_strcpy(streamParams->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(streamParams.get(), params.get()));
+  grk_header_info headerInfo{};
+  if(!codec || !grk_decompress_read_header(codec.get(), &headerInfo) ||
+     !grk_decompress_update(params.get(), codec.get()))
+  {
+    spdlog::error("Failed to set up the decompressor");
+    return false;
+  }
+
+  uint16_t numTiles = headerInfo.t_grid_width * headerInfo.t_grid_height;
+  if(!grk_decompress_tile(codec.get(), (uint16_t)(numTiles - 1)))
+  {
+    spdlog::error("grk_decompress_tile({}) failed", numTiles - 1);
+    return false;
+  }
+  for(uint16_t t = 0; t < numTiles; ++t)
+  {
+    auto* tileImg = grk_decompress_tile(codec.get(), t)
+                        ? grk_decompress_get_tile_image(codec.get(), t, true)
+                        : nullptr;
+    if(!tileImg)
+    {
+      spdlog::error("Tile {} failed to decompress", t);
+      return false;
+    }
+    auto& ref = refData[t];
+    for(uint16_t c = 0; c < tileImg->numcomps; ++c)
+    {
+      auto& comp = tileImg->comps[c];
+      if(readPixels(comp, comp.w * comp.h) != ref.componentData[c])
+      {
+        spdlog::error("Pixel data mismatch for tile {} component {}", t, c);
+        return false;
+      }
+    }
+  }
+
+  spdlog::info("PASS: {} tiles decoded after the last tile match the reference", numTiles);
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////
 // Test 5: TLM image + LRU eviction + re-decompress
 //
@@ -2624,6 +2680,8 @@ int GrkLRUCacheTest::main(int argc, char** argv)
   else
   {
     if(!testLRUEvictionReDecompress(noTlmFile))
+      failures++;
+    if(!testTilesDecodedAfterLastTile(noTlmFile))
       failures++;
 
     std::error_code ec;

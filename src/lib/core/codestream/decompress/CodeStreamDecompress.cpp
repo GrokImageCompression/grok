@@ -248,6 +248,7 @@ void CodeStreamDecompress::discardPluginTileParse(void)
   currTileProcessor_ = nullptr;
   currTileIndex_ = -1;
   tileCache_->discardTiles();
+  skippedTileParts_.clear();
 }
 // the plugin's sample buffers go away when the callback returns
 bool CodeStreamDecompress::postProcessPluginImage(const grk_image* decoded)
@@ -564,8 +565,35 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   return success_;
 }
 
+bool CodeStreamDecompress::replaySkippedTileParts(uint16_t tileIndex)
+{
+  auto skipped = skippedTileParts_.extract(tileIndex);
+  if(skipped.empty())
+    return true;
+  auto processor = getTileProcessor(tileIndex);
+  if(!processor)
+    return false;
+  for(const auto& part : skipped.mapped())
+  {
+    uint8_t sotFields[] = {part.tilePart_, part.numTileParts_};
+    TilePartInfo tilePartInfo;
+    tilePartInfo.tilePartLength_ = part.length_;
+    if(!stream_->seek(part.offset_ + sotMarkerSegmentLen) ||
+       !processor->readSOT(stream_, sotFields,
+                           sotMarkerSegmentLen - MARKER_BYTES_PLUS_MARKER_LENGTH_BYTES,
+                           tilePartInfo, false))
+      return false;
+  }
+  return true;
+}
+
 bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
 {
+  for(auto tileIndex : pendingTiles)
+  {
+    if(!replaySkippedTileParts(tileIndex))
+      return false;
+  }
   // Filter out fully cached tiles
   std::erase_if(pendingTiles, [this](uint16_t index) {
     auto cacheEntry = tileCache_->get(index);
@@ -959,6 +987,7 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
   // must not decide whether this one has anything to parse
   currTileIndex_ = -1;
   tileCache_->resetSOTParsing();
+  skippedTileParts_.clear();
   if(cp_.plmMarkers_)
     cp_.plmMarkers_->rewind();
   stream_->memAdvise(stream_->tell(), 0, GrkAccessPattern::ACCESS_RANDOM);
@@ -1254,6 +1283,8 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   scratchImage_ = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
       new GrkImage(), RefCountedDeleter<GrkImage>());
 
+  if(!replaySkippedTileParts(tileIndex))
+    return false;
   auto cacheEntry = tileCache_->get(tileIndex);
   if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage())
   {
@@ -1675,6 +1706,7 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
     if(region_ != Rect32() && region_ != canvasRegion)
     {
       tileCache_->discardTiles();
+      skippedTileParts_.clear();
       compositeDecompressed_ = false;
     }
     region_ = canvasRegion;

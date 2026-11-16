@@ -412,12 +412,29 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
 
   if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
   {
-    // Record SOT info for non-slated tiles so tilePartSeq_ is populated
-    // for potential future decode via decompressFromCachedTileParts()
-    auto processor = getTileProcessor(tileIndex);
-    if(!processor ||
-       !processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
-      return false;
+    if(cached && cached->processor())
+    {
+      if(!cached->processor()->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_,
+                                       false))
+        return false;
+    }
+    else
+    {
+      auto sotFields = headerData;
+      uint8_t tilePart, numTileParts;
+      grk_read(&sotFields, &tilePart);
+      grk_read(&sotFields, &numTileParts);
+      validateTilePartIndex(tileIndex, tilePart, cp_.correctedNumTileParts(numTileParts));
+      if(currTilePartInfo_.tilePartLength_ &&
+         currTilePartInfo_.tilePartLength_ < sotMarkerSegmentLen)
+      {
+        grklog.error("Illegal Psot value %u", currTilePartInfo_.tilePartLength_);
+        return false;
+      }
+      skippedTileParts_[tileIndex].push_back({stream_->tell() - sotMarkerSegmentLen,
+                                              currTilePartInfo_.tilePartLength_, tilePart,
+                                              numTileParts});
+    }
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
                : true;
