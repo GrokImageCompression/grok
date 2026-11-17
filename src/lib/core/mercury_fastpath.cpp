@@ -1843,7 +1843,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->header = std::make_unique<MercuryHeaderStorage>();
     state->header->header = mhdr;
     state->header->params = mparams;
-    state->header->params.max_strips = std::max(1u, cores / 4);
+    // one strip made HiRISE regions up to 31% slower and saved tiled images no time
+    if(singleTile)
+      state->header->params.max_strips = std::max(1u, cores / 4);
     state->header->comps = std::move(mhComps);
     state->header->precincts = std::move(mhPrec);
     state->header->qcdRanges = std::move(qcdRanges);
