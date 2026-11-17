@@ -446,25 +446,23 @@ namespace
                              readers.memReader.size, err, errCap);
   }
 
-  int32_t chartTileParts(const MercuryMainHeader& header, MercuryReaders& readers,
-                         const MercuryTileRect& tiles, MercuryTlmEntry** parts, uint32_t* count,
-                         uint8_t* err, size_t errCap)
+  MercurySotChain* openSotChain(const MercuryMainHeader& header, MercuryReaders& readers,
+                                const MercuryTileRect& tiles, uint8_t* err, size_t errCap)
   {
     if(readers.fromPath)
     {
 #if defined(_WIN32)
-      return mercury_chart_tile_parts(&header, win32ReadAt, &readers.win32reader,
-                                      readers.win32reader.size(), &tiles, parts, count, err,
-                                      errCap);
+      return mercury_sot_chain_open(&header, win32ReadAt, &readers.win32reader,
+                                    readers.win32reader.size(), &tiles, err, errCap);
 #else
-      return mercury_chart_tile_parts_fd(&header, readers.fd, &tiles, parts, count, err, errCap);
+      return mercury_sot_chain_open_fd(&header, readers.fd, &tiles, err, errCap);
 #endif
     }
     if(readers.streamReader.stream)
-      return mercury_chart_tile_parts(&header, streamReadAt, &readers.streamReader,
-                                      readers.streamReader.size, &tiles, parts, count, err, errCap);
-    return mercury_chart_tile_parts(&header, memReadAt, &readers.memReader, readers.memReader.size,
-                                    &tiles, parts, count, err, errCap);
+      return mercury_sot_chain_open(&header, streamReadAt, &readers.streamReader,
+                                    readers.streamReader.size, &tiles, err, errCap);
+    return mercury_sot_chain_open(&header, memReadAt, &readers.memReader, readers.memReader.size,
+                                  &tiles, err, errCap);
   }
 
   // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
@@ -492,6 +490,7 @@ namespace
     // decode window of this tile on the full resolution canvas
     Rect32 window;
     std::vector<MercuryTlmEntry> parts;
+    bool charted = false;
     MercuryPlan* plan = nullptr;
     // plan reads point into these bytes until the weave ends
     std::unique_ptr<TileBytes> bytes;
@@ -596,6 +595,9 @@ namespace
     std::atomic<uint64_t> bufferedTileBytes{0};
     std::optional<ReadSource> tileByteSource;
     uint64_t maxHeldTileBytes = 0;
+    // open while some slated tile is not charted, on streams without TLM
+    std::unique_ptr<MercurySotChain, decltype(&mercury_sot_chain_close)> sotChain{
+        nullptr, mercury_sot_chain_close};
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 
     ~MercuryTileState() override
@@ -648,6 +650,34 @@ namespace
       return pos < tiles.size() ? tiles[pos].get() : nullptr;
     }
 
+    bool chartThrough(const AsyncTile& tile, uint8_t* err, size_t errCap)
+    {
+      while(sotChain && !tile.charted)
+      {
+        MercuryChartedPart charted;
+        bool ended = false;
+        if(mercury_sot_chain_next(sotChain.get(), &charted, &ended, err, errCap) != MERCURY_OK)
+        {
+          sotChain.reset();
+          return false;
+        }
+        if(ended)
+        {
+          sotChain.reset();
+          for(auto& slated : tiles)
+            slated->charted = true;
+          break;
+        }
+        AsyncTile* owner = tileAt(charted.part.tile);
+        // tile tasks read the parts of charted tiles without a lock
+        if(!owner || owner->charted)
+          continue;
+        owner->parts.push_back(charted.part);
+        owner->charted = charted.completes_tile;
+      }
+      return true;
+    }
+
     std::unique_ptr<TileBytes> readTileBytes(std::vector<MercuryTlmEntry> parts,
                                              const ReadSource& source)
     {
@@ -683,6 +713,9 @@ namespace
 
     MercuryPlan* warp(AsyncTile& tile, uint8_t* err, size_t errCap)
     {
+      MercuryMainHeader tileHeader = header->header;
+      tileHeader.tlm = tile.parts.data();
+      tileHeader.num_tlm = static_cast<uint32_t>(tile.parts.size());
       MercuryDecodeParams params = header->params;
       params.win_x0 = tile.window.x0;
       params.win_y0 = tile.window.y0;
@@ -706,9 +739,9 @@ namespace
         }
       }
       if(tile.bytes)
-        return mercury_warp_loom(&header->header, &params, tileBytesReadAt, tile.bytes.get(),
+        return mercury_warp_loom(&tileHeader, &params, tileBytesReadAt, tile.bytes.get(),
                                  tileByteSource->size, err, errCap);
-      return warpPlan(header->header, params, *readers, err, errCap);
+      return warpPlan(tileHeader, params, *readers, err, errCap);
     }
 
     // reduced component rectangle of a tile window, mercury's comp_dims rule
@@ -1153,6 +1186,12 @@ namespace
       {
         AsyncTile& tile = *tilePtr;
         int32_t ty = tile.tileY;
+        uint8_t err[256] = {0};
+        if(!chartThrough(tile, err, sizeof err))
+        {
+          failTile(tile, (const char*)err);
+          continue;
+        }
         {
           std::unique_lock<std::mutex> lock(mutex);
           // classic's back-pressure: rowsAhead tile rows past the cleared row, or a needed row
@@ -1796,20 +1835,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   {
     if(img->decompress_num_comps != img->numcomps)
       MFP_BAIL("decompress_num_comps != numcomps");
-    // without TLM every per-tile plan walks the whole SOT chain
-    if(mhTlm.empty())
-    {
-      MercuryTlmEntry* parts = nullptr;
-      uint32_t count = 0;
-      Rect16 slatedTiles = cs.tilesToDecompress_.getSlatedTileRect();
-      MercuryTileRect tiles{slatedTiles.x0, slatedTiles.y0, slatedTiles.x1, slatedTiles.y1};
-      if(chartTileParts(mhdr, *readers, tiles, &parts, &count, err, sizeof err) != MERCURY_OK)
-        MFP_BAIL((const char*)err);
-      mhTlm.assign(parts, parts + count);
-      mercury_free_tile_parts(parts, count);
-      mhdr.tlm = mhTlm.data();
-      mhdr.num_tlm = count;
-    }
     // a second decode on this codec joins the previous tiles first
     cs.mercuryAsync_.reset();
     auto state = std::make_unique<MercuryTileState>();
@@ -1829,6 +1854,15 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->header->poc = std::move(mhPoc);
     state->header->tlm = std::move(mhTlm);
     state->readers = std::move(readers);
+    if(state->header->tlm.empty())
+    {
+      Rect16 slatedTiles = cs.tilesToDecompress_.getSlatedTileRect();
+      MercuryTileRect tiles{slatedTiles.x0, slatedTiles.y0, slatedTiles.x1, slatedTiles.y1};
+      state->sotChain.reset(
+          openSotChain(state->header->header, *state->readers, tiles, err, sizeof err));
+      if(!state->sotChain)
+        MFP_BAIL((const char*)err);
+    }
     state->composite = img;
     state->outType = mparams.int16_dwt ? GRK_INT_16 : GRK_INT_32;
     state->uniformSubsampling = uniformSubsampling;
@@ -1878,6 +1912,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     for(const auto& part : state->header->tlm)
       if(AsyncTile* tile = state->tileAt(part.tile))
         tile->parts.push_back(part);
+    if(!state->sotChain)
+      for(auto& tile : state->tiles)
+        tile->charted = true;
     for(auto& tile : state->tiles)
       for(uint16_t c = 0; c < img->numcomps; c++)
         tile->imageBytes +=
@@ -1887,6 +1924,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       state->maxHeldTileBytes = 512ull << 20;
     // a stream the plan stage rejects still falls back to classic
     AsyncTile& first = *state->tiles.front();
+    if(!state->chartThrough(first, err, sizeof err))
+      MFP_BAIL((const char*)err);
     first.plan = state->warp(first, err, sizeof err);
     if(!first.plan)
     {

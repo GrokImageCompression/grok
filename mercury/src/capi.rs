@@ -36,7 +36,7 @@ use crate::decode::graph::{
     uniform_subsampling, weave_comps_with_coder, weave_with_coder,
 };
 use crate::decode::plan::{
-    DecodePlan, Drafted, MainHeaderIn, PltUse, TlmEntry, chart_tile_parts, draft,
+    DecodePlan, Drafted, MainHeaderIn, PltUse, SotChainCursor, TlmEntry, draft,
 };
 use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, ReadAt, fetch_runs};
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
@@ -666,26 +666,33 @@ pub extern "C" fn mercury_warp_loom_fd(
     }
 }
 
-fn chart_parts(
+pub struct MercurySotChain {
+    cursor: SotChainCursor,
+    src: Arc<dyn ReadAt>,
+}
+
+#[repr(C)]
+pub struct MercuryChartedPart {
+    pub part: MercuryTlmEntry,
+    pub completes_tile: bool,
+}
+
+fn open_sot_chain(
     hdr: *const MercuryMainHeader,
-    src: &dyn ReadAt,
+    src: Arc<dyn ReadAt>,
     tiles: *const MercuryTileRect,
-    parts: *mut *mut MercuryTlmEntry,
-    count: *mut u32,
     err_buf: *mut u8,
     err_cap: usize,
-) -> i32 {
-    if parts.is_null() || count.is_null() {
-        return MERCURY_EBADARG;
-    }
+) -> *mut MercurySotChain {
     let Some(tiles) = (unsafe { tiles.as_ref() }) else {
-        return MERCURY_EBADARG;
+        stamp_err(err_buf, err_cap, "null tile rect");
+        return std::ptr::null_mut();
     };
     let header = match unsafe { draft_header_in(hdr) } {
         Ok(h) => h,
         Err(e) => {
             stamp_err(err_buf, err_cap, &e);
-            return MERCURY_EBADARG;
+            return std::ptr::null_mut();
         }
     };
     let tiles_across = header.siz.tiles_across();
@@ -697,61 +704,33 @@ fn chart_parts(
                 && (tiles.y0 as u32..tiles.y1 as u32).contains(&ty)
         })
         .collect();
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        chart_tile_parts(src, &header, &needed)
-    }));
-    let charted = match r {
-        Ok(Ok(charted)) => charted,
-        Ok(Err(e)) => {
+    match SotChainCursor::start(&*src, &header, needed) {
+        Ok(cursor) => Box::into_raw(Box::new(MercurySotChain { cursor, src })),
+        Err(e) => {
             stamp_err(err_buf, err_cap, &format!("{e:?}"));
-            return MERCURY_EDECODE;
+            std::ptr::null_mut()
         }
-        Err(_) => {
-            stamp_err(err_buf, err_cap, "panic in chart_tile_parts");
-            return MERCURY_EPANIC;
-        }
-    };
-    let Ok(n) = u32::try_from(charted.len()) else {
-        stamp_err(err_buf, err_cap, "more than 2^32 tile-parts");
-        return MERCURY_EDECODE;
-    };
-    let entries: Box<[MercuryTlmEntry]> = charted
-        .into_iter()
-        .map(|e| MercuryTlmEntry {
-            offset: e.offset,
-            length: e.length,
-            tile: e.tile,
-        })
-        .collect();
-    unsafe {
-        *parts = Box::into_raw(entries) as *mut MercuryTlmEntry;
-        *count = n;
     }
-    MERCURY_OK
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn mercury_chart_tile_parts(
+pub extern "C" fn mercury_sot_chain_open(
     hdr: *const MercuryMainHeader,
     read_at: Option<MercuryReadAtFn>,
     ctx: *mut c_void,
     len: u64,
     tiles: *const MercuryTileRect,
-    parts: *mut *mut MercuryTlmEntry,
-    count: *mut u32,
     err_buf: *mut u8,
     err_cap: usize,
-) -> i32 {
+) -> *mut MercurySotChain {
     let Some(read_at) = read_at else {
         stamp_err(err_buf, err_cap, "null read_at");
-        return MERCURY_EBADARG;
+        return std::ptr::null_mut();
     };
-    chart_parts(
+    open_sot_chain(
         hdr,
-        &CallbackReader { read_at, ctx, len },
+        Arc::new(CallbackReader { read_at, ctx, len }),
         tiles,
-        parts,
-        count,
         err_buf,
         err_cap,
     )
@@ -759,29 +738,84 @@ pub extern "C" fn mercury_chart_tile_parts(
 
 #[cfg(unix)]
 #[unsafe(no_mangle)]
-pub extern "C" fn mercury_chart_tile_parts_fd(
+pub extern "C" fn mercury_sot_chain_open_fd(
     hdr: *const MercuryMainHeader,
     fd: i32,
     tiles: *const MercuryTileRect,
-    parts: *mut *mut MercuryTlmEntry,
-    count: *mut u32,
     err_buf: *mut u8,
     err_cap: usize,
-) -> i32 {
-    let file = std::mem::ManuallyDrop::new(unsafe {
-        <std::fs::File as std::os::fd::FromRawFd>::from_raw_fd(fd)
-    });
-    chart_parts(hdr, &*file, tiles, parts, count, err_buf, err_cap)
+) -> *mut MercurySotChain {
+    match unsafe { std::os::fd::BorrowedFd::borrow_raw(fd) }.try_clone_to_owned() {
+        Ok(owned) => open_sot_chain(
+            hdr,
+            Arc::new(std::fs::File::from(owned)),
+            tiles,
+            err_buf,
+            err_cap,
+        ),
+        Err(e) => {
+            stamp_err(err_buf, err_cap, &format!("dup fd: {e}"));
+            std::ptr::null_mut()
+        }
+    }
 }
 
 /// # Safety
-/// `parts` and `count` must come from one `mercury_chart_tile_parts{,_fd}` call.
+/// `chain` must come from `mercury_sot_chain_open{,_fd}`, `charted` and `ended` must be writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn mercury_free_tile_parts(parts: *mut MercuryTlmEntry, count: u32) {
-    if parts.is_null() {
+pub unsafe extern "C" fn mercury_sot_chain_next(
+    chain: *mut MercurySotChain,
+    charted: *mut MercuryChartedPart,
+    ended: *mut bool,
+    err_buf: *mut u8,
+    err_cap: usize,
+) -> i32 {
+    let (Some(chain), Some(charted), Some(ended)) = (
+        unsafe { chain.as_mut() },
+        unsafe { charted.as_mut() },
+        unsafe { ended.as_mut() },
+    ) else {
+        return MERCURY_EBADARG;
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        chain.cursor.next_part(&*chain.src)
+    }));
+    match r {
+        Ok(Ok(Some(part))) => {
+            *charted = MercuryChartedPart {
+                part: MercuryTlmEntry {
+                    offset: part.part.offset,
+                    length: part.part.length,
+                    tile: part.part.tile,
+                },
+                completes_tile: part.completes_tile,
+            };
+            *ended = false;
+            MERCURY_OK
+        }
+        Ok(Ok(None)) => {
+            *ended = true;
+            MERCURY_OK
+        }
+        Ok(Err(e)) => {
+            stamp_err(err_buf, err_cap, &format!("{e:?}"));
+            MERCURY_EDECODE
+        }
+        Err(_) => {
+            stamp_err(err_buf, err_cap, "panic in mercury_sot_chain_next");
+            MERCURY_EPANIC
+        }
+    }
+}
+
+/// # Safety
+/// `chain` must come from `mercury_sot_chain_open{,_fd}` and not be used again.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_sot_chain_close(chain: *mut MercurySotChain) {
+    if chain.is_null() {
         return;
     }
-    drop(unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(parts, count as usize)) });
+    drop(unsafe { Box::from_raw(chain) });
 }
 
 #[repr(C)]

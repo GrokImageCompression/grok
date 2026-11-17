@@ -472,51 +472,81 @@ fn codestream_end(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<u64, DecodeEr
         .min(file_len))
 }
 
-pub fn chart_tile_parts(
-    file: &dyn ReadAt,
-    hdr: &MainHeaderIn,
-    needed: &[bool],
-) -> Result<Vec<TlmEntry>, DecodeError> {
-    let codestream_end = codestream_end(file, hdr)?;
-    let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
-    let mut parts = Vec::new();
-    let mut parts_seen = vec![0u8; num_tiles];
-    let mut tiles_pending = needed.iter().filter(|&&n| n).count();
-    let mut trust_tnsot = false;
-    let mut sot_pos = hdr.first_sot_off;
-    loop {
-        let first = parts.is_empty();
+pub struct ChartedPart {
+    pub part: TlmEntry,
+    pub completes_tile: bool,
+}
+
+pub struct SotChainCursor {
+    needed: Vec<bool>,
+    codestream_end: u64,
+    sot_pos: u64,
+    parts_seen: Vec<u8>,
+    tiles_pending: usize,
+    trust_tnsot: bool,
+    first: bool,
+    ended: bool,
+}
+
+impl SotChainCursor {
+    pub fn start(
+        file: &dyn ReadAt,
+        hdr: &MainHeaderIn,
+        needed: Vec<bool>,
+    ) -> Result<Self, DecodeError> {
+        let tiles_pending = needed.iter().filter(|&&n| n).count();
+        Ok(SotChainCursor {
+            codestream_end: codestream_end(file, hdr)?,
+            sot_pos: hdr.first_sot_off,
+            parts_seen: vec![0u8; needed.len()],
+            needed,
+            tiles_pending,
+            trust_tnsot: false,
+            first: true,
+            ended: false,
+        })
+    }
+
+    pub fn next_part(&mut self, file: &dyn ReadAt) -> Result<Option<ChartedPart>, DecodeError> {
+        if self.ended {
+            return Ok(None);
+        }
+        let sot_pos = self.sot_pos;
+        let first = std::mem::replace(&mut self.first, false);
         // classic ignores whatever follows a tile-part if it is not a whole SOT segment
-        if !first && sot_pos + 12 > codestream_end {
-            break;
+        if !first && sot_pos + 12 > self.codestream_end {
+            self.ended = true;
+            return Ok(None);
         }
         let mut sot = [0u8; 12];
         file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
         if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
             if !first {
-                break;
+                self.ended = true;
+                return Ok(None);
             }
             return Err(DecodeError::Logic(format!("expected SOT at {sot_pos}")));
         }
         let isot = u16::from_be_bytes([sot[4], sot[5]]);
         let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
         let tnsot = sot[11];
-        if isot as usize >= num_tiles {
+        if isot as usize >= self.needed.len() {
             return Err(DecodeError::Logic(format!(
                 "plan: SOT tile index {isot} out of range"
             )));
         }
         // classic trusts TNsot unchecked only when the first tile-part signals one part
         if first {
-            trust_tnsot = tnsot == 1;
+            self.trust_tnsot = tnsot == 1;
         }
         // A.4.2: only the last tile-part may carry Psot=0, and it runs to the EOC
         let last = psot == 0;
         let psot = if last {
-            let mut span = codestream_end.saturating_sub(sot_pos);
+            let mut span = self.codestream_end.saturating_sub(sot_pos);
             if span >= 2 {
                 let mut m = [0u8; 2];
-                file.draw_at(&mut m, codestream_end - 2).map_err(io_snag)?;
+                file.draw_at(&mut m, self.codestream_end - 2)
+                    .map_err(io_snag)?;
                 if u16::from_be_bytes(m) == 0xFFD9 {
                     span -= 2;
                 }
@@ -525,25 +555,37 @@ pub fn chart_tile_parts(
         } else {
             psot
         };
-        parts.push(TlmEntry {
-            tile: isot,
-            offset: sot_pos,
-            length: psot,
-        });
         let tile = isot as usize;
-        if trust_tnsot && needed[tile] {
-            parts_seen[tile] = parts_seen[tile].saturating_add(1);
-            if parts_seen[tile] == tnsot {
-                tiles_pending -= 1;
-                if tiles_pending == 0 {
-                    break;
-                }
+        let mut completes_tile = false;
+        if self.trust_tnsot && self.needed[tile] {
+            self.parts_seen[tile] = self.parts_seen[tile].saturating_add(1);
+            if self.parts_seen[tile] == tnsot {
+                completes_tile = true;
+                self.tiles_pending -= 1;
             }
         }
-        if last {
-            break;
-        }
-        sot_pos += psot;
+        self.ended = last || (completes_tile && self.tiles_pending == 0);
+        self.sot_pos = sot_pos + psot;
+        Ok(Some(ChartedPart {
+            part: TlmEntry {
+                tile: isot,
+                offset: sot_pos,
+                length: psot,
+            },
+            completes_tile,
+        }))
+    }
+}
+
+pub fn chart_tile_parts(
+    file: &dyn ReadAt,
+    hdr: &MainHeaderIn,
+    needed: &[bool],
+) -> Result<Vec<TlmEntry>, DecodeError> {
+    let mut cursor = SotChainCursor::start(file, hdr, needed.to_vec())?;
+    let mut parts = Vec::new();
+    while let Some(charted) = cursor.next_part(file)? {
+        parts.push(charted.part);
     }
     Ok(parts)
 }
@@ -3741,6 +3783,24 @@ mod tests {
             (0..=5).collect::<Vec<_>>()
         );
         assert_eq!(file.reads.into_inner(), 6);
+    }
+
+    #[test]
+    fn cursor_marks_the_part_that_completes_a_needed_tile() {
+        let completing = |tnsot: u8| {
+            let file = sot_chain(tnsot);
+            let mut cursor =
+                SotChainCursor::start(&file, &header(), only_tile(5)).expect("chain opens");
+            let mut tiles = Vec::new();
+            while let Some(charted) = cursor.next_part(&file).expect("chain steps") {
+                if charted.completes_tile {
+                    tiles.push(charted.part.tile);
+                }
+            }
+            tiles
+        };
+        assert_eq!(completing(1), vec![5]);
+        assert!(completing(0).is_empty());
     }
 
     #[test]

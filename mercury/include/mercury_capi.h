@@ -224,16 +224,24 @@ MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDec
                                   int32_t fd, uint8_t* err_buf, size_t err_cap);
 #endif
 
-int32_t mercury_chart_tile_parts(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
-                                 void* ctx, uint64_t len, const MercuryTileRect* tiles,
-                                 MercuryTlmEntry** parts, uint32_t* count, uint8_t* err_buf,
-                                 size_t err_cap);
+/* completes_tile is only ever set when the first tile-part's TNsot is 1, after *ended every tile is complete */
+typedef struct MercurySotChain MercurySotChain;
+typedef struct MercuryChartedPart
+{
+  MercuryTlmEntry part;
+  bool completes_tile;
+} MercuryChartedPart;
+MercurySotChain* mercury_sot_chain_open(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
+                                        void* ctx, uint64_t len, const MercuryTileRect* tiles,
+                                        uint8_t* err_buf, size_t err_cap);
 #if !defined(_WIN32)
-int32_t mercury_chart_tile_parts_fd(const MercuryMainHeader* hdr, int32_t fd,
-                                    const MercuryTileRect* tiles, MercuryTlmEntry** parts,
-                                    uint32_t* count, uint8_t* err_buf, size_t err_cap);
+MercurySotChain* mercury_sot_chain_open_fd(const MercuryMainHeader* hdr, int32_t fd,
+                                           const MercuryTileRect* tiles, uint8_t* err_buf,
+                                           size_t err_cap);
 #endif
-void mercury_free_tile_parts(MercuryTlmEntry* parts, uint32_t count);
+int32_t mercury_sot_chain_next(MercurySotChain* chain, MercuryChartedPart* charted, bool* ended,
+                               uint8_t* err_buf, size_t err_cap);
+void mercury_sot_chain_close(MercurySotChain* chain);
 
 /* width/height are the decoded output dims on the canvas plane, i.e. already
  * reduced. Per-component dims come from mercury_loom_comp_info. */
