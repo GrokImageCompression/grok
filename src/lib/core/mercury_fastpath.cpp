@@ -1694,10 +1694,13 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // classic ignores PLT when a PLM is present or the app disabled it
   mparams.disable_plt =
       cs.cp_.plmMarkers_ != nullptr || (dec.disableRandomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) != 0;
+  // single-tile plans run on the calling thread before any decode task starts
+  if(cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ == 1)
+    mparams.plan_threads = static_cast<uint32_t>(TFSingleton::num_threads());
   const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
   // at 16 code blocks per slice one 2048 tile decodes on about 4 cores
   if(cs.tilesToDecompress_.getSlatedTileRect().area() < cores)
-    mparams.slice_blocks = 2;
+    mparams.slice_blocks = 1;
   if(!cs.region_.empty())
   {
     mparams.win_x0 = cs.region_.x0;
@@ -1786,6 +1789,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       MFP_BAIL(streamFail);
     memReader.size = len;
   }
+  // cold HiRISE regions decoded 1.5x slower than warm through callbacks, 1.1x through a file descriptor
+  mparams.fetch_window = readers->streamReader.stream != nullptr;
 
   if(asyncDecode)
   {
@@ -1811,6 +1816,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->header = std::make_unique<MercuryHeaderStorage>();
     state->header->header = mhdr;
     state->header->params = mparams;
+    state->header->params.max_strips = std::max(1u, cores / 4);
     state->header->comps = std::move(mhComps);
     state->header->precincts = std::move(mhPrec);
     state->header->qcdRanges = std::move(qcdRanges);

@@ -3,6 +3,8 @@
 //! Coding parameters the host (grok) parsed from the main header and handed to
 //! mercury across the C API; mercury no longer parses the main header itself.
 
+use crate::codec::tile_geom::Dims;
+
 // ─── Progression orders ──────────────────────────────────────────────────────
 
 /// Progression order (Corder).
@@ -96,6 +98,16 @@ impl SizParams {
     /// Number of components.
     pub fn comp_count(&self) -> usize {
         self.components.len()
+    }
+
+    pub fn tile_rect(&self, tile: u32) -> Dims {
+        let (tx, ty) = (tile % self.tiles_across(), tile / self.tiles_across());
+        Dims {
+            x0: (self.xt_o_siz + tx * self.xt_siz).max(self.x_o_siz),
+            y0: (self.yt_o_siz + ty * self.yt_siz).max(self.y_o_siz),
+            x1: (self.xt_o_siz + (tx + 1) * self.xt_siz).min(self.x_siz),
+            y1: (self.yt_o_siz + (ty + 1) * self.yt_siz).min(self.y_siz),
+        }
     }
 
     /// Number of tiles in X direction.

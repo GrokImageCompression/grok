@@ -35,9 +35,12 @@ use crate::decode::graph::{
     CompRow, CompRowSink, RowSink, Rows, WovenFn, launch_comps_with_coder, launch_with_coder,
     uniform_subsampling, weave_comps_with_coder, weave_with_coder,
 };
-use crate::decode::plan::{DecodePlan, MainHeaderIn, TlmEntry, chart_tile_parts, draft};
-use crate::decode::read_at::ReadAt;
+use crate::decode::plan::{
+    DecodePlan, Drafted, MainHeaderIn, PltUse, TlmEntry, chart_tile_parts, draft,
+};
+use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, ReadAt, fetch_runs};
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
+use crate::decode::window::intersect;
 use crate::weft::rt::{HostExecutor, HostSubmitFn};
 
 /// Positioned read: fill `buf[0..len]` from absolute offset `off`.
@@ -485,9 +488,9 @@ fn assemble_plan(
             return std::ptr::null_mut();
         }
     };
-    let (reduce, max_layers, use_plt, window, slice_blocks, int16_dwt, int16_irreversible) =
+    let (reduce, max_layers, plt, window, slice_blocks, int16_dwt, int16_irreversible) =
         if params.is_null() {
-            (0, 0, true, None, 0, false, false)
+            (0, 0, PltUse::InOrder, None, 0, false, false)
         } else {
             let p = unsafe { &*params };
             let window = (p.win_x1 > p.win_x0 && p.win_y1 > p.win_y0).then_some(Dims {
@@ -496,34 +499,78 @@ fn assemble_plan(
                 x1: p.win_x1,
                 y1: p.win_y1,
             });
+            let plt = match (p.disable_plt, p.plan_threads) {
+                (true, _) => PltUse::Ignore,
+                (false, 0 | 1) => PltUse::InOrder,
+                (false, threads) => PltUse::Parallel(threads as usize),
+            };
             (
                 p.reduce,
                 p.max_layers,
-                !p.disable_plt,
+                plt,
                 window,
                 p.slice_blocks,
                 p.int16_dwt,
                 p.int16_irreversible,
             )
         };
+    let max_strips = if params.is_null() {
+        0
+    } else {
+        unsafe { (*params).max_strips }
+    };
+    let fetch_window = !params.is_null() && unsafe { (*params).fetch_window };
+    let window_cuts_a_tile = fetch_window
+        && window.is_some_and(|window| {
+            let tiles = header.siz.tiles_across() * header.siz.tiles_down();
+            (0..tiles).any(|t| {
+                let rect = header.siz.tile_rect(t);
+                let inside = intersect(window, rect);
+                !inside.is_empty() && inside != rect
+            })
+        });
+    let plt = match plt {
+        PltUse::Parallel(threads) if window_cuts_a_tile => PltUse::FetchedParallel(threads),
+        plt => plt,
+    };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         draft(
             &*src,
             &header,
             reduce,
             max_layers,
-            use_plt,
+            plt,
             window,
             int16_irreversible,
         )
     }));
     match r {
-        Ok(Ok(mut plan)) => {
+        Ok(Ok(Drafted { mut plan, fetched })) => {
             if slice_blocks != 0 {
                 plan.slice_blocks = slice_blocks;
             }
+            if max_strips != 0 {
+                plan.max_strips = max_strips;
+            }
             plan.int16_dwt = int16_dwt;
-            Box::into_raw(Box::new(MercuryPlan { plan, src }))
+            if !window_cuts_a_tile {
+                return Box::into_raw(Box::new(MercuryPlan { plan, src }));
+            }
+            let fetched = if fetched.is_empty() {
+                fetch_runs(&*src, &plan.coded_runs(FETCH_GAP_BYTES))
+            } else {
+                Ok(fetched)
+            };
+            match fetched {
+                Ok(fetched) => Box::into_raw(Box::new(MercuryPlan {
+                    plan,
+                    src: Arc::new(FetchedRuns::over(src, fetched)),
+                })),
+                Err(e) => {
+                    stamp_err(err_buf, err_cap, &format!("window read: {e}"));
+                    std::ptr::null_mut()
+                }
+            }
         }
         Ok(Err(e)) => {
             stamp_err(err_buf, err_cap, &format!("{e:?}"));
@@ -557,6 +604,11 @@ pub struct MercuryDecodeParams {
     pub slice_blocks: u32,
     pub int16_dwt: bool,
     pub int16_irreversible: bool,
+    pub max_strips: u32,
+    pub fetch_window: bool,
+    /// Threads that parse packet headers when PLT markers give every packet's
+    /// start; 0 and 1 parse on the calling thread.
+    pub plan_threads: u32,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),

@@ -12,13 +12,17 @@
 //! its tile its own coding style and quantization. Violations error rather
 //! than produce wrong output.
 
+use std::ops::Range;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc;
 
 use crate::decode::ReadAt;
+use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRun, FetchedRuns, fetch_runs, merge_ranges};
 
 use crate::codec::packet::{
-    BandBlocks, BlockContribution, HeaderBytes, PacketBitReader, PacketError, TagTree,
-    comb_packet_header,
+    BandBlocks, BlockContribution, HeaderBytes, PacketBitReader, PacketError, PacketParseResult,
+    TagTree, comb_packet_header,
 };
 use crate::codec::packet_order::{
     PrecBand, chart_prec_bands, chart_precinct_grids, chart_precinct_positions, order_packets,
@@ -27,7 +31,9 @@ use crate::codec::params::{CodParams, QcdParams, SizParams};
 use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
 use crate::decode::DecodeError;
 use crate::decode::window::comp_window;
-use crate::decode::window::{TileCompWindow, chart_tile_comp_window, intersect, intersects};
+use crate::decode::window::{
+    TileCompWindow, chart_tile_comp_window, intersect, intersects, resolution_band_dims,
+};
 
 /// One tile-part's position from the host's parsed TLM markers.
 pub struct TlmEntry {
@@ -238,7 +244,26 @@ pub struct DecodePlan {
     /// accumulated normalization.
     pub q13: bool,
     pub slice_blocks: u32,
+    /// Most column strips one tile component's synthesis is split into.
+    pub max_strips: u32,
     pub int16_dwt: bool,
+}
+
+impl DecodePlan {
+    pub fn coded_runs(&self, max_gap: u64) -> Vec<Range<u64>> {
+        let mut ranges = Vec::new();
+        for tile in self.tiles.iter().flatten() {
+            for band in tile.comps.iter().flatten().flat_map(|res| &res.bands) {
+                for rec in &band.blocks {
+                    ranges.push(rec.file_off..rec.file_off + rec.len as u64);
+                    for chunk in rec.extra.iter().flat_map(|chunks| chunks.iter()) {
+                        ranges.push(chunk.file_off..chunk.file_off + chunk.len as u64);
+                    }
+                }
+            }
+        }
+        merge_ranges(ranges, max_gap)
+    }
 }
 
 /// `ceil(a / 2^b)`, the canvas reduction of T.800 Annex B.
@@ -260,7 +285,7 @@ struct StreamWin<'f> {
 }
 
 const WIN_SIZE: usize = 4 << 20;
-const MIN_WINDOW_READ: usize = 4 << 10;
+const MIN_WINDOW_READ: usize = 64 << 10;
 
 impl<'f> StreamWin<'f> {
     fn warp(file: &'f dyn ReadAt) -> std::io::Result<Self> {
@@ -285,7 +310,10 @@ impl<'f> StreamWin<'f> {
         let covered = off >= self.buf_off && off < self.buf_off + self.valid as u64;
         if !covered {
             let read_len = (self.header_bytes_since_refill * 2).clamp(MIN_WINDOW_READ, WIN_SIZE);
-            let n = read_len.min((self.file_len - off) as usize);
+            let mut n = read_len.min((self.file_len - off) as usize);
+            if let Some(run_end) = self.file.fetched_run_end(off) {
+                n = n.min((run_end - off) as usize);
+            }
             if self.buf.len() < n {
                 self.buf.resize(n, 0);
             }
@@ -522,6 +550,35 @@ pub fn chart_tile_parts(
 
 const DEFAULT_SLICE_BLOCKS: u32 = 16;
 
+/// How the plan uses PLT markers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PltUse {
+    /// Parse every packet header in stream order, PLT markers unread.
+    Ignore,
+    /// Hop non-contributing packets by their PLT lengths, in stream order.
+    InOrder,
+    /// Also parse precincts on this many threads when PLT lengths give
+    /// every packet's start.
+    Parallel(usize),
+    /// As `Parallel`, after reading every contributing packet into memory in
+    /// merged runs, which the decode then reads its code-block bytes from.
+    FetchedParallel(usize),
+}
+
+impl PltUse {
+    fn threads(self) -> usize {
+        match self {
+            PltUse::Parallel(threads) | PltUse::FetchedParallel(threads) => threads,
+            _ => 1,
+        }
+    }
+}
+
+pub struct Drafted {
+    pub plan: DecodePlan,
+    pub fetched: Vec<FetchedRun>,
+}
+
 /// `max_layers` keeps only the first that many quality layers (0 = all),
 /// truncating the coding passes the dropped layers carry. `use_plt` lets the
 /// parse hop over non-contributing packets by their PLT lengths. `window`
@@ -534,10 +591,10 @@ pub fn draft(
     hdr: &MainHeaderIn,
     reduce: u8,
     max_layers: u16,
-    use_plt: bool,
+    plt_use: PltUse,
     window: Option<Dims>,
     int16_irreversible: bool,
-) -> Result<DecodePlan, DecodeError> {
+) -> Result<Drafted, DecodeError> {
     // The host codec parsed the main header (SIZ/COD/QCD/QCC) and handed it in;
     // mercury only walks the SOT/tile-part chain and the packet headers below.
     let codestream_end = codestream_end(file, hdr)?;
@@ -568,15 +625,7 @@ pub fn draft(
     let tile_in_window: Vec<bool> = (0..num_tiles as u32)
         .map(|t| {
             let Some(w) = window else { return true };
-            let ntx = hdr.siz.tiles_across();
-            let (tx, ty) = (t % ntx, t / ntx);
-            let rect = Dims {
-                x0: (hdr.siz.xt_o_siz + tx * hdr.siz.xt_siz).max(hdr.siz.x_o_siz),
-                y0: (hdr.siz.yt_o_siz + ty * hdr.siz.yt_siz).max(hdr.siz.y_o_siz),
-                x1: (hdr.siz.xt_o_siz + (tx + 1) * hdr.siz.xt_siz).min(hdr.siz.x_siz),
-                y1: (hdr.siz.yt_o_siz + (ty + 1) * hdr.siz.yt_siz).min(hdr.siz.y_siz),
-            };
-            intersects(&w, &rect)
+            intersects(&w, &hdr.siz.tile_rect(t))
         })
         .collect();
 
@@ -630,7 +679,7 @@ pub fn draft(
             e.length,
             sot[10],
             TilePartMarkerSinks {
-                packet_lengths: use_plt.then(|| &mut tile_plt[t]),
+                packet_lengths: (plt_use != PltUse::Ignore).then(|| &mut tile_plt[t]),
                 coding_parameters: (!std::mem::replace(&mut tile_opened[t], true))
                     .then(|| &mut tile_styles[t]),
                 progression_changes: &mut tile_pocs[t],
@@ -643,6 +692,7 @@ pub fn draft(
     let main_cod = Arc::new(hdr.cod.clone());
     let mut win = StreamWin::warp(file).map_err(io_snag)?;
     let mut tiles: Vec<Option<TilePlan>> = Vec::with_capacity(num_tiles);
+    let mut fetched: Vec<FetchedRun> = Vec::new();
     for (t, segs) in tile_styles.iter().enumerate() {
         if !tile_in_window[t] {
             tiles.push(None);
@@ -688,22 +738,9 @@ pub fn draft(
                     let on_comp = comp_window(w, comp.xr_siz as u32, comp.yr_siz as u32);
                     let clipped =
                         intersect(on_comp, tc.resolutions[style.num_levels as usize].dims);
-                    let resolutions: Vec<(Dims, Vec<(u8, Dims)>)> = tc
-                        .resolutions
-                        .iter()
-                        .map(|res| {
-                            (
-                                res.dims,
-                                res.subbands
-                                    .iter()
-                                    .map(|sb| (sb.band_type, sb.dims))
-                                    .collect(),
-                            )
-                        })
-                        .collect();
                     chart_tile_comp_window(
                         clipped,
-                        &resolutions,
+                        &resolution_band_dims(tc),
                         style.num_levels,
                         style.reversible,
                     )
@@ -712,7 +749,7 @@ pub fn draft(
             tile_wins = Some(wins);
         }
         let plt = plt_packet_lengths(std::mem::take(&mut tile_plt[t]));
-        let comps = comb_tile(
+        let (comps, tile_fetched) = comb_tile(
             file,
             &mut win,
             &cod,
@@ -725,7 +762,9 @@ pub fn draft(
             plt.as_deref(),
             tile_wins.as_deref(),
             q13,
+            plt_use,
         )?;
+        fetched.extend(tile_fetched);
         tiles.push(Some(TilePlan {
             comps,
             cod,
@@ -756,7 +795,7 @@ pub fn draft(
             }
         })
         .collect();
-    Ok(DecodePlan {
+    let plan = DecodePlan {
         width: ceildivpow2(out.x1, reduce) - ceildivpow2(out.x0, reduce),
         height: ceildivpow2(out.y1, reduce) - ceildivpow2(out.y0, reduce),
         comp_dims,
@@ -766,8 +805,10 @@ pub fn draft(
         reduce,
         q13,
         slice_blocks: DEFAULT_SLICE_BLOCKS,
+        max_strips: 1,
         int16_dwt: false,
-    })
+    };
+    Ok(Drafted { plan, fetched })
 }
 
 /// Reject coding parameters mercury cannot decode. `label` names the tile the
@@ -1040,7 +1081,8 @@ fn comb_tile(
     plt: Option<&[u32]>,
     wins: Option<&[TileCompWindow]>,
     q13: bool,
-) -> Result<Vec<Vec<ResPlan>>, DecodeError> {
+    plt_use: PltUse,
+) -> Result<(Vec<Vec<ResPlan>>, Vec<FetchedRun>), DecodeError> {
     let num_comps = geom.components.len();
     // Resolution counts and the reduce target are per component (COC).
     let n_res = |c: usize| cod.comps[c].num_levels as usize + 1;
@@ -1212,19 +1254,7 @@ fn comb_tile(
         }
     }
 
-    // --- parse packet headers in stream order ---
-    // Persistent precinct state, keyed [comp][res][precinct raster index].
-    let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = (0..num_comps)
-        .map(|c| {
-            (0..n_res(c))
-                .map(|r| {
-                    let (_, _, npx, npy) = grids[c][r];
-                    (0..npx * npy).map(|_| None).collect()
-                })
-                .collect()
-        })
-        .collect();
-
+    // --- parse packet headers ---
     // A packet contributes when its resolution survives reduce, its layer
     // survives the limit, and its precinct touches the decode window.
     let contributes = |pkt: &Pkt| {
@@ -1237,38 +1267,55 @@ fn comb_tile(
     // form of classic's per-progression window bail-outs.
     let last_needed = pkts.iter().rposition(&contributes);
     let walk = last_needed.map_or(&pkts[..0], |i| &pkts[..=i]);
-
-    let mut vpos: u64 = 0;
-    let mut plt_idx: usize = 0;
-    for pkt in walk {
-        let (c, r) = (pkt.comp as usize, pkt.res as usize);
-        // A PLT length covers the whole packet, SOP and header included
-        // (A.7.1), so a packet that contributes no block records hops by
-        // length, header unparsed. Skipped layers are the tail layers of a
-        // precinct, skipped resolutions and out-of-window precincts never
-        // parse at all, so the tag-tree state the parsed packets need is
-        // never behind.
-        let contributes = contributes(pkt);
-        let plt_len = plt.and_then(|v| v.get(plt_idx)).copied();
-        if !contributes {
-            if let Some(len) = plt_len {
-                plt_idx += 1;
-                vpos += len as u64;
-                continue;
-            }
+    let tile = TileWalk {
+        file,
+        cod,
+        geom,
+        grids: &grids,
+        stream: &stream,
+    };
+    // PLT lengths give every packet's start, so precincts parse independently
+    let fetched = match plt.filter(|lengths| plt_use.threads() > 1 && lengths.len() >= walk.len()) {
+        Some(lengths) => {
+            comb_packets_in_parallel(&tile, walk, lengths, &contributes, &mut comps, plt_use)?
         }
-        let pkt_start = vpos;
-        let tc = &geom.components[c];
-        let res = &tc.resolutions[r];
-        let (px0, py0, npx, _) = grids[c][r];
-        let ps = cod.comps[c].precinct_span(r as u8);
-        let (block_w, block_h) = cod.comps[c].block_span(r as u8);
-        let px = px0 + pkt.prec % npx;
-        let py = py0 + pkt.prec / npx;
+        None => {
+            comb_packets_in_order(&tile, win, walk, plt, &contributes, &mut comps)?;
+            Vec::new()
+        }
+    };
+    Ok((comps, fetched))
+}
 
-        let prec_bands = chart_prec_bands(res, px, py, ps, r, block_w, block_h);
-        let state_slot = &mut prec_states[c][r][pkt.prec as usize];
-        let state = state_slot.get_or_insert_with(|| PrecState {
+/// What every packet parse of one tile reads.
+struct TileWalk<'a> {
+    file: &'a dyn ReadAt,
+    cod: &'a CodParams,
+    geom: &'a TileGeom,
+    grids: &'a [Vec<(u32, u32, u32, u32)>],
+    stream: &'a TileStream,
+}
+
+impl TileWalk<'_> {
+    fn prec_bands(&self, pkt: &Pkt) -> Vec<PrecBand> {
+        let (c, r) = (pkt.comp as usize, pkt.res as usize);
+        let (px0, py0, npx, _) = self.grids[c][r];
+        let (block_w, block_h) = self.cod.comps[c].block_span(r as u8);
+        chart_prec_bands(
+            &self.geom.components[c].resolutions[r],
+            px0 + pkt.prec % npx,
+            py0 + pkt.prec / npx,
+            self.cod.comps[c].precinct_span(r as u8),
+            r,
+            block_w,
+            block_h,
+        )
+    }
+}
+
+impl PrecState {
+    fn warp(prec_bands: &[PrecBand]) -> Self {
+        PrecState {
             trees: prec_bands
                 .iter()
                 .map(|pb| TagTree::warp(pb.nbw.max(1), pb.nbh.max(1)))
@@ -1277,127 +1324,409 @@ fn comb_tile(
                 .iter()
                 .map(|pb| BandBlocks::warp((pb.nbw * pb.nbh) as usize))
                 .collect(),
-        });
+        }
+    }
+}
 
-        // SOP marker segment (6 bytes) before the packet, if signalled.
-        if cod.use_sop {
-            let (rp, avail) = stream.unspool(vpos)?;
-            if avail >= 2 {
-                let mut m = [0u8; 2];
-                file.draw_at(&mut m, rp).map_err(io_snag)?;
-                if u16::from_be_bytes(m) == 0xFF91 {
-                    vpos += 6;
-                }
-            }
-        }
+/// One parsed packet header and where its packet ends.
+struct CombedPacket {
+    parsed: PacketParseResult,
+    /// Real file offset of the packet body.
+    body_real: u64,
+    /// Virtual offset just past the packet body.
+    end: u64,
+}
 
-        let (real_pos, seg_avail) = stream.unspool(vpos)?;
-        let mut reader = PacketBitReader::warp(TilePartBytes {
-            win: &mut *win,
-            origin: real_pos,
-            limit: seg_avail,
-        });
-        let parsed = comb_packet_header(
-            &mut reader,
-            &mut state.trees,
-            &mut state.states,
-            pkt.layer,
-            0,
-            cod.comps[c].modes,
-        )
-        .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
-        let mut hdr_len = parsed.header_bytes as u64;
-
-        // EPH marker (2 bytes) terminates the packet header, if signalled.
-        if cod.use_eph {
-            hdr_len += 2;
-        }
-        // the last packet of a cut stream has no later packet to overrun
-        let packet_end = vpos + hdr_len + parsed.body_bytes;
-        if packet_end > stream.total {
-            return Err(DecodeError::Logic(format!(
-                "packet stream overrun: packet ends at {packet_end} of {}",
-                stream.total
-            )));
-        }
-
-        // Assign body offsets in contribution order. Bodies are contiguous
-        // in the real file (a packet never spans tile-parts).
-        let (body_real, _) = stream.unspool(vpos + hdr_len).unwrap_or((0, 0));
-        let mut body = body_real;
-        // a non-contributing packet only reaches here with no PLT length to
-        // hop by; its header is still parsed but fills no block records
-        let bands_to_fill: &[PrecBand] = if contributes { &prec_bands } else { &[] };
-        for (band_idx, pb) in bands_to_fill.iter().enumerate() {
-            let contribs = &parsed.contributions[band_idx];
-            let band = &mut comps[c][r].bands[band_idx];
-            for (li, contrib) in contribs {
-                if contrib.new_passes == 0 {
-                    continue;
-                }
-                let total: u32 = contrib.segment_lengths().sum();
-                let lx = *li % pb.nbw;
-                let ly = *li / pb.nbw;
-                let block_body = body;
-                body += total as u64;
-                // classic abandons the tile at a block claiming more missing
-                // bit planes than its band has, so a plan that kept parsing
-                // would decode bytes classic never reads
-                if contrib.missing_msbs as i32 > band.k_max_prime.max(0) {
-                    return Err(DecodeError::Logic(format!(
-                        "plan: {} missing bit planes in a band of {}",
-                        contrib.missing_msbs, band.k_max_prime
-                    )));
-                }
-                let Some(rec) = band.stored_block_mut(pb.bx0 + lx, pb.by0 + ly) else {
-                    continue;
-                };
-                if rec.num_passes == 0 {
-                    // First contribution (inclusion always adds ≥1 pass).
-                    rec.file_off = block_body;
-                    rec.len = total;
-                    rec.num_passes = contrib.new_passes;
-                    rec.missing_msbs = contrib.missing_msbs;
-                    rec.num_segments = contrib.num_segments();
-                    if contrib.num_segments() > 1 {
-                        rec.seg_lens = Some(
-                            contrib
-                                .segment_lengths()
-                                .copied()
-                                .collect::<Vec<_>>()
-                                .into_boxed_slice(),
-                        );
-                    }
-                } else {
-                    append_segment_lengths(rec, contrib)?;
-                    rec.num_passes = rec.num_passes.saturating_add(contrib.new_passes);
-                    rec.extra.get_or_insert_with(Default::default).push(Chunk {
-                        file_off: block_body,
-                        len: total,
-                    });
-                }
-            }
-        }
-        // Single-layer streams never revisit a precinct: free its state now
-        // rather than holding ~30k tag trees alive for the whole parse.
-        if cod.num_layers == 1 {
-            prec_states[c][r][pkt.prec as usize] = None;
-        }
-        vpos += hdr_len + parsed.body_bytes;
-        // a PLT length that disagrees with the parse means one of them lied,
-        // so reject and fall back to classic
-        if let Some(len) = plt_len {
-            plt_idx += 1;
-            let parsed_len = vpos - pkt_start;
-            if parsed_len != len as u64 {
-                return Err(DecodeError::Logic(format!(
-                    "plan: PLT length {len} != parsed packet length {parsed_len} at vpos {pkt_start}"
-                )));
+/// Parse the header of the packet starting at virtual offset `vpos`.
+fn comb_packet(
+    tile: &TileWalk,
+    win: &mut StreamWin<'_>,
+    state: &mut PrecState,
+    pkt: &Pkt,
+    mut vpos: u64,
+) -> Result<CombedPacket, DecodeError> {
+    let cod = tile.cod;
+    let stream = tile.stream;
+    // SOP marker segment (6 bytes) before the packet, if signalled.
+    if cod.use_sop {
+        let (rp, avail) = stream.unspool(vpos)?;
+        if avail >= 2 {
+            let mut m = [0u8; 2];
+            tile.file.draw_at(&mut m, rp).map_err(io_snag)?;
+            if u16::from_be_bytes(m) == 0xFF91 {
+                vpos += 6;
             }
         }
     }
 
-    Ok(comps)
+    let (real_pos, seg_avail) = stream.unspool(vpos)?;
+    let mut reader = PacketBitReader::warp(TilePartBytes {
+        win,
+        origin: real_pos,
+        limit: seg_avail,
+    });
+    let parsed = comb_packet_header(
+        &mut reader,
+        &mut state.trees,
+        &mut state.states,
+        pkt.layer,
+        0,
+        cod.comps[pkt.comp as usize].modes,
+    )
+    .map_err(|e| DecodeError::Logic(format!("packet parse at vpos {vpos}: {e:?}")))?;
+    let mut hdr_len = parsed.header_bytes as u64;
+
+    // EPH marker (2 bytes) terminates the packet header, if signalled.
+    if cod.use_eph {
+        hdr_len += 2;
+    }
+    // the last packet of a cut stream has no later packet to overrun
+    let end = vpos + hdr_len + parsed.body_bytes;
+    if end > stream.total {
+        return Err(DecodeError::Logic(format!(
+            "packet stream overrun: packet ends at {end} of {}",
+            stream.total
+        )));
+    }
+    // Bodies are contiguous in the real file (a packet never spans tile-parts).
+    let (body_real, _) = stream.unspool(vpos + hdr_len).unwrap_or((0, 0));
+    Ok(CombedPacket {
+        parsed,
+        body_real,
+        end,
+    })
+}
+
+/// A PLT length that disagrees with the parse means one of them lied, so
+/// reject and fall back to classic.
+fn check_plt_length(plt_len: u32, start: u64, end: u64) -> Result<(), DecodeError> {
+    let parsed_len = end - start;
+    if parsed_len != plt_len as u64 {
+        return Err(DecodeError::Logic(format!(
+            "plan: PLT length {plt_len} != parsed packet length {parsed_len} at vpos {start}"
+        )));
+    }
+    Ok(())
+}
+
+/// Record the block contributions of a parsed packet, assigning body offsets
+/// in contribution order.
+fn fill_block_records(
+    comps: &mut [Vec<ResPlan>],
+    pkt: &Pkt,
+    prec_bands: &[PrecBand],
+    combed: &CombedPacket,
+) -> Result<(), DecodeError> {
+    let (c, r) = (pkt.comp as usize, pkt.res as usize);
+    let mut body = combed.body_real;
+    for (band_idx, pb) in prec_bands.iter().enumerate() {
+        let contribs = &combed.parsed.contributions[band_idx];
+        let band = &mut comps[c][r].bands[band_idx];
+        for (li, contrib) in contribs {
+            if contrib.new_passes == 0 {
+                continue;
+            }
+            let total: u32 = contrib.segment_lengths().sum();
+            let lx = *li % pb.nbw;
+            let ly = *li / pb.nbw;
+            let block_body = body;
+            body += total as u64;
+            // classic abandons the tile at a block claiming more missing
+            // bit planes than its band has, so a plan that kept parsing
+            // would decode bytes classic never reads
+            if contrib.missing_msbs as i32 > band.k_max_prime.max(0) {
+                return Err(DecodeError::Logic(format!(
+                    "plan: {} missing bit planes in a band of {}",
+                    contrib.missing_msbs, band.k_max_prime
+                )));
+            }
+            let Some(rec) = band.stored_block_mut(pb.bx0 + lx, pb.by0 + ly) else {
+                continue;
+            };
+            if rec.num_passes == 0 {
+                // First contribution (inclusion always adds ≥1 pass).
+                rec.file_off = block_body;
+                rec.len = total;
+                rec.num_passes = contrib.new_passes;
+                rec.missing_msbs = contrib.missing_msbs;
+                rec.num_segments = contrib.num_segments();
+                if contrib.num_segments() > 1 {
+                    rec.seg_lens = Some(
+                        contrib
+                            .segment_lengths()
+                            .copied()
+                            .collect::<Vec<_>>()
+                            .into_boxed_slice(),
+                    );
+                }
+            } else {
+                append_segment_lengths(rec, contrib)?;
+                rec.num_passes = rec.num_passes.saturating_add(contrib.new_passes);
+                rec.extra.get_or_insert_with(Default::default).push(Chunk {
+                    file_off: block_body,
+                    len: total,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse the walk's packet headers one after another in stream order.
+fn comb_packets_in_order(
+    tile: &TileWalk,
+    win: &mut StreamWin<'_>,
+    walk: &[Pkt],
+    plt: Option<&[u32]>,
+    contributes: &dyn Fn(&Pkt) -> bool,
+    comps: &mut [Vec<ResPlan>],
+) -> Result<(), DecodeError> {
+    let cod = tile.cod;
+    // Persistent precinct state, keyed [comp][res][precinct raster index].
+    let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = tile
+        .grids
+        .iter()
+        .map(|comp_grids| {
+            comp_grids
+                .iter()
+                .map(|&(_, _, npx, npy)| (0..npx * npy).map(|_| None).collect())
+                .collect()
+        })
+        .collect();
+    let mut vpos: u64 = 0;
+    let mut plt_idx: usize = 0;
+    for pkt in walk {
+        // A PLT length covers the whole packet, SOP and header included
+        // (A.7.1), so a packet that contributes no block records hops by
+        // length, header unparsed. Skipped layers are the tail layers of a
+        // precinct, skipped resolutions and out-of-window precincts never
+        // parse at all, so the tag-tree state the parsed packets need is
+        // never behind.
+        let contributes = contributes(pkt);
+        let plt_len = plt.and_then(|v| v.get(plt_idx)).copied();
+        if plt_len.is_some() {
+            plt_idx += 1;
+        }
+        if !contributes {
+            if let Some(len) = plt_len {
+                vpos += len as u64;
+                continue;
+            }
+        }
+        let prec_bands = tile.prec_bands(pkt);
+        let state_slot = &mut prec_states[pkt.comp as usize][pkt.res as usize][pkt.prec as usize];
+        let state = state_slot.get_or_insert_with(|| PrecState::warp(&prec_bands));
+        let combed = comb_packet(tile, win, state, pkt, vpos)?;
+        // a non-contributing packet only reaches here with no PLT length to
+        // hop by; its header is still parsed but fills no block records
+        if contributes {
+            fill_block_records(comps, pkt, &prec_bands, &combed)?;
+        }
+        // Single-layer streams never revisit a precinct: free its state now
+        // rather than holding ~30k tag trees alive for the whole parse.
+        if cod.num_layers == 1 {
+            *state_slot = None;
+        }
+        if let Some(len) = plt_len {
+            check_plt_length(len, vpos, combed.end)?;
+        }
+        vpos = combed.end;
+    }
+    Ok(())
+}
+
+/// Precinct groups a worker claims at a time.
+const PRECINCTS_PER_CLAIM: usize = 64;
+
+/// One precinct's prec bands and its parsed packets, by walk index.
+type GroupResult = (Vec<PrecBand>, Vec<(u32, CombedPacket)>);
+
+/// A run of precinct groups one worker parses.
+struct PrecinctClaim<'a> {
+    walk: &'a [Pkt],
+    starts: &'a [u64],
+    lengths: &'a [u32],
+    /// Walk indices of each precinct's contributing packets, layers in order.
+    groups: &'a [Vec<u32>],
+}
+
+fn comb_claim(
+    tile: &TileWalk,
+    win: &mut StreamWin<'_>,
+    claim: &PrecinctClaim,
+) -> Result<Vec<GroupResult>, DecodeError> {
+    let mut results = Vec::with_capacity(claim.groups.len());
+    for group in claim.groups {
+        let prec_bands = tile.prec_bands(&claim.walk[group[0] as usize]);
+        let mut state = PrecState::warp(&prec_bands);
+        let mut packets = Vec::with_capacity(group.len());
+        for &i in group {
+            let i = i as usize;
+            let combed = comb_packet(tile, win, &mut state, &claim.walk[i], claim.starts[i])?;
+            check_plt_length(claim.lengths[i], claim.starts[i], combed.end)?;
+            packets.push((i as u32, combed));
+        }
+        results.push((prec_bands, packets));
+    }
+    Ok(results)
+}
+
+/// Parse the walk's packet headers on `threads` threads. Every packet starts
+/// at the sum of the PLT lengths before it, and packets of different
+/// precincts share no tag-tree state, so each worker parses whole precincts,
+/// their layers in order, while the calling thread records the results.
+fn comb_packets_in_parallel(
+    tile: &TileWalk,
+    walk: &[Pkt],
+    lengths: &[u32],
+    contributes: &dyn Fn(&Pkt) -> bool,
+    comps: &mut [Vec<ResPlan>],
+    plt_use: PltUse,
+) -> Result<Vec<FetchedRun>, DecodeError> {
+    let mut starts = Vec::with_capacity(walk.len());
+    let mut vpos = 0u64;
+    for &len in &lengths[..walk.len()] {
+        starts.push(vpos);
+        vpos += len as u64;
+    }
+    // Contributing packets grouped by precinct, groups in stream order of
+    // their first packet. Non-contributing packets hop by their PLT length.
+    let precinct_base: Vec<Vec<usize>> = {
+        let mut next = 0usize;
+        tile.grids
+            .iter()
+            .map(|comp_grids| {
+                comp_grids
+                    .iter()
+                    .map(|&(_, _, npx, npy)| {
+                        let base = next;
+                        next += (npx * npy) as usize;
+                        base
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+    let precinct_count = tile
+        .grids
+        .iter()
+        .flatten()
+        .map(|&(_, _, npx, npy)| (npx * npy) as usize)
+        .sum();
+    let mut group_of_precinct: Vec<u32> = vec![u32::MAX; precinct_count];
+    let mut groups: Vec<Vec<u32>> = Vec::new();
+    for (i, pkt) in walk.iter().enumerate() {
+        if !contributes(pkt) {
+            continue;
+        }
+        let precinct = precinct_base[pkt.comp as usize][pkt.res as usize] + pkt.prec as usize;
+        if group_of_precinct[precinct] == u32::MAX {
+            group_of_precinct[precinct] = groups.len() as u32;
+            groups.push(Vec::new());
+        }
+        groups[group_of_precinct[precinct] as usize].push(i as u32);
+    }
+
+    let fetched = match plt_use {
+        PltUse::FetchedParallel(_) => {
+            let mut ranges = Vec::new();
+            for &i in groups.iter().flatten() {
+                let i = i as usize;
+                let (mut vpos, end) = (starts[i], starts[i] + lengths[i] as u64);
+                while vpos < end {
+                    let (file_off, segment_left) = tile.stream.unspool(vpos)?;
+                    let take = segment_left.min(end - vpos);
+                    ranges.push(file_off..file_off + take);
+                    vpos += take;
+                }
+            }
+            let runs = merge_ranges(ranges, FETCH_GAP_BYTES);
+            Some(FetchedRuns::over(
+                tile.file,
+                fetch_runs(tile.file, &runs).map_err(io_snag)?,
+            ))
+        }
+        _ => None,
+    };
+    let fetched_tile;
+    let tile = match &fetched {
+        Some(fetched) => {
+            fetched_tile = TileWalk {
+                file: fetched,
+                ..*tile
+            };
+            &fetched_tile
+        }
+        None => tile,
+    };
+    let next_claim = AtomicUsize::new(0);
+    let abort = AtomicBool::new(false);
+    let threads = plt_use
+        .threads()
+        .min(groups.len().div_ceil(PRECINCTS_PER_CLAIM))
+        .max(1);
+    let (sender, receiver) = mpsc::channel::<Result<Vec<GroupResult>, DecodeError>>();
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            let sender = sender.clone();
+            let (groups, starts, next_claim, abort) = (&groups, &starts, &next_claim, &abort);
+            scope.spawn(move || {
+                let mut win = match StreamWin::warp(tile.file) {
+                    Ok(win) => win,
+                    Err(e) => {
+                        abort.store(true, Ordering::Relaxed);
+                        let _ = sender.send(Err(io_snag(e)));
+                        return;
+                    }
+                };
+                loop {
+                    let first = next_claim.fetch_add(PRECINCTS_PER_CLAIM, Ordering::Relaxed);
+                    if first >= groups.len() || abort.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    let last = (first + PRECINCTS_PER_CLAIM).min(groups.len());
+                    let claim = PrecinctClaim {
+                        walk,
+                        starts,
+                        lengths,
+                        groups: &groups[first..last],
+                    };
+                    let result = comb_claim(tile, &mut win, &claim);
+                    let failed = result.is_err();
+                    if failed {
+                        abort.store(true, Ordering::Relaxed);
+                    }
+                    if sender.send(result).is_err() || failed {
+                        return;
+                    }
+                }
+            });
+        }
+        drop(sender);
+        let mut first_error = None;
+        for message in receiver {
+            match message {
+                Ok(results) if first_error.is_none() => {
+                    for (prec_bands, packets) in &results {
+                        for (i, combed) in packets {
+                            if let Err(e) =
+                                fill_block_records(comps, &walk[*i as usize], prec_bands, combed)
+                            {
+                                abort.store(true, Ordering::Relaxed);
+                                first_error.get_or_insert(e);
+                            }
+                        }
+                    }
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    first_error.get_or_insert(e);
+                }
+            }
+        }
+        first_error.map_or(Ok(()), Err)
+    })?;
+    Ok(fetched.map_or_else(Vec::new, FetchedRuns::into_runs))
 }
 
 /// Ranging exponent epsilon_b for band `qcd_idx`.
@@ -1436,11 +1765,32 @@ mod tests {
     use super::*;
     use crate::codec::packet_order::prec_position;
     use crate::codec::params::{
-        CodingModes, CompCodingStyle, ProgressionOrder, ProgressionVolume, QuantStyle,
-        SizComponent, SizParams,
+        CodingModes, CompCodingStyle, PrecinctSize, ProgressionOrder, ProgressionVolume,
+        QuantStyle, SizComponent, SizParams,
     };
 
     const NUM_LEVELS: u8 = 5;
+
+    fn draft_plan(
+        file: &dyn ReadAt,
+        hdr: &MainHeaderIn,
+        reduce: u8,
+        max_layers: u16,
+        plt_use: PltUse,
+        window: Option<Dims>,
+        int16_irreversible: bool,
+    ) -> Result<DecodePlan, DecodeError> {
+        draft(
+            file,
+            hdr,
+            reduce,
+            max_layers,
+            plt_use,
+            window,
+            int16_irreversible,
+        )
+        .map(|drafted| drafted.plan)
+    }
 
     #[test]
     fn part_one_modes_are_supported_and_ht_is_rejected() {
@@ -1553,7 +1903,7 @@ mod tests {
         let empty: Vec<u8> = Vec::new();
         for reduce in [NUM_LEVELS, NUM_LEVELS + 1, 200] {
             let Err(DecodeError::Logic(msg)) =
-                draft(&empty, &header(), reduce, 0, true, None, false)
+                draft_plan(&empty, &header(), reduce, 0, PltUse::InOrder, None, false)
             else {
                 panic!("reduce {reduce} must be rejected");
             };
@@ -1568,7 +1918,7 @@ mod tests {
         let empty: Vec<u8> = Vec::new();
         for reduce in 0..NUM_LEVELS {
             let Err(DecodeError::Logic(msg)) =
-                draft(&empty, &header(), reduce, 0, true, None, false)
+                draft_plan(&empty, &header(), reduce, 0, PltUse::InOrder, None, false)
             else {
                 panic!("there is no SOT to walk");
             };
@@ -1905,7 +2255,8 @@ mod tests {
         let per_layer = (BLOCKS_PER_LAYER * BODY_LEN) as usize;
 
         for keep in 1..=LAYERS {
-            let plan = draft(&stream, &hdr, 0, keep, true, None, false).expect("plan must build");
+            let plan = draft_plan(&stream, &hdr, 0, keep, PltUse::InOrder, None, false)
+                .expect("plan must build");
             assert_eq!(
                 coded_bytes(&plan),
                 per_layer * keep as usize,
@@ -1924,11 +2275,12 @@ mod tests {
         let stream = synth_stream();
         let hdr = synth_header();
         let full = coded_bytes(
-            &draft(&stream, &hdr, 0, LAYERS, true, None, false).expect("plan must build"),
+            &draft_plan(&stream, &hdr, 0, LAYERS, PltUse::InOrder, None, false)
+                .expect("plan must build"),
         );
         for max_layers in [0, LAYERS + 1, u16::MAX] {
-            let plan =
-                draft(&stream, &hdr, 0, max_layers, true, None, false).expect("plan must build");
+            let plan = draft_plan(&stream, &hdr, 0, max_layers, PltUse::InOrder, None, false)
+                .expect("plan must build");
             assert_eq!(coded_bytes(&plan), full, "max_layers {max_layers}");
         }
     }
@@ -1942,7 +2294,9 @@ mod tests {
         let stream = synth_stream();
         let mut hdr = synth_header();
         hdr.cod.num_layers = OVERSIZED_LAYERS;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+        else {
             panic!("a tile declaring {OVERSIZED_LAYERS} layers of packets must be rejected");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
@@ -1959,10 +2313,18 @@ mod tests {
     #[test]
     fn a_zero_psot_tile_part_runs_to_the_eoc() {
         let hdr = synth_header();
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
-        let plan =
-            draft(&zero_psot_stream(), &hdr, 0, 0, true, None, false).expect("plan must build");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
+        let plan = draft_plan(
+            &zero_psot_stream(),
+            &hdr,
+            0,
+            0,
+            PltUse::InOrder,
+            None,
+            false,
+        )
+        .expect("plan must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -1973,14 +2335,23 @@ mod tests {
 
     #[test]
     fn a_zero_psot_tile_part_stops_at_the_codestream_end() {
-        let baseline = draft(&synth_stream(), &synth_header(), 0, 0, true, None, false)
-            .expect("baseline must build");
+        let baseline = draft_plan(
+            &synth_stream(),
+            &synth_header(),
+            0,
+            0,
+            PltUse::InOrder,
+            None,
+            false,
+        )
+        .expect("baseline must build");
         let mut stream = zero_psot_stream();
         let mut hdr = synth_header();
         hdr.codestream_len = stream.len() as u64;
         stream.extend([0x5A; TRAILING_BYTES]);
 
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -1989,7 +2360,9 @@ mod tests {
         let packet_bytes = hdr.codestream_len as usize - 16;
         // one layer past two packets per layer
         hdr.cod.num_layers = ((packet_bytes / 2) + 1) as u16;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+        else {
             panic!("the trailing bytes must not pad the tile's packet bytes");
         };
         assert!(msg.contains("declared packets"), "got {msg}");
@@ -1998,15 +2371,23 @@ mod tests {
     // issue775.j2k: the last Psot ends 4 bytes short of the codestream end
     #[test]
     fn the_walk_ends_at_bytes_that_are_not_an_sot() {
-        let baseline = draft(&synth_stream(), &synth_header(), 0, 0, true, None, false)
-            .expect("baseline must build");
+        let baseline = draft_plan(
+            &synth_stream(),
+            &synth_header(),
+            0,
+            0,
+            PltUse::InOrder,
+            None,
+            false,
+        )
+        .expect("baseline must build");
         for trailing in [4usize, TRAILING_BYTES] {
             let mut stream = synth_stream();
             stream.truncate(stream.len() - 2); // drop the EOC
             stream.extend(std::iter::repeat_n(0x5A, trailing));
             let mut hdr = synth_header();
             hdr.codestream_len = stream.len() as u64;
-            let plan = draft(&stream, &hdr, 0, 0, true, None, false)
+            let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
                 .unwrap_or_else(|e| panic!("{trailing} trailing bytes: {e:?}"));
             assert_eq!(block_offsets(&plan), block_offsets(&baseline), "{trailing}");
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "{trailing}");
@@ -2020,7 +2401,9 @@ mod tests {
         stream.truncate(stream.len() - 3); // drop the EOC and the last body byte
         let mut hdr = synth_header();
         hdr.codestream_len = stream.len() as u64;
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &hdr, 0, 0, true, None, false) else {
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+        else {
             panic!("a plan must not point a block past the end of the stream");
         };
         assert!(msg.contains("packet stream overrun"), "got {msg}");
@@ -2141,8 +2524,8 @@ mod tests {
         let packets = synth_packets();
         let layer0 = &packets[..2];
         let hdr = synth_header();
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 1, true, None, false).expect("baseline must build");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 1, PltUse::InOrder, None, false)
+            .expect("baseline must build");
         for use_plt in [false, true] {
             let plt = if use_plt {
                 vec![(0, plt_encode(&packet_lengths(&packets)))]
@@ -2150,8 +2533,20 @@ mod tests {
                 Vec::new()
             };
             let stream = assemble_stream(layer0, &plt);
-            let plan = draft(&stream, &hdr, 0, 1, use_plt, None, false)
-                .expect("plan must stop before the missing packets");
+            let plan = draft_plan(
+                &stream,
+                &hdr,
+                0,
+                1,
+                if use_plt {
+                    PltUse::InOrder
+                } else {
+                    PltUse::Ignore
+                },
+                None,
+                false,
+            )
+            .expect("plan must stop before the missing packets");
             assert_eq!(coded_bytes(&plan), coded_bytes(&baseline), "plt {use_plt}");
             assert_eq!(passes(&plan), passes(&baseline), "plt {use_plt}");
         }
@@ -2173,8 +2568,8 @@ mod tests {
             })
             .collect();
         let baseline_stream = assemble_stream(&clean, &[]);
-        let baseline =
-            draft(&baseline_stream, &hdr, 0, 1, false, None, false).expect("baseline must build");
+        let baseline = draft_plan(&baseline_stream, &hdr, 0, 1, PltUse::Ignore, None, false)
+            .expect("baseline must build");
 
         let mut packets = clean;
         for garbaged in &mut packets[1..=2] {
@@ -2183,7 +2578,7 @@ mod tests {
         }
         let plt = plt_encode(&packet_lengths(&packets));
         let stream = assemble_stream(&packets, &[(0, plt)]);
-        let plan = draft(&stream, &hdr, 0, 1, true, None, false)
+        let plan = draft_plan(&stream, &hdr, 0, 1, PltUse::InOrder, None, false)
             .expect("plan must hop the garbaged dropped layers");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
@@ -2198,9 +2593,10 @@ mod tests {
         let stream = assemble_stream(&packets, &[(0, plt)]);
         let hdr = synth_header();
 
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2210,9 +2606,18 @@ mod tests {
     fn full_cover_window_changes_nothing() {
         let stream = synth_stream();
         let hdr = synth_header();
-        let full = draft(&stream, &hdr, 0, 0, true, None, false).expect("baseline must build");
-        let windowed = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)), false)
-            .expect("windowed plan must build");
+        let full = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
+        let windowed = draft_plan(
+            &stream,
+            &hdr,
+            0,
+            0,
+            PltUse::InOrder,
+            Some(d(0, 0, 8, 8)),
+            false,
+        )
+        .expect("windowed plan must build");
         assert_eq!(coded_bytes(&windowed), coded_bytes(&full));
         assert_eq!(passes(&windowed), passes(&full));
         assert_eq!((windowed.width, windowed.height), (full.width, full.height));
@@ -2283,14 +2688,23 @@ mod tests {
     fn a_subsampled_component_gets_its_own_output_dims() {
         let stream = subsampled_stream();
         let hdr = subsampled_header();
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(plan.comp_dims[0], d(0, 0, 12, 12));
         assert_eq!(plan.comp_dims[1], d(0, 0, 6, 6));
         assert_eq!((plan.width, plan.height), (12, 12));
 
         // an odd window origin rounds up onto the subsampled component
-        let windowed = draft(&stream, &hdr, 0, 0, true, Some(d(3, 5, 12, 12)), false)
-            .expect("plan must build");
+        let windowed = draft_plan(
+            &stream,
+            &hdr,
+            0,
+            0,
+            PltUse::InOrder,
+            Some(d(3, 5, 12, 12)),
+            false,
+        )
+        .expect("plan must build");
         assert_eq!(windowed.comp_dims[0], d(3, 5, 12, 12));
         assert_eq!(windowed.comp_dims[1], d(2, 3, 6, 6));
     }
@@ -2313,7 +2727,8 @@ mod tests {
 
         let stream = subsampled_stream();
         let hdr = subsampled_header();
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         let expected: Vec<(u32, u32)> = plan
             .comp_dims
             .iter()
@@ -2377,13 +2792,15 @@ mod tests {
         let mut whole = tile_part(0, true);
         whole.extend(tile_part(1, true));
         whole.extend([0xFF, 0xD9]);
-        let baseline = draft(&whole, &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let baseline = draft_plan(&whole, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
 
         let mut cut = tile_part(0, true);
         cut.extend(tile_part(1, false));
         cut.extend([0xFF, 0xD9]); // EOC where tile 1's packet bytes should be
         let win = Some(d(0, 0, 8, 8));
-        let plan = draft(&cut, &hdr, 0, 0, true, win, false).expect("tile 1 must never be touched");
+        let plan = draft_plan(&cut, &hdr, 0, 0, PltUse::InOrder, win, false)
+            .expect("tile 1 must never be touched");
         assert!(plan.tiles[1].is_none());
         assert_eq!((plan.width, plan.height), (8, 8));
         // tile 0's records match the whole-image parse
@@ -2402,7 +2819,7 @@ mod tests {
         assert_eq!(tile0_passes(&plan), tile0_passes(&baseline));
 
         assert!(
-            draft(&cut, &hdr, 0, 0, true, None, false).is_err(),
+            draft_plan(&cut, &hdr, 0, 0, PltUse::InOrder, None, false).is_err(),
             "a whole-image parse needs tile 1's missing bytes"
         );
     }
@@ -2414,8 +2831,16 @@ mod tests {
             *p = synth_empty_packet();
         }
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, false, Some(d(0, 0, 8, 8)), false)
-            .expect("empty out-of-window packets must not block the plan");
+        let plan = draft_plan(
+            &stream,
+            &hdr,
+            0,
+            0,
+            PltUse::Ignore,
+            Some(d(0, 0, 8, 8)),
+            false,
+        )
+        .expect("empty out-of-window packets must not block the plan");
         assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
     }
@@ -2425,8 +2850,16 @@ mod tests {
         let (hdr, packets) = tall_rlcp();
         let plt = plt_encode(&packet_lengths(&packets));
         let stream = assemble_stream(&packets, &[(0, plt)]);
-        let plan = draft(&stream, &hdr, 0, 0, true, Some(d(0, 0, 8, 8)), false)
-            .expect("PLT must hop the out-of-window packets");
+        let plan = draft_plan(
+            &stream,
+            &hdr,
+            0,
+            0,
+            PltUse::InOrder,
+            Some(d(0, 0, 8, 8)),
+            false,
+        )
+        .expect("PLT must hop the out-of-window packets");
         assert!(plan.tiles[0].is_some());
         assert!(passes(&plan).iter().any(|&n| n > 0));
     }
@@ -2484,9 +2917,10 @@ mod tests {
                 height: 8,
             },
         ];
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("clamped blocks must plan");
-        let baseline =
-            draft(&stream, &synth_header(), 0, 0, true, None, false).expect("baseline must build");
+        let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("clamped blocks must plan");
+        let baseline = draft_plan(&stream, &synth_header(), 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         let spans: Vec<(u32, u32)> = plan.tiles[0].as_ref().unwrap().comps[0]
             .iter()
@@ -2529,7 +2963,8 @@ mod tests {
             packets.push(synth_packet(first, 3)); // res 2, comp 1
         }
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
 
         const BLOCKS: usize = 11; // comp 0: 1 + 3, comp 1: 1 + 3 + 3
         assert_eq!(
@@ -2566,7 +3001,8 @@ mod tests {
         let mut second = hdr.cod.comps[0].clone();
         second.reversible = false;
         hdr.cod.comps.push(second);
-        let Err(DecodeError::Logic(msg)) = draft(&synth_stream(), &hdr, 0, 0, true, None, false)
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
         else {
             panic!("mixed kernels must be rejected");
         };
@@ -2598,7 +3034,8 @@ mod tests {
             ..volume
         });
         let stream = marked_stream(&[poc_segment(&[volume])], &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("tile-part POC must plan");
+        let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("tile-part POC must plan");
         let tile = plan.tiles[0].as_ref().expect("tile must be present");
 
         assert_eq!(tile.cod.pocs.len(), 1);
@@ -2636,7 +3073,7 @@ mod tests {
         stream.extend(tile_part(1, 2, &[poc_segment(&[second])], &second_packets));
         stream.extend([0xFF, 0xD9]);
 
-        let plan = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        let plan = draft_plan(&stream, &synth_header(), 0, 0, PltUse::InOrder, None, false)
             .expect("later tile-part POC must plan");
         let tile = plan.tiles[0].as_ref().expect("tile must be present");
         assert_eq!(tile.cod.pocs.len(), 2);
@@ -2644,7 +3081,7 @@ mod tests {
         assert_eq!(tile.cod.pocs[1].res_s, 1);
         assert_eq!(passes(&plan), vec![LAYERS as u8; BLOCKS_PER_LAYER as usize]);
 
-        let limited = draft(&stream, &synth_header(), 0, 1, true, None, false)
+        let limited = draft_plan(&stream, &synth_header(), 0, 1, PltUse::InOrder, None, false)
             .expect("layer-limited tile-part POC must plan");
         assert_eq!(passes(&limited), vec![1; BLOCKS_PER_LAYER as usize]);
     }
@@ -2699,7 +3136,8 @@ mod tests {
             synth_packet(false, 3), // 11: comp 1, res 1, layer 2
         ];
         let stream = assemble_stream(&packets, &[]);
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("POC plan must build");
+        let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("POC plan must build");
 
         const BLOCKS: usize = 8; // two components of LL + HL + LH + HH
         assert_eq!(
@@ -2751,10 +3189,12 @@ mod tests {
             order: ProgressionOrder::Lrcp,
         }];
         let stream = synth_stream();
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("clamped POC must plan");
+        let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("clamped POC must plan");
         let mut lrcp = synth_header();
         lrcp.cod.order = ProgressionOrder::Lrcp;
-        let baseline = draft(&stream, &lrcp, 0, 0, true, None, false).expect("baseline must build");
+        let baseline = draft_plan(&stream, &lrcp, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
         assert_eq!(block_offsets(&plan), block_offsets(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2783,7 +3223,7 @@ mod tests {
             let mut hdr = synth_header();
             hdr.cod.pocs = vec![vol];
             let Err(DecodeError::Logic(msg)) =
-                draft(&synth_stream(), &hdr, 0, 0, true, None, false)
+                draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
             else {
                 panic!("an empty POC volume must be rejected");
             };
@@ -2803,9 +3243,15 @@ mod tests {
         let psot =
             u32::from_be_bytes([spliced[6], spliced[7], spliced[8], spliced[9]]) + RGN.len() as u32;
         spliced[6..10].copy_from_slice(&psot.to_be_bytes());
-        let Err(DecodeError::Logic(msg)) =
-            draft(&spliced, &synth_header(), 0, 0, true, None, false)
-        else {
+        let Err(DecodeError::Logic(msg)) = draft_plan(
+            &spliced,
+            &synth_header(),
+            0,
+            0,
+            PltUse::InOrder,
+            None,
+            false,
+        ) else {
             panic!("a tile-part RGN must be rejected");
         };
         assert!(msg.contains("0xff5e"), "got {msg}");
@@ -2817,11 +3263,146 @@ mod tests {
         let mut lengths = packet_lengths(&packets);
         lengths[0] += 1;
         let stream = assemble_stream(&packets, &[(0, plt_encode(&lengths))]);
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &synth_header(), 0, 0, PltUse::InOrder, None, false)
         else {
             panic!("a lying PLT must be rejected");
         };
         assert!(msg.contains("PLT length"), "got {msg}");
+    }
+
+    /// 64x48 image, 4x4 code blocks, 4x4 LL precincts and 8x8 precincts at
+    /// resolution 1: one block per band in each of 96 precincts, more than one
+    /// claim, two layers in LRCP order so each precinct's packets are apart.
+    fn many_precinct_header() -> MainHeaderIn {
+        let mut hdr = synth_header();
+        hdr.siz.x_siz = 64;
+        hdr.siz.y_siz = 48;
+        hdr.siz.xt_siz = 64;
+        hdr.siz.yt_siz = 48;
+        hdr.cod.num_layers = 2;
+        let style = &mut hdr.cod.comps[0];
+        style.block_width = 4;
+        style.block_height = 4;
+        style.precincts = vec![
+            PrecinctSize {
+                width: 4,
+                height: 4,
+            },
+            PrecinctSize {
+                width: 8,
+                height: 8,
+            },
+        ];
+        hdr
+    }
+
+    const PRECINCTS_PER_RESOLUTION: usize = 48;
+
+    fn many_precinct_packets() -> Vec<Vec<u8>> {
+        let mut packets = Vec::new();
+        for layer in 0..2 {
+            for _ in 0..PRECINCTS_PER_RESOLUTION {
+                packets.push(synth_packet(layer == 0, 1));
+            }
+            for _ in 0..PRECINCTS_PER_RESOLUTION {
+                packets.push(synth_packet(layer == 0, 3));
+            }
+        }
+        packets
+    }
+
+    fn later_chunks(plan: &DecodePlan) -> Vec<(u64, u32)> {
+        plan.tiles
+            .iter()
+            .flatten()
+            .flat_map(|t| t.comps.iter().flatten())
+            .flat_map(|r| r.bands.iter())
+            .flat_map(|b| b.blocks())
+            .flat_map(|blk| blk.extra.iter().flat_map(|chunks| chunks.iter()))
+            .map(|chunk| (chunk.file_off, chunk.len))
+            .collect()
+    }
+
+    #[test]
+    fn parallel_plt_parse_matches_the_in_order_parse() {
+        let packets = many_precinct_packets();
+        let stream = assemble_stream(&packets, &[(0, plt_encode(&packet_lengths(&packets)))]);
+        let hdr = many_precinct_header();
+        let in_order = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("in-order plan must build");
+        let parallel = draft_plan(&stream, &hdr, 0, 0, PltUse::Parallel(4), None, false)
+            .expect("parallel plan must build");
+        let blocks = PRECINCTS_PER_RESOLUTION * 4;
+        assert_eq!(coded_bytes(&in_order), 2 * blocks * BODY_LEN as usize);
+        assert_eq!(block_offsets(&parallel), block_offsets(&in_order));
+        assert_eq!(passes(&parallel), passes(&in_order));
+        assert_eq!(later_chunks(&parallel), later_chunks(&in_order));
+        assert_eq!(later_chunks(&parallel).len(), blocks);
+    }
+
+    #[test]
+    fn fetched_plt_parse_matches_the_parallel_parse_from_fetched_bytes_alone() {
+        let packets = many_precinct_packets();
+        let stream = assemble_stream(&packets, &[(0, plt_encode(&packet_lengths(&packets)))]);
+        let hdr = many_precinct_header();
+        let window = Some(Dims {
+            x0: 0,
+            y0: 0,
+            x1: 24,
+            y1: 16,
+        });
+        let parallel = draft_plan(&stream, &hdr, 0, 0, PltUse::Parallel(4), window, false)
+            .expect("parallel plan must build");
+        let Drafted { plan, fetched } = draft(
+            &stream,
+            &hdr,
+            0,
+            0,
+            PltUse::FetchedParallel(4),
+            window,
+            false,
+        )
+        .expect("fetched plan must build");
+        assert_eq!(block_offsets(&plan), block_offsets(&parallel));
+        assert_eq!(passes(&plan), passes(&parallel));
+        assert_eq!(later_chunks(&plan), later_chunks(&parallel));
+        let fetched_bytes: usize = fetched.iter().map(|(_, run)| run.len()).sum();
+        assert!(
+            fetched_bytes < stream.len(),
+            "the window skips some packets"
+        );
+        let fetched_only = FetchedRuns::over(Vec::<u8>::new(), fetched);
+        let block_ranges = plan.coded_runs(0);
+        assert!(!block_ranges.is_empty());
+        for range in block_ranges {
+            let mut from_runs = vec![0u8; (range.end - range.start) as usize];
+            fetched_only
+                .draw_at(&mut from_runs, range.start)
+                .expect("block bytes lie in the fetched runs");
+            let mut from_stream = vec![0u8; from_runs.len()];
+            stream.draw_at(&mut from_stream, range.start).unwrap();
+            assert_eq!(from_runs, from_stream);
+        }
+    }
+
+    #[test]
+    fn parallel_plt_parse_rejects_a_lying_plt_length() {
+        let packets = many_precinct_packets();
+        let mut lengths = packet_lengths(&packets);
+        lengths[150] += 1;
+        let stream = assemble_stream(&packets, &[(0, plt_encode(&lengths))]);
+        let Err(DecodeError::Logic(_)) = draft_plan(
+            &stream,
+            &many_precinct_header(),
+            0,
+            0,
+            PltUse::Parallel(4),
+            None,
+            false,
+        ) else {
+            panic!("a lying PLT must be rejected");
+        };
     }
 
     #[test]
@@ -2832,10 +3413,10 @@ mod tests {
         let stream = assemble_stream(&packets, &[(0, data)]);
         let hdr = synth_header();
 
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
-        let plan =
-            draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must parse without PLT");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
+        let plan = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("plan must parse without PLT");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
     }
 
@@ -2949,7 +3530,8 @@ mod tests {
         const TILE_LAYERS: u16 = 2;
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(TILE_LAYERS, 1, 0)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, TILE_LAYERS);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 4);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_height, 4);
@@ -2962,8 +3544,16 @@ mod tests {
 
         // the 4x4 bands hold one code-block either way, so the packets are the
         // main header's stream cut to the tile's layer count
-        let baseline = draft(&synth_stream(), &hdr, 0, TILE_LAYERS, true, None, false)
-            .expect("baseline must build");
+        let baseline = draft_plan(
+            &synth_stream(),
+            &hdr,
+            0,
+            TILE_LAYERS,
+            PltUse::InOrder,
+            None,
+            false,
+        )
+        .expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2974,10 +3564,11 @@ mod tests {
     fn a_tile_part_cod_cannot_raise_the_layer_count() {
         let hdr = synth_header();
         let stream = marked_stream(&[cod_segment(LAYERS + 4, 1, 4)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.num_layers, LAYERS);
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
         assert_eq!(passes(&plan), passes(&baseline));
     }
@@ -2988,11 +3579,12 @@ mod tests {
     fn a_tile_part_qcd_replaces_the_tile_quantization() {
         let hdr = synth_header();
         let stream = marked_stream(&[quant_segment(0x5C, None, 3, 10)], &synth_packets());
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
 
-        let baseline =
-            draft(&synth_stream(), &hdr, 0, 0, true, None, false).expect("baseline must build");
+        let baseline = draft_plan(&synth_stream(), &hdr, 0, 0, PltUse::InOrder, None, false)
+            .expect("baseline must build");
         assert_eq!(k_max_primes(&baseline, 0), vec![2 + 8 - 1; 4]);
         assert_eq!(coded_bytes(&plan), coded_bytes(&baseline));
     }
@@ -3034,7 +3626,8 @@ mod tests {
             );
         }
         let stream = marked_stream(&[coc_segment(1, 2, 0)], &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
 
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].num_levels, 1);
         assert_eq!(plan.tiles[0].as_ref().unwrap().cod.comps[0].block_width, 64);
@@ -3061,7 +3654,8 @@ mod tests {
             quant_segment(0x5D, Some(1), 1, 5),
         ];
         let stream = marked_stream(&markers, &packets);
-        let plan = draft(&stream, &hdr, 0, 0, true, None, false).expect("plan must build");
+        let plan =
+            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, None, false).expect("plan must build");
         assert_eq!(k_max_primes(&plan, 0), vec![3 + 10 - 1; 4]);
         assert_eq!(k_max_primes(&plan, 1), vec![1 + 5 - 1; 4]);
     }
@@ -3075,7 +3669,8 @@ mod tests {
         let mut stream = tile_part(0, 2, &[], first);
         stream.extend(tile_part(1, 2, &[cod_segment(2, 1, 0)], second));
         stream.extend([0xFF, 0xD9]);
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &synth_header(), 0, 0, PltUse::InOrder, None, false)
         else {
             panic!("a later tile-part must not carry a COD");
         };
@@ -3089,7 +3684,8 @@ mod tests {
         let mut irreversible = cod_segment(LAYERS, 1, 4);
         *irreversible.last_mut().unwrap() = 0x00;
         let stream = marked_stream(&[irreversible], &synth_packets());
-        let Err(DecodeError::Logic(msg)) = draft(&stream, &synth_header(), 0, 0, true, None, false)
+        let Err(DecodeError::Logic(msg)) =
+            draft_plan(&stream, &synth_header(), 0, 0, PltUse::InOrder, None, false)
         else {
             panic!("a tile-part kernel change must be rejected");
         };
@@ -3155,5 +3751,124 @@ mod tests {
             parts.len(),
             (siz().tiles_across() * siz().tiles_down()) as usize
         );
+    }
+
+    static PATTERNED_BLOCKS_DECODED: std::sync::atomic::AtomicUsize =
+        std::sync::atomic::AtomicUsize::new(0);
+
+    unsafe fn patterned_coder(
+        blk: &crate::decode::stripe_decoder::MercuryStripeBlockInfo,
+    ) -> Option<*const i32> {
+        thread_local! {
+            static SAMPLES: std::cell::UnsafeCell<[i32; 4096]> =
+                const { std::cell::UnsafeCell::new([0; 4096]) };
+        }
+        PATTERNED_BLOCKS_DECODED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let (cols, rows) = (blk.num_cols as usize, blk.num_rows as usize);
+        SAMPLES.with(|cell| {
+            let samples = unsafe { &mut *cell.get() };
+            for r in 0..rows {
+                for c in 0..cols {
+                    let x = blk.dst_offset as usize + c;
+                    let value = (x * 7 + r * 13 + blk.orientation as usize * 5) % 31;
+                    samples[r * cols + c] = 2 * (value as i32 - 15);
+                }
+            }
+            Some(cell.get() as *const i32)
+        })
+    }
+
+    fn strip_test_header() -> MainHeaderIn {
+        let mut hdr = synth_header();
+        hdr.siz.x_siz = 4096;
+        hdr.siz.y_siz = 64;
+        hdr.siz.xt_siz = 4096;
+        hdr.siz.yt_siz = 64;
+        hdr.cod.num_layers = 1;
+        let style = &mut hdr.cod.comps[0];
+        style.num_levels = 2;
+        style.block_width = 16;
+        style.block_height = 16;
+        let precinct = |side| crate::codec::params::PrecinctSize {
+            width: side,
+            height: side,
+        };
+        // one code-block per band per precinct, so every packet is a synth_packet
+        style.precincts = vec![precinct(16), precinct(32), precinct(32)];
+        hdr.qcd.ranges = vec![8; 7];
+        hdr
+    }
+
+    fn strip_test_stream() -> Vec<u8> {
+        let mut packets = Vec::new();
+        packets.extend((0..64).map(|_| synth_packet(true, 1)));
+        packets.extend((0..64).map(|_| synth_packet(true, 3)));
+        packets.extend((0..256).map(|_| synth_packet(true, 3)));
+        assemble_stream(&packets, &[])
+    }
+
+    fn decode_rows(stream: &[u8], plan: DecodePlan) -> Vec<Vec<i64>> {
+        use crate::decode::graph::{RowSink, Rows, weave_with_coder};
+        use std::sync::{Arc, Mutex};
+
+        let rows: Arc<Mutex<Vec<Vec<i64>>>> = Arc::new(Mutex::new(Vec::new()));
+        let sink_rows = Arc::clone(&rows);
+        let sink: RowSink = Box::new(move |row, samples| {
+            let values: Vec<i64> = match samples {
+                Rows::I16(r) | Rows::Q13(r) => r[0].iter().map(|&v| v.into()).collect(),
+                Rows::I32(r) => r[0].iter().map(|&v| v.into()).collect(),
+                Rows::F32(r) => r[0].iter().map(|&v| v.to_bits().into()).collect(),
+            };
+            let mut got = sink_rows.lock().unwrap();
+            assert_eq!(got.len() as u32, row, "rows arrive in order");
+            got.push(values);
+        });
+        weave_with_coder(Arc::new(stream.to_vec()), plan, 4, sink, patterned_coder)
+            .expect("decode must run");
+        Arc::try_unwrap(rows).unwrap().into_inner().unwrap()
+    }
+
+    #[test]
+    fn column_strips_decode_each_block_once_and_emit_the_same_rows() {
+        use std::sync::atomic::Ordering;
+
+        let stream = strip_test_stream();
+        let hdr = strip_test_header();
+        let cases = [
+            (0u8, None, Some(1024)),
+            (1, None, Some(256)),
+            (0, Some(d(301, 5, 3901, 61)), None),
+        ];
+        for (reduce, window, expected_blocks) in cases {
+            let decode = |max_strips: u32| {
+                let mut plan = draft_plan(&stream, &hdr, reduce, 0, PltUse::InOrder, window, false)
+                    .expect("plan must build");
+                plan.max_strips = max_strips;
+                PATTERNED_BLOCKS_DECODED.store(0, Ordering::Relaxed);
+                let rows = decode_rows(&stream, plan);
+                (PATTERNED_BLOCKS_DECODED.load(Ordering::Relaxed), rows)
+            };
+            let (baseline_blocks, baseline_rows) = decode(1);
+            if let Some(expected) = expected_blocks {
+                assert_eq!(baseline_blocks, expected, "reduce {reduce}");
+            }
+            assert!(
+                baseline_rows
+                    .iter()
+                    .flatten()
+                    .any(|&v| v != baseline_rows[0][0])
+            );
+            for max_strips in [3, 4] {
+                let (blocks, rows) = decode(max_strips);
+                assert_eq!(
+                    blocks, baseline_blocks,
+                    "reduce {reduce} window {window:?} strips {max_strips}"
+                );
+                assert!(
+                    rows == baseline_rows,
+                    "reduce {reduce} window {window:?} strips {max_strips}"
+                );
+            }
+        }
     }
 }

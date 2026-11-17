@@ -203,6 +203,11 @@ typedef struct MercuryDecodeParams
   uint32_t slice_blocks; /* code blocks per subband column slice, 0 means 16 */
   bool int16_dwt; /* nonzero runs the reversible 5/3 on int16 samples */
   bool int16_irreversible; /* nonzero runs the 9/7 on int16 fixed point above 8 bits */
+  uint32_t max_strips; /* most column strips one tile component's synthesis splits into, 0 means 1 */
+  bool fetch_window;
+  /* threads that parse packet headers when PLT markers give every packet's start,
+   * 0 and 1 parse on the calling thread */
+  uint32_t plan_threads;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.

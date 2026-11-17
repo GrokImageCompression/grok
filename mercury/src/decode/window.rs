@@ -14,7 +14,7 @@
 //! bit-exact. At true band edges the clip makes the window edge the real
 //! boundary and the extension is correct, not fabricated.
 
-use crate::codec::tile_geom::Dims;
+use crate::codec::tile_geom::{Dims, TileCompGeom};
 
 /// Classic's per-side padding of a resolution window: 4 × getFilterPad,
 /// where getFilterPad is 1 (reversible 5/3) or 2 (irreversible 9/7).
@@ -121,6 +121,99 @@ pub struct TileCompWindow {
     pub bands: Vec<Vec<Dims>>,
 }
 
+/// Each resolution's dims paired with its subbands' (orientation, dims), the
+/// layout [`chart_tile_comp_window`] takes.
+pub fn resolution_band_dims(component: &TileCompGeom) -> Vec<(Dims, Vec<(u8, Dims)>)> {
+    component
+        .resolutions
+        .iter()
+        .map(|res| {
+            (
+                res.dims,
+                res.subbands
+                    .iter()
+                    .map(|sb| (sb.band_type, sb.dims))
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+/// One column strip of a tile component's decode: the output columns it
+/// emits on the target resolution plane, and its padded windows.
+pub struct StripWindow {
+    pub emitted: Dims,
+    pub window: TileCompWindow,
+}
+
+/// Split `whole` into `strips` column strips that emit equal shares of
+/// `emitted` (a rect on the plane `reduce` levels below full resolution).
+/// Each strip's windows are `whole`'s, except that x is padded around the
+/// strip's own share of the columns: an interior seam is a window edge with
+/// full filter padding, so the strips' emitted columns are bit-exact.
+pub fn chart_strip_windows(
+    whole: &TileCompWindow,
+    emitted: Dims,
+    strips: u32,
+    reduce: u8,
+    resolutions: &[(Dims, Vec<(u8, Dims)>)],
+    num_levels: u8,
+    reversible: bool,
+) -> Vec<StripWindow> {
+    let full_res = resolutions[num_levels as usize].0;
+    let width = emitted.width();
+    (0..strips)
+        .map(|s| {
+            let x0 = emitted.x0 + s * width / strips;
+            let x1 = emitted.x0 + (s + 1) * width / strips;
+            let canvas = Dims {
+                x0: x0 << reduce,
+                y0: full_res.y0,
+                x1: x1 << reduce,
+                y1: full_res.y1,
+            };
+            let strip = chart_tile_comp_window(canvas, resolutions, num_levels, reversible);
+            let fit = |strip_rect: Dims, whole_rect: Dims| Dims {
+                x0: if s == 0 {
+                    whole_rect.x0
+                } else {
+                    strip_rect.x0.max(whole_rect.x0)
+                },
+                y0: whole_rect.y0,
+                x1: if s + 1 == strips {
+                    whole_rect.x1
+                } else {
+                    strip_rect.x1.min(whole_rect.x1)
+                },
+                y1: whole_rect.y1,
+            };
+            let window = TileCompWindow {
+                res: strip
+                    .res
+                    .iter()
+                    .zip(&whole.res)
+                    .map(|(&a, &b)| fit(a, b))
+                    .collect(),
+                bands: strip
+                    .bands
+                    .iter()
+                    .zip(&whole.bands)
+                    .map(|(sb, wb)| sb.iter().zip(wb).map(|(&a, &b)| fit(a, b)).collect())
+                    .collect(),
+            };
+            StripWindow {
+                emitted: Dims {
+                    x0,
+                    y0: emitted.y0,
+                    x1,
+                    y1: emitted.y1,
+                },
+                window,
+            }
+        })
+        .collect()
+}
+
 /// Compute a tile component's padded windows from the canvas window
 /// (unreduced, pre-clipped to the tile component like classic's
 /// unreducedBounds_). `resolutions` pairs each resolution's dims with its
@@ -216,6 +309,77 @@ mod tests {
         assert_eq!(comp_window(d(5, 7, 61, 69), 4, 1), d(2, 7, 16, 69));
         // a window narrower than one component sample collapses to nothing
         assert_eq!(comp_window(d(5, 0, 6, 4), 4, 1), d(2, 0, 2, 4));
+    }
+
+    fn three_level_resolutions() -> Vec<(Dims, Vec<(u8, Dims)>)> {
+        // full resolution 0..1000 x 0..200, three decompositions
+        let sizes = [(125, 25), (250, 50), (500, 100), (1000, 200)];
+        sizes
+            .iter()
+            .enumerate()
+            .map(|(r, &(w, h))| {
+                let dims = d(0, 0, w, h);
+                let bands = if r == 0 {
+                    vec![(0u8, dims)]
+                } else {
+                    let (bw, bh) = sizes[r - 1];
+                    (1u8..=3).map(|o| (o, d(0, 0, bw, bh))).collect()
+                };
+                (dims, bands)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn column_strips_partition_the_output_and_keep_each_level_chained() {
+        let resolutions = three_level_resolutions();
+        for (reduce, strips) in [(0u8, 3u32), (1, 4), (0, 1)] {
+            let target = 3 - reduce as usize;
+            let canvas = d(100, 40, 900, 160);
+            let whole = chart_tile_comp_window(canvas, &resolutions, 3, false);
+            let emitted = band_window(canvas, reduce, 0);
+            let split =
+                chart_strip_windows(&whole, emitted, strips, reduce, &resolutions, 3, false);
+            assert_eq!(split.len(), strips as usize);
+            assert_eq!(split[0].emitted.x0, emitted.x0);
+            assert_eq!(split.last().unwrap().emitted.x1, emitted.x1);
+            for pair in split.windows(2) {
+                assert_eq!(pair[0].emitted.x1, pair[1].emitted.x0);
+            }
+            for (s, strip) in split.iter().enumerate() {
+                let w = &strip.window;
+                for r in 0..=target {
+                    let (a, b) = (w.res[r], whole.res[r]);
+                    assert_eq!((a.y0, a.y1), (b.y0, b.y1));
+                    assert!(
+                        b.x0 <= a.x0 && a.x1 <= b.x1,
+                        "strip {s} res {r} leaves the window"
+                    );
+                }
+                let top = w.res[target];
+                assert!(top.x0 <= strip.emitted.x0 && strip.emitted.x1 <= top.x1);
+                if s > 0 {
+                    assert!(strip.emitted.x0 - top.x0 >= resolution_padding(false));
+                }
+                if s + 1 < split.len() {
+                    assert!(top.x1 - strip.emitted.x1 >= resolution_padding(false));
+                }
+                // each level reads its LL rows from inside the child's window
+                for l in 1..=target {
+                    let ll = intersect(band_window(w.res[l], 1, 0), resolutions[l - 1].0);
+                    let child = w.res[l - 1];
+                    assert!(
+                        child.x0 <= ll.x0 && ll.x1 <= child.x1,
+                        "strip {s} level {l}"
+                    );
+                }
+            }
+            assert_eq!(split[0].window.res[target].x0, whole.res[target].x0);
+            assert_eq!(
+                split.last().unwrap().window.res[target].x1,
+                whole.res[target].x1
+            );
+        }
     }
 
     #[test]

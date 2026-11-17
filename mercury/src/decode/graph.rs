@@ -30,13 +30,16 @@
 use crate::decode::ReadAt;
 use std::sync::{Arc, Mutex};
 
+use crate::codec::tile_geom::Dims;
 use crate::decode::DecodeError;
 use crate::decode::plan::{BandPlan, DecodePlan, TilePlan};
 use crate::decode::stripe_decoder::{
     BlockCoder, MercuryStripeBlockInfo, mercury_weave_stripe_f32, mercury_weave_stripe16,
     mercury_weave_stripe16_q13, mercury_weave_stripe32,
 };
-use crate::decode::window::{TileCompWindow, band_window, intersect};
+use crate::decode::window::{
+    TileCompWindow, band_window, chart_strip_windows, intersect, resolution_band_dims,
+};
 use crate::dwt::fixed97;
 use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7, warp_w9x7_i16};
 use crate::dwt::synthesis::SamplePrec;
@@ -105,8 +108,9 @@ pub struct SubbandDecodeNode {
     modes: i32,
     path: Path,
     coder: BlockCoder,
-    out: Producer<AlignedVec>,
-    consumer: NodeId,
+    /// One ring per column strip that reads this slice, each strip's level
+    /// node its consumer. Rows decode into the first and are copied to the rest.
+    outs: Vec<SliceOutput>,
     next_block_row: u32,
     /// One past the last block row to decode (windowed decodes stop early).
     block_row_hi: u32,
@@ -118,6 +122,11 @@ pub struct SubbandDecodeNode {
     spill: Vec<AlignedVec>,
     slot_bytes: usize,
     scratch: Vec<u8>,
+}
+
+struct SliceOutput {
+    ring: Producer<AlignedVec>,
+    consumer: NodeId,
 }
 
 /// Sample rows covered by block-row `row` of `band` (canvas-anchored).
@@ -273,7 +282,8 @@ impl Node for SubbandDecodeNode {
         while self.next_block_row < self.block_row_hi {
             let (row_a, row_b) = block_weft_span(&self.band, self.next_block_row);
             let picks = self.picks_in_block_row(self.next_block_row);
-            if self.out.slack() < picks {
+            let slack = self.outs.iter().map(|o| o.ring.slack()).min();
+            if slack.expect("a slice node has at least one output") < picks {
                 break;
             }
             // Whole blocks are decoded; rows outside the publish range go to
@@ -287,7 +297,7 @@ impl Node for SubbandDecodeNode {
             let mut dst_lines: Vec<*mut u8> = Vec::with_capacity((row_b - row_a) as usize);
             for r in row_a..row_b {
                 if r >= self.clip_lo && r < self.clip_hi {
-                    dst_lines.push(self.out.pick(ring_i).as_mut_ptr());
+                    dst_lines.push(self.outs[0].ring.pick(ring_i).as_mut_ptr());
                     ring_i += 1;
                 } else {
                     dst_lines.push(self.spill[spill_i].as_mut_ptr());
@@ -300,12 +310,29 @@ impl Node for SubbandDecodeNode {
                 ctx.fail(format!("subband decode failed: {e:?}"));
                 return;
             }
-            self.out.beat(picks);
+            let (first, rest) = self
+                .outs
+                .split_first_mut()
+                .expect("a slice node has outputs");
+            for i in 0..picks {
+                let row = first.ring.pick(i);
+                for other in rest.iter_mut() {
+                    let copy = other.ring.pick(i);
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(row.as_ptr(), copy.as_mut_ptr(), row.len())
+                    };
+                }
+            }
+            for out in &mut self.outs {
+                out.ring.beat(picks);
+            }
             self.next_block_row += 1;
             produced = true;
         }
         if produced {
-            ctx.tug(self.consumer);
+            for out in &self.outs {
+                ctx.tug(out.consumer);
+            }
         }
         if self.next_block_row >= self.block_row_hi {
             // Done: free the pread scratch and spill rows.
@@ -325,7 +352,7 @@ impl Node for SubbandDecodeNode {
 /// child slice run ahead a batch at a time (~4.5% wall on the PHR1B 9/7 gate
 /// vs 2 rows, for well under 1 MB per chain — lower-level rows halve in width
 /// each step down).
-const LL_RING_ROWS: usize = 8;
+const LL_RING_ROWS: usize = 128;
 
 /// One column slice of a leaf subband: its ring, producing node, and where
 /// its samples land within the engine's band row. On windowed decodes a slice
@@ -1076,6 +1103,8 @@ fn weave_sink(
     Ok(emitted)
 }
 
+const MIN_STRIP_WIDTH: u32 = 1024;
+
 /// Build the decode graph for one tile row (all components of all tiles in
 /// the row). Returns None when the decode window leaves nothing of the row
 /// to emit.
@@ -1109,7 +1138,7 @@ fn dress_tile_loom(
     // Column slices per band: enough that the big full-res bands fan out
     // across all workers; small bands stay whole. Work-stealing balances.
     let slice_count =
-        |blocks_wide: u32| -> u32 { blocks_wide.div_ceil(plan.slice_blocks).clamp(1, 16) };
+        |blocks_wide: u32| -> u32 { blocks_wide.div_ceil(plan.slice_blocks).clamp(1, 64) };
 
     struct ChainSpec {
         /// Per-level engines, bottom first, with each level's output height.
@@ -1117,9 +1146,9 @@ fn dress_tile_loom(
         level_rows: Vec<u32>,
         /// slices[level][band_type] leaf wiring.
         slices: Vec<Vec<Vec<LeafSlice>>>,
-        /// (band_nodes index, level) — for patching consumers once level
-        /// node ids are known.
-        band_node_levels: Vec<(usize, usize)>,
+        /// (band_nodes index, output index, level) — for patching consumers
+        /// once level node ids are known.
+        band_node_levels: Vec<(usize, usize, usize)>,
         /// Per level: (leading child LL rows to drain, byte offset into each
         /// kept child row, Q13 LL rescale fp15 fraction). Offsets are zero on
         /// a whole-tile decode; the fraction is zero off the Q13 path.
@@ -1163,17 +1192,28 @@ fn dress_tile_loom(
                 })
                 .collect()
         });
-        let mut chains: Vec<ColChain> = Vec::with_capacity(num_comps);
+        let max_strips = plan.max_strips;
+        // each component's emitted rectangle within this tile
+        let emitted: Vec<Dims> = (0..num_comps)
+            .map(|c| {
+                let full = tile.geom.components[c].resolutions[target_res(c)].dims;
+                intersect(out_rect[c], full)
+            })
+            .collect();
+        let narrowest = emitted
+            .iter()
+            .filter(|rect| !rect.is_empty())
+            .map(|rect| rect.width())
+            .min()
+            .unwrap_or(0);
+        let strips = max_strips.min(narrowest / MIN_STRIP_WIDTH).max(1);
+        let mut strip_chains: Vec<Vec<ColChain>> =
+            (0..strips).map(|_| Vec::with_capacity(num_comps)).collect();
         let mut plan_comps = tile.comps;
         for c in 0..num_comps {
             let tc = &tile.geom.components[c];
             let w = &eff[c];
-            let full = tc.resolutions[target_res(c)].dims;
-            if full.is_empty() {
-                continue;
-            }
-            // This component's emitted rectangle within this tile.
-            let rw = intersect(out_rect[c], full);
+            let rw = emitted[c];
             if rw.is_empty() {
                 continue;
             }
@@ -1188,75 +1228,94 @@ fn dress_tile_loom(
             rows_total[c] = rw.height();
             // one synthesis level per resolution step from 0 up to the target
             let levels = target_res(c);
-            let modes = tile_cod.comps[c].modes.0 as i32;
-            // Build synthesis engines from the (windowed) geometry, bottom
-            // first: each level's spec is its resolution's padded window with
-            // that window's band splits — the engine synthesizes only the
-            // window, treating its edges as band boundaries; the padding
-            // absorbs the fabricated extension values.
-            let mut engines = Vec::with_capacity(levels);
-            let mut ll_rects = Vec::with_capacity(levels);
-            for l in 0..levels {
-                let node = w.res[l + 1];
-                let ll = intersect(band_window(node, 1, 0), tc.resolutions[l].dims);
-                let spec = LevelSpec {
-                    node: bd(&node),
-                    ll: bd(&ll),
-                    hl: bd(&w.bands[l + 1][0]),
-                    lh: bd(&w.bands[l + 1][1]),
-                };
-                engines.push(match path {
-                    Path::F32 => warp_w9x7(&spec)?,
-                    Path::Q13 => warp_w9x7_i16(&spec)?,
-                    _ => warp_w5x3_prec(&spec, prec)?,
+            let style = &tile_cod.comps[c];
+            let modes = style.modes.0 as i32;
+            let strip_windows = chart_strip_windows(
+                w,
+                rw,
+                strips,
+                plan.reduce,
+                &resolution_band_dims(tc),
+                style.num_levels,
+                style.reversible,
+            );
+            let mut specs: Vec<ChainSpec> = Vec::with_capacity(strip_windows.len());
+            for strip in &strip_windows {
+                let w = &strip.window;
+                let rw = strip.emitted;
+                // Build synthesis engines from the (windowed) geometry, bottom
+                // first: each level's spec is its resolution's padded window with
+                // that window's band splits — the engine synthesizes only the
+                // window, treating its edges as band boundaries; the padding
+                // absorbs the fabricated extension values.
+                let mut engines = Vec::with_capacity(levels);
+                let mut ll_rects = Vec::with_capacity(levels);
+                for l in 0..levels {
+                    let node = w.res[l + 1];
+                    let ll = intersect(band_window(node, 1, 0), tc.resolutions[l].dims);
+                    let spec = LevelSpec {
+                        node: bd(&node),
+                        ll: bd(&ll),
+                        hl: bd(&w.bands[l + 1][0]),
+                        lh: bd(&w.bands[l + 1][1]),
+                    };
+                    engines.push(match path {
+                        Path::F32 => warp_w9x7(&spec)?,
+                        Path::Q13 => warp_w9x7_i16(&spec)?,
+                        _ => warp_w5x3_prec(&spec, prec)?,
+                    });
+                    ll_rects.push(ll);
+                }
+                // Rows each level must emit: up to the last row its consumer
+                // needs (the next level's LL rect, or the sink window at the
+                // top) — everything below that is never synthesized.
+                let mut level_rows = Vec::with_capacity(levels);
+                for l in 0..levels {
+                    let node = w.res[l + 1];
+                    let need_y1 = if l + 1 < levels {
+                        ll_rects[l + 1].y1
+                    } else {
+                        rw.y1
+                    };
+                    level_rows.push(need_y1 - node.y0);
+                }
+                // How each level consumes its child's LL rows: the child emits
+                // from its own window origin, which starts above and left of the
+                // parent's LL rect.
+                let mut ll_feed = Vec::with_capacity(levels);
+                ll_feed.push((0u32, 0usize, 0i16)); // level 0 reads leaves, not a ring
+                for l in 1..levels {
+                    let child_node = w.res[l];
+                    let ll = ll_rects[l];
+                    debug_assert!(
+                        child_node.y0 <= ll.y0 && child_node.x0 <= ll.x0,
+                        "LL rect must sit inside the child's padded window"
+                    );
+                    let scale_frac = if path == Path::Q13 {
+                        match engines[l].unit_dims() {
+                            (false, false) => fixed97::SCALE_K2_FRAC,
+                            (true, true) => 0,
+                            _ => fixed97::SCALE_K_FRAC,
+                        }
+                    } else {
+                        0
+                    };
+                    ll_feed.push((
+                        ll.y0 - child_node.y0,
+                        (ll.x0 - child_node.x0) as usize * sb,
+                        scale_frac,
+                    ));
+                }
+                specs.push(ChainSpec {
+                    engines,
+                    level_rows,
+                    slices: (0..levels)
+                        .map(|_| (0..4).map(|_| Vec::new()).collect())
+                        .collect(),
+                    band_node_levels: Vec::new(),
+                    ll_feed,
                 });
-                ll_rects.push(ll);
             }
-            // Rows each level must emit: up to the last row its consumer
-            // needs (the next level's LL rect, or the sink window at the
-            // top) — everything below that is never synthesized.
-            let mut level_rows = Vec::with_capacity(levels);
-            for l in 0..levels {
-                let node = w.res[l + 1];
-                let need_y1 = if l + 1 < levels {
-                    ll_rects[l + 1].y1
-                } else {
-                    rw.y1
-                };
-                level_rows.push(need_y1 - node.y0);
-            }
-            // How each level consumes its child's LL rows: the child emits
-            // from its own window origin, which starts above and left of the
-            // parent's LL rect.
-            let mut ll_feed = Vec::with_capacity(levels);
-            ll_feed.push((0u32, 0usize, 0i16)); // level 0 reads leaves, not a ring
-            for l in 1..levels {
-                let child_node = w.res[l];
-                let ll = ll_rects[l];
-                debug_assert!(
-                    child_node.y0 <= ll.y0 && child_node.x0 <= ll.x0,
-                    "LL rect must sit inside the child's padded window"
-                );
-                let scale_frac = if path == Path::Q13 {
-                    match engines[l].unit_dims() {
-                        (false, false) => fixed97::SCALE_K2_FRAC,
-                        (true, true) => 0,
-                        _ => fixed97::SCALE_K_FRAC,
-                    }
-                } else {
-                    0
-                };
-                ll_feed.push((
-                    ll.y0 - child_node.y0,
-                    (ll.x0 - child_node.x0) as usize * sb,
-                    scale_frac,
-                ));
-            }
-
-            let mut slices_wiring: Vec<Vec<Vec<LeafSlice>>> = (0..levels)
-                .map(|_| (0..4).map(|_| Vec::new()).collect())
-                .collect();
-            let mut band_node_levels: Vec<(usize, usize)> = Vec::new();
 
             let res_plans = std::mem::take(&mut plan_comps[c]);
             for (r, res_plan) in res_plans.into_iter().enumerate() {
@@ -1274,17 +1333,16 @@ fn dress_tile_loom(
                     };
                     // The band's decode window: blocks it misses are never
                     // decoded, rows it excludes never enter the ring.
-                    let bw = if r == 0 {
-                        w.bands[0][0]
+                    let band_index = if r == 0 {
+                        0
                     } else {
-                        w.bands[r][band.band_type as usize - 1]
+                        band.band_type as usize - 1
                     };
+                    let band_window_of = |window: &TileCompWindow| window.bands[r][band_index];
+                    let bw = band_window_of(w);
                     if bw.is_empty() {
                         continue;
                     }
-                    // band-local sample and block-grid ranges of the window
-                    let bwl_x0 = (bw.x0 - band.x0) as usize;
-                    let bwl_x1 = (bw.x1 - band.x0) as usize;
                     let clip_lo = bw.y0 - band.y0;
                     let clip_hi = bw.y1 - band.y0;
                     let first_bx = band.x0 / band.block_w;
@@ -1302,23 +1360,37 @@ fn dress_tile_loom(
                         let nbw = per.min(bx_hi - bx0);
                         let (col0, col1) = block_warp_span(&band, bx0, nbw);
                         let slice_samples = col1 - col0;
-                        // whole blocks are decoded into the slot; the engine
-                        // reads only the window's sample span
-                        let c0 = col0.max(bwl_x0);
-                        let c1 = col1.min(bwl_x1);
                         let slot_bytes = slice_samples * sb + 64;
-                        let slots = AlignedVec::ring_slots(cap_rows, slot_bytes);
-                        let (prod, con) = spin(slots);
                         // Node id assigned later == index in band_nodes.
-                        let node_id = NodeId::heddle(band_nodes.len() as u32);
-                        slices_wiring[level][slot].push(LeafSlice {
-                            cons: con,
-                            producer: node_id,
-                            byte_off: (c0 - bwl_x0) * sb,
-                            byte_len: (c1 - c0) * sb,
-                            src_off: (c0 - col0) * sb,
-                        });
-                        band_node_levels.push((band_nodes.len(), level));
+                        let node_index = band_nodes.len();
+                        let mut outs = Vec::new();
+                        for (spec, strip) in specs.iter_mut().zip(&strip_windows) {
+                            // whole blocks are decoded into the slot; each
+                            // strip's engine reads only its window's span
+                            let strip_band = band_window_of(&strip.window);
+                            let strip_x0 = (strip_band.x0 - band.x0) as usize;
+                            let strip_x1 = (strip_band.x1 - band.x0) as usize;
+                            let c0 = col0.max(strip_x0);
+                            let c1 = col1.min(strip_x1);
+                            if c0 >= c1 {
+                                continue;
+                            }
+                            let slots = AlignedVec::ring_slots(cap_rows, slot_bytes);
+                            let (prod, con) = spin(slots);
+                            spec.slices[level][slot].push(LeafSlice {
+                                cons: con,
+                                producer: NodeId::heddle(node_index as u32),
+                                byte_off: (c0 - strip_x0) * sb,
+                                byte_len: (c1 - c0) * sb,
+                                src_off: (c0 - col0) * sb,
+                            });
+                            spec.band_node_levels.push((node_index, outs.len(), level));
+                            outs.push(SliceOutput {
+                                ring: prod,
+                                consumer: NodeId::heddle(0), // patched below
+                            });
+                        }
+                        debug_assert!(!outs.is_empty(), "every slice feeds at least one strip");
                         band_nodes.push(SubbandDecodeNode {
                             file: Arc::clone(&file),
                             band: Arc::clone(&band),
@@ -1327,8 +1399,7 @@ fn dress_tile_loom(
                             modes,
                             path,
                             coder,
-                            out: prod,
-                            consumer: NodeId::heddle(0), // patched below
+                            outs,
                             next_block_row: by_lo,
                             block_row_hi: by_hi,
                             clip_lo,
@@ -1341,24 +1412,22 @@ fn dress_tile_loom(
                     }
                 }
             }
-            chains.push(ColChain {
-                comp: c,
-                spec: ChainSpec {
-                    engines,
-                    level_rows,
-                    slices: slices_wiring,
-                    band_node_levels,
-                    ll_feed,
-                },
-                x0: (rw.x0 - out_rect[c].x0) as usize,
-                width: rw.width() as usize,
-                src_off: (rw.x0 - node_top.x0) as usize,
-            });
+            for (s, (spec, strip)) in specs.into_iter().zip(&strip_windows).enumerate() {
+                let strip_top = strip.window.res[target_res(c)];
+                strip_chains[s].push(ColChain {
+                    comp: c,
+                    spec,
+                    x0: (strip.emitted.x0 - out_rect[c].x0) as usize,
+                    width: strip.emitted.width() as usize,
+                    src_off: (strip.emitted.x0 - strip_top.x0) as usize,
+                });
+            }
         }
-        if chains.is_empty() {
-            continue;
+        for chains in strip_chains {
+            if !chains.is_empty() {
+                col_specs.push(chains);
+            }
         }
-        col_specs.push(chains);
     }
     if col_specs.is_empty() {
         return Ok(None);
@@ -1396,8 +1465,8 @@ fn dress_tile_loom(
             let n_lv = ch.engines.len() as u32;
             let base = next_level;
             next_level += n_lv;
-            for &(bidx, level) in &ch.band_node_levels {
-                band_nodes[bidx].consumer = NodeId::heddle(base + level as u32);
+            for &(bidx, out, level) in &ch.band_node_levels {
+                band_nodes[bidx].outs[out].consumer = NodeId::heddle(base + level as u32);
             }
             let top = n_lv as usize - 1;
             // LL consumer handed down the chain as levels are built.

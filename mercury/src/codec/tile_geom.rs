@@ -67,15 +67,12 @@ pub struct TileGeom {
 
 /// Compute tile geometry for a single tile
 pub fn chart_tile_geom(siz: &SizParams, cod: &CodParams, tile_idx: u16) -> TileGeom {
-    let ntx = siz.tiles_across();
-    let tx = tile_idx as u32 % ntx;
-    let ty = tile_idx as u32 / ntx;
-
-    // Tile canvas bounds
-    let tile_x0 = (siz.xt_o_siz + tx * siz.xt_siz).max(siz.x_o_siz);
-    let tile_y0 = (siz.yt_o_siz + ty * siz.yt_siz).max(siz.y_o_siz);
-    let tile_x1 = (siz.xt_o_siz + (tx + 1) * siz.xt_siz).min(siz.x_siz);
-    let tile_y1 = (siz.yt_o_siz + (ty + 1) * siz.yt_siz).min(siz.y_siz);
+    let Dims {
+        x0: tile_x0,
+        y0: tile_y0,
+        x1: tile_x1,
+        y1: tile_y1,
+    } = siz.tile_rect(tile_idx as u32);
 
     let nc = siz.comp_count() as u16;
     let mut components = Vec::with_capacity(nc as usize);
