@@ -27,6 +27,10 @@ pub trait ReadAt: Send + Sync {
     fn fetched_run_end(&self, _off: u64) -> Option<u64> {
         None
     }
+
+    fn draw_at_if_cached(&self, _buf: &mut [u8], _off: u64) -> io::Result<bool> {
+        Ok(false)
+    }
 }
 
 impl<T: ReadAt + ?Sized> ReadAt for &T {
@@ -41,6 +45,10 @@ impl<T: ReadAt + ?Sized> ReadAt for &T {
     fn fetched_run_end(&self, off: u64) -> Option<u64> {
         (**self).fetched_run_end(off)
     }
+
+    fn draw_at_if_cached(&self, buf: &mut [u8], off: u64) -> io::Result<bool> {
+        (**self).draw_at_if_cached(buf, off)
+    }
 }
 
 impl<T: ReadAt + ?Sized> ReadAt for Arc<T> {
@@ -54,6 +62,10 @@ impl<T: ReadAt + ?Sized> ReadAt for Arc<T> {
 
     fn fetched_run_end(&self, off: u64) -> Option<u64> {
         (**self).fetched_run_end(off)
+    }
+
+    fn draw_at_if_cached(&self, buf: &mut [u8], off: u64) -> io::Result<bool> {
+        (**self).draw_at_if_cached(buf, off)
     }
 }
 
@@ -198,6 +210,35 @@ impl ReadAt for File {
     fn extent(&self) -> io::Result<u64> {
         Ok(self.metadata()?.len())
     }
+
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    fn draw_at_if_cached(&self, buf: &mut [u8], off: u64) -> io::Result<bool> {
+        use std::os::fd::AsRawFd;
+        #[repr(C)]
+        struct IoVec {
+            base: *mut u8,
+            len: usize,
+        }
+        unsafe extern "C" {
+            fn preadv2(fd: i32, iov: *const IoVec, iovcnt: i32, offset: i64, flags: i32) -> isize;
+        }
+        // linux RWF_NOWAIT fails a read with EAGAIN when the bytes are not in the page cache
+        const RWF_NOWAIT: i32 = 0x8;
+        let iov = IoVec {
+            base: buf.as_mut_ptr(),
+            len: buf.len(),
+        };
+        let read = unsafe { preadv2(self.as_raw_fd(), &iov, 1, off as i64, RWF_NOWAIT) };
+        if read >= 0 {
+            return Ok(read as usize == buf.len());
+        }
+        let error = io::Error::last_os_error();
+        match error.kind() {
+            // filesystems without RWF_NOWAIT fail with EOPNOTSUPP, kernels without preadv2 with ENOSYS
+            io::ErrorKind::WouldBlock | io::ErrorKind::Unsupported => Ok(false),
+            _ => Err(error),
+        }
+    }
 }
 
 /// Positioned read that fills `buf` from `off` without touching the file
@@ -244,6 +285,22 @@ mod tests {
             assert_eq!(*start, run.start);
             assert_eq!(bytes[..], source[run.start as usize..run.end as usize]);
         }
+    }
+
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    #[test]
+    fn file_draws_freshly_written_bytes_from_the_page_cache() {
+        // tmpfs, the usual temp_dir, rejects RWF_NOWAIT with EOPNOTSUPP
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("mercury_cached_{}", std::process::id()));
+        let bytes: Vec<u8> = (0..8192).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&path, &bytes).expect("temp file writes");
+        let file = File::open(&path).expect("temp file opens");
+        let mut drawn = [0u8; 12];
+        let cached = file.draw_at_if_cached(&mut drawn, 5000);
+        std::fs::remove_file(&path).expect("temp file removes");
+        assert!(cached.expect("cached read succeeds"));
+        assert_eq!(drawn[..], bytes[5000..5012]);
     }
 
     #[test]

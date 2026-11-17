@@ -486,7 +486,15 @@ pub struct SotChainCursor {
     trust_tnsot: bool,
     first: bool,
     ended: bool,
+    window: Vec<u8>,
+    window_start: u64,
+    parts_charted: u64,
+    bytes_charted: u64,
+    cached_through: u64,
 }
+
+// SOT windows made TCI cold regions (43 KB tile-parts) 2.5x faster and 650 KB tile-parts slower
+const SOT_WINDOW_BYTES: u64 = 256 << 10;
 
 impl SotChainCursor {
     pub fn start(
@@ -504,7 +512,44 @@ impl SotChainCursor {
             trust_tnsot: false,
             first: true,
             ended: false,
+            window: Vec::new(),
+            window_start: 0,
+            parts_charted: 0,
+            bytes_charted: 0,
+            cached_through: 0,
         })
+    }
+
+    fn read_sot(&mut self, file: &dyn ReadAt, sot_pos: u64) -> Result<[u8; 12], DecodeError> {
+        let mut sot = [0u8; 12];
+        let from = sot_pos.wrapping_sub(self.window_start) as usize;
+        if sot_pos >= self.window_start && from + 12 <= self.window.len() {
+            sot.copy_from_slice(&self.window[from..from + 12]);
+            return Ok(sot);
+        }
+        let short_parts = self.parts_charted > 0
+            && self.bytes_charted / self.parts_charted < SOT_WINDOW_BYTES / 2;
+        let window_len = SOT_WINDOW_BYTES.min(self.codestream_end.saturating_sub(sot_pos));
+        if !short_parts || window_len < 12 || sot_pos + 12 <= self.cached_through {
+            file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
+            return Ok(sot);
+        }
+        // warm TCI regions ran 1.3x slower copying 35 MB of cached window bytes per region
+        let window_end = sot_pos + window_len;
+        let mut far_end = [0u8; 12];
+        if file
+            .draw_at_if_cached(&mut far_end, window_end - 12)
+            .map_err(io_snag)?
+        {
+            self.cached_through = window_end;
+            file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
+            return Ok(sot);
+        }
+        self.window.resize(window_len as usize, 0);
+        file.draw_at(&mut self.window, sot_pos).map_err(io_snag)?;
+        self.window_start = sot_pos;
+        sot.copy_from_slice(&self.window[..12]);
+        Ok(sot)
     }
 
     pub fn next_part(&mut self, file: &dyn ReadAt) -> Result<Option<ChartedPart>, DecodeError> {
@@ -518,8 +563,7 @@ impl SotChainCursor {
             self.ended = true;
             return Ok(None);
         }
-        let mut sot = [0u8; 12];
-        file.draw_at(&mut sot, sot_pos).map_err(io_snag)?;
+        let sot = self.read_sot(file, sot_pos)?;
         if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
             if !first {
                 self.ended = true;
@@ -566,6 +610,8 @@ impl SotChainCursor {
         }
         self.ended = last || (completes_tile && self.tiles_pending == 0);
         self.sot_pos = sot_pos + psot;
+        self.parts_charted += 1;
+        self.bytes_charted += psot;
         Ok(Some(ChartedPart {
             part: TlmEntry {
                 tile: isot,
@@ -3744,6 +3790,7 @@ mod tests {
     struct CountingReader {
         bytes: Vec<u8>,
         reads: std::sync::atomic::AtomicU32,
+        cached: bool,
     }
 
     impl ReadAt for CountingReader {
@@ -3756,11 +3803,20 @@ mod tests {
         fn extent(&self) -> std::io::Result<u64> {
             Ok(self.bytes.len() as u64)
         }
+
+        fn draw_at_if_cached(&self, buf: &mut [u8], off: u64) -> std::io::Result<bool> {
+            if !self.cached {
+                return Ok(false);
+            }
+            self.draw_at(buf, off)?;
+            Ok(true)
+        }
     }
 
-    fn sot_chain(tnsot: u8) -> CountingReader {
+    const SHORT_PART_BYTES: u32 = 40;
+
+    fn sot_chain(tnsot: u8, psot: u32) -> CountingReader {
         let num_tiles = siz().tiles_across() * siz().tiles_down();
-        let psot: u32 = 40;
         let mut bytes = Vec::new();
         for tile in 0..num_tiles as u16 {
             bytes.extend_from_slice(&[0xFF, 0x90, 0, 10]);
@@ -3772,6 +3828,7 @@ mod tests {
         CountingReader {
             bytes,
             reads: std::sync::atomic::AtomicU32::new(0),
+            cached: false,
         }
     }
 
@@ -3783,7 +3840,7 @@ mod tests {
 
     #[test]
     fn chart_stops_after_the_last_needed_tile() {
-        let file = sot_chain(1);
+        let file = sot_chain(1, SOT_WINDOW_BYTES as u32);
         let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
         assert_eq!(
             parts.iter().map(|p| p.tile).collect::<Vec<_>>(),
@@ -3793,9 +3850,34 @@ mod tests {
     }
 
     #[test]
+    fn chart_reads_short_tile_parts_through_one_window() {
+        let file = sot_chain(1, SHORT_PART_BYTES);
+        let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
+        assert_eq!(
+            parts.iter().map(|p| p.tile).collect::<Vec<_>>(),
+            (0..=5).collect::<Vec<_>>()
+        );
+        assert_eq!(file.reads.into_inner(), 2);
+    }
+
+    #[test]
+    fn chart_reads_cached_short_tile_parts_one_sot_at_a_time() {
+        let file = CountingReader {
+            cached: true,
+            ..sot_chain(1, SHORT_PART_BYTES)
+        };
+        let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
+        assert_eq!(
+            parts.iter().map(|p| p.tile).collect::<Vec<_>>(),
+            (0..=5).collect::<Vec<_>>()
+        );
+        assert_eq!(file.reads.into_inner(), 7);
+    }
+
+    #[test]
     fn cursor_marks_the_part_that_completes_a_needed_tile() {
         let completing = |tnsot: u8| {
-            let file = sot_chain(tnsot);
+            let file = sot_chain(tnsot, SHORT_PART_BYTES);
             let mut cursor =
                 SotChainCursor::start(&file, &header(), only_tile(5)).expect("chain opens");
             let mut tiles = Vec::new();
@@ -3812,7 +3894,7 @@ mod tests {
 
     #[test]
     fn chart_walks_every_tile_part_when_tnsot_is_unknown() {
-        let file = sot_chain(0);
+        let file = sot_chain(0, SHORT_PART_BYTES);
         let parts = chart_tile_parts(&file, &header(), &only_tile(5)).expect("chain charts");
         assert_eq!(
             parts.len(),
