@@ -1733,13 +1733,15 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // classic ignores PLT when a PLM is present or the app disabled it
   mparams.disable_plt =
       cs.cp_.plmMarkers_ != nullptr || (dec.disableRandomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) != 0;
+  const bool singleTile = cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ == 1;
   // single-tile plans run on the calling thread before any decode task starts
-  if(cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_ == 1)
+  if(singleTile)
     mparams.plan_threads = static_cast<uint32_t>(TFSingleton::num_threads());
   const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
   // at 16 code blocks per slice one 2048 tile decodes on about 4 cores
+  // one-block slices made TCI full resolution regions 9% slower and HiRISE ones 8 to 22% faster
   if(cs.tilesToDecompress_.getSlatedTileRect().area() < cores)
-    mparams.slice_blocks = 1;
+    mparams.slice_blocks = singleTile ? 1 : 2;
   if(!cs.region_.empty())
   {
     mparams.win_x0 = cs.region_.x0;
