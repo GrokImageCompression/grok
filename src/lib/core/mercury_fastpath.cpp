@@ -389,6 +389,9 @@ namespace
     uint64_t size = 0;
   };
 
+  // reduce 2 PHR1B regions read 291 MB in 256 KB chunks, 573 MB in 1 MB chunks, 2059 MB whole
+  constexpr uint64_t TILE_CHUNK_BYTES = 256 << 10;
+
   struct TileBytes
   {
     struct Span
@@ -396,9 +399,12 @@ namespace
       uint64_t fileOffset;
       uint64_t length;
       uint64_t bufferOffset;
+      uint64_t firstChunk;
     };
     std::vector<Span> spans;
-    std::vector<uint8_t> bytes;
+    std::unique_ptr<uint8_t[]> bytes;
+    std::unique_ptr<std::atomic<bool>[]> chunkRead;
+    std::mutex chunkMutex;
     ReadSource source;
     std::atomic<uint64_t>& bufferedBytes;
     uint64_t reserved;
@@ -408,6 +414,25 @@ namespace
     ~TileBytes()
     {
       bufferedBytes -= reserved;
+    }
+    bool readChunks(const Span& span, uint64_t from, uint64_t to)
+    {
+      for(uint64_t chunk = from / TILE_CHUNK_BYTES; chunk * TILE_CHUNK_BYTES < to; ++chunk)
+      {
+        auto& read = chunkRead[span.firstChunk + chunk];
+        if(read.load(std::memory_order_acquire))
+          continue;
+        std::lock_guard<std::mutex> lock(chunkMutex);
+        if(read.load(std::memory_order_relaxed))
+          continue;
+        uint64_t start = chunk * TILE_CHUNK_BYTES;
+        uint64_t length = std::min(TILE_CHUNK_BYTES, span.length - start);
+        if(!source.read(source.ctx, bytes.get() + span.bufferOffset + start,
+                        span.fileOffset + start, length))
+          return false;
+        read.store(true, std::memory_order_release);
+      }
+      return true;
     }
   };
 
@@ -422,7 +447,10 @@ namespace
       const auto& span = *(after - 1);
       if(off + len <= span.fileOffset + span.length)
       {
-        memcpy(buf, self->bytes.data() + span.bufferOffset + (off - span.fileOffset), (size_t)len);
+        uint64_t from = off - span.fileOffset;
+        if(!self->readChunks(span, from, from + len))
+          return 0;
+        memcpy(buf, self->bytes.get() + span.bufferOffset + from, (size_t)len);
         return 1;
       }
     }
@@ -696,21 +724,34 @@ namespace
         return nullptr;
       }
       auto tileBytes = std::make_unique<TileBytes>(source, bufferedTileBytes, total);
-      tileBytes->bytes.resize(total);
+      // full-resolution callback decodes ran 3-29% slower in chunks than in whole spans
+      const bool readWholeSpans = reduce == 0;
+      // page faults inside streamReadAt's mutex made warm full decodes 4-11% slower
+      tileBytes->bytes.reset(readWholeSpans ? new uint8_t[total]() : new uint8_t[total]);
       uint64_t bufferOffset = 0;
+      auto& spans = tileBytes->spans;
       for(const auto& part : parts)
       {
-        auto& spans = tileBytes->spans;
         if(!spans.empty() && spans.back().fileOffset + spans.back().length == part.offset)
           spans.back().length += part.length;
         else
-          spans.push_back({part.offset, part.length, bufferOffset});
+          spans.push_back({part.offset, part.length, bufferOffset, 0});
         bufferOffset += part.length;
       }
-      for(const auto& span : tileBytes->spans)
-        if(!source.read(source.ctx, tileBytes->bytes.data() + span.bufferOffset, span.fileOffset,
-                        span.length))
-          throw std::runtime_error("tile-part read failed");
+      uint64_t chunks = 0;
+      for(auto& span : spans)
+      {
+        span.firstChunk = chunks;
+        chunks += (span.length + TILE_CHUNK_BYTES - 1) / TILE_CHUNK_BYTES;
+      }
+      if(readWholeSpans)
+        for(const auto& span : spans)
+          if(!source.read(source.ctx, tileBytes->bytes.get() + span.bufferOffset, span.fileOffset,
+                          span.length))
+            throw std::runtime_error("tile-part read failed");
+      tileBytes->chunkRead.reset(new std::atomic<bool>[chunks]);
+      for(uint64_t chunk = 0; chunk < chunks; ++chunk)
+        tileBytes->chunkRead[chunk].store(readWholeSpans, std::memory_order_relaxed);
       return tileBytes;
     }
 
