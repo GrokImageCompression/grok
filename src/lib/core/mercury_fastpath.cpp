@@ -1694,6 +1694,10 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // classic ignores PLT when a PLM is present or the app disabled it
   mparams.disable_plt =
       cs.cp_.plmMarkers_ != nullptr || (dec.disableRandomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) != 0;
+  const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
+  // at 16 code blocks per slice one 2048 tile decodes on about 4 cores
+  if(cs.tilesToDecompress_.getSlatedTileRect().area() < cores)
+    mparams.slice_blocks = 2;
   if(!cs.region_.empty())
   {
     mparams.win_x0 = cs.region_.x0;
@@ -1875,10 +1879,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     // SPOT6 translate on 48 cores took 3.5 s at 512 MB, 3.9 s at 1024 MB and 4.4 s uncapped
     if(!state->keepReleasedTiles)
       state->maxHeldTileBytes = 512ull << 20;
-    const uint32_t cores = static_cast<uint32_t>(TFSingleton::num_threads());
-    // at 16 code blocks per slice one 2048 tile decodes on about 4 cores
-    if(state->tiles.size() < cores)
-      state->header->params.slice_blocks = 2;
     // a stream the plan stage rejects still falls back to classic
     AsyncTile& first = *state->tiles.front();
     first.plan = state->warp(first, err, sizeof err);
