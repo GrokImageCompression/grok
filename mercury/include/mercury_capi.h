@@ -208,6 +208,9 @@ typedef struct MercuryDecodeParams
   /* threads that parse packet headers when PLT markers give every packet's start,
    * 0 and 1 parse on the calling thread */
   uint32_t plan_threads;
+  /* threads that read the merged runs of a fetch_window decode, 0 and 1 read
+   * them on the calling thread, more than one needs a concurrent read_at */
+  uint32_t fetch_threads;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.

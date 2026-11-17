@@ -94,13 +94,55 @@ pub fn merge_ranges(mut ranges: Vec<Range<u64>>, max_gap: u64) -> Vec<Range<u64>
     runs
 }
 
-pub fn fetch_runs(source: &dyn ReadAt, runs: &[Range<u64>]) -> io::Result<Vec<FetchedRun>> {
-    let mut fetched = Vec::with_capacity(runs.len());
-    for run in runs {
-        let mut bytes = vec![0u8; (run.end - run.start) as usize];
-        source.draw_at(&mut bytes, run.start)?;
-        fetched.push((run.start, bytes));
+const FETCH_CHUNK_BYTES: usize = 1 << 20;
+
+pub fn fetch_runs(
+    source: &dyn ReadAt,
+    runs: &[Range<u64>],
+    threads: usize,
+) -> io::Result<Vec<FetchedRun>> {
+    let mut fetched: Vec<FetchedRun> = runs
+        .iter()
+        .map(|run| (run.start, vec![0u8; (run.end - run.start) as usize]))
+        .collect();
+    if threads <= 1 {
+        for (start, bytes) in &mut fetched {
+            source.draw_at(bytes, *start)?;
+        }
+        return Ok(fetched);
     }
+    let chunks: Vec<(u64, &mut [u8])> = fetched
+        .iter_mut()
+        .flat_map(|(start, bytes)| {
+            let start = *start;
+            bytes
+                .chunks_mut(FETCH_CHUNK_BYTES)
+                .enumerate()
+                .map(move |(i, chunk)| (start + (i * FETCH_CHUNK_BYTES) as u64, chunk))
+        })
+        .collect();
+    let threads = threads.min(chunks.len());
+    let chunks = std::sync::Mutex::new(chunks.into_iter());
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                scope.spawn(|| {
+                    loop {
+                        let next = chunks.lock().expect("fetch chunk queue poisoned").next();
+                        let Some((off, chunk)) = next else {
+                            return Ok(());
+                        };
+                        source.draw_at(chunk, off)?;
+                    }
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .try_for_each(|worker| -> io::Result<()> {
+                worker.join().expect("fetch thread panicked")
+            })
+    })?;
     Ok(fetched)
 }
 
@@ -180,4 +222,34 @@ fn pread_exact(file: &File, mut buf: &mut [u8], mut off: u64) -> io::Result<()> 
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parallel_fetch_splits_runs_into_chunks_and_matches_the_source() {
+        let source: Vec<u8> = (0..3 * FETCH_CHUNK_BYTES + 777)
+            .map(|i| (i * 31 % 251) as u8)
+            .collect();
+        let runs = vec![
+            5..FETCH_CHUNK_BYTES as u64 * 2 + 9,
+            FETCH_CHUNK_BYTES as u64 * 2 + 100..FETCH_CHUNK_BYTES as u64 * 2 + 200,
+            FETCH_CHUNK_BYTES as u64 * 2 + 300..source.len() as u64,
+        ];
+        let fetched = fetch_runs(&source, &runs, 4).expect("in-memory reads succeed");
+        assert_eq!(fetched.len(), runs.len());
+        for ((start, bytes), run) in fetched.iter().zip(&runs) {
+            assert_eq!(*start, run.start);
+            assert_eq!(bytes[..], source[run.start as usize..run.end as usize]);
+        }
+    }
+
+    #[test]
+    fn parallel_fetch_reports_a_read_past_the_end() {
+        let source = vec![0u8; FETCH_CHUNK_BYTES * 2];
+        let runs = vec![0..FETCH_CHUNK_BYTES as u64 * 3];
+        assert!(fetch_runs(&source, &runs, 4).is_err());
+    }
 }

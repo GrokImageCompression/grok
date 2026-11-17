@@ -271,11 +271,14 @@ namespace
   {
     IStream* stream = nullptr;
     uint64_t size = 0;
+    bool concurrent = false;
     std::mutex mutex;
   };
   int32_t streamReadAt(void* ctx, uint8_t* buf, uint64_t off, uint64_t len)
   {
     auto* self = static_cast<StreamReader*>(ctx);
+    if(self->concurrent)
+      return self->stream->readAt(off, buf, (size_t)len) ? 1 : 0;
     // grk_stream_read_fn and grk_stream_seek_fn share one cursor in user_data
     std::lock_guard<std::mutex> lock(self->mutex);
     return self->stream->readAt(off, buf, (size_t)len) ? 1 : 0;
@@ -1818,6 +1821,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     {
       readers->streamReader.stream = stream;
       readers->streamReader.size = len;
+      readers->streamReader.concurrent = stream->readAtIsConcurrent();
       // stream_len is declared by the application and can exceed the real length
       uint8_t lastByte;
       ok = stream->readAt(len - 1, &lastByte, 1);
@@ -1832,6 +1836,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   }
   // cold HiRISE regions decoded 1.5x slower than warm through callbacks, 1.1x through a file descriptor
   mparams.fetch_window = readers->streamReader.stream != nullptr;
+  // tiled images already fetch concurrently across tile tasks
+  if(singleTile && readers->streamReader.concurrent)
+    mparams.fetch_threads = cores;
 
   if(asyncDecode)
   {

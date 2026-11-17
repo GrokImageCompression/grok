@@ -584,6 +584,9 @@ typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, vo
  */
 typedef bool (*grk_stream_seek_fn)(uint64_t offset, void* user_data);
 
+typedef bool (*grk_stream_read_at_fn)(uint8_t* buffer, size_t numBytes, uint64_t offset,
+                                      void* user_data);
+
 /**
  * @brief Free user data callback
  * @param user_data user data
@@ -694,6 +697,12 @@ typedef struct _grk_stream_params
    * Recommendation: leave disabled unless benchmarking shows a clear benefit
    * for your specific server and workload. */
   bool http2_multiplex;
+
+  /* 15 Positioned read for callback streaming (optional).
+   * Fills buffer with numBytes from absolute offset without moving the
+   * read_fn/seek_fn cursor, and returns true only if all numBytes were read.
+   * Grok calls it concurrently from many threads. */
+  grk_stream_read_at_fn read_at_fn;
 
 } grk_stream_params;
 

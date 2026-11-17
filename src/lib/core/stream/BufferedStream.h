@@ -173,6 +173,8 @@ struct BufferedStream : public IStream
   }
   bool readAt(uint64_t offset, uint8_t* buffer, size_t len) override
   {
+    if(callbacks_.readAtCallback_)
+      return callbacks_.readAtCallback_(buffer, len, offset, userData_);
     if(!callbacks_.seekCallback_(offset, userData_))
       return false;
     size_t done = 0;
@@ -186,6 +188,11 @@ struct BufferedStream : public IStream
     // buffered reads continue from the media cursor
     bool restored = callbacks_.seekCallback_(streamOffset_ + bufferedBytes_, userData_);
     return restored && done == len;
+  }
+
+  bool readAtIsConcurrent() override
+  {
+    return callbacks_.readAtCallback_ != nullptr;
   }
 
   bool write24u(uint32_t value) override

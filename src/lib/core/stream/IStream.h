@@ -41,7 +41,9 @@ struct StreamCallbacks
   explicit StreamCallbacks(grk_stream_params* streamParams)
       : StreamCallbacks(streamParams->read_fn, nullptr, streamParams->seek_fn,
                         streamParams->write_fn)
-  {}
+  {
+    readAtCallback_ = streamParams->read_at_fn;
+  }
   StreamCallbacks(grk_stream_read_fn rcb, readZeroCopyCallback zcrcb, grk_stream_seek_fn scb,
                   grk_stream_write_fn wcb)
       : readCallback_(rcb), readZeroCopyCallback_(zcrcb), seekCallback_(scb), writeCallback_(wcb)
@@ -52,6 +54,7 @@ struct StreamCallbacks
   readZeroCopyCallback readZeroCopyCallback_;
   grk_stream_seek_fn seekCallback_;
   grk_stream_write_fn writeCallback_;
+  grk_stream_read_at_fn readAtCallback_ = nullptr;
 };
 
 class IFetcher;
@@ -91,6 +94,8 @@ struct IStream : public t1_t2::IStreamWriter
   virtual size_t read(uint8_t* buffer, uint8_t** zero_copy_buffer, size_t len) = 0;
 
   virtual bool readAt(uint64_t offset, uint8_t* buffer, size_t len) = 0;
+
+  virtual bool readAtIsConcurrent() = 0;
 
   virtual bool isFromNetwork(void) = 0;
 

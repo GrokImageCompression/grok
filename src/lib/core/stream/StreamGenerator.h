@@ -65,6 +65,7 @@ public:
     streamParams_.read_fn = src->read_fn;
     streamParams_.write_fn = src->write_fn;
     streamParams_.seek_fn = src->seek_fn;
+    streamParams_.read_at_fn = src->read_at_fn;
     streamParams_.free_user_data_fn = src->free_user_data_fn;
     streamParams_.user_data = src->user_data; // Shallow copy
     streamParams_.stream_len = src->stream_len;

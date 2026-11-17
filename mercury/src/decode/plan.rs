@@ -603,14 +603,18 @@ pub enum PltUse {
     /// every packet's start.
     Parallel(usize),
     /// As `Parallel`, after reading every contributing packet into memory in
-    /// merged runs, which the decode then reads its code-block bytes from.
-    FetchedParallel(usize),
+    /// merged runs on `fetch_threads` threads, which the decode then reads its
+    /// code-block bytes from.
+    FetchedParallel {
+        threads: usize,
+        fetch_threads: usize,
+    },
 }
 
 impl PltUse {
     fn threads(self) -> usize {
         match self {
-            PltUse::Parallel(threads) | PltUse::FetchedParallel(threads) => threads,
+            PltUse::Parallel(threads) | PltUse::FetchedParallel { threads, .. } => threads,
             _ => 1,
         }
     }
@@ -1670,7 +1674,7 @@ fn comb_packets_in_parallel(
     }
 
     let fetched = match plt_use {
-        PltUse::FetchedParallel(_) => {
+        PltUse::FetchedParallel { fetch_threads, .. } => {
             let mut ranges = Vec::new();
             for &i in groups.iter().flatten() {
                 let i = i as usize;
@@ -1685,7 +1689,7 @@ fn comb_packets_in_parallel(
             let runs = merge_ranges(ranges, FETCH_GAP_BYTES);
             Some(FetchedRuns::over(
                 tile.file,
-                fetch_runs(tile.file, &runs).map_err(io_snag)?,
+                fetch_runs(tile.file, &runs, fetch_threads).map_err(io_snag)?,
             ))
         }
         _ => None,
@@ -3401,7 +3405,10 @@ mod tests {
             &hdr,
             0,
             0,
-            PltUse::FetchedParallel(4),
+            PltUse::FetchedParallel {
+                threads: 4,
+                fetch_threads: 4,
+            },
             window,
             false,
         )

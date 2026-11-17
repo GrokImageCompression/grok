@@ -520,6 +520,11 @@ fn assemble_plan(
         unsafe { (*params).max_strips }
     };
     let fetch_window = !params.is_null() && unsafe { (*params).fetch_window };
+    let fetch_threads = if params.is_null() {
+        0
+    } else {
+        unsafe { (*params).fetch_threads }
+    };
     let window_cuts_a_tile = fetch_window
         && window.is_some_and(|window| {
             let tiles = header.siz.tiles_across() * header.siz.tiles_down();
@@ -530,7 +535,10 @@ fn assemble_plan(
             })
         });
     let plt = match plt {
-        PltUse::Parallel(threads) if window_cuts_a_tile => PltUse::FetchedParallel(threads),
+        PltUse::Parallel(threads) if window_cuts_a_tile => PltUse::FetchedParallel {
+            threads,
+            fetch_threads: fetch_threads as usize,
+        },
         plt => plt,
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -557,7 +565,11 @@ fn assemble_plan(
                 return Box::into_raw(Box::new(MercuryPlan { plan, src }));
             }
             let fetched = if fetched.is_empty() {
-                fetch_runs(&*src, &plan.coded_runs(FETCH_GAP_BYTES))
+                fetch_runs(
+                    &*src,
+                    &plan.coded_runs(FETCH_GAP_BYTES),
+                    fetch_threads as usize,
+                )
             } else {
                 Ok(fetched)
             };
@@ -609,6 +621,7 @@ pub struct MercuryDecodeParams {
     /// Threads that parse packet headers when PLT markers give every packet's
     /// start; 0 and 1 parse on the calling thread.
     pub plan_threads: u32,
+    pub fetch_threads: u32,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),
