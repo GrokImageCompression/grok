@@ -16,8 +16,8 @@
 //! — docs/weft-design.md §1.
 
 use std::cell::UnsafeCell;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 struct Shared<T> {
     slots: Box<[UnsafeCell<T>]>,
@@ -131,9 +131,86 @@ impl<T> Consumer<T> {
     }
 }
 
+pub struct BlockRowProducer<T> {
+    shared: Arc<Shared<T>>,
+    block_row_starts: Box<[usize]>,
+    finished: Box<[AtomicBool]>,
+    next_unpublished: Mutex<usize>,
+}
+
+pub fn spin_block_rows<T>(
+    slots: Vec<T>,
+    rows_per_block_row: &[u32],
+) -> (Arc<BlockRowProducer<T>>, Consumer<T>) {
+    let (producer, consumer) = spin(slots);
+    let mut block_row_starts = Vec::with_capacity(rows_per_block_row.len() + 1);
+    let mut start = 0usize;
+    block_row_starts.push(start);
+    for &rows in rows_per_block_row {
+        assert!(
+            rows as usize <= producer.span(),
+            "a block row fits in its ring"
+        );
+        start += rows as usize;
+        block_row_starts.push(start);
+    }
+    let producer = BlockRowProducer {
+        shared: producer.shared,
+        block_row_starts: block_row_starts.into_boxed_slice(),
+        finished: rows_per_block_row
+            .iter()
+            .map(|_| AtomicBool::new(false))
+            .collect(),
+        next_unpublished: Mutex::new(0),
+    };
+    (Arc::new(producer), consumer)
+}
+
+impl<T> BlockRowProducer<T> {
+    pub fn block_row_fits(&self, block_row: usize) -> bool {
+        let head = self.shared.head.load(Ordering::Acquire);
+        self.block_row_starts[block_row + 1] <= head + self.shared.slots.len()
+    }
+
+    pub fn block_row_slot(&self, block_row: usize, row: usize) -> *mut T {
+        let index = self.block_row_starts[block_row] + row;
+        debug_assert!(index < self.block_row_starts[block_row + 1]);
+        self.shared.slots[index % self.shared.slots.len()].get()
+    }
+
+    pub fn finish_block_row(&self, block_row: usize) {
+        self.finished[block_row].store(true, Ordering::Release);
+        let mut next = self.next_unpublished.lock().unwrap();
+        while *next < self.finished.len() && self.finished[*next].load(Ordering::Acquire) {
+            *next += 1;
+        }
+        self.shared
+            .tail
+            .store(self.block_row_starts[*next], Ordering::Release);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn block_rows_finished_out_of_order_publish_in_order() {
+        let (producer, mut consumer) = spin_block_rows(vec![0u32; 4], &[2, 2, 1]);
+        assert!(producer.block_row_fits(0) && producer.block_row_fits(1));
+        assert!(!producer.block_row_fits(2));
+        for (block_row, row) in [(1, 0), (1, 1), (0, 0), (0, 1)] {
+            unsafe { *producer.block_row_slot(block_row, row) = (block_row * 10 + row) as u32 };
+        }
+        producer.finish_block_row(1);
+        assert_eq!(consumer.picks_ready(), 0);
+        producer.finish_block_row(0);
+        assert_eq!(consumer.picks_ready(), 4);
+        let rows: Vec<u32> = (0..4).map(|i| *consumer.peek(i)).collect();
+        assert_eq!(rows, [0, 1, 10, 11]);
+        consumer.unwind(1);
+        assert!(producer.block_row_fits(2));
+    }
 
     #[test]
     fn fill_drain_wraparound() {

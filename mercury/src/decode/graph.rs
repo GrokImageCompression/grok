@@ -45,7 +45,7 @@ use crate::dwt::level_builder::{BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7, 
 use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
 use crate::weft::Node;
-use crate::weft::ring::{Consumer, Producer, spin};
+use crate::weft::ring::{BlockRowProducer, Consumer, Producer, spin, spin_block_rows};
 use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId, StillnessFn};
 
 /// Ring capacity in rows per subband: two block-row stripes so T1 always has
@@ -56,6 +56,9 @@ fn band_ring_picks(block_h: u32, band_h: u32) -> usize {
         .min(band_h.next_multiple_of(block_h))
         .max(block_h) as usize
 }
+
+// 3 nodes per column gain 1-3% more on HiRISE regions for 13-27% more peak memory
+const DECODE_NODES_PER_BLOCK_COLUMN: u32 = 2;
 
 /// Rows buffered between each tree and the merge sink: one full T1 block-row
 /// stripe (64 rows). At 32, every stripe needed two tree→sink hand-offs, the
@@ -112,8 +115,10 @@ pub struct SubbandDecodeNode {
     /// node its consumer. Rows decode into the first and are copied to the rest.
     outs: Vec<SliceOutput>,
     next_block_row: u32,
+    first_block_row: u32,
     /// One past the last block row to decode (windowed decodes stop early).
     block_row_hi: u32,
+    block_row_step: u32,
     /// Band-local sample row range to publish; whole blocks are decoded, rows
     /// outside the range land in spill buffers and are dropped.
     clip_lo: u32,
@@ -125,7 +130,7 @@ pub struct SubbandDecodeNode {
 }
 
 struct SliceOutput {
-    ring: Producer<AlignedVec>,
+    ring: Arc<BlockRowProducer<AlignedVec>>,
     consumer: NodeId,
 }
 
@@ -135,6 +140,11 @@ fn block_weft_span(band: &BandPlan, row: u32) -> (u32, u32) {
     let r0 = ((first_by + row) * band.block_h).max(band.y0);
     let r1 = ((first_by + row + 1) * band.block_h).min(band.y0 + band.height);
     (r0 - band.y0, r1 - band.y0)
+}
+
+fn rows_published_in_block_row(band: &BandPlan, row: u32, clip_lo: u32, clip_hi: u32) -> u32 {
+    let (a, b) = block_weft_span(band, row);
+    b.min(clip_hi).saturating_sub(a.max(clip_lo))
 }
 
 /// Band-local sample columns covered by block columns `[bx0, bx0+nbw)`.
@@ -268,12 +278,6 @@ impl SubbandDecodeNode {
         }
         Ok(())
     }
-
-    /// Rows of block row `row` that fall inside the publish range.
-    fn picks_in_block_row(&self, row: u32) -> usize {
-        let (a, b) = block_weft_span(&self.band, row);
-        (b.min(self.clip_hi).saturating_sub(a.max(self.clip_lo))) as usize
-    }
 }
 
 impl Node for SubbandDecodeNode {
@@ -284,9 +288,14 @@ impl Node for SubbandDecodeNode {
                 break;
             }
             let (row_a, row_b) = block_weft_span(&self.band, self.next_block_row);
-            let picks = self.picks_in_block_row(self.next_block_row);
-            let slack = self.outs.iter().map(|o| o.ring.slack()).min();
-            if slack.expect("a slice node has at least one output") < picks {
+            let picks = rows_published_in_block_row(
+                &self.band,
+                self.next_block_row,
+                self.clip_lo,
+                self.clip_hi,
+            ) as usize;
+            let block_row = (self.next_block_row - self.first_block_row) as usize;
+            if !self.outs.iter().all(|o| o.ring.block_row_fits(block_row)) {
                 break;
             }
             // Whole blocks are decoded; rows outside the publish range go to
@@ -300,7 +309,8 @@ impl Node for SubbandDecodeNode {
             let mut dst_lines: Vec<*mut u8> = Vec::with_capacity((row_b - row_a) as usize);
             for r in row_a..row_b {
                 if r >= self.clip_lo && r < self.clip_hi {
-                    dst_lines.push(self.outs[0].ring.pick(ring_i).as_mut_ptr());
+                    let slot = self.outs[0].ring.block_row_slot(block_row, ring_i);
+                    dst_lines.push(unsafe { (*slot).as_mut_ptr() });
                     ring_i += 1;
                 } else {
                     dst_lines.push(self.spill[spill_i].as_mut_ptr());
@@ -318,18 +328,18 @@ impl Node for SubbandDecodeNode {
                 .split_first_mut()
                 .expect("a slice node has outputs");
             for i in 0..picks {
-                let row = first.ring.pick(i);
+                let row = unsafe { &*first.ring.block_row_slot(block_row, i) };
                 for other in rest.iter_mut() {
-                    let copy = other.ring.pick(i);
+                    let copy = unsafe { &mut *other.ring.block_row_slot(block_row, i) };
                     unsafe {
                         std::ptr::copy_nonoverlapping(row.as_ptr(), copy.as_mut_ptr(), row.len())
                     };
                 }
             }
-            for out in &mut self.outs {
-                out.ring.beat(picks);
+            for out in &self.outs {
+                out.ring.finish_block_row(block_row);
             }
-            self.next_block_row += 1;
+            self.next_block_row += self.block_row_step;
             produced = true;
         }
         if produced {
@@ -363,10 +373,28 @@ const LL_RING_ROWS: usize = 128;
 /// band window and `byte_len` is clipped to it.
 struct LeafSlice {
     cons: Consumer<AlignedVec>,
-    producer: NodeId,
+    producers: Vec<NodeId>,
+    rows_per_block_row: Vec<u32>,
+    block_row: usize,
+    rows_left: u32,
     byte_off: usize,
     byte_len: usize,
     src_off: usize,
+}
+
+impl LeafSlice {
+    fn release_row(&mut self) -> bool {
+        self.cons.unwind(1);
+        self.rows_left -= 1;
+        if self.rows_left > 0 {
+            return false;
+        }
+        if self.block_row + 1 < self.rows_per_block_row.len() {
+            self.block_row += 1;
+            self.rows_left = self.rows_per_block_row[self.block_row];
+        }
+        true
+    }
 }
 
 /// Input source of one level node: leaf subband rows gathered from the T1
@@ -443,9 +471,13 @@ impl RowSource for LevelInputs {
                     s.byte_len,
                 )
             };
-            s.cons.unwind(1);
-            if !self.dirty.contains(&s.producer) {
-                self.dirty.push(s.producer);
+            let block_row_freed = s.release_row();
+            if block_row_freed {
+                for producer in &s.producers {
+                    if !self.dirty.contains(producer) {
+                        self.dirty.push(*producer);
+                    }
+                }
             }
         }
     }
@@ -1356,9 +1388,13 @@ fn dress_tile_loom(
                     let bx_hi = (bw.x1 - 1) / band.block_w - first_bx + 1;
                     let by_lo = bw.y0 / band.block_h - first_by;
                     let by_hi = (bw.y1 - 1) / band.block_h - first_by + 1;
+                    let nodes_per_column = DECODE_NODES_PER_BLOCK_COLUMN.min(by_hi - by_lo);
                     let cap_rows = band_ring_picks(band.block_h, bw.y1 - bw.y0);
                     let k = slice_count(bx_hi - bx_lo);
                     let per = (bx_hi - bx_lo).div_ceil(k);
+                    let rows_per_block_row: Vec<u32> = (by_lo..by_hi)
+                        .map(|row| rows_published_in_block_row(&band, row, clip_lo, clip_hi))
+                        .collect();
                     let band = Arc::new(band);
                     let first_node = band_nodes.len();
                     let mut bx0 = bx_lo;
@@ -1368,8 +1404,12 @@ fn dress_tile_loom(
                         let slice_samples = col1 - col0;
                         let slot_bytes = slice_samples * sb + 64;
                         // Node id assigned later == index in band_nodes.
-                        let node_index = band_nodes.len();
-                        let mut outs = Vec::new();
+                        let first_column_node = band_nodes.len();
+                        let column_nodes: Vec<NodeId> = (0..nodes_per_column as usize)
+                            .map(|n| NodeId::heddle((first_column_node + n) as u32))
+                            .collect();
+                        let mut node_outs: Vec<Vec<SliceOutput>> =
+                            (0..nodes_per_column).map(|_| Vec::new()).collect();
                         for (spec, strip) in specs.iter_mut().zip(&strip_windows) {
                             // whole blocks are decoded into the slot; each
                             // strip's engine reads only its window's span
@@ -1382,38 +1422,51 @@ fn dress_tile_loom(
                                 continue;
                             }
                             let slots = AlignedVec::ring_slots(cap_rows, slot_bytes);
-                            let (prod, con) = spin(slots);
+                            let (prod, con) = spin_block_rows(slots, &rows_per_block_row);
                             spec.slices[level][slot].push(LeafSlice {
                                 cons: con,
-                                producer: NodeId::heddle(node_index as u32),
+                                producers: column_nodes.clone(),
+                                rows_per_block_row: rows_per_block_row.clone(),
+                                block_row: 0,
+                                rows_left: rows_per_block_row[0],
                                 byte_off: (c0 - strip_x0) * sb,
                                 byte_len: (c1 - c0) * sb,
                                 src_off: (c0 - col0) * sb,
                             });
-                            spec.band_node_levels.push((node_index, outs.len(), level));
-                            outs.push(SliceOutput {
-                                ring: prod,
-                                consumer: NodeId::heddle(0), // patched below
+                            for (n, outs) in node_outs.iter_mut().enumerate() {
+                                spec.band_node_levels.push((
+                                    first_column_node + n,
+                                    outs.len(),
+                                    level,
+                                ));
+                                outs.push(SliceOutput {
+                                    ring: Arc::clone(&prod),
+                                    consumer: NodeId::heddle(0), // patched below
+                                });
+                            }
+                        }
+                        for (n, outs) in node_outs.into_iter().enumerate() {
+                            debug_assert!(!outs.is_empty(), "every slice feeds at least one strip");
+                            band_nodes.push(SubbandDecodeNode {
+                                file: Arc::clone(&file),
+                                band: Arc::clone(&band),
+                                bx0,
+                                nbw,
+                                modes,
+                                path,
+                                coder,
+                                outs,
+                                next_block_row: by_lo + n as u32,
+                                first_block_row: by_lo,
+                                block_row_hi: by_hi,
+                                block_row_step: nodes_per_column,
+                                clip_lo,
+                                clip_hi,
+                                spill: Vec::new(),
+                                slot_bytes,
+                                scratch: Vec::new(),
                             });
                         }
-                        debug_assert!(!outs.is_empty(), "every slice feeds at least one strip");
-                        band_nodes.push(SubbandDecodeNode {
-                            file: Arc::clone(&file),
-                            band: Arc::clone(&band),
-                            bx0,
-                            nbw,
-                            modes,
-                            path,
-                            coder,
-                            outs,
-                            next_block_row: by_lo,
-                            block_row_hi: by_hi,
-                            clip_lo,
-                            clip_hi,
-                            spill: Vec::new(),
-                            slot_bytes,
-                            scratch: Vec::new(),
-                        });
                         bx0 += nbw;
                     }
                     if let Some(published) = band.published_rows() {
