@@ -211,7 +211,10 @@ impl ReadAt for File {
         Ok(self.metadata()?.len())
     }
 
-    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    #[cfg(all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))]
     fn draw_at_if_cached(&self, buf: &mut [u8], off: u64) -> io::Result<bool> {
         use std::os::fd::AsRawFd;
         #[repr(C)]
@@ -232,10 +235,14 @@ impl ReadAt for File {
         if read >= 0 {
             return Ok(read as usize == buf.len());
         }
+        // linux errno values on x86_64 and aarch64
+        const EAGAIN: i32 = 11;
+        const ENOSYS: i32 = 38;
+        // rust 1.87 std maps EOPNOTSUPP to ErrorKind::Uncategorized
+        const EOPNOTSUPP: i32 = 95;
         let error = io::Error::last_os_error();
-        match error.kind() {
-            // filesystems without RWF_NOWAIT fail with EOPNOTSUPP, kernels without preadv2 with ENOSYS
-            io::ErrorKind::WouldBlock | io::ErrorKind::Unsupported => Ok(false),
+        match error.raw_os_error() {
+            Some(EAGAIN | ENOSYS | EOPNOTSUPP) => Ok(false),
             _ => Err(error),
         }
     }
@@ -287,7 +294,10 @@ mod tests {
         }
     }
 
-    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
+    #[cfg(all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))]
     #[test]
     fn file_draws_freshly_written_bytes_from_the_page_cache() {
         // tmpfs, the usual temp_dir, rejects RWF_NOWAIT with EOPNOTSUPP
