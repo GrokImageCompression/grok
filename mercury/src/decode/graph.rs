@@ -46,7 +46,7 @@ use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
 use crate::weft::Node;
 use crate::weft::ring::{Consumer, Producer, spin};
-use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId};
+use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId, StillnessFn};
 
 /// Ring capacity in rows per subband: two block-row stripes so T1 always has
 /// a full stripe of working room ahead of the tree (1.5 stripes saves ~6 MB
@@ -280,6 +280,9 @@ impl Node for SubbandDecodeNode {
     fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
         let mut produced = false;
         while self.next_block_row < self.block_row_hi {
+            if !self.band.block_row_published(self.next_block_row) {
+                break;
+            }
             let (row_a, row_b) = block_weft_span(&self.band, self.next_block_row);
             let picks = self.picks_in_block_row(self.next_block_row);
             let slack = self.outs.iter().map(|o| o.ring.slack()).min();
@@ -1036,16 +1039,18 @@ fn launch_sink(
         return Ok(());
     };
     let rows_total = dec.rows_total;
-    dec.loom.dress_hosted(host).launch(
-        &dec.kick,
-        Box::new(move |result| {
-            woven(
-                result
-                    .map(|()| rows_total.iter().map(|&rows| rows as u64).collect())
-                    .map_err(DecodeError::Logic),
-            )
-        }),
-    );
+    let on_still: StillnessFn = Box::new(move |result| {
+        woven(
+            result
+                .map(|()| rows_total.iter().map(|&rows| rows as u64).collect())
+                .map_err(DecodeError::Logic),
+        )
+    });
+    let runtime = dec.loom.dress_hosted(host);
+    match &plan.feed_link {
+        Some(link) => link.launch_graph(runtime, &dec.kick, on_still),
+        None => runtime.launch(&dec.kick, on_still),
+    }
     Ok(())
 }
 
@@ -1355,6 +1360,7 @@ fn dress_tile_loom(
                     let k = slice_count(bx_hi - bx_lo);
                     let per = (bx_hi - bx_lo).div_ceil(k);
                     let band = Arc::new(band);
+                    let first_node = band_nodes.len();
                     let mut bx0 = bx_lo;
                     while bx0 < bx_hi {
                         let nbw = per.min(bx_hi - bx0);
@@ -1409,6 +1415,13 @@ fn dress_tile_loom(
                             scratch: Vec::new(),
                         });
                         bx0 += nbw;
+                    }
+                    if let Some(published) = band.published_rows() {
+                        published.register_nodes(
+                            (first_node..band_nodes.len())
+                                .map(|index| NodeId::heddle(index as u32))
+                                .collect(),
+                        );
                     }
                 }
             }

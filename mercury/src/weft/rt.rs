@@ -380,12 +380,37 @@ pub struct HostedRuntime {
 
 impl HostedRuntime {
     pub fn launch(self, kick: &[NodeId], on_still: StillnessFn) {
+        drop(self.launch_held(kick, on_still));
+    }
+
+    pub fn launch_held(self, kick: &[NodeId], on_still: StillnessFn) -> GraphHold {
         *self.inner.on_still.lock().unwrap() = Some(on_still);
         // passes that finish while the kick is still spooling must not report stillness
-        self.inner.host_tasks.fetch_add(1, Ordering::AcqRel);
+        self.inner.host_tasks.fetch_add(2, Ordering::AcqRel);
         for &id in kick {
             self.inner.tug_external(id);
         }
+        self.inner.end_host_task();
+        GraphHold { inner: self.inner }
+    }
+}
+
+pub struct GraphHold {
+    inner: Arc<Inner>,
+}
+
+impl GraphHold {
+    pub fn tug(&self, id: NodeId) {
+        self.inner.tug_external(id);
+    }
+
+    pub fn fail(&self, msg: String) {
+        self.inner.fail(msg);
+    }
+}
+
+impl Drop for GraphHold {
+    fn drop(&mut self) {
         self.inner.end_host_task();
     }
 }

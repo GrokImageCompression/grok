@@ -14,7 +14,7 @@
 use std::fs::File;
 use std::io;
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// Positioned-read source of the codestream.
 pub trait ReadAt: Send + Sync {
@@ -199,6 +199,114 @@ impl<S: ReadAt> ReadAt for FetchedRuns<S> {
     fn fetched_run_end(&self, off: u64) -> Option<u64> {
         self.run_containing(off)
             .map(|(start, bytes)| start + bytes.len() as u64)
+    }
+}
+
+struct FilledRun {
+    start: u64,
+    len: u64,
+    chunks: Box<[OnceLock<Box<[u8]>>]>,
+}
+
+impl FilledRun {
+    fn filled_end(&self) -> u64 {
+        let filled = self
+            .chunks
+            .iter()
+            .take_while(|chunk| chunk.get().is_some())
+            .count();
+        (self.start + (filled * FETCH_CHUNK_BYTES) as u64).min(self.start + self.len)
+    }
+}
+
+pub struct FilledRuns<S> {
+    runs: Vec<FilledRun>,
+    source: S,
+}
+
+#[derive(Default)]
+pub struct FillCursor {
+    run: usize,
+    chunk: usize,
+}
+
+impl<S: ReadAt> FilledRuns<S> {
+    pub fn over(source: S, runs: &[Range<u64>]) -> Self {
+        let runs = runs
+            .iter()
+            .map(|run| {
+                let len = run.end - run.start;
+                FilledRun {
+                    start: run.start,
+                    len,
+                    chunks: (0..len.div_ceil(FETCH_CHUNK_BYTES as u64))
+                        .map(|_| OnceLock::new())
+                        .collect(),
+                }
+            })
+            .collect();
+        Self { runs, source }
+    }
+
+    pub fn fill_through(&self, cursor: &mut FillCursor, end: u64) -> io::Result<()> {
+        while let Some(run) = self.runs.get(cursor.run) {
+            if cursor.chunk == run.chunks.len() {
+                cursor.run += 1;
+                cursor.chunk = 0;
+                continue;
+            }
+            let chunk_start = run.start + (cursor.chunk * FETCH_CHUNK_BYTES) as u64;
+            if chunk_start >= end {
+                return Ok(());
+            }
+            let chunk_len = FETCH_CHUNK_BYTES.min((run.start + run.len - chunk_start) as usize);
+            let mut bytes = vec![0u8; chunk_len].into_boxed_slice();
+            self.source.draw_at(&mut bytes, chunk_start)?;
+            run.chunks[cursor.chunk]
+                .set(bytes)
+                .expect("a fill cursor fills each chunk once");
+            cursor.chunk += 1;
+        }
+        Ok(())
+    }
+
+    fn run_containing(&self, off: u64) -> Option<&FilledRun> {
+        let after = self.runs.partition_point(|run| run.start <= off);
+        let run = &self.runs[after.checked_sub(1)?];
+        (off < run.start + run.len).then_some(run)
+    }
+}
+
+impl<S: ReadAt> ReadAt for FilledRuns<S> {
+    fn draw_at(&self, buf: &mut [u8], off: u64) -> io::Result<()> {
+        let Some(run) = self
+            .run_containing(off)
+            .filter(|run| off + buf.len() as u64 <= run.start + run.len)
+        else {
+            return self.source.draw_at(buf, off);
+        };
+        let mut copied = 0usize;
+        while copied < buf.len() {
+            let at = off + copied as u64 - run.start;
+            let Some(bytes) = run.chunks[(at / FETCH_CHUNK_BYTES as u64) as usize].get() else {
+                return Err(io::Error::other(
+                    "read of run bytes the feed has not filled",
+                ));
+            };
+            let from = (at % FETCH_CHUNK_BYTES as u64) as usize;
+            let take = (bytes.len() - from).min(buf.len() - copied);
+            buf[copied..copied + take].copy_from_slice(&bytes[from..from + take]);
+            copied += take;
+        }
+        Ok(())
+    }
+
+    fn extent(&self) -> io::Result<u64> {
+        self.source.extent()
+    }
+
+    fn fetched_run_end(&self, off: u64) -> Option<u64> {
+        self.run_containing(off).map(FilledRun::filled_end)
     }
 }
 

@@ -211,6 +211,7 @@ typedef struct MercuryDecodeParams
   /* threads that read the merged runs of a fetch_window decode, 0 and 1 read
    * them on the calling thread, more than one needs a concurrent read_at */
   uint32_t fetch_threads;
+  bool stream_packets;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
@@ -262,6 +263,10 @@ int32_t mercury_loom_info(const MercuryPlan* plan, MercuryImageInfo* out);
 int32_t mercury_loom_comp_info(const MercuryPlan* plan, uint32_t comp, uint32_t* prec,
                                int32_t* is_signed, uint32_t* width, uint32_t* height);
 void mercury_unwarp_loom(MercuryPlan* plan);
+
+typedef struct MercuryFeed MercuryFeed;
+MercuryFeed* mercury_loom_take_feed(MercuryPlan* plan);
+void mercury_feed_run(MercuryFeed* feed);
 
 /* t1 NULL = built-in coder in the standalone build; the extern-kernels
  * (embedding) build has no built-in T1, so NULL returns MERCURY_EBADARG and a

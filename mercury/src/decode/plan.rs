@@ -13,12 +13,14 @@
 //! than produce wrong output.
 
 use std::ops::Range;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use crate::decode::ReadAt;
-use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRun, FetchedRuns, fetch_runs, merge_ranges};
+use crate::decode::read_at::{
+    FETCH_GAP_BYTES, FetchedRun, FetchedRuns, FillCursor, FilledRuns, fetch_runs, merge_ranges,
+};
+use crate::weft::rt::{GraphHold, HostedRuntime, NodeId, StillnessFn};
 
 use crate::codec::packet::{
     BandBlocks, BlockContribution, HeaderBytes, PacketBitReader, PacketError, PacketParseResult,
@@ -166,6 +168,20 @@ pub struct BandPlan {
     stored_blocks_high: u32,
     /// Blocks of the stored rectangle in raster order.
     blocks: Vec<BlockRec>,
+    published: Option<Arc<PublishedRows>>,
+}
+
+pub struct PublishedRows {
+    rows: Box<[OnceLock<Box<[BlockRec]>>]>,
+    nodes: OnceLock<Box<[NodeId]>>,
+}
+
+impl PublishedRows {
+    pub fn register_nodes(&self, nodes: Box<[NodeId]>) {
+        if self.nodes.set(nodes).is_err() {
+            panic!("a band registers its decode nodes once");
+        }
+    }
 }
 
 impl BandPlan {
@@ -195,9 +211,80 @@ impl BandPlan {
     /// The `count` blocks from band-global block column `block_x` of block row
     /// `block_y`.
     pub fn block_row(&self, block_y: u32, block_x: u32, count: u32) -> &[BlockRec] {
+        if let Some(published) = &self.published {
+            let row = published.rows[(block_y - self.stored_block_y0) as usize]
+                .get()
+                .expect("a block row is decoded only after the feed publishes it");
+            let x = (block_x - self.stored_block_x0) as usize;
+            return &row[x..x + count as usize];
+        }
         let first = self.stored_index(block_x, block_y);
         let last = self.stored_index(block_x + count - 1, block_y);
         &self.blocks[first..last + 1]
+    }
+
+    pub fn block_row_published(&self, block_y: u32) -> bool {
+        self.published.as_ref().is_none_or(|published| {
+            published.rows[(block_y - self.stored_block_y0) as usize]
+                .get()
+                .is_some()
+        })
+    }
+
+    pub fn published_rows(&self) -> Option<&PublishedRows> {
+        self.published.as_deref()
+    }
+
+    fn publish_row(&mut self, stored_row: usize) {
+        let wide = self.stored_blocks_wide as usize;
+        let row = self.blocks[stored_row * wide..(stored_row + 1) * wide]
+            .iter_mut()
+            .map(std::mem::take)
+            .collect();
+        let published = self
+            .published
+            .as_ref()
+            .expect("only a fed band publishes rows");
+        if published.rows[stored_row].set(row).is_err() {
+            panic!("a block row is published once");
+        }
+    }
+
+    fn shell_for_graph(&mut self) -> BandPlan {
+        let published = Arc::new(PublishedRows {
+            rows: (0..self.stored_blocks_high)
+                .map(|_| OnceLock::new())
+                .collect(),
+            nodes: OnceLock::new(),
+        });
+        self.published = Some(Arc::clone(&published));
+        BandPlan {
+            band_type: self.band_type,
+            x0: self.x0,
+            y0: self.y0,
+            width: self.width,
+            height: self.height,
+            block_w: self.block_w,
+            block_h: self.block_h,
+            k_max_prime: self.k_max_prime,
+            delta: self.delta,
+            stored_block_x0: self.stored_block_x0,
+            stored_block_y0: self.stored_block_y0,
+            stored_blocks_wide: self.stored_blocks_wide,
+            stored_blocks_high: self.stored_blocks_high,
+            blocks: Vec::new(),
+            published: Some(published),
+        }
+    }
+
+    fn stored_rows_of(&self, prec_band: &PrecBand) -> Range<usize> {
+        let top = prec_band.by0.max(self.stored_block_y0);
+        let bottom =
+            (prec_band.by0 + prec_band.nbh).min(self.stored_block_y0 + self.stored_blocks_high);
+        if top >= bottom {
+            return 0..0;
+        }
+        (top - self.stored_block_y0) as usize..(bottom - self.stored_block_y0) as usize
     }
 
     #[cfg(test)]
@@ -247,6 +334,7 @@ pub struct DecodePlan {
     /// Most column strips one tile component's synthesis is split into.
     pub max_strips: u32,
     pub int16_dwt: bool,
+    pub feed_link: Option<Arc<FeedLink>>,
 }
 
 impl DecodePlan {
@@ -655,6 +743,7 @@ pub enum PltUse {
         threads: usize,
         fetch_threads: usize,
     },
+    Streamed,
 }
 
 impl PltUse {
@@ -669,6 +758,7 @@ impl PltUse {
 pub struct Drafted {
     pub plan: DecodePlan,
     pub fetched: Vec<FetchedRun>,
+    pub feed: Option<PacketFeed>,
 }
 
 /// `max_layers` keeps only the first that many quality layers (0 = all),
@@ -785,6 +875,7 @@ pub fn draft(
     let mut win = StreamWin::warp(file).map_err(io_snag)?;
     let mut tiles: Vec<Option<TilePlan>> = Vec::with_capacity(num_tiles);
     let mut fetched: Vec<FetchedRun> = Vec::new();
+    let mut feed: Option<PacketFeed> = None;
     for (t, segs) in tile_styles.iter().enumerate() {
         if !tile_in_window[t] {
             tiles.push(None);
@@ -841,7 +932,7 @@ pub fn draft(
             tile_wins = Some(wins);
         }
         let plt = plt_packet_lengths(std::mem::take(&mut tile_plt[t]));
-        let (comps, tile_fetched) = comb_tile(
+        let combed = comb_tile(
             file,
             &mut win,
             &cod,
@@ -856,9 +947,13 @@ pub fn draft(
             q13,
             plt_use,
         )?;
-        fetched.extend(tile_fetched);
+        fetched.extend(combed.fetched);
+        if let Some(tile_feed) = combed.feed {
+            assert!(feed.is_none(), "a streamed decode covers one tile");
+            feed = Some(tile_feed);
+        }
         tiles.push(Some(TilePlan {
-            comps,
+            comps: combed.comps,
             cod,
             geom,
             win: tile_wins,
@@ -899,8 +994,13 @@ pub fn draft(
         slice_blocks: DEFAULT_SLICE_BLOCKS,
         max_strips: 1,
         int16_dwt: false,
+        feed_link: feed.as_ref().map(|feed| Arc::clone(&feed.link)),
     };
-    Ok(Drafted { plan, fetched })
+    Ok(Drafted {
+        plan,
+        fetched,
+        feed,
+    })
 }
 
 /// Reject coding parameters mercury cannot decode. `label` names the tile the
@@ -1174,7 +1274,7 @@ fn comb_tile(
     wins: Option<&[TileCompWindow]>,
     q13: bool,
     plt_use: PltUse,
-) -> Result<(Vec<Vec<ResPlan>>, Vec<FetchedRun>), DecodeError> {
+) -> Result<CombedTile, DecodeError> {
     let num_comps = geom.components.len();
     // Resolution counts and the reduce target are per component (COC).
     let n_res = |c: usize| cod.comps[c].num_levels as usize + 1;
@@ -1227,7 +1327,7 @@ fn comb_tile(
     }
 
     let positions = chart_precinct_positions(cod, siz, geom, &grids);
-    let pkts: Vec<Pkt> = order_packets(cod, &grids, &positions)?
+    let mut pkts: Vec<Pkt> = order_packets(cod, &grids, &positions)?
         .into_iter()
         .map(|slot| Pkt {
             comp: slot.comp,
@@ -1284,6 +1384,7 @@ fn comb_tile(
                         stored_blocks_wide: wide,
                         stored_blocks_high: high,
                         blocks: vec![BlockRec::default(); wide as usize * high as usize],
+                        published: None,
                     })
                 })
                 .collect::<Result<Vec<_>, DecodeError>>()?;
@@ -1358,7 +1459,7 @@ fn comb_tile(
     // ends there: no header parse, no PLT hop, no read. This is the uniform
     // form of classic's per-progression window bail-outs.
     let last_needed = pkts.iter().rposition(&contributes);
-    let walk = last_needed.map_or(&pkts[..0], |i| &pkts[..=i]);
+    let walk_len = last_needed.map_or(0, |i| i + 1);
     let tile = TileWalk {
         file,
         cod,
@@ -1366,6 +1467,51 @@ fn comb_tile(
         grids: &grids,
         stream: &stream,
     };
+    let streamed_lengths =
+        plt.filter(|lengths| plt_use == PltUse::Streamed && lengths.len() >= walk_len);
+    if let Some(lengths) = streamed_lengths {
+        let shells: Vec<Vec<ResPlan>> = comps
+            .iter_mut()
+            .map(|res_plans| {
+                res_plans
+                    .iter_mut()
+                    .map(|res| ResPlan {
+                        bands: res
+                            .bands
+                            .iter_mut()
+                            .map(BandPlan::shell_for_graph)
+                            .collect(),
+                    })
+                    .collect()
+            })
+            .collect();
+        let charted =
+            chart_packet_feed(&tile, &pkts[..walk_len], lengths, &contributes, &mut comps)?;
+        pkts.truncate(walk_len);
+        let feed = PacketFeed {
+            cod: cod.clone(),
+            geom: geom.clone(),
+            grids,
+            stream,
+            walk: pkts,
+            contributing: charted.contributing,
+            starts: charted.starts,
+            lengths: lengths[..walk_len].to_vec(),
+            comps,
+            pending: charted.pending,
+            runs: charted.runs,
+            link: Arc::new(FeedLink {
+                state: Mutex::new(FeedState::Feeding(None)),
+            }),
+            finished: false,
+        };
+        return Ok(CombedTile {
+            comps: shells,
+            fetched: Vec::new(),
+            feed: Some(feed),
+        });
+    }
+    let walk = &pkts[..walk_len];
     // PLT lengths give every packet's start, so precincts parse independently
     let fetched = match plt.filter(|lengths| plt_use.threads() > 1 && lengths.len() >= walk.len()) {
         Some(lengths) => {
@@ -1376,7 +1522,253 @@ fn comb_tile(
             Vec::new()
         }
     };
-    Ok((comps, fetched))
+    Ok(CombedTile {
+        comps,
+        fetched,
+        feed: None,
+    })
+}
+
+struct CombedTile {
+    comps: Vec<Vec<ResPlan>>,
+    fetched: Vec<FetchedRun>,
+    feed: Option<PacketFeed>,
+}
+
+struct ChartedFeed {
+    starts: Vec<u64>,
+    contributing: Vec<bool>,
+    pending: Vec<Vec<Vec<Vec<u32>>>>,
+    runs: Vec<Range<u64>>,
+}
+
+fn chart_packet_feed(
+    tile: &TileWalk,
+    walk: &[Pkt],
+    lengths: &[u32],
+    contributes: &dyn Fn(&Pkt) -> bool,
+    comps: &mut [Vec<ResPlan>],
+) -> Result<ChartedFeed, DecodeError> {
+    let mut starts = Vec::with_capacity(walk.len());
+    let mut vpos = 0u64;
+    for &len in &lengths[..walk.len()] {
+        starts.push(vpos);
+        vpos += len as u64;
+    }
+    if vpos > tile.stream.total {
+        return Err(DecodeError::Logic(format!(
+            "plan: PLT lengths reach {vpos} of {} packet bytes",
+            tile.stream.total
+        )));
+    }
+    let contributing: Vec<bool> = walk.iter().map(contributes).collect();
+    let mut pending: Vec<Vec<Vec<Vec<u32>>>> = comps
+        .iter()
+        .map(|res_plans| {
+            res_plans
+                .iter()
+                .map(|res| {
+                    res.bands
+                        .iter()
+                        .map(|band| vec![0; band.stored_blocks_high as usize])
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
+    let mut ranges = Vec::new();
+    for (i, pkt) in walk.iter().enumerate() {
+        if !contributing[i] {
+            continue;
+        }
+        let (c, r) = (pkt.comp as usize, pkt.res as usize);
+        for (b, prec_band) in tile.prec_bands(pkt).iter().enumerate() {
+            for row in comps[c][r].bands[b].stored_rows_of(prec_band) {
+                pending[c][r][b][row] += 1;
+            }
+        }
+        let (mut vpos, end) = (starts[i], starts[i] + lengths[i] as u64);
+        while vpos < end {
+            let (file_off, segment_left) = tile.stream.unspool(vpos)?;
+            let take = segment_left.min(end - vpos);
+            ranges.push(file_off..file_off + take);
+            vpos += take;
+        }
+    }
+    for (c, res_plans) in comps.iter_mut().enumerate() {
+        for (r, res) in res_plans.iter_mut().enumerate() {
+            for (b, band) in res.bands.iter_mut().enumerate() {
+                for (row, &count) in pending[c][r][b].iter().enumerate() {
+                    if count == 0 {
+                        band.publish_row(row);
+                    }
+                }
+            }
+        }
+    }
+    Ok(ChartedFeed {
+        starts,
+        contributing,
+        pending,
+        runs: merge_ranges(ranges, FETCH_GAP_BYTES),
+    })
+}
+
+pub struct PacketFeed {
+    cod: CodParams,
+    geom: TileGeom,
+    grids: Vec<Vec<(u32, u32, u32, u32)>>,
+    stream: TileStream,
+    walk: Vec<Pkt>,
+    contributing: Vec<bool>,
+    starts: Vec<u64>,
+    lengths: Vec<u32>,
+    comps: Vec<Vec<ResPlan>>,
+    pending: Vec<Vec<Vec<Vec<u32>>>>,
+    runs: Vec<Range<u64>>,
+    link: Arc<FeedLink>,
+    finished: bool,
+}
+
+impl PacketFeed {
+    pub fn runs(&self) -> &[Range<u64>] {
+        &self.runs
+    }
+
+    pub fn run<S: ReadAt>(mut self, bytes: &FilledRuns<S>) {
+        let outcome = self.comb_walk(bytes);
+        self.link.finish(outcome);
+        self.finished = true;
+    }
+
+    fn comb_walk<S: ReadAt>(&mut self, bytes: &FilledRuns<S>) -> Result<(), DecodeError> {
+        let PacketFeed {
+            cod,
+            geom,
+            grids,
+            stream,
+            walk,
+            contributing,
+            starts,
+            lengths,
+            comps,
+            pending,
+            link,
+            ..
+        } = self;
+        let tile = TileWalk {
+            file: bytes,
+            cod,
+            geom,
+            grids,
+            stream,
+        };
+        let mut win = StreamWin::warp(bytes).map_err(io_snag)?;
+        let mut cursor = FillCursor::default();
+        let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = grids
+            .iter()
+            .map(|comp_grids| {
+                comp_grids
+                    .iter()
+                    .map(|&(_, _, npx, npy)| (0..npx * npy).map(|_| None).collect())
+                    .collect()
+            })
+            .collect();
+        for (i, pkt) in walk.iter().enumerate() {
+            if !contributing[i] {
+                continue;
+            }
+            let end = starts[i] + lengths[i] as u64;
+            let (last_byte, _) = stream.unspool(end - 1)?;
+            bytes
+                .fill_through(&mut cursor, last_byte + 1)
+                .map_err(io_snag)?;
+            let (c, r) = (pkt.comp as usize, pkt.res as usize);
+            let prec_bands = tile.prec_bands(pkt);
+            let state_slot = &mut prec_states[c][r][pkt.prec as usize];
+            let state = state_slot.get_or_insert_with(|| PrecState::warp(&prec_bands));
+            let combed = comb_packet(&tile, &mut win, state, pkt, starts[i])?;
+            check_plt_length(lengths[i], starts[i], combed.end)?;
+            fill_block_records(comps, pkt, &prec_bands, &combed)?;
+            if cod.num_layers == 1 {
+                *state_slot = None;
+            }
+            for (b, prec_band) in prec_bands.iter().enumerate() {
+                let band = &mut comps[c][r].bands[b];
+                let mut published = false;
+                for row in band.stored_rows_of(prec_band) {
+                    let count = &mut pending[c][r][b][row];
+                    *count -= 1;
+                    if *count == 0 {
+                        band.publish_row(row);
+                        published = true;
+                    }
+                }
+                if published {
+                    link.tug_band_nodes(
+                        band.published_rows()
+                            .expect("a fed band has published rows"),
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Drop for PacketFeed {
+    fn drop(&mut self) {
+        if !self.finished {
+            self.link.finish(Err(DecodeError::Logic(
+                "packet feed ended before parsing every packet".into(),
+            )));
+        }
+    }
+}
+
+pub struct FeedLink {
+    state: Mutex<FeedState>,
+}
+
+enum FeedState {
+    Feeding(Option<GraphHold>),
+    Finished,
+    Failed(String),
+}
+
+impl FeedLink {
+    pub fn launch_graph(&self, runtime: HostedRuntime, kick: &[NodeId], on_still: StillnessFn) {
+        let mut state = self.state.lock().unwrap();
+        match &mut *state {
+            FeedState::Feeding(hold) => *hold = Some(runtime.launch_held(kick, on_still)),
+            FeedState::Finished => runtime.launch(kick, on_still),
+            FeedState::Failed(msg) => runtime.launch_held(kick, on_still).fail(msg.clone()),
+        }
+    }
+
+    fn tug_band_nodes(&self, published: &PublishedRows) {
+        let state = self.state.lock().unwrap();
+        let (FeedState::Feeding(Some(hold)), Some(nodes)) = (&*state, published.nodes.get()) else {
+            return;
+        };
+        for &id in nodes.iter() {
+            hold.tug(id);
+        }
+    }
+
+    fn finish(&self, outcome: Result<(), DecodeError>) {
+        let next = match &outcome {
+            Ok(()) => FeedState::Finished,
+            Err(e) => FeedState::Failed(format!("packet feed: {e:?}")),
+        };
+        let previous = std::mem::replace(&mut *self.state.lock().unwrap(), next);
+        let FeedState::Feeding(hold) = previous else {
+            panic!("a packet feed finishes once");
+        };
+        if let (Some(hold), Err(e)) = (&hold, &outcome) {
+            hold.fail(format!("packet feed: {e:?}"));
+        }
+    }
 }
 
 /// What every packet parse of one tile reads.
@@ -3446,7 +3838,7 @@ mod tests {
         });
         let parallel = draft_plan(&stream, &hdr, 0, 0, PltUse::Parallel(4), window, false)
             .expect("parallel plan must build");
-        let Drafted { plan, fetched } = draft(
+        let Drafted { plan, fetched, .. } = draft(
             &stream,
             &hdr,
             0,
@@ -3479,6 +3871,111 @@ mod tests {
             stream.draw_at(&mut from_stream, range.start).unwrap();
             assert_eq!(from_runs, from_stream);
         }
+    }
+
+    fn packets_in_stream_order(hdr: &MainHeaderIn) -> Vec<Vec<u8>> {
+        let geom = chart_tile_geom(&hdr.siz, &hdr.cod, 0);
+        let grids = chart_precinct_grids(&hdr.cod, &geom);
+        let positions = chart_precinct_positions(&hdr.cod, &hdr.siz, &geom, &grids);
+        order_packets(&hdr.cod, &grids, &positions)
+            .expect("the synthetic header orders its packets")
+            .into_iter()
+            .map(|slot| synth_packet(slot.layer == 0, if slot.res == 0 { 1 } else { 3 }))
+            .collect()
+    }
+
+    fn record_fields(rec: &BlockRec) -> (u64, u32, u8, u8, Vec<(u64, u32)>) {
+        let chunks = rec
+            .extra
+            .iter()
+            .flat_map(|chunks| chunks.iter())
+            .map(|chunk| (chunk.file_off, chunk.len))
+            .collect();
+        (
+            rec.file_off,
+            rec.len,
+            rec.num_passes,
+            rec.missing_msbs,
+            chunks,
+        )
+    }
+
+    #[test]
+    fn packet_feed_publishes_the_in_order_records() {
+        let orders = [
+            ProgressionOrder::Lrcp,
+            ProgressionOrder::Rlcp,
+            ProgressionOrder::Rpcl,
+            ProgressionOrder::Pcrl,
+            ProgressionOrder::Cprl,
+        ];
+        let windows = [None, Some(d(4, 8, 40, 36))];
+        for order in orders {
+            for layers in [1u16, 3] {
+                for window in windows {
+                    let mut hdr = many_precinct_header();
+                    hdr.cod.order = order;
+                    hdr.cod.num_layers = layers;
+                    let packets = packets_in_stream_order(&hdr);
+                    let stream =
+                        assemble_stream(&packets, &[(0, plt_encode(&packet_lengths(&packets)))]);
+                    let in_order = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, window, false)
+                        .expect("in-order plan must build");
+                    let Drafted { plan, feed, .. } =
+                        draft(&stream, &hdr, 0, 0, PltUse::Streamed, window, false)
+                            .expect("streamed plan must build");
+                    let feed = feed.expect("PLT lengths give a streamed plan a packet feed");
+                    let bytes = FilledRuns::over(stream.clone(), feed.runs());
+                    feed.run(&bytes);
+                    let case = format!("{order:?}, {layers} layers, window {window:?}");
+                    let streamed_bands = plan
+                        .tiles
+                        .iter()
+                        .flatten()
+                        .flat_map(|t| t.comps.iter().flatten())
+                        .flat_map(|r| r.bands.iter());
+                    let in_order_bands = in_order
+                        .tiles
+                        .iter()
+                        .flatten()
+                        .flat_map(|t| t.comps.iter().flatten())
+                        .flat_map(|r| r.bands.iter());
+                    let mut compared = 0usize;
+                    for (streamed, expected) in streamed_bands.zip(in_order_bands) {
+                        let published = streamed
+                            .published_rows()
+                            .expect("a fed band has published rows");
+                        let wide = expected.stored_blocks_wide as usize;
+                        for (row, slot) in published.rows.iter().enumerate() {
+                            let records = slot
+                                .get()
+                                .unwrap_or_else(|| panic!("{case}: row {row} unpublished"));
+                            let expected_row = &expected.blocks[row * wide..(row + 1) * wide];
+                            let got: Vec<_> = records.iter().map(record_fields).collect();
+                            let want: Vec<_> = expected_row.iter().map(record_fields).collect();
+                            assert_eq!(got, want, "{case}: row {row}");
+                            compared += records.iter().filter(|rec| rec.num_passes > 0).count();
+                        }
+                    }
+                    assert!(compared > 0, "{case}: no coded blocks compared");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn packet_feed_rejects_a_stream_cut_before_its_plt_lengths_end() {
+        let mut hdr = many_precinct_header();
+        let packets = packets_in_stream_order(&hdr);
+        let mut stream = assemble_stream(&packets, &[(0, plt_encode(&packet_lengths(&packets)))]);
+        stream.truncate(stream.len() / 2);
+        hdr.codestream_len = stream.len() as u64;
+        let Err(DecodeError::Logic(msg)) =
+            draft(&stream, &hdr, 0, 0, PltUse::Streamed, None, false)
+        else {
+            panic!("PLT lengths past the tile-part data must reject the plan");
+        };
+        assert!(msg.contains("PLT lengths reach"), "got {msg}");
     }
 
     #[test]

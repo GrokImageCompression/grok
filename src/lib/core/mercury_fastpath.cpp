@@ -1882,6 +1882,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // tiled images already fetch concurrently across tile tasks
   if(singleTile && (fetchFromPath || readers->streamReader.concurrent))
     mparams.fetch_threads = cores;
+  mparams.stream_packets = asyncDecode && readers->streamReader.stream &&
+                           !readers->streamReader.concurrent &&
+                           TFSingleton::get().num_workers() > 0;
 
   if(asyncDecode)
   {
@@ -2007,7 +2010,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
         });
     state->executor = &TFSingleton::get();
     cs.success_ = true;
+    MercuryFeed* feed = mercury_loom_take_feed(first.plan);
     state->start();
+    mercury_feed_run(feed);
     grklog.info("mercury per-tile async path: %u tiles", (uint32_t)state->tiles.size());
     cs.mercuryAsync_ = std::move(state);
     return true;

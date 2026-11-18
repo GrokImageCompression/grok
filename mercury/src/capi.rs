@@ -36,9 +36,9 @@ use crate::decode::graph::{
     uniform_subsampling, weave_comps_with_coder, weave_with_coder,
 };
 use crate::decode::plan::{
-    DecodePlan, Drafted, MainHeaderIn, PltUse, SotChainCursor, TlmEntry, draft,
+    DecodePlan, Drafted, MainHeaderIn, PacketFeed, PltUse, SotChainCursor, TlmEntry, draft,
 };
-use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, ReadAt, fetch_runs};
+use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, FilledRuns, ReadAt, fetch_runs};
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 use crate::decode::window::intersect;
 use crate::weft::rt::{HostExecutor, HostSubmitFn};
@@ -437,6 +437,12 @@ unsafe fn draft_header_in(hdr: *const MercuryMainHeader) -> Result<MainHeaderIn,
 pub struct MercuryPlan {
     plan: DecodePlan,
     src: Arc<dyn ReadAt>,
+    feed: Option<Box<MercuryFeed>>,
+}
+
+pub struct MercuryFeed {
+    feed: PacketFeed,
+    bytes: Arc<FilledRuns<Arc<dyn ReadAt>>>,
 }
 
 struct CallbackReader {
@@ -534,7 +540,11 @@ fn assemble_plan(
                 !inside.is_empty() && inside != rect
             })
         });
+    let stream_packets = !params.is_null() && unsafe { (*params).stream_packets };
+    let single_tile = header.siz.tiles_across() * header.siz.tiles_down() == 1;
     let plt = match plt {
+        PltUse::Ignore => PltUse::Ignore,
+        _ if stream_packets && single_tile && window_cuts_a_tile => PltUse::Streamed,
         PltUse::Parallel(threads) if window_cuts_a_tile => PltUse::FetchedParallel {
             threads,
             fetch_threads: fetch_threads as usize,
@@ -553,7 +563,11 @@ fn assemble_plan(
         )
     }));
     match r {
-        Ok(Ok(Drafted { mut plan, fetched })) => {
+        Ok(Ok(Drafted {
+            mut plan,
+            fetched,
+            feed,
+        })) => {
             if slice_blocks != 0 {
                 plan.slice_blocks = slice_blocks;
             }
@@ -561,8 +575,20 @@ fn assemble_plan(
                 plan.max_strips = max_strips;
             }
             plan.int16_dwt = int16_dwt;
+            if let Some(feed) = feed {
+                let bytes = Arc::new(FilledRuns::over(src, feed.runs()));
+                return Box::into_raw(Box::new(MercuryPlan {
+                    plan,
+                    src: Arc::clone(&bytes) as Arc<dyn ReadAt>,
+                    feed: Some(Box::new(MercuryFeed { feed, bytes })),
+                }));
+            }
             if !window_cuts_a_tile {
-                return Box::into_raw(Box::new(MercuryPlan { plan, src }));
+                return Box::into_raw(Box::new(MercuryPlan {
+                    plan,
+                    src,
+                    feed: None,
+                }));
             }
             let fetched = if fetched.is_empty() {
                 fetch_runs(
@@ -577,6 +603,7 @@ fn assemble_plan(
                 Ok(fetched) => Box::into_raw(Box::new(MercuryPlan {
                     plan,
                     src: Arc::new(FetchedRuns::over(src, fetched)),
+                    feed: None,
                 })),
                 Err(e) => {
                     stamp_err(err_buf, err_cap, &format!("window read: {e}"));
@@ -622,6 +649,7 @@ pub struct MercuryDecodeParams {
     /// start; 0 and 1 parse on the calling thread.
     pub plan_threads: u32,
     pub fetch_threads: u32,
+    pub stream_packets: bool,
 }
 
 /// Build a decode plan for the main header `hdr` (parsed by the host),
@@ -898,6 +926,24 @@ pub unsafe extern "C" fn mercury_loom_comp_info(
         unsafe { *height = dims.height() };
     }
     MERCURY_OK
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_loom_take_feed(plan: *mut MercuryPlan) -> *mut MercuryFeed {
+    match unsafe { plan.as_mut() }.and_then(|plan| plan.feed.take()) {
+        Some(feed) => Box::into_raw(feed),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_feed_run(feed: *mut MercuryFeed) {
+    if feed.is_null() {
+        return;
+    }
+    let MercuryFeed { feed, bytes } = *unsafe { Box::from_raw(feed) };
+    // panics must not unwind across the C boundary
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| feed.run(&*bytes)));
 }
 
 /// Free a plan that will not be decoded. (`mercury_weave` consumes and
@@ -1338,7 +1384,7 @@ fn weave_rows<T: OutputSample>(
     row_ctx: *mut c_void,
     threads: u32,
 ) -> i32 {
-    let (MercuryPlan { plan, src }, coder) = match take_plan(plan, t1) {
+    let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, t1) {
         Ok(taken) => taken,
         Err(rc) => return rc,
     };
@@ -1368,7 +1414,7 @@ fn weave_comp_rows<T: OutputSample>(
     row_ctx: *mut c_void,
     threads: u32,
 ) -> i32 {
-    let (MercuryPlan { plan, src }, coder) = match take_plan(plan, t1) {
+    let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, t1) {
         Ok(taken) => taken,
         Err(rc) => return rc,
     };
@@ -1422,7 +1468,7 @@ fn hosted_done(weave: &MercuryHostedWeave, expected: Vec<u64>) -> Option<WovenFn
 }
 
 fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWeave) -> i32 {
-    let (MercuryPlan { plan, src }, coder) = match take_plan(plan, weave.t1) {
+    let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, weave.t1) {
         Ok(taken) => taken,
         Err(rc) => return rc,
     };
@@ -1454,7 +1500,7 @@ fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWea
 }
 
 fn launch_comp_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWeave) -> i32 {
-    let (MercuryPlan { plan, src }, coder) = match take_plan(plan, weave.t1) {
+    let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, weave.t1) {
         Ok(taken) => taken,
         Err(rc) => return rc,
     };
