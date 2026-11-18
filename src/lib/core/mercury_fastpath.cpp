@@ -1875,10 +1875,12 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       MFP_BAIL(streamFail);
     memReader.size = len;
   }
-  // cold HiRISE regions decoded 1.5x slower than warm through callbacks, 1.1x through a file descriptor
-  mparams.fetch_window = readers->streamReader.stream != nullptr;
+  // tiled images read regions through a file descriptor 2-4% slower when runs are fetched
+  // full-resolution HiRISE regions use 21% more peak RSS when runs are fetched
+  const bool fetchFromPath = readers->fromPath && singleTile && mparams.reduce > 0;
+  mparams.fetch_window = fetchFromPath || readers->streamReader.stream != nullptr;
   // tiled images already fetch concurrently across tile tasks
-  if(singleTile && readers->streamReader.concurrent)
+  if(singleTile && (fetchFromPath || readers->streamReader.concurrent))
     mparams.fetch_threads = cores;
 
   if(asyncDecode)
