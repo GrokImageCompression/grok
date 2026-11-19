@@ -491,12 +491,27 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
             // after resolution reduction).
             if(band.yEnd > band.yBegin)
             {
+              bool rowHasFailedTile = false;
+              for(uint16_t col = 0; col < band.numCols; col++)
+              {
+                uint16_t tileIndex =
+                    static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                auto cacheEntry = tileCache_->get(tileIndex);
+                if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->hasError())
+                  rowHasFailedTile = true;
+              }
               // no strip buffer means no tile decompressed, and quietly skipping a
               // band would shift every later band in the output
               if(!scratchDataAllocated_)
               {
                 if(success_)
                   grklog.error("No tile data was decompressed for image row %u", nextBandTileY_);
+                success_ = false;
+              }
+              else if(rowHasFailedTile)
+              {
+                if(success_)
+                  grklog.error("A tile in image row %u failed to decompress", nextBandTileY_);
                 success_ = false;
               }
               else

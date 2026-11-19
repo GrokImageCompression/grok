@@ -636,8 +636,26 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
                                       GrkImage* output, std::function<void()> post,
                                       TileFutureManager& futures)
 {
-  if(!decompressPrepareWithTLM(tilePartFetchSeq))
+  bool prepared;
+  try
+  {
+    prepared = decompressPrepareWithTLM(tilePartFetchSeq);
+  }
+  catch(const CorruptTLMException&)
+  {
+    success_ = false;
+    throw;
+  }
+  catch(const CorruptSOTMarkerException&)
+  {
+    success_ = false;
+    throw;
+  }
+  if(!prepared)
+  {
+    success_ = false;
     return false;
+  }
 
   scheduleAndRunDecompress(coderPool, unreducedImageBounds, output, post, futures);
 
