@@ -1274,7 +1274,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 cleanup:
   if(failed)
   {
-    cleanUpFile(outfile);
     info->image = nullptr;
     if(info->format_private)
     {
@@ -1287,6 +1286,8 @@ cleanup:
       delete imageFormat;
       imageFormat = nullptr;
     }
+    // windows can't remove a file that is still open
+    cleanUpFile(outfile);
   }
 
   if(!failed)
