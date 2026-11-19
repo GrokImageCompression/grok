@@ -145,7 +145,7 @@ struct TPSeq : public SharedPtrSeq<DataSlice>
    * @param length tile part length
    * @return true if successful
    */
-  bool push_back(uint8_t tilePart, uint8_t numTileParts, uint64_t offset, uint32_t length)
+  bool push_back(uint8_t tilePart, uint8_t numTileParts, uint64_t offset, uint64_t length)
   {
     // Once one tile part has non-zero number of tile parts, then every
     // subsequent tile part must have matching number of tile parts

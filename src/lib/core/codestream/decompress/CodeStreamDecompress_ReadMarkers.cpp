@@ -164,15 +164,13 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
     }
     auto tileStreamStart = stream_->tell() - MARKER_BYTES;
     markerCache_->setTileStreamStart(tileStreamStart);
-    if(cp_.tlmMarkers_)
+    if(cp_.hasTLM())
     {
       cp_.tlmMarkers_->readComplete(tileStreamStart);
     }
     else
     {
-      auto p = std::string("/temp");
-      cp_.tlmMarkers_ = std::make_unique<TLMMarker>(p, cp_.t_grid_width_ * cp_.t_grid_height_,
-                                                    markerCache_->getTileStreamStart());
+      cp_.tlmMarkers_ = TLMMarker::forSotWalk(cp_.t_grid_width_ * cp_.t_grid_height_);
     }
 
     return true;
@@ -389,6 +387,15 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   currTileIndex_ = tileIndex;
 
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
+  if(sotWalkBuildsTLM())
+  {
+    auto sotFields = headerData;
+    uint8_t tilePart, numTileParts;
+    grk_read(&sotFields, &tilePart);
+    grk_read(&sotFields, &numTileParts);
+    recordWalkedTilePart(tileIndex, stream_->tell() - sotMarkerSegmentLen,
+                         currTilePartInfo_.tilePartLength_, tilePart, numTileParts);
+  }
 
   auto cached = tileCache_->get(tileIndex);
   // Skip tiles that are already decompressed (best-effort or normal) or already
@@ -431,9 +438,6 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
         grklog.error("Illegal Psot value %u", currTilePartInfo_.tilePartLength_);
         return false;
       }
-      skippedTileParts_[tileIndex].push_back({stream_->tell() - sotMarkerSegmentLen,
-                                              currTilePartInfo_.tilePartLength_, tilePart,
-                                              numTileParts});
     }
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))

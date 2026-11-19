@@ -122,8 +122,9 @@ private:
  *
  * Called before a sequential codestream re-walk. Resets `numSOTsParsed_`,
  * `tilePartCounter_`, and `tilePartSeq_` so that the SOT handler can
- * re-populate them. Tiles that already have a decompressed image or are
- * best-effort are skipped — their cached state is preserved.
+ * re-populate them. Tiles that already have a decompressed image, are
+ * best-effort or are scheduled for decompression are skipped — their cached
+ * state is preserved.
  */
 class TileCache
 {
@@ -308,6 +309,9 @@ public:
         continue;
       // Skip tiles that are already decompressed or have cached SOT info
       if(entry->processor()->isBestEffortDecompressed() || entry->processor()->getImage())
+        continue;
+      // tiles re-decoded from their cached tile-parts are still in flight when the walk starts
+      if(entry->processor()->scheduledForDecompression())
         continue;
       entry->processor()->resetSOTParsing();
     }

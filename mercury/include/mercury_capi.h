@@ -131,11 +131,6 @@ typedef struct MercuryProgressionVolume
   uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
 } MercuryProgressionVolume;
 
-typedef struct MercuryTileRect
-{
-  uint16_t x0, y0, x1, y1; /* tile indices, x1 and y1 exclusive */
-} MercuryTileRect;
-
 /* One tile-part's position, from the host's parsed TLM markers. */
 typedef struct MercuryTlmEntry
 {
@@ -228,23 +223,45 @@ MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDec
                                   int32_t fd, uint8_t* err_buf, size_t err_cap);
 #endif
 
-/* completes_tile is only ever set when the first tile-part's TNsot is 1, after *ended every tile is complete */
+/* completes_tile is only ever set when the first tile-part's TNsot is 1, for any tile of the grid
+ */
 typedef struct MercurySotChain MercurySotChain;
 typedef struct MercuryChartedPart
 {
   MercuryTlmEntry part;
+  uint8_t tile_part; /* TPsot */
+  uint8_t num_tile_parts; /* TNsot */
   bool completes_tile;
 } MercuryChartedPart;
+/* where a walk stopped: next_sot is the SOT it reads next, reached_end means no tile-part follows
+ */
+typedef struct MercurySotWalk
+{
+  uint64_t next_sot;
+  bool trust_tnsot;
+  bool reached_end;
+} MercurySotWalk;
+/* needed has one flag per tile of the grid, the walk ends once every needed tile is complete.
+ * resume (optional) continues a walk at its next_sot, parts_seen then counts each tile's parts so
+ * far. */
+typedef struct MercurySotChainTiles
+{
+  const uint8_t* needed;
+  uint32_t num_tiles;
+  const MercurySotWalk* resume;
+  const uint8_t* parts_seen;
+} MercurySotChainTiles;
 MercurySotChain* mercury_sot_chain_open(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
-                                        void* ctx, uint64_t len, const MercuryTileRect* tiles,
+                                        void* ctx, uint64_t len, const MercurySotChainTiles* tiles,
                                         uint8_t* err_buf, size_t err_cap);
 #if !defined(_WIN32)
 MercurySotChain* mercury_sot_chain_open_fd(const MercuryMainHeader* hdr, int32_t fd,
-                                           const MercuryTileRect* tiles, uint8_t* err_buf,
+                                           const MercurySotChainTiles* tiles, uint8_t* err_buf,
                                            size_t err_cap);
 #endif
 int32_t mercury_sot_chain_next(MercurySotChain* chain, MercuryChartedPart* charted, bool* ended,
                                uint8_t* err_buf, size_t err_cap);
+int32_t mercury_sot_chain_walk(const MercurySotChain* chain, MercurySotWalk* walk);
 void mercury_sot_chain_close(MercurySotChain* chain);
 
 /* width/height are the decoded output dims on the canvas plane, i.e. already

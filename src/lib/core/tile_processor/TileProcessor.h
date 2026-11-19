@@ -87,13 +87,6 @@ struct TileProcessor : virtual public ITileProcessor
   bool parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* parsers, IStream* bifurcatedStream,
                      uint16_t mainMarkerId, TilePartInfo tilePartInfo) override;
 
-  /**
-   * @brief Parse tile-part packets using cached SOT offsets from tilePartSeq_,
-   * without re-reading SOT markers. Used on second decode for tiles whose
-   * SOTs were already parsed on the first pass.
-   *
-   * @return true if successful
-   */
   bool decompressFromCachedTileParts() override;
 
   /**
@@ -532,6 +525,14 @@ private:
 
   std::shared_ptr<TPFetchSeq> tilePartFetchSeq_;
   TPSeq tilePartSeq_;
+  struct PacketDataRange
+  {
+    uint64_t offset = 0;
+    uint64_t length = 0;
+    bool read = false;
+  };
+  std::vector<std::unique_ptr<PacketDataRange>> packetDataRanges_;
+  bool readPacketData(IStream* stream, uint8_t tilePart, uint64_t length);
 
   std::vector<uint8_t> threadTilePart_;
   std::mutex pltMutex_;

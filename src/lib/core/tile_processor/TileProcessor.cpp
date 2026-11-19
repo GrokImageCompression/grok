@@ -328,6 +328,7 @@ void TileProcessor::resetSOTParsing()
   tcp_->tilePartCounter_ = 0;
   scheduledForDecompression_ = false;
   tilePartSeq_.reset();
+  packetDataRanges_.clear();
 }
 
 bool TileProcessor::reinitForReDecompress()
@@ -338,6 +339,7 @@ bool TileProcessor::reinitForReDecompress()
 
   // the parsers cached against the code blocks that are about to be replaced
   tcp_->packets_->discardParsers();
+  bestEffortDecompressed_ = false;
 
   // Recreate tile structure
   tile_ = new Tile(headerImage_->numcomps, tileArenaChunks_);
@@ -347,6 +349,9 @@ bool TileProcessor::reinitForReDecompress()
     mct_->setTile(tile_);
   initialized_ = false;
   scheduledForDecompression_ = false;
+  // T2 keys its packet parsers and its truncation check on these counts
+  numProcessedPackets_ = 0;
+  numReadDataPackets_ = 0;
 
   // Re-run init to set up bounds, resolutions, precincts, code blocks
   if(!init())
@@ -517,6 +522,9 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
 {
   if(allSOTMarkersParsed())
     return true;
+  // the sequential walk reads only the SOTs of tiles outside its window
+  if(numSOTsParsed_ != 0)
+    resetSOTParsing();
 
   for(const auto& tp : *tilePartFetchSeq)
   {
@@ -548,6 +556,12 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
     auto [processed, length] = markerParser_->processMarker();
     if(!processed)
       return false;
+    // A.4.2: a Psot of zero leaves the tile-part length to the TLM entry
+    if(tilePartInfo_.tilePartLength_ == 0 && tp->length_ >= sotMarkerSegmentLen)
+    {
+      tilePartInfo_.tilePartLength_ = (uint32_t)tp->length_;
+      tilePartInfo_.remainingTilePartBytes_ = tp->length_ - sotMarkerSegmentLen;
+    }
 
     // read next tile part header marker
     try
@@ -626,36 +640,40 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
   return true;
 }
 
-bool TileProcessor::decompressFromCachedTileParts()
+bool TileProcessor::readPacketData(IStream* stream, uint8_t tilePart, uint64_t length)
 {
-  for(size_t i = 0; i < tilePartSeq_.size(); ++i)
+  uint8_t* buff = nullptr;
+  auto zeroCopy = stream->supportsZeroCopy();
+  if(!zeroCopy)
   {
-    auto& tp = tilePartSeq_[i];
-
-    // Seek past SOT marker segment to tile-part content
-    if(!getStream()->seek(tp->offset_ + sotMarkerSegmentLen) || getStream()->numBytesLeft() == 0)
-      break;
-
-    // Read first marker ID after SOT
     try
     {
-      if(!markerParser_->readId(false))
-        return false;
+      buff = new uint8_t[length];
     }
-    catch(const t1_t2::InvalidMarkerException&)
+    catch([[maybe_unused]] const std::bad_alloc& ex)
     {
-      truncated_ = true;
+      grklog.error("Not enough memory to allocate segment");
+      return false;
+    }
+  }
+  stream->read(buff, &buff, length);
+  tcp_->packets_->push(tilePart, buff, length, !zeroCopy);
+  return true;
+}
+
+bool TileProcessor::decompressFromCachedTileParts()
+{
+  for(size_t i = 0; i < packetDataRanges_.size(); ++i)
+  {
+    const auto& range = *packetDataRanges_[i];
+    if(!range.read)
+      continue;
+    if(range.length == 0)
+    {
+      tcp_->packets_->push(i, nullptr, 0, false);
       continue;
     }
-
-    // Reconstruct TilePartInfo from cached data
-    TilePartInfo tpi;
-    tpi.tilePart_ = (uint8_t)i;
-    tpi.tilePartLength_ = (uint32_t)tp->length_;
-    tpi.remainingTilePartBytes_ =
-        tpi.tilePartLength_ >= sotMarkerSegmentLen ? tpi.tilePartLength_ - sotMarkerSegmentLen : 0;
-
-    if(!parseTilePart(nullptr, nullptr, markerParser_->currId(), tpi))
+    if(!getStream()->seek(range.offset) || !readPacketData(getStream(), (uint8_t)i, range.length))
       return false;
   }
 
@@ -774,6 +792,7 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
   if(!tilePartSeq_.push_back(tilePartInfo.tilePart_, numTileParts, startPos_,
                              tilePartInfo.tilePartLength_))
     return false;
+  packetDataRanges_.push_back(std::make_unique<PacketDataRange>());
 
   assert(!tcp_->signalledNumTileParts_ || numSOTsParsed_ <= tcp_->signalledNumTileParts_);
   tilePartInfo_ = tilePartInfo;
@@ -796,8 +815,9 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
         delete p;
     });
   }
+  auto packetDataRange = packetDataRanges_[tilePartInfo.tilePart_].get();
   auto parseHeader = [this, parsers, bifurcatedStream, concurrent, mainMarkerId, tilePartInfo,
-                      streamGuard, owned_by_parser]() {
+                      streamGuard, owned_by_parser, packetDataRange]() {
     if(hasError())
       return;
     auto tpi = tilePartInfo;
@@ -881,6 +901,7 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
       // a tile part with no packet data still has to claim its slot, or every tile part
       // after it reads as absent
       tcp_->packets_->push(tpi.tilePart_, nullptr, 0, false);
+      *packetDataRange = {0, 0, true};
       return;
     }
 
@@ -907,23 +928,13 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
       truncated_ = true;
     }
     // now cache the packets
-    uint8_t* buff = nullptr;
-    auto zeroCopy = stream->supportsZeroCopy();
-    if(!zeroCopy)
+    const uint64_t packetDataOffset = stream->tell();
+    if(!readPacketData(stream, tpi.tilePart_, tpi.remainingTilePartBytes_))
     {
-      try
-      {
-        buff = new uint8_t[tpi.remainingTilePartBytes_];
-      }
-      catch([[maybe_unused]] const std::bad_alloc& ex)
-      {
-        grklog.error("Not enough memory to allocate segment");
-        success_ = false;
-        return;
-      }
+      success_ = false;
+      return;
     }
-    stream->read(buff, &buff, tpi.remainingTilePartBytes_);
-    tcp_->packets_->push(tpi.tilePart_, buff, tpi.remainingTilePartBytes_, !zeroCopy);
+    *packetDataRange = {packetDataOffset, tpi.remainingTilePartBytes_, true};
   };
   if(concurrent)
   {

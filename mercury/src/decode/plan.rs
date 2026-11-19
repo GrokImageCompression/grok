@@ -562,7 +562,15 @@ fn codestream_end(file: &dyn ReadAt, hdr: &MainHeaderIn) -> Result<u64, DecodeEr
 
 pub struct ChartedPart {
     pub part: TlmEntry,
+    pub tile_part: u8,
+    pub num_tile_parts: u8,
     pub completes_tile: bool,
+}
+
+pub struct SotWalk {
+    pub next_sot: u64,
+    pub trust_tnsot: bool,
+    pub reached_end: bool,
 }
 
 pub struct SotChainCursor {
@@ -574,6 +582,7 @@ pub struct SotChainCursor {
     trust_tnsot: bool,
     first: bool,
     ended: bool,
+    reached_end: bool,
     window: Vec<u8>,
     window_start: u64,
     parts_charted: u64,
@@ -600,12 +609,45 @@ impl SotChainCursor {
             trust_tnsot: false,
             first: true,
             ended: false,
+            reached_end: false,
             window: Vec::new(),
             window_start: 0,
             parts_charted: 0,
             bytes_charted: 0,
             cached_through: 0,
         })
+    }
+
+    pub fn resume(
+        file: &dyn ReadAt,
+        hdr: &MainHeaderIn,
+        needed: Vec<bool>,
+        walk: &SotWalk,
+        parts_seen: Vec<u8>,
+    ) -> Result<Self, DecodeError> {
+        if parts_seen.len() != needed.len() {
+            return Err(DecodeError::Logic(format!(
+                "SOT walk resume has {} part counts for {} tiles",
+                parts_seen.len(),
+                needed.len()
+            )));
+        }
+        let mut cursor = Self::start(file, hdr, needed)?;
+        cursor.sot_pos = walk.next_sot;
+        cursor.trust_tnsot = walk.trust_tnsot;
+        cursor.first = false;
+        cursor.ended = walk.reached_end;
+        cursor.reached_end = walk.reached_end;
+        cursor.parts_seen = parts_seen;
+        Ok(cursor)
+    }
+
+    pub fn walk(&self) -> SotWalk {
+        SotWalk {
+            next_sot: self.sot_pos,
+            trust_tnsot: self.trust_tnsot,
+            reached_end: self.reached_end,
+        }
     }
 
     fn read_sot(&mut self, file: &dyn ReadAt, sot_pos: u64) -> Result<[u8; 12], DecodeError> {
@@ -649,18 +691,21 @@ impl SotChainCursor {
         // classic ignores whatever follows a tile-part if it is not a whole SOT segment
         if !first && sot_pos + 12 > self.codestream_end {
             self.ended = true;
+            self.reached_end = true;
             return Ok(None);
         }
         let sot = self.read_sot(file, sot_pos)?;
         if u16::from_be_bytes([sot[0], sot[1]]) != 0xFF90 {
             if !first {
                 self.ended = true;
+                self.reached_end = true;
                 return Ok(None);
             }
             return Err(DecodeError::Logic(format!("expected SOT at {sot_pos}")));
         }
         let isot = u16::from_be_bytes([sot[4], sot[5]]);
         let psot = u32::from_be_bytes([sot[6], sot[7], sot[8], sot[9]]) as u64;
+        let tpsot = sot[10];
         let tnsot = sot[11];
         if isot as usize >= self.needed.len() {
             return Err(DecodeError::Logic(format!(
@@ -689,14 +734,15 @@ impl SotChainCursor {
         };
         let tile = isot as usize;
         let mut completes_tile = false;
-        if self.trust_tnsot && self.needed[tile] {
+        if self.trust_tnsot {
             self.parts_seen[tile] = self.parts_seen[tile].saturating_add(1);
-            if self.parts_seen[tile] == tnsot {
-                completes_tile = true;
+            completes_tile = self.parts_seen[tile] == tnsot;
+            if completes_tile && self.needed[tile] {
                 self.tiles_pending -= 1;
             }
         }
-        self.ended = last || (completes_tile && self.tiles_pending == 0);
+        self.reached_end = last;
+        self.ended = last || (completes_tile && self.needed[tile] && self.tiles_pending == 0);
         self.sot_pos = sot_pos + psot;
         self.parts_charted += 1;
         self.bytes_charted += psot;
@@ -706,6 +752,8 @@ impl SotChainCursor {
                 offset: sot_pos,
                 length: psot,
             },
+            tile_part: tpsot,
+            num_tile_parts: tnsot,
             completes_tile,
         }))
     }
@@ -4372,7 +4420,7 @@ mod tests {
     }
 
     #[test]
-    fn cursor_marks_the_part_that_completes_a_needed_tile() {
+    fn cursor_marks_the_part_that_completes_each_tile() {
         let completing = |tnsot: u8| {
             let file = sot_chain(tnsot, SHORT_PART_BYTES);
             let mut cursor =
@@ -4385,8 +4433,28 @@ mod tests {
             }
             tiles
         };
-        assert_eq!(completing(1), vec![5]);
+        assert_eq!(completing(1), (0..=5).collect::<Vec<_>>());
         assert!(completing(0).is_empty());
+    }
+
+    #[test]
+    fn resumed_cursor_continues_after_the_last_charted_part() {
+        let file = sot_chain(1, SOT_WINDOW_BYTES as u32);
+        let mut first = SotChainCursor::start(&file, &header(), only_tile(5)).expect("chain opens");
+        let mut parts_seen = vec![0u8; only_tile(5).len()];
+        while let Some(charted) = first.next_part(&file).expect("chain steps") {
+            parts_seen[charted.part.tile as usize] += 1;
+        }
+        let walk = first.walk();
+        assert!(!walk.reached_end);
+        let mut resumed = SotChainCursor::resume(&file, &header(), only_tile(9), &walk, parts_seen)
+            .expect("chain resumes");
+        let mut tiles = Vec::new();
+        while let Some(charted) = resumed.next_part(&file).expect("chain steps") {
+            tiles.push(charted.part.tile);
+        }
+        assert_eq!(tiles, (6..=9).collect::<Vec<_>>());
+        assert_eq!(file.reads.into_inner(), 10);
     }
 
     #[test]

@@ -2072,15 +2072,17 @@ bool TileCodingParams::readPpt(uint8_t* headerData, uint16_t headerSize)
 
 bool TileCodingParams::mergePpt(void)
 {
-  assert(pptBuffer_ == nullptr);
   if(!ppt_)
     return true;
 
-  if(pptBuffer_ != nullptr)
+  // T2 advances pptData_ through the merged packet headers on every decode
+  if(pptBuffer_ != nullptr && pptMarkers_ == nullptr)
   {
-    grklog.error("multiple calls to CodeStreamDecompress::merge_ppt()");
-    return false;
+    pptData_ = pptBuffer_;
+    pptLength_ = pptBufferLength_;
+    return true;
   }
+  delete[] pptBuffer_;
 
   uint32_t pptDataSize = 0U;
   for(uint32_t i = 0U; i < pptMarkersCount_; ++i)
@@ -2091,6 +2093,7 @@ bool TileCodingParams::mergePpt(void)
 
   pptBuffer_ = new uint8_t[pptDataSize];
   pptLength_ = pptDataSize;
+  pptBufferLength_ = pptDataSize;
   pptDataSize = 0U;
   for(uint32_t i = 0U; i < pptMarkersCount_; ++i)
   {

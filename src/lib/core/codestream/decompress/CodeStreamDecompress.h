@@ -115,7 +115,12 @@ public:
    * @return @ref ITileProcessor
    */
   ITileProcessor* getTileProcessor(uint16_t tile_index);
-  bool replaySkippedTileParts(uint16_t tileIndex);
+  bool sotWalkBuildsTLM(void);
+  void recordWalkedTilePart(uint16_t tileIndex, uint64_t offset, uint32_t tilePartLength,
+                            uint8_t tilePart, uint8_t numTileParts);
+  bool extendWalkedTLM(const std::set<uint16_t>& tiles);
+  void activateWalkedTLM(const std::set<uint16_t>& tiles);
+  void endSequentialWalk(bool walkFailed);
 
   /**
    * @brief Initializes tile completeness set
@@ -439,14 +444,6 @@ private:
   ITileProcessor* currTileProcessor_ = nullptr;
 
   TilePartInfo currTilePartInfo_;
-  struct SkippedTilePart
-  {
-    uint64_t offset_;
-    uint32_t length_;
-    uint8_t tilePart_;
-    uint8_t numTileParts_;
-  };
-  std::unordered_map<uint16_t, std::vector<SkippedTilePart>> skippedTileParts_;
   int32_t currTileIndex_ = -1;
   bool numTilePartsChecked_ = false;
   void detectShortNumTileParts(void);
@@ -727,10 +724,9 @@ private:
 
   std::unique_ptr<TileCompletion> tileCompletion_;
   std::unique_ptr<MercuryAsyncDecode> mercuryAsync_;
+  bool differentialDecodeAllowed_ = false;
 
   std::thread decompressWorker_;
-
-  std::function<bool(std::set<uint16_t>&)> decompressStart_;
 
   std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
 

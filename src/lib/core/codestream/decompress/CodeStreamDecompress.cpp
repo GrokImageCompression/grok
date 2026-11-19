@@ -146,9 +146,26 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
   if(TFSingleton::isSingleThreaded())
     localExecutor_ = std::make_unique<tf::Executor>(0);
 }
+static uint32_t layerBudget(uint16_t layersToDecompress)
+{
+  // zero decodes every layer
+  return layersToDecompress == 0 ? UINT32_MAX : layersToDecompress;
+}
+
 void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 {
   assert(parameters);
+  const auto& requested = parameters->core;
+  const auto& previous = cp_.codingParams_.dec_;
+  const bool moreLayers =
+      layerBudget(requested.layers_to_decompress) > layerBudget(previous.layersToDecompress_);
+  const bool fewerLayers =
+      layerBudget(requested.layers_to_decompress) < layerBudget(previous.layersToDecompress_);
+  const bool finerResolution = requested.reduce < previous.reduce_;
+  const bool coarserResolution = requested.reduce > previous.reduce_;
+  const bool int16Changed = requested.irreversible_int16 != previous.irreversibleInt16_;
+  differentialDecodeAllowed_ =
+      (moreLayers || finerResolution) && !fewerLayers && !coarserResolution && !int16Changed;
   if(cp_.init(parameters, tileCache_))
     compositeDecompressed_ = false;
   auto core = &parameters->core;
@@ -248,7 +265,6 @@ void CodeStreamDecompress::discardPluginTileParse(void)
   currTileProcessor_ = nullptr;
   currTileIndex_ = -1;
   tileCache_->discardTiles();
-  skippedTileParts_.clear();
 }
 // the plugin's sample buffers go away when the callback returns
 bool CodeStreamDecompress::postProcessPluginImage(const grk_image* decoded)
@@ -279,6 +295,12 @@ bool CodeStreamDecompress::postProcessPluginImage(const grk_image* decoded)
     composite->decompress_colour_space = composite->color_space;
   }
   return postProcess(composite);
+}
+
+static bool tileAlreadyDecompressed(TileCacheEntry* cacheEntry)
+{
+  auto proc = cacheEntry->processor();
+  return (proc->isBestEffortDecompressed() || proc->getImage()) && !cacheEntry->dirty();
 }
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
@@ -375,6 +397,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
       currTileProcessor_ = nullptr;
       currTileIndex_ = -1;
     }
+    endSequentialWalk(!success_);
     if(!success_)
       discardPluginTileParse();
     return success_;
@@ -545,11 +568,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     for(auto tileIndex : slatedTiles)
     {
       auto cacheEntry = tileCache_->get(tileIndex);
-      if(!cacheEntry)
-        continue;
-      auto proc = cacheEntry->processor();
-      if(proc->isBestEffortDecompressed() ||
-         (proc->getImage() && (!cacheEntry->dirty() || proc->allSOTMarkersParsed())))
+      if(cacheEntry && tileAlreadyDecompressed(cacheEntry))
         tileCompletion_->complete(tileIndex);
     }
   }
@@ -565,45 +584,157 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   return success_;
 }
 
-bool CodeStreamDecompress::replaySkippedTileParts(uint16_t tileIndex)
+bool CodeStreamDecompress::sotWalkBuildsTLM(void)
 {
-  auto skipped = skippedTileParts_.extract(tileIndex);
-  if(skipped.empty())
-    return true;
-  auto processor = getTileProcessor(tileIndex);
-  if(!processor)
-    return false;
-  for(const auto& part : skipped.mapped())
+  // PLM lengths are read in stream order from the first tile-part, and network chunk fetches
+  // start at the first SOT
+  return cp_.tlmMarkers_ && cp_.tlmMarkers_->builtFromSotWalk() && !cp_.plmMarkers_ &&
+         !stream_->getFetcher();
+}
+
+void CodeStreamDecompress::recordWalkedTilePart(uint16_t tileIndex, uint64_t offset,
+                                                uint32_t tilePartLength, uint8_t tilePart,
+                                                uint8_t numTileParts)
+{
+  auto& tlm = *cp_.tlmMarkers_;
+  uint64_t length = tilePartLength;
+  // A.4.2: only the last tile-part has Psot zero, and it runs to the EOC
+  const bool lastTilePart = tilePartLength == 0;
+  if(lastTilePart)
   {
-    uint8_t sotFields[] = {part.tilePart_, part.numTileParts_};
-    TilePartInfo tilePartInfo;
-    tilePartInfo.tilePartLength_ = part.length_;
-    if(!stream_->seek(part.offset_ + sotMarkerSegmentLen) ||
-       !processor->readSOT(stream_, sotFields,
-                           sotMarkerSegmentLen - MARKER_BYTES_PLUS_MARKER_LENGTH_BYTES,
-                           tilePartInfo, false))
+    const uint64_t position = stream_->tell();
+    const uint64_t codestreamEnd = position + stream_->numBytesLeft();
+    length = codestreamEnd - offset;
+    uint8_t marker[2] = {};
+    if(length >= sizeof marker &&
+       stream_->readAt(codestreamEnd - sizeof marker, marker, sizeof marker) && marker[0] == 0xFF &&
+       marker[1] == 0xD9)
+      length -= sizeof marker;
+    stream_->seek(position);
+  }
+  const auto& parts = tlm.getTileParts()[tileIndex];
+  const size_t numParts = (parts ? parts->size() : 0) + 1;
+  const uint8_t signalledParts = cp_.correctedNumTileParts(numTileParts);
+  const bool completesTile = signalledParts != 0 && numParts == signalledParts;
+  if(!tlm.addWalkedTilePart(tileIndex, offset, length, tilePart, numTileParts, completesTile))
+  {
+    tlm.clearSotWalk();
+    return;
+  }
+  // mercury trusts TNsot only when the first tile-part of the stream signals one part
+  const auto& walk = tlm.sotWalk();
+  const bool trustNumTileParts = walk ? walk->trustNumTileParts : numTileParts == 1;
+  tlm.setSotWalk(SotWalkPosition{offset + length, trustNumTileParts, lastTilePart});
+}
+
+void CodeStreamDecompress::endSequentialWalk(bool walkFailed)
+{
+  if(!sotWalkBuildsTLM())
+    return;
+  auto& tlm = *cp_.tlmMarkers_;
+  if(walkFailed)
+  {
+    tlm.clearSotWalk();
+    return;
+  }
+  const bool reachedEnd = markerParser_.endOfCodeStream() || markerParser_.currId() == EOC;
+  const auto& walk = tlm.sotWalk();
+  if(!reachedEnd || !walk)
+    return;
+  tlm.setSotWalk(SotWalkPosition{walk->nextSot, walk->trustNumTileParts, true});
+}
+
+bool CodeStreamDecompress::extendWalkedTLM(const std::set<uint16_t>& tiles)
+{
+  auto& tlm = *cp_.tlmMarkers_;
+  auto someTileIncomplete = [&]() {
+    return std::ranges::any_of(tiles,
+                               [&](uint16_t tileIndex) { return !tlm.tileComplete(tileIndex); });
+  };
+  const uint16_t numTiles = (uint16_t)(cp_.t_grid_width_ * cp_.t_grid_height_);
+  while(someTileIncomplete() && !tlm.sotWalk()->reachedEnd)
+  {
+    const uint64_t sotOffset = tlm.sotWalk()->nextSot;
+    uint8_t sot[sotMarkerSegmentLen];
+    const bool sotRead = stream_->seek(sotOffset) &&
+                         stream_->read(sot, nullptr, sotMarkerSegmentLen) == sotMarkerSegmentLen;
+    uint8_t* fields = sot;
+    uint16_t marker = 0, segmentLength, tileIndex;
+    uint32_t tilePartLength;
+    uint8_t tilePart, numTileParts;
+    if(sotRead)
+    {
+      grk_read(&fields, &marker);
+      grk_read(&fields, &segmentLength);
+      grk_read(&fields, &tileIndex);
+      grk_read(&fields, &tilePartLength);
+      grk_read(&fields, &tilePart);
+      grk_read(&fields, &numTileParts);
+    }
+    // classic ignores whatever follows a tile-part if it is not a whole SOT segment
+    if(marker != SOT)
+    {
+      const auto walk = *tlm.sotWalk();
+      tlm.setSotWalk(SotWalkPosition{walk.nextSot, walk.trustNumTileParts, true});
+      break;
+    }
+    const bool validSot =
+        tileIndex < numTiles && (tilePartLength == 0 || tilePartLength >= sotMarkerSegmentLen);
+    if(!validSot)
+    {
+      tlm.clearSotWalk();
+      return false;
+    }
+    recordWalkedTilePart(tileIndex, sotOffset, tilePartLength, tilePart, numTileParts);
+    if(!tlm.sotWalk())
       return false;
   }
-  return true;
+  // the sequential walk completes tiles missing from a truncated stream
+  const bool someTileMissing = std::ranges::any_of(
+      tiles, [&](uint16_t tileIndex) { return !tlm.getTileParts()[tileIndex]; });
+  return !someTileIncomplete() && !someTileMissing;
+}
+
+void CodeStreamDecompress::activateWalkedTLM(const std::set<uint16_t>& tiles)
+{
+  if(!sotWalkBuildsTLM())
+    return;
+  auto& tlm = *cp_.tlmMarkers_;
+  if(tiles.empty() || !tlm.sotWalk())
+  {
+    tlm.setValid(false);
+    return;
+  }
+  // tile-parts decoded through the TLM are checked against the corrected TNsot
+  if(!numTilePartsChecked_)
+    detectShortNumTileParts();
+  tlm.setValid(extendWalkedTLM(tiles));
 }
 
 bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
 {
-  for(auto tileIndex : pendingTiles)
-  {
-    if(!replaySkippedTileParts(tileIndex))
-      return false;
-  }
+  // schedule() for cached and differential tiles must not take the TLM route
+  if(sotWalkBuildsTLM())
+    cp_.tlmMarkers_->setValid(false);
   // Filter out fully cached tiles
   std::erase_if(pendingTiles, [this](uint16_t index) {
     auto cacheEntry = tileCache_->get(index);
-    if(!cacheEntry)
-      return false;
-    auto proc = cacheEntry->processor();
-    return (proc->isBestEffortDecompressed() || proc->getImage()) && !cacheEntry->dirty();
+    return cacheEntry && tileAlreadyDecompressed(cacheEntry);
   });
   if(pendingTiles.empty())
     return true;
+
+  // the differential route only decodes the layers a tile lacks
+  if(!differentialDecodeAllowed_)
+  {
+    for(auto tileIndex : pendingTiles)
+    {
+      auto cacheEntry = tileCache_->get(tileIndex);
+      if(cacheEntry && cacheEntry->processor()->getTile() &&
+         cacheEntry->processor()->allSOTMarkersParsed())
+        cacheEntry->processor()->release(GRK_TILE_CACHE_NONE);
+    }
+  }
 
   // Extract tiles whose decompressed data was dropped but whose compressed data can be
   // reached again: LRU evictions, and every tile of a completed decode under a cache
@@ -689,7 +820,6 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
       continue;
     if(!schedule(proc, true))
       break;
-    cacheEntry->setDirty(false);
   }
 
   if(pendingTiles.empty())
@@ -711,16 +841,8 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     return true;
   }
 
-  // one-time dispatch initialization
-  if(!decompressStart_)
-  {
-    if(cp_.hasTLM())
-      decompressStart_ = [this](auto& pt) { return startTLMDecompress(pt); };
-    else
-      decompressStart_ = [this](auto& pt) { return startSequentialDecompress(pt); };
-  }
-
-  return decompressStart_(pendingTiles);
+  activateWalkedTLM(pendingTiles);
+  return cp_.hasTLM() ? startTLMDecompress(pendingTiles) : startSequentialDecompress(pendingTiles);
 }
 
 bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
@@ -981,13 +1103,14 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
   if(!numTilePartsChecked_)
     detectShortNumTileParts();
+  if(sotWalkBuildsTLM())
+    cp_.tlmMarkers_->clearSotWalk();
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
   markerParser_.setSOT();
   // the walk restarts at the first SOT, so the tile a previous walk stopped on
   // must not decide whether this one has anything to parse
   currTileIndex_ = -1;
   tileCache_->resetSOTParsing();
-  skippedTileParts_.clear();
   if(cp_.plmMarkers_)
     cp_.plmMarkers_->rewind();
   stream_->memAdvise(stream_->tell(), 0, GrkAccessPattern::ACCESS_RANDOM);
@@ -1017,6 +1140,11 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
     {
       grklog.warn("Found invalid marker : 0x%.4x", ime.marker_);
       success_ = false;
+      break;
+    }
+    catch([[maybe_unused]] const DecodeUnknownMarkerAtEndOfTileException& e)
+    {
+      foundUnknownMarker = true;
       break;
     }
 
@@ -1055,18 +1183,21 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
 
   // Best-effort: schedule incomplete tiles (those with some tile parts parsed
   // but not all) for decompression with whatever data they have.
+  bool truncatedTiles = false;
   for(auto tileIndex : pendingTiles)
   {
     auto cached = tileCache_->get(tileIndex);
     if(cached && cached->processor() && !cached->processor()->scheduledForDecompression() &&
        cached->processor()->hasUnparsedTileParts())
     {
+      truncatedTiles = true;
       cached->processor()->setTruncated();
       cached->processor()->prepareForDecompression();
       if(!cached->processor()->hasError())
         schedule(cached->processor(), true);
     }
   }
+  endSequentialWalk(!success_ || foundUnknownMarker || truncatedTiles);
 
   // Mark tiles that were never parsed (missing from truncated codestream)
   // as complete so wait() doesn't hang.  Tiles that WERE parsed are still
@@ -1122,9 +1253,12 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     }
     // Attempt to read next SOT marker. If we hit an invalid marker, we still try to
     // decompress the tile, as truncated.
+    const bool tilePartSkipped =
+        currTileIndex_ == -1 || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_);
     try
     {
-      if(!markerParser_.readId(false))
+      // a skipped tile-part is followed by SOT or EOC, as a parsed one is after its data
+      if(tilePartSkipped ? !markerParser_.readSOTafterSOD() : !markerParser_.readId(false))
         break;
     }
     catch(const t1_t2::InvalidMarkerException& ime)
@@ -1283,8 +1417,6 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   scratchImage_ = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
       new GrkImage(), RefCountedDeleter<GrkImage>());
 
-  if(!replaySkippedTileParts(tileIndex))
-    return false;
   auto cacheEntry = tileCache_->get(tileIndex);
   if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage())
   {
@@ -1337,6 +1469,9 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(!activateScratch(true, scratchImage_.get()))
     return false;
   scratchImage_->has_multiple_tiles = false;
+  const bool tilePartsParsed =
+      cacheEntry && cacheEntry->processor() && cacheEntry->processor()->allSOTMarkersParsed();
+  activateWalkedTLM(tilePartsParsed ? std::set<uint16_t>{} : std::set<uint16_t>{tileIndex});
   // decompress tile
   if(!cp_.hasTLM())
   {
@@ -1366,12 +1501,20 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       try
       {
         if(!sequentialParseAndSchedule(false))
+        {
+          endSequentialWalk(true);
           return false;
+        }
       }
       catch(const t1_t2::InvalidMarkerException& ime)
       {
         grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         invalidMarker = true;
+      }
+      catch([[maybe_unused]] const DecodeUnknownMarkerAtEndOfTileException& e)
+      {
+        endSequentialWalk(true);
+        return false;
       }
 
       // Check for corrupt Adobe images where a final tile part is not parsed
@@ -1383,7 +1526,10 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
           if(markerParser_.readSOTorEOC() && markerParser_.currId() == SOT)
           {
             if(markerParser_.checkForIllegalTilePart())
+            {
+              endSequentialWalk(true);
               return false;
+            }
           }
         }
         catch(const t1_t2::InvalidMarkerException& ime)
@@ -1391,6 +1537,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
           grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         }
       }
+      endSequentialWalk(invalidMarker);
     }
 
     return true;
@@ -1706,7 +1853,6 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
     if(region_ != Rect32() && region_ != canvasRegion)
     {
       tileCache_->discardTiles();
-      skippedTileParts_.clear();
       compositeDecompressed_ = false;
     }
     region_ = canvasRegion;
@@ -1724,6 +1870,8 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
               fetcher->notifyThrottleRelease();
           },
           tilesToDecompress);
+      // swath waits on a new TileCompletion return only for tiles a new decompress delivers
+      compositeDecompressed_ = false;
     }
     if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
       return false;
@@ -2860,12 +3008,21 @@ bool CodeStreamDecompress::initDefaultTCP()
 
 bool CodeStreamDecompress::setProgressionState(grk_progression_state state)
 {
+  auto cacheEntry = state.single_tile ? tileCache_->get(state.tile_index) : nullptr;
+  const uint16_t layersBefore = cacheEntry && cacheEntry->processor()
+                                    ? cacheEntry->processor()->getTCP()->layersToDecompress_
+                                    : 0;
   bool markedDirty = false;
   if(!tileCache_->setProgressionState(state, markedDirty))
     return false;
   // decompress() hands back the previous composite while this is set
   if(markedDirty)
+  {
     compositeDecompressed_ = false;
+    differentialDecodeAllowed_ =
+        layerBudget(cacheEntry->processor()->getTCP()->layersToDecompress_) >
+        layerBudget(layersBefore);
+  }
 
   return true;
 }

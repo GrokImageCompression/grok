@@ -48,43 +48,14 @@ struct ITileProcessor;
 #include "CoderPool.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
-#include "TLMFile.h"
 
 namespace grk
 {
-
-struct TilePartLengthPOD
-{
-  uint16_t tileIndex_;
-  uint32_t length_;
-};
 
 TLMMarker::TLMMarker(uint16_t numSignalledTiles)
     : markerManager_(std::make_unique<TLMMarkerManager>()), numSignalledTiles_(numSignalledTiles)
 {
   tilePartsPerTile_.resize(numSignalledTiles_);
-}
-
-TLMMarker::TLMMarker(const std::string& filePath, uint16_t numSignalledTiles,
-                     uint64_t tileStreamStart)
-    : TLMMarker(numSignalledTiles)
-{
-  valid_ = false;
-  auto serialized = TLMFile<TilePartLengthPOD>::load(filePath);
-  if(serialized)
-  {
-    for(const auto& tplp : serialized.value())
-    {
-      TilePartLength<uint32_t> tpl(tplp.tileIndex_, tplp.length_);
-      add(tpl);
-    }
-    readComplete(tileStreamStart);
-    valid_ = true;
-  }
-  else
-  {
-    filePath_ = filePath;
-  }
 }
 
 TLMMarker::TLMMarker(IStream* stream) : TLMMarker(USHRT_MAX)
@@ -272,13 +243,74 @@ const TPSEQ_VEC& TLMMarker::getTileParts(void) const
   return tilePartsPerTile_;
 }
 
+std::unique_ptr<TLMMarker> TLMMarker::forSotWalk(uint16_t numSignalledTiles)
+{
+  auto tlm = std::make_unique<TLMMarker>(numSignalledTiles);
+  tlm->builtFromSotWalk_ = true;
+  tlm->valid_ = false;
+  tlm->tileComplete_.assign(numSignalledTiles, 0);
+  return tlm;
+}
+
+bool TLMMarker::builtFromSotWalk() const noexcept
+{
+  return builtFromSotWalk_;
+}
+
+void TLMMarker::setValid(bool valid) noexcept
+{
+  valid_ = valid;
+}
+
+bool TLMMarker::tileComplete(uint16_t tileIndex) const noexcept
+{
+  return tileComplete_[tileIndex] != 0;
+}
+
+const std::optional<SotWalkPosition>& TLMMarker::sotWalk() const noexcept
+{
+  return sotWalk_;
+}
+
+void TLMMarker::setSotWalk(SotWalkPosition walk)
+{
+  sotWalk_ = walk;
+  // tiles still short of TNsot at the end of the stream are truncated
+  if(walk.reachedEnd)
+    std::ranges::fill(tileComplete_, 1);
+}
+
+bool TLMMarker::addWalkedTilePart(uint16_t tileIndex, uint64_t offset, uint64_t length,
+                                  uint8_t tilePart, uint8_t numTileParts, bool completesTile)
+{
+  auto& tpSeq = tilePartsPerTile_[tileIndex];
+  if(!tpSeq)
+    tpSeq = std::make_unique<TPSeq>();
+  if(!tpSeq->push_back(tilePart, numTileParts, offset, length))
+    return false;
+  if(completesTile)
+    tileComplete_[tileIndex] = 1;
+  return true;
+}
+
+void TLMMarker::clearSotWalk()
+{
+  for(auto& tpSeq : tilePartsPerTile_)
+    tpSeq.reset();
+  std::ranges::fill(tileComplete_, 0);
+  sotWalk_.reset();
+  valid_ = false;
+}
+
 uint8_t TLMMarker::getNumTileParts(uint16_t tileIndex) const noexcept
 {
   if(!valid_ || tileIndex >= tilePartsPerTile_.size())
     return 0;
 
   auto& partsPerTile = tilePartsPerTile_[tileIndex];
-  return partsPerTile ? static_cast<uint8_t>(partsPerTile->size()) : 0;
+  if(!partsPerTile || (builtFromSotWalk_ && !tileComplete_[tileIndex]))
+    return 0;
+  return static_cast<uint8_t>(partsPerTile->size());
 }
 
 /**

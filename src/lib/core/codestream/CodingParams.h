@@ -334,6 +334,7 @@ struct TileCodingParams
   uint8_t* pptBuffer_ = nullptr;
   /** size of ppt_data*/
   size_t pptLength_ = 0;
+  size_t pptBufferLength_ = 0;
   /** fixed_quality */
   double distortion_[maxCompressLayersGRK];
   // quantization style as read from main QCD marker

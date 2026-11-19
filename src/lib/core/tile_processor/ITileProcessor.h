@@ -119,11 +119,6 @@ struct ITileProcessor
                              IStream* bifurcatedStream, uint16_t mainMarkerId,
                              TilePartInfo tilePartInfo) = 0;
 
-  /**
-   * @brief Parse tile-part packets using cached SOT offsets from tilePartSeq_,
-   * without re-reading SOT markers.
-   * @return true if successful
-   */
   virtual bool decompressFromCachedTileParts() = 0;
 
   /**

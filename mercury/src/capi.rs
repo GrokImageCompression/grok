@@ -36,7 +36,7 @@ use crate::decode::graph::{
     uniform_subsampling, weave_comps_with_coder, weave_with_coder,
 };
 use crate::decode::plan::{
-    DecodePlan, Drafted, MainHeaderIn, PacketFeed, PltUse, SotChainCursor, TlmEntry, draft,
+    DecodePlan, Drafted, MainHeaderIn, PacketFeed, PltUse, SotChainCursor, SotWalk, TlmEntry, draft,
 };
 use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, FilledRuns, ReadAt, fetch_runs};
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
@@ -192,11 +192,18 @@ pub struct MercuryProgressionVolume {
 }
 
 #[repr(C)]
-pub struct MercuryTileRect {
-    pub x0: u16,
-    pub y0: u16,
-    pub x1: u16,
-    pub y1: u16,
+pub struct MercurySotWalk {
+    pub next_sot: u64,
+    pub trust_tnsot: bool,
+    pub reached_end: bool,
+}
+
+#[repr(C)]
+pub struct MercurySotChainTiles {
+    pub needed: *const u8,
+    pub num_tiles: u32,
+    pub resume: *const MercurySotWalk,
+    pub parts_seen: *const u8,
 }
 
 /// One tile-part's position, from the host's parsed TLM markers.
@@ -715,18 +722,20 @@ pub struct MercurySotChain {
 #[repr(C)]
 pub struct MercuryChartedPart {
     pub part: MercuryTlmEntry,
+    pub tile_part: u8,
+    pub num_tile_parts: u8,
     pub completes_tile: bool,
 }
 
 fn open_sot_chain(
     hdr: *const MercuryMainHeader,
     src: Arc<dyn ReadAt>,
-    tiles: *const MercuryTileRect,
+    tiles: *const MercurySotChainTiles,
     err_buf: *mut u8,
     err_cap: usize,
 ) -> *mut MercurySotChain {
     let Some(tiles) = (unsafe { tiles.as_ref() }) else {
-        stamp_err(err_buf, err_cap, "null tile rect");
+        stamp_err(err_buf, err_cap, "null tiles");
         return std::ptr::null_mut();
     };
     let header = match unsafe { draft_header_in(hdr) } {
@@ -736,16 +745,32 @@ fn open_sot_chain(
             return std::ptr::null_mut();
         }
     };
-    let tiles_across = header.siz.tiles_across();
-    let num_tiles = tiles_across * header.siz.tiles_down();
-    let needed: Vec<bool> = (0..num_tiles)
-        .map(|t| {
-            let (tx, ty) = (t % tiles_across, t / tiles_across);
-            (tiles.x0 as u32..tiles.x1 as u32).contains(&tx)
-                && (tiles.y0 as u32..tiles.y1 as u32).contains(&ty)
-        })
+    let num_tiles = (header.siz.tiles_across() * header.siz.tiles_down()) as usize;
+    if tiles.needed.is_null() || tiles.num_tiles as usize != num_tiles {
+        stamp_err(err_buf, err_cap, "needed tiles do not match the tile grid");
+        return std::ptr::null_mut();
+    }
+    let needed: Vec<bool> = unsafe { std::slice::from_raw_parts(tiles.needed, num_tiles) }
+        .iter()
+        .map(|&n| n != 0)
         .collect();
-    match SotChainCursor::start(&*src, &header, needed) {
+    let cursor = match unsafe { tiles.resume.as_ref() } {
+        None => SotChainCursor::start(&*src, &header, needed),
+        Some(resume) => {
+            if tiles.parts_seen.is_null() {
+                stamp_err(err_buf, err_cap, "SOT walk resume without part counts");
+                return std::ptr::null_mut();
+            }
+            let parts_seen = unsafe { std::slice::from_raw_parts(tiles.parts_seen, num_tiles) };
+            let walk = SotWalk {
+                next_sot: resume.next_sot,
+                trust_tnsot: resume.trust_tnsot,
+                reached_end: resume.reached_end,
+            };
+            SotChainCursor::resume(&*src, &header, needed, &walk, parts_seen.to_vec())
+        }
+    };
+    match cursor {
         Ok(cursor) => Box::into_raw(Box::new(MercurySotChain { cursor, src })),
         Err(e) => {
             stamp_err(err_buf, err_cap, &format!("{e:?}"));
@@ -760,7 +785,7 @@ pub extern "C" fn mercury_sot_chain_open(
     read_at: Option<MercuryReadAtFn>,
     ctx: *mut c_void,
     len: u64,
-    tiles: *const MercuryTileRect,
+    tiles: *const MercurySotChainTiles,
     err_buf: *mut u8,
     err_cap: usize,
 ) -> *mut MercurySotChain {
@@ -782,7 +807,7 @@ pub extern "C" fn mercury_sot_chain_open(
 pub extern "C" fn mercury_sot_chain_open_fd(
     hdr: *const MercuryMainHeader,
     fd: i32,
-    tiles: *const MercuryTileRect,
+    tiles: *const MercurySotChainTiles,
     err_buf: *mut u8,
     err_cap: usize,
 ) -> *mut MercurySotChain {
@@ -799,6 +824,23 @@ pub extern "C" fn mercury_sot_chain_open_fd(
             std::ptr::null_mut()
         }
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_sot_chain_walk(
+    chain: *const MercurySotChain,
+    walk: *mut MercurySotWalk,
+) -> i32 {
+    let (Some(chain), Some(walk)) = (unsafe { chain.as_ref() }, unsafe { walk.as_mut() }) else {
+        return MERCURY_EBADARG;
+    };
+    let state = chain.cursor.walk();
+    *walk = MercurySotWalk {
+        next_sot: state.next_sot,
+        trust_tnsot: state.trust_tnsot,
+        reached_end: state.reached_end,
+    };
+    MERCURY_OK
 }
 
 /// # Safety
@@ -829,6 +871,8 @@ pub unsafe extern "C" fn mercury_sot_chain_next(
                     length: part.part.length,
                     tile: part.part.tile,
                 },
+                tile_part: part.tile_part,
+                num_tile_parts: part.num_tile_parts,
                 completes_tile: part.completes_tile,
             };
             *ended = false;

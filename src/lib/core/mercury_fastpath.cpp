@@ -478,7 +478,7 @@ namespace
   }
 
   MercurySotChain* openSotChain(const MercuryMainHeader& header, MercuryReaders& readers,
-                                const MercuryTileRect& tiles, uint8_t* err, size_t errCap)
+                                const MercurySotChainTiles& tiles, uint8_t* err, size_t errCap)
   {
     if(readers.fromPath)
     {
@@ -494,6 +494,61 @@ namespace
                                     readers.streamReader.size, &tiles, err, errCap);
     return mercury_sot_chain_open(&header, memReadAt, &readers.memReader, readers.memReader.size,
                                   &tiles, err, errCap);
+  }
+
+  using SotChainPtr = std::unique_ptr<MercurySotChain, decltype(&mercury_sot_chain_close)>;
+
+  // null when the TLM already holds every part of the slated tiles
+  SotChainPtr openWalkedTLMSotChain(const MercuryMainHeader& header, MercuryReaders& readers,
+                                    const TLMMarker& tlm, Rect16 slated, uint16_t gridWidth,
+                                    uint32_t numTiles, uint8_t* err, size_t errCap)
+  {
+    SotChainPtr chain{nullptr, mercury_sot_chain_close};
+    std::vector<uint8_t> needed(numTiles, 0);
+    bool anyNeeded = false;
+    for(uint16_t ty = slated.y0; ty < slated.y1; ty++)
+      for(uint16_t tx = slated.x0; tx < slated.x1; tx++)
+      {
+        uint16_t tileIndex = (uint16_t)(ty * gridWidth + tx);
+        needed[tileIndex] = !tlm.tileComplete(tileIndex);
+        anyNeeded |= needed[tileIndex] != 0;
+      }
+    if(!anyNeeded)
+      return chain;
+    const auto& tileParts = tlm.getTileParts();
+    std::vector<uint8_t> partsSeen(numTiles);
+    for(uint32_t t = 0; t < numTiles; t++)
+      partsSeen[t] = tileParts[t] ? (uint8_t)std::min<size_t>(tileParts[t]->size(), UINT8_MAX) : 0;
+    const auto& walk = tlm.sotWalk();
+    MercurySotWalk resume{};
+    if(walk)
+      resume = {walk->nextSot, walk->trustNumTileParts, walk->reachedEnd};
+    MercurySotChainTiles chainTiles{needed.data(), numTiles, walk ? &resume : nullptr,
+                                    partsSeen.data()};
+    chain.reset(openSotChain(header, readers, chainTiles, err, errCap));
+    if(!chain)
+      throw std::runtime_error((const char*)err);
+    return chain;
+  }
+
+  bool stepWalkedTLMSotChain(MercurySotChain* chain, TLMMarker& tlm, MercuryChartedPart& charted,
+                             bool& ended, uint8_t* err, size_t errCap)
+  {
+    if(mercury_sot_chain_next(chain, &charted, &ended, err, errCap) != MERCURY_OK)
+      return false;
+    MercurySotWalk walk;
+    mercury_sot_chain_walk(chain, &walk);
+    if(!ended &&
+       !tlm.addWalkedTilePart(charted.part.tile, charted.part.offset, charted.part.length,
+                              charted.tile_part, charted.num_tile_parts, charted.completes_tile))
+    {
+      tlm.clearSotWalk();
+      snprintf((char*)err, errCap, "tile %u: tile-part %u out of sequence", charted.part.tile,
+               charted.tile_part);
+      return false;
+    }
+    tlm.setSotWalk(SotWalkPosition{walk.next_sot, walk.trust_tnsot, walk.reached_end});
+    return true;
   }
 
   // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
@@ -627,8 +682,8 @@ namespace
     std::optional<ReadSource> tileByteSource;
     uint64_t maxHeldTileBytes = 0;
     // open while some slated tile is not charted, on streams without TLM
-    std::unique_ptr<MercurySotChain, decltype(&mercury_sot_chain_close)> sotChain{
-        nullptr, mercury_sot_chain_close};
+    SotChainPtr sotChain{nullptr, mercury_sot_chain_close};
+    TLMMarker* walkedTLM = nullptr;
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 
     ~MercuryTileState() override
@@ -687,7 +742,7 @@ namespace
       {
         MercuryChartedPart charted;
         bool ended = false;
-        if(mercury_sot_chain_next(sotChain.get(), &charted, &ended, err, errCap) != MERCURY_OK)
+        if(!stepWalkedTLMSotChain(sotChain.get(), *walkedTLM, charted, ended, err, errCap))
         {
           sotChain.reset();
           return false;
@@ -1752,7 +1807,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // the tiles it decodes instead of scanning the SOT chain. hasTLM() is false
   // when the app disabled TLM (GRK_RANDOM_ACCESS_TLM invalidates the marker).
   std::vector<MercuryTlmEntry> mhTlm;
-  if(cs.cp_.hasTLM())
+  TLMMarker* walkedTLM =
+      cs.cp_.tlmMarkers_->builtFromSotWalk() ? cs.cp_.tlmMarkers_.get() : nullptr;
+  if(cs.cp_.hasTLM() && !walkedTLM)
   {
     const auto& tileParts = cs.cp_.tlmMarkers_->getTileParts();
     for(uint32_t t = 0; t < tileParts.size(); t++)
@@ -1911,14 +1968,20 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     state->header->poc = std::move(mhPoc);
     state->header->tlm = std::move(mhTlm);
     state->readers = std::move(readers);
-    if(state->header->tlm.empty())
+    if(walkedTLM)
     {
-      Rect16 slatedTiles = cs.tilesToDecompress_.getSlatedTileRect();
-      MercuryTileRect tiles{slatedTiles.x0, slatedTiles.y0, slatedTiles.x1, slatedTiles.y1};
-      state->sotChain.reset(
-          openSotChain(state->header->header, *state->readers, tiles, err, sizeof err));
-      if(!state->sotChain)
-        MFP_BAIL((const char*)err);
+      state->walkedTLM = walkedTLM;
+      try
+      {
+        state->sotChain = openWalkedTLMSotChain(
+            state->header->header, *state->readers, *walkedTLM,
+            cs.tilesToDecompress_.getSlatedTileRect(), cs.cp_.t_grid_width_,
+            (uint32_t)cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_, err, sizeof err);
+      }
+      catch(const std::runtime_error& e)
+      {
+        MFP_BAIL(e.what());
+      }
     }
     state->composite = img;
     state->outType = mparams.int16_dwt ? GRK_INT_16 : GRK_INT_32;
@@ -1969,6 +2032,14 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     for(const auto& part : state->header->tlm)
       if(AsyncTile* tile = state->tileAt(part.tile))
         tile->parts.push_back(part);
+    if(state->walkedTLM)
+      for(auto& tile : state->tiles)
+      {
+        if(const auto& parts = state->walkedTLM->getTileParts()[tile->index])
+          for(const auto& part : *parts)
+            tile->parts.push_back({part->offset_, part->length_, tile->index});
+        tile->charted = state->walkedTLM->tileComplete(tile->index);
+      }
     if(!state->sotChain)
       for(auto& tile : state->tiles)
         tile->charted = true;
@@ -2016,6 +2087,38 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     grklog.info("mercury per-tile async path: %u tiles", (uint32_t)state->tiles.size());
     cs.mercuryAsync_ = std::move(state);
     return true;
+  }
+
+  // the sync plan reads indexed tile-parts like TLM entries instead of walking the SOT chain
+  if(walkedTLM)
+  {
+    const Rect16 slated = cs.tilesToDecompress_.getSlatedTileRect();
+    try
+    {
+      auto chain = openWalkedTLMSotChain(mhdr, *readers, *walkedTLM, slated, cs.cp_.t_grid_width_,
+                                         (uint32_t)cs.cp_.t_grid_width_ * cs.cp_.t_grid_height_,
+                                         err, sizeof err);
+      for(bool ended = false; chain && !ended;)
+      {
+        MercuryChartedPart charted;
+        if(!stepWalkedTLMSotChain(chain.get(), *walkedTLM, charted, ended, err, sizeof err))
+          MFP_BAIL((const char*)err);
+      }
+    }
+    catch(const std::runtime_error& e)
+    {
+      MFP_BAIL(e.what());
+    }
+    for(uint16_t ty = slated.y0; ty < slated.y1; ty++)
+      for(uint16_t tx = slated.x0; tx < slated.x1; tx++)
+      {
+        uint16_t tileIndex = (uint16_t)(ty * cs.cp_.t_grid_width_ + tx);
+        if(const auto& parts = walkedTLM->getTileParts()[tileIndex])
+          for(const auto& part : *parts)
+            mhTlm.push_back({part->offset_, part->length_, tileIndex});
+      }
+    mhdr.tlm = mhTlm.data();
+    mhdr.num_tlm = (uint32_t)mhTlm.size();
   }
 
   plan = warpPlan(mhdr, mparams, *readers, err, sizeof err);

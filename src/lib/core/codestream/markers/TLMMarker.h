@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 #include <span> // C++20
+#include <optional>
 
 namespace grk
 {
@@ -159,6 +160,13 @@ private:
   bool valid_;
 };
 
+struct SotWalkPosition
+{
+  uint64_t nextSot;
+  bool trustNumTileParts;
+  bool reachedEnd;
+};
+
 /**
  * @struct TLMMarker
  * @brief Reads/writes TLM markers
@@ -170,12 +178,6 @@ struct TLMMarker
    * @param numSignalledTiles number of tiles signalled in main header
    */
   explicit TLMMarker(uint16_t numSignalledTiles);
-
-  /**
-   * @brief Constructs a TLMMarker
-   * @param numSignalledTiles number of tiles signalled in main header
-   */
-  TLMMarker(const std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart);
 
   /**
    * @brief Constructs a TLMMarker
@@ -269,6 +271,16 @@ struct TLMMarker
 
   const TPSEQ_VEC& getTileParts(void) const;
 
+  static std::unique_ptr<TLMMarker> forSotWalk(uint16_t numSignalledTiles);
+  bool builtFromSotWalk() const noexcept;
+  void setValid(bool valid) noexcept;
+  bool tileComplete(uint16_t tileIndex) const noexcept;
+  const std::optional<SotWalkPosition>& sotWalk() const noexcept;
+  void setSotWalk(SotWalkPosition walk);
+  bool addWalkedTilePart(uint16_t tileIndex, uint64_t offset, uint64_t length, uint8_t tilePart,
+                         uint8_t numTileParts, bool completesTile);
+  void clearSotWalk();
+
 private:
   std::unique_ptr<TLMMarkerManager> markerManager_;
 
@@ -320,7 +332,9 @@ private:
    */
   uint64_t tilePartStart_ = 0;
 
-  std::string filePath_;
+  bool builtFromSotWalk_ = false;
+  std::vector<uint8_t> tileComplete_;
+  std::optional<SotWalkPosition> sotWalk_;
 };
 
 } // namespace grk
