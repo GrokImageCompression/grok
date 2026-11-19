@@ -660,6 +660,7 @@ namespace
     std::atomic<bool> cancel{false};
     std::atomic<bool> failed{false};
     std::thread scheduler;
+    std::thread feeder;
     std::vector<tf::Future<void>> decodes;
     static constexpr int32_t maxRowsAhead = 2;
     uint32_t maxTilesInFlight = 1;
@@ -704,6 +705,9 @@ namespace
       for(auto& tile : tiles)
         if(tile->plan)
           mercury_unwarp_loom(tile->plan);
+      // mercury ends a waiting packet feed once its plan is freed
+      if(feeder.joinable())
+        feeder.join();
     }
 
     void stop()
@@ -2086,7 +2090,8 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     cs.success_ = true;
     MercuryFeed* feed = mercury_loom_take_feed(first.plan);
     state->start();
-    mercury_feed_run(feed);
+    if(feed)
+      state->feeder = std::thread([feed] { mercury_feed_run(feed); });
     grklog.info("mercury per-tile async path: %u tiles", (uint32_t)state->tiles.size());
     cs.mercuryAsync_ = std::move(state);
     return true;

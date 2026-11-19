@@ -235,6 +235,14 @@ impl BandPlan {
         self.published.as_deref()
     }
 
+    fn stored_row_bytes(&self, stored_row: usize) -> u64 {
+        let wide = self.stored_blocks_wide as usize;
+        self.blocks[stored_row * wide..(stored_row + 1) * wide]
+            .iter()
+            .map(|rec| rec.bolt_len() as u64)
+            .sum()
+    }
+
     fn publish_row(&mut self, stored_row: usize) {
         let wide = self.stored_blocks_wide as usize;
         let row = self.blocks[stored_row * wide..(stored_row + 1) * wide]
@@ -1713,6 +1721,7 @@ impl PacketFeed {
         };
         let mut win = StreamWin::warp(bytes).map_err(io_snag)?;
         let mut cursor = FillCursor::default();
+        let mut sealed = FillCursor::default();
         let mut prec_states: Vec<Vec<Vec<Option<PrecState>>>> = grids
             .iter()
             .map(|comp_grids| {
@@ -1729,7 +1738,7 @@ impl PacketFeed {
             let end = starts[i] + lengths[i] as u64;
             let (last_byte, _) = stream.unspool(end - 1)?;
             bytes
-                .fill_through(&mut cursor, last_byte + 1)
+                .fill_through(&mut cursor, last_byte + 1, &|| link.graph_failed())
                 .map_err(io_snag)?;
             let (c, r) = (pkt.comp as usize, pkt.res as usize);
             let prec_bands = tile.prec_bands(pkt);
@@ -1737,7 +1746,10 @@ impl PacketFeed {
             let state = state_slot.get_or_insert_with(|| PrecState::warp(&prec_bands));
             let combed = comb_packet(&tile, &mut win, state, pkt, starts[i])?;
             check_plt_length(lengths[i], starts[i], combed.end)?;
-            fill_block_records(comps, pkt, &prec_bands, &combed)?;
+            fill_block_records(comps, pkt, &prec_bands, &combed, &mut |off, len| {
+                bytes.owe(off, len as u64)
+            })?;
+            bytes.seal_through(&mut sealed, last_byte + 1);
             if cod.num_layers == 1 {
                 *state_slot = None;
             }
@@ -1748,6 +1760,7 @@ impl PacketFeed {
                     let count = &mut pending[c][r][b][row];
                     *count -= 1;
                     if *count == 0 {
+                        bytes.publish(band.stored_row_bytes(row));
                         band.publish_row(row);
                         published = true;
                     }
@@ -1760,6 +1773,7 @@ impl PacketFeed {
                 }
             }
         }
+        bytes.seal_through(&mut sealed, u64::MAX);
         Ok(())
     }
 }
@@ -1791,6 +1805,14 @@ impl FeedLink {
             FeedState::Feeding(hold) => *hold = Some(runtime.launch_held(kick, on_still)),
             FeedState::Finished => runtime.launch(kick, on_still),
             FeedState::Failed(msg) => runtime.launch_held(kick, on_still).fail(msg.clone()),
+        }
+    }
+
+    fn graph_failed(&self) -> bool {
+        match &*self.state.lock().unwrap() {
+            FeedState::Feeding(hold) => hold.as_ref().is_some_and(GraphHold::failed),
+            FeedState::Finished => false,
+            FeedState::Failed(_) => true,
         }
     }
 
@@ -1948,6 +1970,7 @@ fn fill_block_records(
     pkt: &Pkt,
     prec_bands: &[PrecBand],
     combed: &CombedPacket,
+    on_recorded: &mut dyn FnMut(u64, u32),
 ) -> Result<(), DecodeError> {
     let (c, r) = (pkt.comp as usize, pkt.res as usize);
     let mut body = combed.body_real;
@@ -1975,6 +1998,7 @@ fn fill_block_records(
             let Some(rec) = band.stored_block_mut(pb.bx0 + lx, pb.by0 + ly) else {
                 continue;
             };
+            on_recorded(block_body, total);
             if rec.num_passes == 0 {
                 // First contribution (inclusion always adds ≥1 pass).
                 rec.file_off = block_body;
@@ -2052,7 +2076,7 @@ fn comb_packets_in_order(
         // a non-contributing packet only reaches here with no PLT length to
         // hop by; its header is still parsed but fills no block records
         if contributes {
-            fill_block_records(comps, pkt, &prec_bands, &combed)?;
+            fill_block_records(comps, pkt, &prec_bands, &combed, &mut |_, _| {})?;
         }
         // Single-layer streams never revisit a precinct: free its state now
         // rather than holding ~30k tag trees alive for the whole parse.
@@ -2241,9 +2265,13 @@ fn comb_packets_in_parallel(
                 Ok(results) if first_error.is_none() => {
                     for (prec_bands, packets) in &results {
                         for (i, combed) in packets {
-                            if let Err(e) =
-                                fill_block_records(comps, &walk[*i as usize], prec_bands, combed)
-                            {
+                            if let Err(e) = fill_block_records(
+                                comps,
+                                &walk[*i as usize],
+                                prec_bands,
+                                combed,
+                                &mut |_, _| {},
+                            ) {
                                 abort.store(true, Ordering::Relaxed);
                                 first_error.get_or_insert(e);
                             }

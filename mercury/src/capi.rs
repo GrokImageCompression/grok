@@ -38,7 +38,9 @@ use crate::decode::graph::{
 use crate::decode::plan::{
     DecodePlan, Drafted, MainHeaderIn, PacketFeed, PltUse, SotChainCursor, SotWalk, TlmEntry, draft,
 };
-use crate::decode::read_at::{FETCH_GAP_BYTES, FetchedRuns, FilledRuns, ReadAt, fetch_runs};
+use crate::decode::read_at::{
+    ConsumedRuns, FETCH_GAP_BYTES, FetchedRuns, FilledRuns, ReadAt, fetch_runs,
+};
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 use crate::decode::window::intersect;
 use crate::weft::rt::{HostExecutor, HostSubmitFn};
@@ -551,7 +553,7 @@ fn assemble_plan(
     let single_tile = header.siz.tiles_across() * header.siz.tiles_down() == 1;
     let plt = match plt {
         PltUse::Ignore => PltUse::Ignore,
-        _ if stream_packets && single_tile && window_cuts_a_tile => PltUse::Streamed,
+        _ if stream_packets && single_tile => PltUse::Streamed,
         PltUse::Parallel(threads) if window_cuts_a_tile => PltUse::FetchedParallel {
             threads,
             fetch_threads: fetch_threads as usize,
@@ -586,7 +588,7 @@ fn assemble_plan(
                 let bytes = Arc::new(FilledRuns::over(src, feed.runs()));
                 return Box::into_raw(Box::new(MercuryPlan {
                     plan,
-                    src: Arc::clone(&bytes) as Arc<dyn ReadAt>,
+                    src: Arc::new(ConsumedRuns(Arc::clone(&bytes))),
                     feed: Some(Box::new(MercuryFeed { feed, bytes })),
                 }));
             }

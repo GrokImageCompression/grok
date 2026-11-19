@@ -407,6 +407,10 @@ impl GraphHold {
     pub fn fail(&self, msg: String) {
         self.inner.fail(msg);
     }
+
+    pub fn failed(&self) -> bool {
+        self.inner.failed.load(Ordering::Acquire)
+    }
 }
 
 impl Drop for GraphHold {

@@ -14,7 +14,9 @@
 use std::fs::File;
 use std::io;
 use std::ops::Range;
-use std::sync::{Arc, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
 /// Positioned-read source of the codestream.
 pub trait ReadAt: Send + Sync {
@@ -202,26 +204,48 @@ impl<S: ReadAt> ReadAt for FetchedRuns<S> {
     }
 }
 
+struct FilledChunk {
+    bytes: Option<Box<[u8]>>,
+    owed: u64,
+    sealed: bool,
+}
+
 struct FilledRun {
     start: u64,
     len: u64,
-    chunks: Box<[OnceLock<Box<[u8]>>]>,
+    chunks: Box<[Mutex<FilledChunk>]>,
+    filled: AtomicUsize,
 }
 
 impl FilledRun {
     fn filled_end(&self) -> u64 {
-        let filled = self
-            .chunks
-            .iter()
-            .take_while(|chunk| chunk.get().is_some())
-            .count();
+        let filled = self.filled.load(Ordering::Acquire);
         (self.start + (filled * FETCH_CHUNK_BYTES) as u64).min(self.start + self.len)
     }
+
+    fn chunk_end(&self, chunk: usize) -> u64 {
+        (self.start + ((chunk + 1) * FETCH_CHUNK_BYTES) as u64).min(self.start + self.len)
+    }
+}
+
+// HiRISE full decodes took the same time holding 8, 16, 32 or 64 MB, and 50 MB less peak RSS at 8
+const MAX_HELD_BYTES: u64 = 8 << 20;
+// a decode whose published rows wait on unpublished ones frees nothing until the feed moves on
+const FEED_STALL: Duration = Duration::from_millis(50);
+
+#[derive(Default)]
+struct HeldBytes {
+    bytes: u64,
+    spare: Vec<Box<[u8]>>,
 }
 
 pub struct FilledRuns<S> {
     runs: Vec<FilledRun>,
     source: S,
+    held: Mutex<HeldBytes>,
+    released: Condvar,
+    unread_published_bytes: AtomicU64,
+    closed: AtomicBool,
 }
 
 #[derive(Default)]
@@ -240,15 +264,34 @@ impl<S: ReadAt> FilledRuns<S> {
                     start: run.start,
                     len,
                     chunks: (0..len.div_ceil(FETCH_CHUNK_BYTES as u64))
-                        .map(|_| OnceLock::new())
+                        .map(|_| {
+                            Mutex::new(FilledChunk {
+                                bytes: None,
+                                owed: 0,
+                                sealed: false,
+                            })
+                        })
                         .collect(),
+                    filled: AtomicUsize::new(0),
                 }
             })
             .collect();
-        Self { runs, source }
+        Self {
+            runs,
+            source,
+            held: Mutex::new(HeldBytes::default()),
+            released: Condvar::new(),
+            unread_published_bytes: AtomicU64::new(0),
+            closed: AtomicBool::new(false),
+        }
     }
 
-    pub fn fill_through(&self, cursor: &mut FillCursor, end: u64) -> io::Result<()> {
+    pub fn fill_through(
+        &self,
+        cursor: &mut FillCursor,
+        end: u64,
+        graph_failed: &dyn Fn() -> bool,
+    ) -> io::Result<()> {
         while let Some(run) = self.runs.get(cursor.run) {
             if cursor.chunk == run.chunks.len() {
                 cursor.run += 1;
@@ -260,12 +303,137 @@ impl<S: ReadAt> FilledRuns<S> {
                 return Ok(());
             }
             let chunk_len = FETCH_CHUNK_BYTES.min((run.start + run.len - chunk_start) as usize);
-            let mut bytes = vec![0u8; chunk_len].into_boxed_slice();
+            let mut bytes = self.wait_for_room(chunk_len, graph_failed)?;
             self.source.draw_at(&mut bytes, chunk_start)?;
-            run.chunks[cursor.chunk]
-                .set(bytes)
-                .expect("a fill cursor fills each chunk once");
+            run.chunks[cursor.chunk].lock().unwrap().bytes = Some(bytes);
             cursor.chunk += 1;
+            run.filled.store(cursor.chunk, Ordering::Release);
+        }
+        Ok(())
+    }
+
+    fn wait_for_room(
+        &self,
+        chunk_len: usize,
+        graph_failed: &dyn Fn() -> bool,
+    ) -> io::Result<Box<[u8]>> {
+        let mut held = self.held.lock().unwrap();
+        while held.bytes >= MAX_HELD_BYTES
+            && self.unread_published_bytes.load(Ordering::Acquire) > 0
+        {
+            if self.closed.load(Ordering::Acquire) || graph_failed() {
+                return Err(io::Error::other("the decode ended before the packet feed"));
+            }
+            let (next, wait) = self.released.wait_timeout(held, FEED_STALL).unwrap();
+            held = next;
+            if wait.timed_out() {
+                break;
+            }
+        }
+        held.bytes += chunk_len as u64;
+        let spare = (chunk_len == FETCH_CHUNK_BYTES)
+            .then(|| held.spare.pop())
+            .flatten();
+        Ok(spare.unwrap_or_else(|| vec![0u8; chunk_len].into_boxed_slice()))
+    }
+
+    pub fn owe(&self, off: u64, len: u64) {
+        if len == 0 {
+            return;
+        }
+        self.visit_chunks(off, len, |chunk, take| chunk.owed += take);
+    }
+
+    pub fn seal_through(&self, cursor: &mut FillCursor, end: u64) {
+        while let Some(run) = self.runs.get(cursor.run) {
+            if cursor.chunk == run.chunks.len() {
+                cursor.run += 1;
+                cursor.chunk = 0;
+                continue;
+            }
+            if run.chunk_end(cursor.chunk) > end {
+                return;
+            }
+            let mut chunk = run.chunks[cursor.chunk].lock().unwrap();
+            chunk.sealed = true;
+            self.release_if_paid(&mut chunk);
+            cursor.chunk += 1;
+        }
+    }
+
+    pub fn publish(&self, bytes: u64) {
+        self.unread_published_bytes
+            .fetch_add(bytes, Ordering::AcqRel);
+    }
+
+    fn consume_at(&self, buf: &mut [u8], off: u64) -> io::Result<()> {
+        self.copy_out(buf, off, true)?;
+        self.unread_published_bytes
+            .fetch_sub(buf.len() as u64, Ordering::AcqRel);
+        Ok(())
+    }
+
+    fn close(&self) {
+        self.closed.store(true, Ordering::Release);
+        let _held = self.held.lock().unwrap();
+        self.released.notify_all();
+    }
+
+    fn release_if_paid(&self, chunk: &mut FilledChunk) {
+        if !chunk.sealed || chunk.owed != 0 {
+            return;
+        }
+        let Some(bytes) = chunk.bytes.take() else {
+            return;
+        };
+        let mut held = self.held.lock().unwrap();
+        held.bytes -= bytes.len() as u64;
+        if bytes.len() == FETCH_CHUNK_BYTES {
+            held.spare.push(bytes);
+        }
+        self.released.notify_all();
+    }
+
+    fn visit_chunks(&self, off: u64, len: u64, mut visit: impl FnMut(&mut FilledChunk, u64)) {
+        let run = self
+            .run_containing(off)
+            .expect("owed bytes lie in a fed run");
+        let mut at = off - run.start;
+        let end = at + len;
+        while at < end {
+            let index = (at / FETCH_CHUNK_BYTES as u64) as usize;
+            let take = ((index as u64 + 1) * FETCH_CHUNK_BYTES as u64).min(end) - at;
+            visit(&mut run.chunks[index].lock().unwrap(), take);
+            at += take;
+        }
+    }
+
+    fn copy_out(&self, buf: &mut [u8], off: u64, pay: bool) -> io::Result<()> {
+        let Some(run) = self
+            .run_containing(off)
+            .filter(|run| off + buf.len() as u64 <= run.start + run.len)
+        else {
+            return self.source.draw_at(buf, off);
+        };
+        let mut copied = 0usize;
+        while copied < buf.len() {
+            let at = off + copied as u64 - run.start;
+            let mut chunk = run.chunks[(at / FETCH_CHUNK_BYTES as u64) as usize]
+                .lock()
+                .unwrap();
+            let Some(bytes) = &chunk.bytes else {
+                return Err(io::Error::other(
+                    "read of run bytes the feed has not filled or has released",
+                ));
+            };
+            let from = (at % FETCH_CHUNK_BYTES as u64) as usize;
+            let take = (bytes.len() - from).min(buf.len() - copied);
+            buf[copied..copied + take].copy_from_slice(&bytes[from..from + take]);
+            copied += take;
+            if pay {
+                chunk.owed -= take as u64;
+                self.release_if_paid(&mut chunk);
+            }
         }
         Ok(())
     }
@@ -279,26 +447,7 @@ impl<S: ReadAt> FilledRuns<S> {
 
 impl<S: ReadAt> ReadAt for FilledRuns<S> {
     fn draw_at(&self, buf: &mut [u8], off: u64) -> io::Result<()> {
-        let Some(run) = self
-            .run_containing(off)
-            .filter(|run| off + buf.len() as u64 <= run.start + run.len)
-        else {
-            return self.source.draw_at(buf, off);
-        };
-        let mut copied = 0usize;
-        while copied < buf.len() {
-            let at = off + copied as u64 - run.start;
-            let Some(bytes) = run.chunks[(at / FETCH_CHUNK_BYTES as u64) as usize].get() else {
-                return Err(io::Error::other(
-                    "read of run bytes the feed has not filled",
-                ));
-            };
-            let from = (at % FETCH_CHUNK_BYTES as u64) as usize;
-            let take = (bytes.len() - from).min(buf.len() - copied);
-            buf[copied..copied + take].copy_from_slice(&bytes[from..from + take]);
-            copied += take;
-        }
-        Ok(())
+        self.copy_out(buf, off, false)
     }
 
     fn extent(&self) -> io::Result<u64> {
@@ -307,6 +456,24 @@ impl<S: ReadAt> ReadAt for FilledRuns<S> {
 
     fn fetched_run_end(&self, off: u64) -> Option<u64> {
         self.run_containing(off).map(FilledRun::filled_end)
+    }
+}
+
+pub struct ConsumedRuns<S: ReadAt>(pub Arc<FilledRuns<S>>);
+
+impl<S: ReadAt> ReadAt for ConsumedRuns<S> {
+    fn draw_at(&self, buf: &mut [u8], off: u64) -> io::Result<()> {
+        self.0.consume_at(buf, off)
+    }
+
+    fn extent(&self) -> io::Result<u64> {
+        self.0.extent()
+    }
+}
+
+impl<S: ReadAt> Drop for ConsumedRuns<S> {
+    fn drop(&mut self) {
+        self.0.close();
     }
 }
 
