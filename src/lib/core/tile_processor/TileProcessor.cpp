@@ -550,9 +550,13 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       truncated_ = true;
       continue;
     }
+    // corrupt TLM offsets can land on markers other than SOT
+    if(markerParser_->currId() != SOT)
+    {
+      truncated_ = true;
+      continue;
+    }
 
-    // process marker (expected SOT, but corrupt streams may yield other markers
-    // since readSOTorEOC warns and continues on unexpected marker IDs)
     auto [processed, length] = markerParser_->processMarker();
     if(!processed)
       return false;

@@ -2057,6 +2057,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     first.plan = state->warp(first, err, sizeof err);
     if(!first.plan)
     {
+      // classic's TLM route fails the whole decode at a corrupt tile-part header
+      if(state->walkedTLM)
+        state->walkedTLM->clearSotWalk();
       grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
       char bailMsg[300];
       snprintf(bailMsg, sizeof bailMsg, "plan rejected: %s", (const char*)err);
@@ -2124,6 +2127,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   plan = warpPlan(mhdr, mparams, *readers, err, sizeof err);
   if(!plan)
   {
+    // classic's TLM route fails the whole decode at a corrupt tile-part header
+    if(walkedTLM)
+      walkedTLM->clearSotWalk();
     grklog.info("mercury fast path: plan rejected (%s), using classic pipeline", err);
     char bailMsg[300];
     snprintf(bailMsg, sizeof bailMsg, "plan rejected: %s", (const char*)err);
