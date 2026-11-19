@@ -417,6 +417,9 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // owned the decode and success_ reflects its outcome.
   if(mercuryFastPath(*this))
   {
+    // mercury asynchronous tile tasks write success_ while this runs
+    if(cp_.asynchronous_)
+      return true;
     compositeDecompressed_ = success_;
     return success_;
   }
