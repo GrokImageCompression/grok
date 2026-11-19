@@ -863,6 +863,17 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
 
 bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
 {
+  // TLM markers list every tile part in the codestream
+  const auto& tlmTileParts = cp_.tlmMarkers_->getTileParts();
+  std::erase_if(pendingTiles, [&](uint16_t tileIndex) {
+    const auto& tileParts = tlmTileParts[tileIndex];
+    if(tileParts && !tileParts->empty())
+      return false;
+    if(tileCompletion_)
+      tileCompletion_->complete(tileIndex);
+    return true;
+  });
+
   // begin network fetch
   auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
 

@@ -222,6 +222,14 @@ if(GRK_DATA_ROOT)
             --decode-may-fail)
 endif()
 
+# OSS-Fuzz OOM: 54237 tiles that the TLM lists no tile parts for
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_tlm_empty_tiles_memory_test
+    COMMAND grk_decode_peak_memory_test
+            ${GRK_DATA_ROOT}/input/nonregression/oom-85086171138d2b7b713fe726964faf81351b66b4
+            --decode-may-fail --peak-rss-limit-mb=200)
+endif()
+
 add_executable(grk_rescale_test GrkRescaleTest.cpp)
 target_include_directories(grk_rescale_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/util

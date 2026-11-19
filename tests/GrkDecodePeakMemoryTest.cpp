@@ -25,9 +25,10 @@ namespace
 {
 const uint32_t WINDOW_SIZE = 1024;
 // well above the ~600MB the 257 component case legitimately needs
-const long PEAK_RSS_LIMIT_KB = 1500L * 1024;
+const long DEFAULT_PEAK_RSS_LIMIT_MB = 1500;
 // a corrupt stream only has to stay under the memory limit
 const char* DECODE_MAY_FAIL_FLAG = "--decode-may-fail";
+const char* PEAK_RSS_LIMIT_MB_FLAG = "--peak-rss-limit-mb=";
 
 #ifdef __linux__
 long peakRssKb()
@@ -52,10 +53,25 @@ int main(int argc, char** argv)
 {
   if(argc < 2)
   {
-    fprintf(stderr, "usage: %s <codestream> [%s]\n", argv[0], DECODE_MAY_FAIL_FLAG);
+    fprintf(stderr, "usage: %s <codestream> [%s] [%s<N>]\n", argv[0], DECODE_MAY_FAIL_FLAG,
+            PEAK_RSS_LIMIT_MB_FLAG);
     return 1;
   }
-  bool decodeMayFail = argc > 2 && strcmp(argv[2], DECODE_MAY_FAIL_FLAG) == 0;
+  bool decodeMayFail = false;
+  long peakRssLimitKb = DEFAULT_PEAK_RSS_LIMIT_MB * 1024;
+  for(int i = 2; i < argc; ++i)
+  {
+    size_t limitFlagLength = strlen(PEAK_RSS_LIMIT_MB_FLAG);
+    if(strcmp(argv[i], DECODE_MAY_FAIL_FLAG) == 0)
+      decodeMayFail = true;
+    else if(strncmp(argv[i], PEAK_RSS_LIMIT_MB_FLAG, limitFlagLength) == 0)
+      peakRssLimitKb = std::stol(argv[i] + limitFlagLength) * 1024;
+    else
+    {
+      fprintf(stderr, "unknown argument %s\n", argv[i]);
+      return 1;
+    }
+  }
 
   grk_initialize(nullptr, 0, nullptr);
 
@@ -105,9 +121,9 @@ int main(int argc, char** argv)
   long kb = peakRssKb();
   if(kb < 0)
     fprintf(stderr, "could not read VmHWM, skipping peak memory check\n");
-  else if(kb > PEAK_RSS_LIMIT_KB)
+  else if(kb > peakRssLimitKb)
   {
-    fprintf(stderr, "peak rss %ld kB exceeds limit %ld kB\n", kb, PEAK_RSS_LIMIT_KB);
+    fprintf(stderr, "peak rss %ld kB exceeds limit %ld kB\n", kb, peakRssLimitKb);
     rc = 1;
   }
   else
