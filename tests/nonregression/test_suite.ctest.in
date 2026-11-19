@@ -790,3 +790,4 @@ core_decompress -i @INPUT_NR_PATH@/security_threaded_decode_abort_color.j2k
 core_decompress -i @INPUT_NR_PATH@/security_threaded_decode_abort.j2k
 grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_qfactor.j2k -I --qfactor 90
 grk_decompress -i @INPUT_NR_PATH@/crash-ea90940e12a27e75c1a9aaa7c39079c43576f175 -o @TEMP_PATH@/crash-ea90940e12a27e75c1a9aaa7c39079c43576f175.pgx -d 0,0,1024,1024
+grk_decompress -i @INPUT_NR_PATH@/crash-f906d21c990547641a85d704770bda6c5f485c00 -o @TEMP_PATH@/crash-f906d21c990547641a85d704770bda6c5f485c00.pgx -d 0,0,1024,1024
