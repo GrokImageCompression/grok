@@ -821,8 +821,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
       continue;
     if(!proc->decompressFromCachedTileParts())
       continue;
-    if(!schedule(proc, true))
-      break;
+    schedule(proc, true);
   }
 
   if(pendingTiles.empty())
@@ -838,8 +837,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
       auto tileProcessor = cacheEntry->processor();
       if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
         return false;
-      if(!schedule(tileProcessor, true))
-        return false;
+      schedule(tileProcessor, true);
     }
     return true;
   }
@@ -937,7 +935,7 @@ bool CodeStreamDecompress::bandRowFullyScheduled(uint16_t tileY)
   return bandRowScheduledTiles_[tileY] >= tilesToDecompress_.getSlatedTileRect().width();
 }
 
-bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
+void CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
 {
   if(tileCompletion_ && !bandRowScheduledTiles_.empty())
   {
@@ -955,7 +953,6 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
                                  scratchImage_->getBounds(), generator);
     if(!decompressTileTask() && tileCompletion_)
       tileCompletion_->complete(tileProcessor->getIndex());
-    return true;
   }
   else
   {
@@ -970,8 +967,6 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
         scratchImage_.get(),
         useMultiPost ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
         decompressTileFutureManager_);
-
-    return true;
   }
 }
 
@@ -995,8 +990,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
         while(!(tileY < nextBandTileY_ + 2 || !success_ || !bandRowFullyScheduled(nextBandTileY_)))
           bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
       }
-      if(!schedule(getTileProcessor(tileIndex), true))
-        break;
+      schedule(getTileProcessor(tileIndex), true);
     }
     return;
   }
@@ -1024,8 +1018,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
     {
       auto tileIndex = batchTileQueueTLM_.front();
       batchTileQueueTLM_.pop();
-      if(!schedule(getTileProcessor(tileIndex), true))
-        return; // Stop on scheduling failure
+      schedule(getTileProcessor(tileIndex), true);
     }
   }
 
@@ -1377,7 +1370,8 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
   }
 
   // schedule
-  return schedule(tileProcessor, multiTile);
+  schedule(tileProcessor, multiTile);
+  return true;
 }
 
 /// Single Tile ////////////////////////////////////////////////////
@@ -1494,8 +1488,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
        tileProcessor->getNumProcessedPackets() > 0)
     {
       // (a) Fully parsed + packets ready → schedule T1/T2 directly
-      if(!schedule(tileProcessor, false))
-        return false;
+      schedule(tileProcessor, false);
     }
     else if(tileProcessor && tileProcessor->allSOTMarkersParsed())
     {
@@ -1503,8 +1496,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       //     direct-seek parse using cached tile-part offsets
       if(!tileProcessor->decompressFromCachedTileParts())
         return false;
-      if(!schedule(tileProcessor, false))
-        return false;
+      schedule(tileProcessor, false);
     }
     else
     {
@@ -1930,19 +1922,15 @@ uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint
   return std::min(uint16_t(tilesToDecompress_.getSlatedTileRect().width() * numRows), tilesLeft);
 }
 
-bool CodeStreamDecompress::batchDequeueSequential(void)
+void CodeStreamDecompress::batchDequeueSequential(void)
 {
   while((batchTileScheduleHeadroomSequential_ > 0) && !batchTileQueueSequential_.empty())
   {
-    auto t = batchTileQueueSequential_.front();
-    if(!schedule(t, true) && !success_)
-      return false;
+    schedule(batchTileQueueSequential_.front(), true);
     batchTileQueueSequential_.pop();
     batchTileScheduleHeadroomSequential_--;
     batchTileUnscheduledSequential_--;
   }
-
-  return true;
 }
 
 // Wait  //////////////////////////////////////////////
@@ -2260,8 +2248,7 @@ void CodeStreamDecompress::scheduleQueuedForWaitedRows(void)
       {
         auto tileIndex = batchTileQueueTLM_.front();
         batchTileQueueTLM_.pop();
-        if(!schedule(getTileProcessor(tileIndex), true))
-          break;
+        schedule(getTileProcessor(tileIndex), true);
       }
     }
     else
@@ -2279,8 +2266,7 @@ void CodeStreamDecompress::scheduleQueuedSequentialForWaitedRows(void)
     auto tileProcessor = batchTileQueueSequential_.front();
     batchTileQueueSequential_.pop();
     batchTileUnscheduledSequential_--;
-    if(!schedule(tileProcessor, true) && !success_)
-      break;
+    schedule(tileProcessor, true);
   }
 }
 
@@ -2295,8 +2281,7 @@ void CodeStreamDecompress::scheduleRemainingTiles(void)
       {
         auto tileIndex = batchTileQueueTLM_.front();
         batchTileQueueTLM_.pop();
-        if(!schedule(getTileProcessor(tileIndex), true))
-          break;
+        schedule(getTileProcessor(tileIndex), true);
       }
     }
     else
@@ -2349,12 +2334,7 @@ void CodeStreamDecompress::scheduleTileBatch()
       {
         auto tileIndex = batchTileQueueTLM_.front();
         batchTileQueueTLM_.pop();
-        if(!schedule(getTileProcessor(tileIndex), true))
-        {
-          lock.unlock();
-          batchTileQueueCondition_.notify_one();
-          return;
-        }
+        schedule(getTileProcessor(tileIndex), true);
       }
       if(numTileCols > 0)
         batchTileScheduledRows_ += rowsToSchedule;

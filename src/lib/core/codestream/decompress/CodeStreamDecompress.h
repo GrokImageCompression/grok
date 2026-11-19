@@ -265,7 +265,7 @@ private:
    */
   void decompressSequentialPrepare(void);
 
-  bool schedule(ITileProcessor* tileProcessor, bool multiTile);
+  void schedule(ITileProcessor* tileProcessor, bool multiTile);
 
   /**
    * @brief Parses next slated tile
@@ -757,7 +757,7 @@ private:
   std::atomic<int32_t> maxFetchedTileRow_{-1};
 
   // batch sequential
-  bool batchDequeueSequential(void);
+  void batchDequeueSequential(void);
   std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
