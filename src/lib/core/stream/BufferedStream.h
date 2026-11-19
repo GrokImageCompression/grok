@@ -133,6 +133,20 @@ struct BufferedStream : public IStream
       memAdvisor_->advise(virtual_offset, length, pattern);
   }
 
+  void clearEndOfStream(void) override
+  {
+    if(!(status_ & GROK_STREAM_STATUS_END))
+      return;
+    status_ &= ~GROK_STREAM_STATUS_END;
+    if(!isMemStream())
+      return;
+    auto memStream = static_cast<MemStream*>(userData_);
+    memStream->off_ = memStream->len_;
+    readBytesSeekable_ = memStream->len_;
+    bufferedBytes_ = memStream->len_ - streamOffset_;
+    buf_->set_offset(streamOffset_);
+  }
+
   void setChunkBuffer(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override
   {
     chunk_buf_ = chunkBuffer;

@@ -312,6 +312,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+  // readSeek fails once an earlier decode on this codec reached the stream end
+  stream_->clearEndOfStream();
 
   if(!tile && !compositeDecompressed_ && !cpuOnly_ && pluginAccelerates() &&
      pluginDecompressEligible())
@@ -652,11 +654,12 @@ bool CodeStreamDecompress::extendWalkedTLM(const std::set<uint16_t>& tiles)
                                [&](uint16_t tileIndex) { return !tlm.tileComplete(tileIndex); });
   };
   const uint16_t numTiles = (uint16_t)(cp_.t_grid_width_ * cp_.t_grid_height_);
+  const uint64_t streamEnd = stream_->tell() + stream_->numBytesLeft();
   while(someTileIncomplete() && !tlm.sotWalk()->reachedEnd)
   {
     const uint64_t sotOffset = tlm.sotWalk()->nextSot;
     uint8_t sot[sotMarkerSegmentLen];
-    const bool sotRead = stream_->seek(sotOffset) &&
+    const bool sotRead = sotOffset + sotMarkerSegmentLen <= streamEnd && stream_->seek(sotOffset) &&
                          stream_->read(sot, nullptr, sotMarkerSegmentLen) == sotMarkerSegmentLen;
     uint8_t* fields = sot;
     uint16_t marker = 0, segmentLength, tileIndex;
@@ -950,7 +953,9 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
     auto decompressTileTask =
         genDecompressTileTLMTask(tileProcessor, (*tilePartFetchByTile_)[tileProcessor->getIndex()],
                                  scratchImage_->getBounds(), generator);
-    return decompressTileTask();
+    if(!decompressTileTask() && tileCompletion_)
+      tileCompletion_->complete(tileProcessor->getIndex());
+    return true;
   }
   else
   {
@@ -1195,6 +1200,8 @@ void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendin
       cached->processor()->prepareForDecompression();
       if(!cached->processor()->hasError())
         schedule(cached->processor(), true);
+      else if(tileCompletion_)
+        tileCompletion_->complete(tileIndex);
     }
   }
   endSequentialWalk(!success_ || foundUnknownMarker || truncatedTiles);
@@ -1278,13 +1285,16 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       uint32_t adjust = sotMarkerSegmentLen + sizeof(uint16_t);
       if(tpl < adjust)
         break;
-      bifurcatedStream = stream_->bifurcate();
       auto skip = (uint64_t)(tpl - adjust);
-      skip = std::min(skip, stream_->numBytesLeft());
-      if(!stream_->skip((int64_t)skip))
+      // memStreamSeek fails a seek to the stream end
+      if(skip < stream_->numBytesLeft())
       {
-        delete bifurcatedStream;
-        break;
+        bifurcatedStream = stream_->bifurcate();
+        if(!stream_->skip((int64_t)skip))
+        {
+          delete bifurcatedStream;
+          break;
+        }
       }
     }
     // parse tile part
@@ -1381,6 +1391,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
   // Route all scheduling/wavelet work onto this codec's own executor while
   // decoding (single-threaded mode only; no-op when localExecutor_ is null).
   TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+  // readSeek fails once an earlier decode on this codec reached the stream end
+  stream_->clearEndOfStream();
 
   multiTileComposite_->postReadHeader(&cp_);
 
@@ -1577,6 +1589,8 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
 std::function<void()> CodeStreamDecompress::postSingleTile(ITileProcessor* tileProcessor)
 {
   return [this, tileProcessor]() {
+    if(tileProcessor->hasError())
+      return;
     auto rawActive = activeImage_.release();
     tileProcessor->post_decompressT2T1(scratchImage_.get());
     scratchImage_->transferDataTo(rawActive);
@@ -1672,6 +1686,13 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
         fetcher->notifyThrottleRelease();
     };
 
+    if(tileProcessor->hasError())
+    {
+      releaseThrottle();
+      if(tileCompletion_)
+        tileCompletion_->complete(tileProcessor->getIndex());
+      return;
+    }
     if(!success_ || !ensureScratchData())
     {
       success_ = false;

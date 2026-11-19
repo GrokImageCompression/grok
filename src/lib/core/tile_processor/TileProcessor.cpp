@@ -1549,24 +1549,30 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
 
+  // swath waits hang on a tile that fails without reaching post
+  auto onError = postDecompressFlow_.get();
+  postDecompressFlow_->addTo(*rootFlow_);
+
   // scheduler is a FlowComponent in the DAG
   scheduler_->addTo(*rootFlow_);
   allocAndScheduleFlow_->addTo(*rootFlow_);
-  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, condition_lambda);
+  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, onError,
+                                             condition_lambda);
 
-  postDecompressFlow_->addTo(*rootFlow_);
   scheduler_->precede(*postDecompressFlow_);
 
   t2ParseFlow_->addTo(*rootFlow_);
-  t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), condition_lambda);
+  t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), onError,
+                                    condition_lambda);
 
   if(tileHeaderParseFlow_ && prepareFlow_)
   {
     prepareFlow_->addTo(*rootFlow_);
-    prepareFlow_->conditional_precede(rootFlow_.get(), t2ParseFlow_.get(), condition_lambda);
+    prepareFlow_->conditional_precede(rootFlow_.get(), t2ParseFlow_.get(), onError,
+                                      condition_lambda);
 
     tileHeaderParseFlow_->addTo(*rootFlow_);
-    tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(),
+    tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(), onError,
                                               condition_lambda);
 
     // The parse/prepare flows carry one-shot tasks (parseHeader, TileComponent::init)

@@ -199,6 +199,8 @@ struct IStream : public t1_t2::IStreamWriter
   virtual void setChunkBuffer(std::shared_ptr<ChunkBuffer<>> chunkBuffer) = 0;
 
   virtual void memAdvise(size_t virtual_offset, size_t length, GrkAccessPattern pattern) = 0;
+
+  virtual void clearEndOfStream(void) = 0;
 };
 
 } // namespace grk
