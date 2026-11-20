@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::Duration;
 
 /// Positioned-read source of the codestream.
@@ -201,6 +201,33 @@ impl<S: ReadAt> ReadAt for FetchedRuns<S> {
     fn fetched_run_end(&self, off: u64) -> Option<u64> {
         self.run_containing(off)
             .map(|(start, bytes)| start + bytes.len() as u64)
+    }
+}
+
+pub struct LateFetchedRuns {
+    pub fetched: Arc<OnceLock<FetchedRuns<Arc<dyn ReadAt>>>>,
+    pub source: Arc<dyn ReadAt>,
+}
+
+impl LateFetchedRuns {
+    fn runs(&self) -> io::Result<&FetchedRuns<Arc<dyn ReadAt>>> {
+        self.fetched
+            .get()
+            .ok_or_else(|| io::Error::other("code-block read before the feed fetched its runs"))
+    }
+}
+
+impl ReadAt for LateFetchedRuns {
+    fn draw_at(&self, buf: &mut [u8], off: u64) -> io::Result<()> {
+        self.runs()?.draw_at(buf, off)
+    }
+
+    fn extent(&self) -> io::Result<u64> {
+        self.source.extent()
+    }
+
+    fn fetched_run_end(&self, off: u64) -> Option<u64> {
+        self.fetched.get()?.fetched_run_end(off)
     }
 }
 

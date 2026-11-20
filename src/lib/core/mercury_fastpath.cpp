@@ -1946,6 +1946,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   mparams.stream_packets = asyncDecode && readers->streamReader.stream &&
                            !readers->streamReader.concurrent &&
                            TFSingleton::get().num_workers() > 0;
+  mparams.fetch_in_feed = asyncDecode && TFSingleton::get().num_workers() > 0;
 
   if(asyncDecode)
   {

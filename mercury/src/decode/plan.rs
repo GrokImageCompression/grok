@@ -800,12 +800,18 @@ pub enum PltUse {
         fetch_threads: usize,
     },
     Streamed,
+    FetchedFeed {
+        threads: usize,
+        fetch_threads: usize,
+    },
 }
 
 impl PltUse {
     fn threads(self) -> usize {
         match self {
-            PltUse::Parallel(threads) | PltUse::FetchedParallel { threads, .. } => threads,
+            PltUse::Parallel(threads)
+            | PltUse::FetchedParallel { threads, .. }
+            | PltUse::FetchedFeed { threads, .. } => threads,
             _ => 1,
         }
     }
@@ -814,7 +820,12 @@ impl PltUse {
 pub struct Drafted {
     pub plan: DecodePlan,
     pub fetched: Vec<FetchedRun>,
-    pub feed: Option<PacketFeed>,
+    pub feed: Option<TileFeed>,
+}
+
+pub enum TileFeed {
+    Streamed(PacketFeed),
+    Fetched(FetchedPacketFeed),
 }
 
 /// `max_layers` keeps only the first that many quality layers (0 = all),
@@ -931,7 +942,7 @@ pub fn draft(
     let mut win = StreamWin::warp(file).map_err(io_snag)?;
     let mut tiles: Vec<Option<TilePlan>> = Vec::with_capacity(num_tiles);
     let mut fetched: Vec<FetchedRun> = Vec::new();
-    let mut feed: Option<PacketFeed> = None;
+    let mut feed: Option<TileFeed> = None;
     for (t, segs) in tile_styles.iter().enumerate() {
         if !tile_in_window[t] {
             tiles.push(None);
@@ -1050,7 +1061,10 @@ pub fn draft(
         slice_blocks: DEFAULT_SLICE_BLOCKS,
         max_strips: 1,
         int16_dwt: false,
-        feed_link: feed.as_ref().map(|feed| Arc::clone(&feed.link)),
+        feed_link: feed.as_ref().map(|feed| match feed {
+            TileFeed::Streamed(feed) => Arc::clone(&feed.link),
+            TileFeed::Fetched(feed) => Arc::clone(&feed.link),
+        }),
     };
     Ok(Drafted {
         plan,
@@ -1526,21 +1540,7 @@ fn comb_tile(
     let streamed_lengths =
         plt.filter(|lengths| plt_use == PltUse::Streamed && lengths.len() >= walk_len);
     if let Some(lengths) = streamed_lengths {
-        let shells: Vec<Vec<ResPlan>> = comps
-            .iter_mut()
-            .map(|res_plans| {
-                res_plans
-                    .iter_mut()
-                    .map(|res| ResPlan {
-                        bands: res
-                            .bands
-                            .iter_mut()
-                            .map(BandPlan::shell_for_graph)
-                            .collect(),
-                    })
-                    .collect()
-            })
-            .collect();
+        let shells = shells_for_graph(&mut comps);
         let charted =
             chart_packet_feed(&tile, &pkts[..walk_len], lengths, &contributes, &mut comps)?;
         pkts.truncate(walk_len);
@@ -1564,7 +1564,54 @@ fn comb_tile(
         return Ok(CombedTile {
             comps: shells,
             fetched: Vec::new(),
-            feed: Some(feed),
+            feed: Some(TileFeed::Streamed(feed)),
+        });
+    }
+    let fetched_feed = match plt_use {
+        PltUse::FetchedFeed {
+            threads,
+            fetch_threads,
+        } => plt
+            .filter(|lengths| lengths.len() >= walk_len)
+            .map(|lengths| (lengths, threads, fetch_threads)),
+        _ => None,
+    };
+    if let Some((lengths, threads, fetch_threads)) = fetched_feed {
+        let shells = shells_for_graph(&mut comps);
+        pkts.truncate(walk_len);
+        let starts = packet_starts(lengths, walk_len);
+        let contributing: Vec<bool> = pkts.iter().map(&contributes).collect();
+        let pending = chart_pending_rows(&tile, &pkts, &contributing, &mut comps);
+        let groups = group_precincts(&tile, &pkts, &contributes);
+        let runs = chart_packet_runs(
+            &stream,
+            &starts,
+            lengths,
+            groups.iter().flatten().map(|&i| i as usize),
+        )?;
+        let feed = FetchedPacketFeed {
+            cod: cod.clone(),
+            geom: geom.clone(),
+            grids,
+            stream,
+            walk: pkts,
+            starts,
+            lengths: lengths[..walk_len].to_vec(),
+            groups,
+            comps,
+            pending,
+            runs,
+            threads,
+            fetch_threads,
+            link: Arc::new(FeedLink {
+                state: Mutex::new(FeedState::Feeding(None)),
+            }),
+            finished: false,
+        };
+        return Ok(CombedTile {
+            comps: shells,
+            fetched: Vec::new(),
+            feed: Some(TileFeed::Fetched(feed)),
         });
     }
     let walk = &pkts[..walk_len];
@@ -1585,10 +1632,28 @@ fn comb_tile(
     })
 }
 
+fn shells_for_graph(comps: &mut [Vec<ResPlan>]) -> Vec<Vec<ResPlan>> {
+    comps
+        .iter_mut()
+        .map(|res_plans| {
+            res_plans
+                .iter_mut()
+                .map(|res| ResPlan {
+                    bands: res
+                        .bands
+                        .iter_mut()
+                        .map(BandPlan::shell_for_graph)
+                        .collect(),
+                })
+                .collect()
+        })
+        .collect()
+}
+
 struct CombedTile {
     comps: Vec<Vec<ResPlan>>,
     fetched: Vec<FetchedRun>,
-    feed: Option<PacketFeed>,
+    feed: Option<TileFeed>,
 }
 
 struct ChartedFeed {
@@ -1605,12 +1670,10 @@ fn chart_packet_feed(
     contributes: &dyn Fn(&Pkt) -> bool,
     comps: &mut [Vec<ResPlan>],
 ) -> Result<ChartedFeed, DecodeError> {
-    let mut starts = Vec::with_capacity(walk.len());
-    let mut vpos = 0u64;
-    for &len in &lengths[..walk.len()] {
-        starts.push(vpos);
-        vpos += len as u64;
-    }
+    let starts = packet_starts(lengths, walk.len());
+    let vpos = starts
+        .last()
+        .map_or(0, |&last| last + lengths[walk.len() - 1] as u64);
     if vpos > tile.stream.total {
         return Err(DecodeError::Logic(format!(
             "plan: PLT lengths reach {vpos} of {} packet bytes",
@@ -1618,6 +1681,46 @@ fn chart_packet_feed(
         )));
     }
     let contributing: Vec<bool> = walk.iter().map(contributes).collect();
+    let pending = chart_pending_rows(tile, walk, &contributing, comps);
+    let runs = chart_packet_runs(
+        tile.stream,
+        &starts,
+        lengths,
+        (0..walk.len()).filter(|&i| contributing[i]),
+    )?;
+    Ok(ChartedFeed {
+        starts,
+        contributing,
+        pending,
+        runs,
+    })
+}
+
+fn chart_packet_runs(
+    stream: &TileStream,
+    starts: &[u64],
+    lengths: &[u32],
+    packets: impl Iterator<Item = usize>,
+) -> Result<Vec<Range<u64>>, DecodeError> {
+    let mut ranges = Vec::new();
+    for i in packets {
+        let (mut vpos, end) = (starts[i], starts[i] + lengths[i] as u64);
+        while vpos < end {
+            let (file_off, segment_left) = stream.unspool(vpos)?;
+            let take = segment_left.min(end - vpos);
+            ranges.push(file_off..file_off + take);
+            vpos += take;
+        }
+    }
+    Ok(merge_ranges(ranges, FETCH_GAP_BYTES))
+}
+
+fn chart_pending_rows(
+    tile: &TileWalk,
+    walk: &[Pkt],
+    contributing: &[bool],
+    comps: &mut [Vec<ResPlan>],
+) -> Vec<Vec<Vec<Vec<u32>>>> {
     let mut pending: Vec<Vec<Vec<Vec<u32>>>> = comps
         .iter()
         .map(|res_plans| {
@@ -1632,7 +1735,6 @@ fn chart_packet_feed(
                 .collect()
         })
         .collect();
-    let mut ranges = Vec::new();
     for (i, pkt) in walk.iter().enumerate() {
         if !contributing[i] {
             continue;
@@ -1642,13 +1744,6 @@ fn chart_packet_feed(
             for row in comps[c][r].bands[b].stored_rows_of(prec_band) {
                 pending[c][r][b][row] += 1;
             }
-        }
-        let (mut vpos, end) = (starts[i], starts[i] + lengths[i] as u64);
-        while vpos < end {
-            let (file_off, segment_left) = tile.stream.unspool(vpos)?;
-            let take = segment_left.min(end - vpos);
-            ranges.push(file_off..file_off + take);
-            vpos += take;
         }
     }
     for (c, res_plans) in comps.iter_mut().enumerate() {
@@ -1662,12 +1757,7 @@ fn chart_packet_feed(
             }
         }
     }
-    Ok(ChartedFeed {
-        starts,
-        contributing,
-        pending,
-        runs: merge_ranges(ranges, FETCH_GAP_BYTES),
-    })
+    pending
 }
 
 pub struct PacketFeed {
@@ -1783,6 +1873,109 @@ impl Drop for PacketFeed {
         if !self.finished {
             self.link.finish(Err(DecodeError::Logic(
                 "packet feed ended before parsing every packet".into(),
+            )));
+        }
+    }
+}
+
+pub struct FetchedPacketFeed {
+    cod: CodParams,
+    geom: TileGeom,
+    grids: Vec<Vec<(u32, u32, u32, u32)>>,
+    stream: TileStream,
+    walk: Vec<Pkt>,
+    starts: Vec<u64>,
+    lengths: Vec<u32>,
+    groups: Vec<Vec<u32>>,
+    comps: Vec<Vec<ResPlan>>,
+    pending: Vec<Vec<Vec<Vec<u32>>>>,
+    runs: Vec<Range<u64>>,
+    threads: usize,
+    fetch_threads: usize,
+    link: Arc<FeedLink>,
+    finished: bool,
+}
+
+impl FetchedPacketFeed {
+    pub fn run(
+        mut self,
+        source: Arc<dyn ReadAt>,
+        fetched: &OnceLock<FetchedRuns<Arc<dyn ReadAt>>>,
+    ) {
+        let outcome = self.fetch_and_comb(source, fetched);
+        self.link.finish(outcome);
+        self.finished = true;
+    }
+
+    fn fetch_and_comb(
+        &mut self,
+        source: Arc<dyn ReadAt>,
+        fetched: &OnceLock<FetchedRuns<Arc<dyn ReadAt>>>,
+    ) -> Result<(), DecodeError> {
+        let runs = fetch_runs(&*source, &self.runs, self.fetch_threads).map_err(io_snag)?;
+        if fetched.set(FetchedRuns::over(source, runs)).is_err() {
+            panic!("a fetched feed runs once");
+        }
+        let FetchedPacketFeed {
+            cod,
+            geom,
+            grids,
+            stream,
+            walk,
+            starts,
+            lengths,
+            groups,
+            comps,
+            pending,
+            threads,
+            link,
+            ..
+        } = self;
+        let tile = TileWalk {
+            file: fetched.get().expect("fetched runs were just set"),
+            cod,
+            geom,
+            grids,
+            stream,
+        };
+        let claims = PrecinctClaim {
+            walk,
+            starts,
+            lengths,
+            groups,
+        };
+        comb_claims_in_parallel(&tile, &claims, *threads, |i, prec_bands, combed| {
+            let pkt = &walk[i];
+            fill_block_records(comps, pkt, prec_bands, combed, &mut |_, _| {})?;
+            let (c, r) = (pkt.comp as usize, pkt.res as usize);
+            for (b, prec_band) in prec_bands.iter().enumerate() {
+                let band = &mut comps[c][r].bands[b];
+                let mut published = false;
+                for row in band.stored_rows_of(prec_band) {
+                    let count = &mut pending[c][r][b][row];
+                    *count -= 1;
+                    if *count == 0 {
+                        band.publish_row(row);
+                        published = true;
+                    }
+                }
+                if published {
+                    link.tug_band_nodes(
+                        band.published_rows()
+                            .expect("a fed band has published rows"),
+                    );
+                }
+            }
+            Ok(())
+        })
+    }
+}
+
+impl Drop for FetchedPacketFeed {
+    fn drop(&mut self) {
+        if !self.finished {
+            self.link.finish(Err(DecodeError::Logic(
+                "fetched packet feed ended before parsing every packet".into(),
             )));
         }
     }
@@ -2127,26 +2320,21 @@ fn comb_claim(
     Ok(results)
 }
 
-/// Parse the walk's packet headers on `threads` threads. Every packet starts
-/// at the sum of the PLT lengths before it, and packets of different
-/// precincts share no tag-tree state, so each worker parses whole precincts,
-/// their layers in order, while the calling thread records the results.
-fn comb_packets_in_parallel(
-    tile: &TileWalk,
-    walk: &[Pkt],
-    lengths: &[u32],
-    contributes: &dyn Fn(&Pkt) -> bool,
-    comps: &mut [Vec<ResPlan>],
-    plt_use: PltUse,
-) -> Result<Vec<FetchedRun>, DecodeError> {
-    let mut starts = Vec::with_capacity(walk.len());
+fn packet_starts(lengths: &[u32], walk_len: usize) -> Vec<u64> {
+    let mut starts = Vec::with_capacity(walk_len);
     let mut vpos = 0u64;
-    for &len in &lengths[..walk.len()] {
+    for &len in &lengths[..walk_len] {
         starts.push(vpos);
         vpos += len as u64;
     }
-    // Contributing packets grouped by precinct, groups in stream order of
-    // their first packet. Non-contributing packets hop by their PLT length.
+    starts
+}
+
+fn group_precincts(
+    tile: &TileWalk,
+    walk: &[Pkt],
+    contributes: &dyn Fn(&Pkt) -> bool,
+) -> Vec<Vec<u32>> {
     let precinct_base: Vec<Vec<usize>> = {
         let mut next = 0usize;
         tile.grids
@@ -2182,21 +2370,31 @@ fn comb_packets_in_parallel(
         }
         groups[group_of_precinct[precinct] as usize].push(i as u32);
     }
+    groups
+}
 
+/// Parse the walk's packet headers on `threads` threads. Every packet starts
+/// at the sum of the PLT lengths before it, and packets of different
+/// precincts share no tag-tree state, so each worker parses whole precincts,
+/// their layers in order, while the calling thread records the results.
+fn comb_packets_in_parallel(
+    tile: &TileWalk,
+    walk: &[Pkt],
+    lengths: &[u32],
+    contributes: &dyn Fn(&Pkt) -> bool,
+    comps: &mut [Vec<ResPlan>],
+    plt_use: PltUse,
+) -> Result<Vec<FetchedRun>, DecodeError> {
+    let starts = packet_starts(lengths, walk.len());
+    let groups = group_precincts(tile, walk, contributes);
     let fetched = match plt_use {
         PltUse::FetchedParallel { fetch_threads, .. } => {
-            let mut ranges = Vec::new();
-            for &i in groups.iter().flatten() {
-                let i = i as usize;
-                let (mut vpos, end) = (starts[i], starts[i] + lengths[i] as u64);
-                while vpos < end {
-                    let (file_off, segment_left) = tile.stream.unspool(vpos)?;
-                    let take = segment_left.min(end - vpos);
-                    ranges.push(file_off..file_off + take);
-                    vpos += take;
-                }
-            }
-            let runs = merge_ranges(ranges, FETCH_GAP_BYTES);
+            let runs = chart_packet_runs(
+                tile.stream,
+                &starts,
+                lengths,
+                groups.iter().flatten().map(|&i| i as usize),
+            )?;
             Some(FetchedRuns::over(
                 tile.file,
                 fetch_runs(tile.file, &runs, fetch_threads).map_err(io_snag)?,
@@ -2215,17 +2413,35 @@ fn comb_packets_in_parallel(
         }
         None => tile,
     };
+    let claims = PrecinctClaim {
+        walk,
+        starts: &starts,
+        lengths,
+        groups: &groups,
+    };
+    comb_claims_in_parallel(tile, &claims, plt_use.threads(), |i, prec_bands, combed| {
+        fill_block_records(comps, &walk[i], prec_bands, combed, &mut |_, _| {})
+    })?;
+    Ok(fetched.map_or_else(Vec::new, FetchedRuns::into_runs))
+}
+
+fn comb_claims_in_parallel(
+    tile: &TileWalk,
+    claims: &PrecinctClaim,
+    threads: usize,
+    mut record: impl FnMut(usize, &[PrecBand], &CombedPacket) -> Result<(), DecodeError>,
+) -> Result<(), DecodeError> {
+    let groups = claims.groups;
     let next_claim = AtomicUsize::new(0);
     let abort = AtomicBool::new(false);
-    let threads = plt_use
-        .threads()
+    let threads = threads
         .min(groups.len().div_ceil(PRECINCTS_PER_CLAIM))
         .max(1);
     let (sender, receiver) = mpsc::channel::<Result<Vec<GroupResult>, DecodeError>>();
     std::thread::scope(|scope| {
         for _ in 0..threads {
             let sender = sender.clone();
-            let (groups, starts, next_claim, abort) = (&groups, &starts, &next_claim, &abort);
+            let (next_claim, abort) = (&next_claim, &abort);
             scope.spawn(move || {
                 let mut win = match StreamWin::warp(tile.file) {
                     Ok(win) => win,
@@ -2242,10 +2458,8 @@ fn comb_packets_in_parallel(
                     }
                     let last = (first + PRECINCTS_PER_CLAIM).min(groups.len());
                     let claim = PrecinctClaim {
-                        walk,
-                        starts,
-                        lengths,
                         groups: &groups[first..last],
+                        ..*claims
                     };
                     let result = comb_claim(tile, &mut win, &claim);
                     let failed = result.is_err();
@@ -2265,13 +2479,7 @@ fn comb_packets_in_parallel(
                 Ok(results) if first_error.is_none() => {
                     for (prec_bands, packets) in &results {
                         for (i, combed) in packets {
-                            if let Err(e) = fill_block_records(
-                                comps,
-                                &walk[*i as usize],
-                                prec_bands,
-                                combed,
-                                &mut |_, _| {},
-                            ) {
+                            if let Err(e) = record(*i as usize, prec_bands, combed) {
                                 abort.store(true, Ordering::Relaxed);
                                 first_error.get_or_insert(e);
                             }
@@ -2285,8 +2493,7 @@ fn comb_packets_in_parallel(
             }
         }
         first_error.map_or(Ok(()), Err)
-    })?;
-    Ok(fetched.map_or_else(Vec::new, FetchedRuns::into_runs))
+    })
 }
 
 /// Ranging exponent epsilon_b for band `qcd_idx`.
@@ -3977,7 +4184,7 @@ mod tests {
     }
 
     #[test]
-    fn packet_feed_publishes_the_in_order_records() {
+    fn packet_feeds_publish_the_in_order_records() {
         let orders = [
             ProgressionOrder::Lrcp,
             ProgressionOrder::Rlcp,
@@ -3986,54 +4193,74 @@ mod tests {
             ProgressionOrder::Cprl,
         ];
         let windows = [None, Some(d(4, 8, 40, 36))];
+        let feeds = [
+            PltUse::Streamed,
+            PltUse::FetchedFeed {
+                threads: 4,
+                fetch_threads: 2,
+            },
+        ];
         for order in orders {
             for layers in [1u16, 3] {
                 for window in windows {
-                    let mut hdr = many_precinct_header();
-                    hdr.cod.order = order;
-                    hdr.cod.num_layers = layers;
-                    let packets = packets_in_stream_order(&hdr);
-                    let stream =
-                        assemble_stream(&packets, &[(0, plt_encode(&packet_lengths(&packets)))]);
-                    let in_order = draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, window, false)
-                        .expect("in-order plan must build");
-                    let Drafted { plan, feed, .. } =
-                        draft(&stream, &hdr, 0, 0, PltUse::Streamed, window, false)
-                            .expect("streamed plan must build");
-                    let feed = feed.expect("PLT lengths give a streamed plan a packet feed");
-                    let bytes = FilledRuns::over(stream.clone(), feed.runs());
-                    feed.run(&bytes);
-                    let case = format!("{order:?}, {layers} layers, window {window:?}");
-                    let streamed_bands = plan
-                        .tiles
-                        .iter()
-                        .flatten()
-                        .flat_map(|t| t.comps.iter().flatten())
-                        .flat_map(|r| r.bands.iter());
-                    let in_order_bands = in_order
-                        .tiles
-                        .iter()
-                        .flatten()
-                        .flat_map(|t| t.comps.iter().flatten())
-                        .flat_map(|r| r.bands.iter());
-                    let mut compared = 0usize;
-                    for (streamed, expected) in streamed_bands.zip(in_order_bands) {
-                        let published = streamed
-                            .published_rows()
-                            .expect("a fed band has published rows");
-                        let wide = expected.stored_blocks_wide as usize;
-                        for (row, slot) in published.rows.iter().enumerate() {
-                            let records = slot
-                                .get()
-                                .unwrap_or_else(|| panic!("{case}: row {row} unpublished"));
-                            let expected_row = &expected.blocks[row * wide..(row + 1) * wide];
-                            let got: Vec<_> = records.iter().map(record_fields).collect();
-                            let want: Vec<_> = expected_row.iter().map(record_fields).collect();
-                            assert_eq!(got, want, "{case}: row {row}");
-                            compared += records.iter().filter(|rec| rec.num_passes > 0).count();
+                    for plt_use in feeds {
+                        let mut hdr = many_precinct_header();
+                        hdr.cod.order = order;
+                        hdr.cod.num_layers = layers;
+                        let packets = packets_in_stream_order(&hdr);
+                        let stream = assemble_stream(
+                            &packets,
+                            &[(0, plt_encode(&packet_lengths(&packets)))],
+                        );
+                        let in_order =
+                            draft_plan(&stream, &hdr, 0, 0, PltUse::InOrder, window, false)
+                                .expect("in-order plan must build");
+                        let Drafted { plan, feed, .. } =
+                            draft(&stream, &hdr, 0, 0, plt_use, window, false)
+                                .expect("fed plan must build");
+                        match feed.expect("PLT lengths give a fed plan a packet feed") {
+                            TileFeed::Streamed(feed) => {
+                                let bytes = FilledRuns::over(stream.clone(), feed.runs());
+                                feed.run(&bytes);
+                            }
+                            TileFeed::Fetched(feed) => {
+                                let source: Arc<dyn ReadAt> = Arc::new(stream.clone());
+                                feed.run(source, &OnceLock::new());
+                            }
                         }
+                        let case =
+                            format!("{order:?}, {layers} layers, window {window:?}, {plt_use:?}");
+                        let streamed_bands = plan
+                            .tiles
+                            .iter()
+                            .flatten()
+                            .flat_map(|t| t.comps.iter().flatten())
+                            .flat_map(|r| r.bands.iter());
+                        let in_order_bands = in_order
+                            .tiles
+                            .iter()
+                            .flatten()
+                            .flat_map(|t| t.comps.iter().flatten())
+                            .flat_map(|r| r.bands.iter());
+                        let mut compared = 0usize;
+                        for (streamed, expected) in streamed_bands.zip(in_order_bands) {
+                            let published = streamed
+                                .published_rows()
+                                .expect("a fed band has published rows");
+                            let wide = expected.stored_blocks_wide as usize;
+                            for (row, slot) in published.rows.iter().enumerate() {
+                                let records = slot
+                                    .get()
+                                    .unwrap_or_else(|| panic!("{case}: row {row} unpublished"));
+                                let expected_row = &expected.blocks[row * wide..(row + 1) * wide];
+                                let got: Vec<_> = records.iter().map(record_fields).collect();
+                                let want: Vec<_> = expected_row.iter().map(record_fields).collect();
+                                assert_eq!(got, want, "{case}: row {row}");
+                                compared += records.iter().filter(|rec| rec.num_passes > 0).count();
+                            }
+                        }
+                        assert!(compared > 0, "{case}: no coded blocks compared");
                     }
-                    assert!(compared > 0, "{case}: no coded blocks compared");
                 }
             }
         }

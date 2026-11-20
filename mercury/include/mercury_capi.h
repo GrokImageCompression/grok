@@ -207,6 +207,8 @@ typedef struct MercuryDecodeParams
    * them on the calling thread, more than one needs a concurrent read_at */
   uint32_t fetch_threads;
   bool stream_packets;
+  /* host runs the returned feed with mercury_feed_run */
+  bool fetch_in_feed;
 } MercuryDecodeParams;
 
 /* hdr describes the (host-parsed) main header; mercury copies what it keeps.
