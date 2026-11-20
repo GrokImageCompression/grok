@@ -607,11 +607,6 @@ namespace
     std::chrono::steady_clock::time_point started;
   };
 
-  void submitToExecutor(void* executor, mercury_host_run_fn run, void* pass)
-  {
-    static_cast<tf::Executor*>(executor)->silent_async([run, pass]() { run(pass); });
-  }
-
   void tileWeaveDone(void* ctx, int32_t rc);
 
   template<typename T>
@@ -648,6 +643,7 @@ namespace
     uint8_t reduce = 0;
     TileCompletion* completion = nullptr;
     tf::Executor* executor = nullptr;
+    std::shared_ptr<std::atomic<bool>> coresWarming;
     std::atomic<bool>* success = nullptr;
     uint16_t numTileCols = 0;
     uint16_t tileX0 = 0;
@@ -698,6 +694,8 @@ namespace
                 (uint32_t)tiles.size(), rowsAhead, peakInFlight.load(), (double)warpNs.load() / 1e6,
                 (double)weaveNs.load() / 1e6, wallMs);
       }
+      if(coresWarming)
+        coresWarming->store(false, std::memory_order_relaxed);
       // mercury has no cancel entry, a running weave runs out while the sink drops rows
       cancel = true;
       cv.notify_all();
@@ -908,6 +906,14 @@ namespace
       completeTile(tile);
     }
 
+    static void submitTask(void* ctx, mercury_host_run_fn run, void* pass)
+    {
+      auto* state = static_cast<MercuryTileState*>(ctx);
+      if(state->coresWarming && state->coresWarming->load(std::memory_order_relaxed))
+        state->coresWarming->store(false, std::memory_order_relaxed);
+      state->executor->silent_async([run, pass]() { run(pass); });
+    }
+
     void decodeTile(AsyncTile& tile)
     {
       struct TileDecodeEnd
@@ -1027,8 +1033,8 @@ namespace
                             : reinterpret_cast<const void*>(&tileCompRowSink<int32_t>);
       }
       hosted.row_ctx = &weave->sink;
-      hosted.submit = submitToExecutor;
-      hosted.submit_ctx = executor;
+      hosted.submit = submitTask;
+      hosted.submit_ctx = this;
       hosted.done = tileWeaveDone;
       hosted.done_ctx = weave.get();
       // tileWeaveDone can run on a worker before mercury_weave_hosted returns
@@ -2059,6 +2065,22 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     AsyncTile& first = *state->tiles.front();
     if(!state->chartThrough(first, err, sizeof err))
       MFP_BAIL((const char*)err);
+    // schedutil keeps cores that idled through the plan stage at low clocks
+    // spinning made full-resolution HiRISE regions 1.5% slower and reduce 2 ones 17% faster
+    if(singleTile && mparams.stream_packets && mparams.reduce > 0)
+    {
+      auto warming = std::make_shared<std::atomic<bool>>(true);
+      auto& executor = TFSingleton::get();
+      auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(20);
+      // decodeTile needs one free worker to submit the task that ends the spin
+      for(size_t i = 1; i < executor.num_workers(); ++i)
+        executor.silent_async([warming, deadline] {
+          while(warming->load(std::memory_order_relaxed) &&
+                std::chrono::steady_clock::now() < deadline)
+            std::this_thread::yield();
+        });
+      state->coresWarming = std::move(warming);
+    }
     first.plan = state->warp(first, err, sizeof err);
     if(!first.plan)
     {
