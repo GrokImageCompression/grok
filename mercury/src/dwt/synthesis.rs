@@ -25,7 +25,7 @@ use crate::ffi_dwt::MercuryLiftingStep;
 
 use std::alloc::{self, Layout};
 use std::ptr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 // ============================================================================
 // VliftLine — Row buffer with two phases (even/odd horizontal positions)
@@ -128,11 +128,32 @@ pub struct AlignedVec {
     block: Option<Arc<RingBlock>>,
 }
 
-struct RingBlock(AlignedVec);
+struct RingBlock {
+    ptr: *mut u8,
+    size: usize,
+}
 
 // Safety: the block is only freed through the Arc, never read through it.
 unsafe impl Send for RingBlock {}
 unsafe impl Sync for RingBlock {}
+
+// ring blocks freed into one thread's glibc arena are fresh pages to the next decode's thread
+static FREE_RING_BLOCKS: Mutex<Vec<Vec<usize>>> = Mutex::new(Vec::new());
+
+fn size_class(size: usize) -> usize {
+    size.next_power_of_two().trailing_zeros() as usize
+}
+
+impl Drop for RingBlock {
+    fn drop(&mut self) {
+        let class = size_class(self.size);
+        let mut free = FREE_RING_BLOCKS.lock().unwrap();
+        if free.len() <= class {
+            free.resize_with(class + 1, Vec::new);
+        }
+        free[class].push(self.ptr as usize);
+    }
+}
 
 impl AlignedVec {
     pub fn bare(len: usize) -> Self {
@@ -150,11 +171,27 @@ impl AlignedVec {
     pub fn ring_slots(count: usize, len: usize) -> Vec<AlignedVec> {
         let stride = len.max(1).next_multiple_of(simd_align());
         // glibc grows thread heaps by one mprotect per small allocation, which stalls behind page faults
-        let block = Arc::new(RingBlock(AlignedVec::bare(stride * count)));
+        let size = stride * count.max(1);
+        let class = size_class(size);
+        let reused = FREE_RING_BLOCKS
+            .lock()
+            .unwrap()
+            .get_mut(class)
+            .and_then(Vec::pop);
+        let ptr = match reused {
+            Some(address) => address as *mut u8,
+            None => unsafe {
+                alloc::alloc(Layout::from_size_align(1 << class, simd_align()).unwrap())
+            },
+        };
+        assert!(!ptr.is_null(), "allocation failed");
+        unsafe { ptr::write_bytes(ptr, 0, size) };
+        let block = Arc::new(RingBlock { ptr, size });
+        let layout = Layout::from_size_align(size, simd_align()).unwrap();
         (0..count)
             .map(|i| AlignedVec {
-                ptr: unsafe { block.0.ptr.add(i * stride) },
-                layout: block.0.layout,
+                ptr: unsafe { block.ptr.add(i * stride) },
+                layout,
                 len,
                 block: Some(Arc::clone(&block)),
             })
