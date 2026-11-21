@@ -112,6 +112,14 @@ namespace HWY_NAMESPACE
   {
     const HWY_FULL(T) d;
     const size_t lanes = Lanes(d);
+    // AMD runs masked stores as microcode, so full strips use plain stores
+    const bool fullStrip = numcols == lanes;
+    auto storeRow = [&](auto v, T* row) {
+      if(fullStrip)
+        StoreU(v, d, row);
+      else
+        StoreN(v, d, row, numcols);
+    };
 
     T* destPtrLow = dst;
     const T* srcPtrLow = src + parity * lanes;
@@ -121,8 +129,8 @@ namespace HWY_NAMESPACE
     uint32_t i = 0;
     for(; i < std::min(dn, sn); ++i)
     {
-      StoreN(Load(d, srcPtrLow), d, destPtrLow, numcols);
-      StoreN(Load(d, srcPtrHigh), d, destPtrHigh, numcols);
+      storeRow(Load(d, srcPtrLow), destPtrLow);
+      storeRow(Load(d, srcPtrHigh), destPtrHigh);
 
       destPtrLow += stride;
       srcPtrLow += (lanes << 1);
@@ -131,9 +139,9 @@ namespace HWY_NAMESPACE
     }
 
     if(i < sn)
-      StoreN(Load(d, srcPtrLow), d, destPtrLow, numcols);
+      storeRow(Load(d, srcPtrLow), destPtrLow);
     else if(i < dn)
-      StoreN(Load(d, srcPtrHigh), d, destPtrHigh, numcols);
+      storeRow(Load(d, srcPtrHigh), destPtrHigh);
   }
 
   HWY_ATTR void encode_53_v(int32_t* resolution, int32_t* scratch, const uint32_t height,

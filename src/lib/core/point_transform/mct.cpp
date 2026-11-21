@@ -514,16 +514,26 @@ namespace HWY_NAMESPACE
       for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
       {
         uint64_t rowOffset = (uint64_t)row * window0.stride_;
-        for(uint32_t column = 0; column < width; column += lanes)
+        auto transform = [&](uint64_t index, auto load, auto store) {
+          auto r = load(chan0 + index) + vdcr;
+          auto g = load(chan1 + index) + vdcg;
+          auto b = load(chan2 + index) + vdcb;
+          store(ShiftRight<2>((g + g) + b + r), chan0 + index);
+          store(b - g, chan1 + index);
+          store(r - g, chan2 + index);
+        };
+        // AMD runs masked stores as microcode, so only the row tail uses them
+        uint32_t column = 0;
+        for(; column + lanes <= width; column += lanes)
+          transform(
+              rowOffset + column, [&](const int32_t* p) { return LoadU(di, p); },
+              [&](auto v, int32_t* p) { StoreU(v, di, p); });
+        if(column < width)
         {
-          size_t count = (std::min)(lanes, width - column);
-          auto index = rowOffset + column;
-          auto r = LoadN(di, chan0 + index, count) + vdcr;
-          auto g = LoadN(di, chan1 + index, count) + vdcg;
-          auto b = LoadN(di, chan2 + index, count) + vdcb;
-          StoreN(ShiftRight<2>((g + g) + b + r), di, chan0 + index, count);
-          StoreN(b - g, di, chan1 + index, count);
-          StoreN(r - g, di, chan2 + index, count);
+          size_t count = width - column;
+          transform(
+              rowOffset + column, [&](const int32_t* p) { return LoadN(di, p, count); },
+              [&](auto v, int32_t* p) { StoreN(v, di, p, count); });
         }
       }
     }
@@ -605,17 +615,27 @@ namespace HWY_NAMESPACE
       for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
       {
         uint64_t rowOffset = (uint64_t)row * window0.stride_;
-        for(uint32_t column = 0; column < width; column += lanes)
-        {
-          size_t count = (std::min)(lanes, width - column);
-          auto index = rowOffset + column;
-          auto r = ConvertTo(df, LoadN(di, chan0 + index, count) + vdcr);
-          auto g = ConvertTo(df, LoadN(di, chan1 + index, count) + vdcg);
-          auto b = ConvertTo(df, LoadN(di, chan2 + index, count) + vdcb);
+        auto transform = [&](uint64_t index, auto load, auto store) {
+          auto r = ConvertTo(df, load(chan0 + index) + vdcr);
+          auto g = ConvertTo(df, load(chan1 + index) + vdcg);
+          auto b = ConvertTo(df, load(chan2 + index) + vdcb);
           auto y = va_r * r + va_g * g + va_b * b;
-          StoreN(y, df, (float*)(chan0 + index), count);
-          StoreN(vcb * (b - y), df, (float*)(chan1 + index), count);
-          StoreN(vcr * (r - y), df, (float*)(chan2 + index), count);
+          store(y, (float*)(chan0 + index));
+          store(vcb * (b - y), (float*)(chan1 + index));
+          store(vcr * (r - y), (float*)(chan2 + index));
+        };
+        // AMD runs masked stores as microcode, so only the row tail uses them
+        uint32_t column = 0;
+        for(; column + lanes <= width; column += lanes)
+          transform(
+              rowOffset + column, [&](const int32_t* p) { return LoadU(di, p); },
+              [&](auto v, float* p) { StoreU(v, df, p); });
+        if(column < width)
+        {
+          size_t count = width - column;
+          transform(
+              rowOffset + column, [&](const int32_t* p) { return LoadN(di, p, count); },
+              [&](auto v, float* p) { StoreN(v, df, p, count); });
         }
       }
     }
