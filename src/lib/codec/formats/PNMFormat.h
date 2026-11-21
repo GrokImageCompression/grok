@@ -44,7 +44,6 @@ struct pnm_header
   PNM_COLOUR_SPACE colour_space;
 };
 
-template<typename T>
 class PNMFormat : public ImageFormat
 {
 public:
@@ -62,7 +61,9 @@ public:
   }
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
 
 private:
   bool forceSplit;
@@ -77,35 +78,38 @@ private:
   bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, WT* buf, size_t* outCount);
   template<typename WT>
   bool encodeRows(uint32_t rows);
-  template<typename WT>
+  template<typename WT, typename T>
   bool readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval);
+  template<typename T>
+  bool readSamples(grk_image* image);
   bool closeStream(void);
 
-  grk_image* readImage(const grk_cparameters* parameters);
   bool decodeHeader(struct pnm_header* ph);
+
+  pnm_header pnmHeader_;
+  uint16_t numcomps_ = 0;
+  uint8_t prec_ = 0;
+  GRK_COLOR_SPACE colorSpace_ = GRK_CLRSPC_UNKNOWN;
 };
 
-template<typename T>
-PNMFormat<T>::PNMFormat(bool split)
+inline PNMFormat::PNMFormat(bool split)
     : forceSplit(split), interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
-template<typename T>
-PNMFormat<T>::~PNMFormat()
+inline PNMFormat::~PNMFormat()
 {
   delete interleaver_;
   delete interleaver16_;
 }
 
-template<typename T>
-bool PNMFormat<T>::writeHeader(void)
+inline bool PNMFormat::writeHeader(void)
 {
   if(isHeaderWritten())
     return true;
 
   if(!allComponentsSanityCheck(image_, true))
   {
-    spdlog::error("PNMFormat<T>::writeHeader: image sanity check failed.");
+    spdlog::error("PNMFormat::writeHeader: image sanity check failed.");
     return false;
   }
   if(!areAllComponentsSameSubsampling(image_))
@@ -114,7 +118,7 @@ bool PNMFormat<T>::writeHeader(void)
   uint16_t ncomp = image_->decompress_num_comps;
   if(ncomp > 4)
   {
-    spdlog::error("PNMFormat<T>::writeHeader: Number of components cannot be greater than 4; %u "
+    spdlog::error("PNMFormat::writeHeader: Number of components cannot be greater than 4; %u "
                   "number of components not supported.",
                   image_->decompress_num_comps);
     return false;
@@ -142,8 +146,7 @@ bool PNMFormat<T>::writeHeader(void)
   return true;
 }
 
-template<typename T>
-bool PNMFormat<T>::writeHeader(bool doPGM)
+inline bool PNMFormat::writeHeader(bool doPGM)
 {
   std::ostringstream iss;
   uint32_t prec = image_->decompress_prec;
@@ -183,8 +186,7 @@ bool PNMFormat<T>::writeHeader(bool doPGM)
 
 const size_t bufSize = 4096;
 
-template<typename T>
-bool PNMFormat<T>::doNonSplitEncode(void)
+inline bool PNMFormat::doNonSplitEncode(void)
 {
   return !forceSplit || image_->decompress_num_comps > 1;
 }
@@ -192,8 +194,7 @@ bool PNMFormat<T>::doNonSplitEncode(void)
 /***
  * application-orchestrated pixel encoding
  */
-template<typename T>
-bool PNMFormat<T>::writeImage(void)
+inline bool PNMFormat::writeImage(void)
 {
   if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
@@ -216,8 +217,7 @@ bool PNMFormat<T>::writeImage(void)
                                         : encodeRows<uint8_t>(image_->decompress_height);
 }
 
-template<typename T>
-bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool PNMFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
@@ -285,19 +285,19 @@ bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   }
   else
   {
-    T* stackPlanes[kMaxStackComps];
-    std::unique_ptr<T*[]> heapPlanes;
-    T** planes;
+    int32_t* stackPlanes[kMaxStackComps];
+    std::unique_ptr<int32_t*[]> heapPlanes;
+    int32_t** planes;
     if(decompress_num_comps <= kMaxStackComps)
       planes = stackPlanes;
     else
     {
-      heapPlanes = std::make_unique<T*[]>(decompress_num_comps);
+      heapPlanes = std::make_unique<int32_t*[]>(decompress_num_comps);
       planes = heapPlanes.get();
     }
     for(uint32_t i = 0U; i < decompress_num_comps; ++i)
-      planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
-    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      planes[i] = (int32_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
     if(!interleaver_)
     {
       interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(
@@ -310,7 +310,7 @@ bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     {
       uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
       packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      interleaver_->interleave(((T**)planes), decompress_num_comps, packedBuf.data,
+      interleaver_->interleave(((int32_t**)planes), decompress_num_comps, packedBuf.data,
                                image_->decompress_width, image_->comps[0].stride,
                                image_->packed_row_bytes, stripRows, adjust);
       packedBuf.pooled = true;
@@ -329,8 +329,7 @@ bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   return true;
 }
 
-template<typename T>
-bool PNMFormat<T>::writeFinish(void)
+inline bool PNMFormat::writeFinish(void)
 {
   if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
@@ -343,9 +342,8 @@ bool PNMFormat<T>::writeFinish(void)
 /***
  * application-orchestrated pixel encoding of entire image
  */
-template<typename T>
 template<typename WT>
-bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
+bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
 {
   uint16_t ncomp = image_->numcomps;
   bool success = false;
@@ -392,10 +390,10 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
     }
     else
     {
-      auto planes = std::make_unique<T*[]>(decompress_num_comps);
+      auto planes = std::make_unique<int32_t*[]>(decompress_num_comps);
       for(uint32_t i = 0U; i < decompress_num_comps; ++i)
-        planes[i] = (T*)image_->comps[i].data;
-      T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+        planes[i] = (int32_t*)image_->comps[i].data;
+      int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
       auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
           image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
       if(!iter)
@@ -404,7 +402,7 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
       {
         uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
         packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-        iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
+        iter->interleave(((int32_t**)planes.get()), decompress_num_comps, packedBuf.data,
                          image_->decompress_width, image_->comps[0].stride,
                          image_->packed_row_bytes, stripRows, adjust);
         packedBuf.pooled = true;
@@ -486,10 +484,9 @@ cleanup:
   return orchestrator.close() && closeStream() && success;
 }
 
-template<typename T>
 template<typename WT>
-bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, WT* buf,
-                             size_t* outCount)
+bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, WT* buf,
+                          size_t* outCount)
 {
   if(rows == 0)
   {
@@ -540,17 +537,17 @@ bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno
   }
   else
   {
-    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-    T* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
+    int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
     for(uint16_t comp = start; comp < end; ++comp)
-      compPtr[comp] = (T*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
+      compPtr[comp] = (int32_t*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
     for(uint32_t j = 0; j < rows; ++j)
     {
       for(uint32_t i = 0; i < width; ++i)
       {
         for(uint16_t comp = start; comp < end; ++comp)
         {
-          T v = *compPtr[comp]++ + adjust;
+          int32_t v = *compPtr[comp]++ + adjust;
           if(fileIO_->getFileHandle())
           {
             if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
@@ -572,8 +569,7 @@ bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno
   return true;
 }
 
-template<typename T>
-bool PNMFormat<T>::hasAlpha(void)
+inline bool PNMFormat::hasAlpha(void)
 {
   if(!image_)
     return false;
@@ -581,8 +577,7 @@ bool PNMFormat<T>::hasAlpha(void)
   return (ncomp == 4 && isOpacity(ncomp - 1)) || (ncomp == 2 && isOpacity(ncomp - 1));
 }
 
-template<typename T>
-bool PNMFormat<T>::isOpacity(uint16_t compno)
+inline bool PNMFormat::isOpacity(uint16_t compno)
 {
   if(!image_ || compno >= image_->decompress_num_comps)
     return false;
@@ -592,8 +587,7 @@ bool PNMFormat<T>::isOpacity(uint16_t compno)
           comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
 }
 
-template<typename T>
-bool PNMFormat<T>::hasOpacity(void)
+inline bool PNMFormat::hasOpacity(void)
 {
   if(!image_)
     return false;
@@ -606,8 +600,7 @@ bool PNMFormat<T>::hasOpacity(void)
   return false;
 }
 
-template<typename T>
-bool PNMFormat<T>::closeStream(void)
+inline bool PNMFormat::closeStream(void)
 {
   return !fileIO_ || fileIO_->close();
 }
@@ -685,8 +678,7 @@ static bool header_rewind(char* s, char* line, FILE* reader)
   return true;
 }
 
-template<typename T>
-bool PNMFormat<T>::decodeHeader(struct pnm_header* ph)
+inline bool PNMFormat::decodeHeader(struct pnm_header* ph)
 {
   uint32_t format;
   const size_t lineSize = 256;
@@ -939,9 +931,8 @@ static inline uint32_t uint_floorlog2(uint32_t a)
   return l;
 }
 
-template<typename T>
-template<typename WT>
-bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval)
+template<typename WT, typename T>
+bool PNMFormat::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval)
 {
   if(!fp || !image)
     return false;
@@ -996,104 +987,114 @@ bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t m
   return true;
 }
 
-template<typename T>
-grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
+inline std::optional<ImageFileHeader>
+    PNMFormat::readHeader(const std::string& filename, [[maybe_unused]] grk_cparameters* parameters)
 {
-  uint8_t subsampling_dx = parameters->subsampling_dx;
-  uint8_t subsampling_dy = parameters->subsampling_dy;
-  uint16_t decompress_num_comps;
-  uint16_t compno;
-  uint32_t w, stride_diff, width, counter, h, format;
-  uint8_t prec;
-  GRK_COLOR_SPACE color_space;
-  grk_image_comp cmptparm[4]; /* RGBA: max. 4 components */
-  grk_image* image = nullptr;
-  struct pnm_header header_info;
-  uint64_t area = 0;
-  bool success = false;
-
-  if(fileIO_)
-    delete fileIO_;
+  fileName_ = filename;
+  delete fileIO_;
   fileIO_ = new FileStandardIO();
   if(!fileIO_->open(fileName_.c_str(), "rb"))
   {
     spdlog::error("pnmtoimage:Failed to open {} for reading.", fileName_.c_str());
-    goto cleanup;
+    return std::nullopt;
   }
-  memset(&header_info, 0, sizeof(struct pnm_header));
-  if(!decodeHeader(&header_info))
+  memset(&pnmHeader_, 0, sizeof(struct pnm_header));
+  if(!decodeHeader(&pnmHeader_))
   {
     spdlog::error("Invalid PNM header");
     goto cleanup;
   }
 
-  format = header_info.format;
-  switch(format)
+  switch(pnmHeader_.format)
   {
     case 1: /* ascii bitmap */
     case 4: /* binary bitmap */
-      decompress_num_comps = 1;
+      numcomps_ = 1;
       break;
     case 2: /* ascii greymap */
     case 5: /* binary greymap */
-      decompress_num_comps = 1;
+      numcomps_ = 1;
       break;
     case 3: /* ascii pixmap */
     case 6: /* binary pixmap */
-      decompress_num_comps = 3;
+      numcomps_ = 3;
       break;
     case 7: /* arbitrary map */
-      decompress_num_comps = (uint16_t)header_info.depth;
+      numcomps_ = (uint16_t)pnmHeader_.depth;
       break;
     default:
       goto cleanup;
   }
-  if(decompress_num_comps < 3)
-    color_space = GRK_CLRSPC_GRAY; /* GRAY, GRAYA */
+  if(numcomps_ < 3)
+    colorSpace_ = GRK_CLRSPC_GRAY; /* GRAY, GRAYA */
   else
-    color_space = GRK_CLRSPC_SRGB; /* RGB, RGBA */
+    colorSpace_ = GRK_CLRSPC_SRGB; /* RGB, RGBA */
 
-  prec = (uint8_t)(uint_floorlog2(header_info.maxval) + 1);
-  if(prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+  prec_ = (uint8_t)(uint_floorlog2(pnmHeader_.maxval) + 1);
+  if(prec_ > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
   {
-    spdlog::error("Precision {} is greater than max supported precision (%d)", prec,
+    spdlog::error("Precision {} is greater than max supported precision (%d)", prec_,
                   GRK_MAX_SUPPORTED_IMAGE_PRECISION);
     goto cleanup;
   }
-  w = header_info.width;
-  h = header_info.height;
-  area = (uint64_t)w * h;
-  subsampling_dx = parameters->subsampling_dx;
-  subsampling_dy = parameters->subsampling_dy;
-  memset(&cmptparm[0], 0, (size_t)decompress_num_comps * sizeof(grk_image_comp));
+  return ImageFileHeader{numcomps_, prec_};
+cleanup:
+  grk::safe_fclose(fileIO_->getFileHandle());
+  return std::nullopt;
+}
 
-  for(uint32_t i = 0; i < decompress_num_comps; i++)
+inline grk_image* PNMFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  uint8_t subsampling_dx = parameters->subsampling_dx;
+  uint8_t subsampling_dy = parameters->subsampling_dy;
+  uint32_t w = pnmHeader_.width;
+  uint32_t h = pnmHeader_.height;
+  grk_image_comp cmptparm[4]; /* RGBA: max. 4 components */
+  memset(&cmptparm[0], 0, (size_t)numcomps_ * sizeof(grk_image_comp));
+  for(uint32_t i = 0; i < numcomps_; i++)
   {
-    cmptparm[i].prec = prec;
+    cmptparm[i].prec = prec_;
     cmptparm[i].sgnd = false;
-    if constexpr(sizeof(T) == 2)
-      cmptparm[i].data_type = GRK_INT_16;
+    cmptparm[i].data_type = dataType;
     cmptparm[i].dx = subsampling_dx;
     cmptparm[i].dy = subsampling_dy;
     cmptparm[i].w = w;
     cmptparm[i].h = h;
   }
-  image = grk_image_new(decompress_num_comps, &cmptparm[0], color_space, true);
+  auto image = grk_image_new(numcomps_, &cmptparm[0], colorSpace_, true);
   if(!image)
-  {
     spdlog::error("pnmtoimage: Failed to create image");
-    goto cleanup;
+  bool success = false;
+  if(image)
+  {
+    /* set image offset and reference grid */
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
+    image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
+    image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
+    success =
+        readSamplesAs(dataType, [&](auto sample) { return readSamples<decltype(sample)>(image); });
   }
+  if(!grk::safe_fclose(fileIO_->getFileHandle()) || !success)
+  {
+    grk_object_unref(&image->obj);
+    image = nullptr;
+  }
+  return image;
+}
 
-  /* set image offset and reference grid */
-  image->x0 = parameters->image_offset_x0;
-  image->y0 = parameters->image_offset_y0;
-  image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
-  image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
-
-  width = image->decompress_width;
-  stride_diff = image->comps[0].stride - width;
-  counter = 0;
+template<typename T>
+bool PNMFormat::readSamples(grk_image* image)
+{
+  uint16_t decompress_num_comps = numcomps_;
+  uint32_t format = pnmHeader_.format;
+  uint32_t w = pnmHeader_.width;
+  uint32_t h = pnmHeader_.height;
+  uint64_t area = (uint64_t)w * h;
+  uint32_t width = image->decompress_width;
+  uint32_t stride_diff = image->comps[0].stride - width;
+  uint32_t counter = 0;
+  uint16_t compno;
 
   if(format == 1)
   { /* ascii bitmap */
@@ -1126,7 +1127,7 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
     if(i != area)
     {
       spdlog::error("pixels read ({}) less than image area ({})", i, area);
-      goto cleanup;
+      return false;
     }
   }
   else if(format == 2 || format == 3)
@@ -1141,12 +1142,12 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
         if(fscanf(fileIO_->getFileHandle(), "%u", &val) != 1)
         {
           spdlog::error("error reading ASCII PPM pixel data");
-          goto cleanup;
+          return false;
         }
-        if(val > header_info.maxval)
+        if(val > pnmHeader_.maxval)
         {
-          spdlog::error("PNM sample value {} exceeds maxval {}", val, header_info.maxval);
-          goto cleanup;
+          spdlog::error("PNM sample value {} exceeds maxval {}", val, pnmHeader_.maxval);
+          return false;
         }
         dest[i] = (T)val;
       }
@@ -1160,18 +1161,18 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
   }
   else if(format == 5 || format == 6 ||
           ((format == 7) &&
-           (header_info.colour_space == PNM_GRAY || header_info.colour_space == PNM_GRAYA ||
-            header_info.colour_space == PNM_RGB || header_info.colour_space == PNM_RGBA)))
+           (pnmHeader_.colour_space == PNM_GRAY || pnmHeader_.colour_space == PNM_GRAYA ||
+            pnmHeader_.colour_space == PNM_RGB || pnmHeader_.colour_space == PNM_RGBA)))
   {
     bool rc = false;
-    if(prec <= 8)
-      rc = readBytes<uint8_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
+    if(prec_ <= 8)
+      rc = readBytes<uint8_t, T>(fileIO_->getFileHandle(), image, area, pnmHeader_.maxval);
     else
-      rc = readBytes<uint16_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
+      rc = readBytes<uint16_t, T>(fileIO_->getFileHandle(), image, area, pnmHeader_.maxval);
     if(!rc)
-      goto cleanup;
+      return false;
   }
-  else if(format == 4 || (format == 7 && header_info.colour_space == PNM_BW))
+  else if(format == 4 || (format == 7 && pnmHeader_.colour_space == PNM_BW))
   { /* binary bitmap */
     bool packed = false;
     uint64_t packed_area = (uint64_t)((w + 7) / 8) * h;
@@ -1184,14 +1185,14 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
       /* let's see if bits are packed into bytes or not */
       int64_t currentPos = GRK_FTELL(fileIO_->getFileHandle());
       if(currentPos == -1)
-        goto cleanup;
+        return false;
       if(GRK_FSEEK(fileIO_->getFileHandle(), 0L, SEEK_END))
-        goto cleanup;
+        return false;
       int64_t endPos = GRK_FTELL(fileIO_->getFileHandle());
       if(endPos == -1)
-        goto cleanup;
+        return false;
       if(GRK_FSEEK(fileIO_->getFileHandle(), currentPos, SEEK_SET))
-        goto cleanup;
+        return false;
       uint64_t pixels = (uint64_t)(endPos - currentPos);
       if(pixels == packed_area)
         packed = true;
@@ -1244,22 +1245,8 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
     if(i != area)
     {
       spdlog::error("pixels read ({}) differs from image area ({})", i, area);
-      goto cleanup;
+      return false;
     }
   }
-  success = true;
-cleanup:
-  if(!grk::safe_fclose(fileIO_->getFileHandle()) || !success)
-  {
-    grk_object_unref(&image->obj);
-    image = nullptr;
-  }
-  return image;
-} /* pnmtoimage() */
-
-template<typename T>
-grk_image* PNMFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
-{
-  fileName_ = filename;
-  return readImage(parameters);
+  return true;
 }

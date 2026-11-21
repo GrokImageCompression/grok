@@ -19,6 +19,7 @@
 
 #include "grk_apps_config.h"
 #include "grok.h"
+#include <optional>
 #include <string>
 
 /**
@@ -31,6 +32,12 @@ const uint32_t IMAGE_FORMAT_HEADER_WRITTEN = 4;
 const uint32_t IMAGE_FORMAT_PIXELS_WRITTEN = 8;
 const uint32_t IMAGE_FORMAT_ERROR = 16;
 
+struct ImageFileHeader
+{
+  uint16_t numcomps;
+  uint8_t maxPrecision;
+};
+
 /**
  * @class IImageReader
  * @brief Interface for reading (non JPEG 2000) image formats into a grk_image
@@ -42,14 +49,14 @@ class IImageReader
 public:
   virtual ~IImageReader() = default;
 
-  /**
-   * @brief Read image from file into a grk_image
-   *
-   * @param filename file name
-   * @param parameters @ref grk_cparameters
-   * @return grk_image* @ref grk_image, or nullptr on failure
-   */
-  virtual grk_image* readImage(const std::string& filename, grk_cparameters* parameters) = 0;
+  virtual std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                                    grk_cparameters* parameters) = 0;
+  virtual grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) = 0;
+
+  grk_image* readInt32Image(const std::string& filename, grk_cparameters* parameters)
+  {
+    return readHeader(filename, parameters) ? readPixels(parameters, GRK_INT_32) : nullptr;
+  }
 };
 
 /**

@@ -143,8 +143,8 @@ namespace
     {
 #ifdef GROK_HAVE_LIBPNG
       parameters.decod_format = GRK_FMT_PNG;
-      PNGFormat<int32_t> png;
-      return CanonImagePtr(png.readImage(filename, &parameters));
+      PNGFormat png;
+      return CanonImagePtr(png.readInt32Image(filename, &parameters));
 #else
       spdlog::error("image_canon_dump: PNG support not compiled in");
       return CanonImagePtr(nullptr);
@@ -156,8 +156,8 @@ namespace
       TIFFSetWarningHandler(nullptr);
       TIFFSetErrorHandler(nullptr);
       parameters.decod_format = GRK_FMT_TIF;
-      TIFFFormat<int32_t> tif;
-      return CanonImagePtr(tif.readImage(filename, &parameters));
+      TIFFFormat tif;
+      return CanonImagePtr(tif.readInt32Image(filename, &parameters));
 #else
       spdlog::error("image_canon_dump: TIFF support not compiled in");
       return CanonImagePtr(nullptr);
@@ -166,8 +166,8 @@ namespace
     else if(ext == "pgm" || ext == "ppm" || ext == "pnm" || ext == "pam" || ext == "pbm")
     {
       parameters.decod_format = GRK_FMT_PXM;
-      PNMFormat<int32_t> pnm(false);
-      return CanonImagePtr(pnm.readImage(filename, &parameters));
+      PNMFormat pnm(false);
+      return CanonImagePtr(pnm.readInt32Image(filename, &parameters));
     }
     spdlog::error("image_canon_dump: unsupported extension .{}", ext);
     return CanonImagePtr(nullptr);

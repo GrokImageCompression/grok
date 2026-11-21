@@ -1064,32 +1064,32 @@ static IImageFormat* newImageFormat(GRK_SUPPORTED_FILE_FMT format,
   switch(format)
   {
     case GRK_FMT_PXM:
-      return new PNMFormat<int32_t>(parameters->split_by_component);
+      return new PNMFormat(parameters->split_by_component);
     case GRK_FMT_PGX:
-      return new PGXFormat<int32_t>();
+      return new PGXFormat();
     case GRK_FMT_BMP:
-      return new BMPFormat<int32_t>();
+      return new BMPFormat();
     case GRK_FMT_TIF:
 #ifdef GROK_HAVE_LIBTIFF
-      return new TIFFFormat<int32_t>();
+      return new TIFFFormat();
 #else
       spdlog::error("libtiff is missing");
       return nullptr;
 #endif
     case GRK_FMT_RAW:
-      return new RAWFormat<int32_t>(true);
+      return new RAWFormat(true);
     case GRK_FMT_RAWL:
-      return new RAWFormat<int32_t>(false);
+      return new RAWFormat(false);
     case GRK_FMT_JPG:
 #ifdef GROK_HAVE_LIBJPEG
-      return new JPEGFormat<int32_t>();
+      return new JPEGFormat();
 #else
       spdlog::error("libjpeg is missing");
       return nullptr;
 #endif
     case GRK_FMT_PNG:
 #ifdef GROK_HAVE_LIBPNG
-      return new PNGFormat<int32_t>();
+      return new PNGFormat();
 #else
       spdlog::error("libpng is missing");
       return nullptr;
@@ -1563,33 +1563,33 @@ int GrkDecompress::main(int argc, const char* argv[])
           switch(cod_format)
           {
             case GRK_FMT_PXM:
-              fmt = new PNMFormat<int32_t>(initParams.parameters.split_by_component);
+              fmt = new PNMFormat(initParams.parameters.split_by_component);
               break;
             case GRK_FMT_PGX:
-              fmt = new PGXFormat<int32_t>();
+              fmt = new PGXFormat();
               break;
             case GRK_FMT_BMP:
-              fmt = new BMPFormat<int32_t>();
+              fmt = new BMPFormat();
               break;
 #ifdef GROK_HAVE_LIBTIFF
             case GRK_FMT_TIF:
-              fmt = new TIFFFormat<int32_t>();
+              fmt = new TIFFFormat();
               break;
 #endif
             case GRK_FMT_RAW:
-              fmt = new RAWFormat<int32_t>(true);
+              fmt = new RAWFormat(true);
               break;
             case GRK_FMT_RAWL:
-              fmt = new RAWFormat<int32_t>(false);
+              fmt = new RAWFormat(false);
               break;
 #ifdef GROK_HAVE_LIBJPEG
             case GRK_FMT_JPG:
-              fmt = new JPEGFormat<int32_t>();
+              fmt = new JPEGFormat();
               break;
 #endif
 #ifdef GROK_HAVE_LIBPNG
             case GRK_FMT_PNG:
-              fmt = new PNGFormat<int32_t>();
+              fmt = new PNGFormat();
               break;
 #endif
             default:

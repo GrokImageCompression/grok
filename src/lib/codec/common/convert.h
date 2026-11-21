@@ -683,7 +683,7 @@ void convertToOutputTIFF(const uint8_t* src, T* dest, size_t w, bool invert)
       /* libtiff decodes to machine endianness */
       const uint16_t* typedSrc = (uint16_t*)src;
       for(size_t i = 0; i < w; i++)
-        dest[i] = INV(typedSrc[i], 0xFFFF, invert);
+        dest[i] = (T)INV(typedSrc[i], 0xFFFF, invert);
     }
   }
 }

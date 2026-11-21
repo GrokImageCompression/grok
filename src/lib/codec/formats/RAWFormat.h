@@ -25,7 +25,6 @@
 #include "ImageFormat.h"
 #include <memory>
 
-template<typename T>
 class RAWFormat : public ImageFormat
 {
 public:
@@ -35,24 +34,27 @@ public:
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
 
 private:
   bool bigEndian;
-  grk_image* readImage(const char* filename, grk_cparameters* parameters, bool big_endian);
+
+  template<typename T>
+  bool readSamples(grk_image* image, const grk_raw_cparameters* raw_cp);
 
   template<typename WT>
-  bool writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w, uint32_t stride,
-                   uint32_t h, T lower, T upper);
+  bool writeToFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint32_t w, uint32_t stride,
+                   uint32_t h, int32_t lower, int32_t upper);
 
-  template<typename RT>
+  template<typename RT, typename T>
   bool readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t nloop);
 };
 
-template<typename T>
 template<typename WT>
-bool RAWFormat<T>::writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w,
-                               uint32_t stride, uint32_t h, T lower, T upper)
+bool RAWFormat::writeToFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint32_t w,
+                            uint32_t stride, uint32_t h, int32_t lower, int32_t upper)
 {
   constexpr size_t bufferLength = (1 << 16) / sizeof(WT);
   WT buffer[bufferLength];
@@ -65,7 +67,8 @@ bool RAWFormat<T>::writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32
       auto source = ptr + column;
       auto destination = buffer + buffered;
       for(size_t i = 0; i < count; ++i)
-        destination[i] = grk::endian<WT>((WT)std::clamp<T>(source[i], lower, upper), bigEndian);
+        destination[i] =
+            grk::endian<WT>((WT)std::clamp<int32_t>(source[i], lower, upper), bigEndian);
       column += (uint32_t)count;
       buffered += count;
       if(buffered == bufferLength)
@@ -82,9 +85,8 @@ bool RAWFormat<T>::writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32
   return true;
 }
 
-template<typename T>
-template<typename RT>
-bool RAWFormat<T>::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t nloop)
+template<typename RT, typename T>
+bool RAWFormat::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t nloop)
 {
   const size_t bufSize = 4096;
   RT buf[bufSize];
@@ -97,21 +99,19 @@ bool RAWFormat<T>::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t n
       return false;
     RT* inPtr = buf;
     for(size_t j = 0; j < ct; j++)
-      *(ptr++) = grk::endian<RT>(*inPtr++, bigEndian);
+      *(ptr++) = (T)grk::endian<RT>(*inPtr++, bigEndian);
   }
 
   return true;
 }
 
-template<typename T>
-bool RAWFormat<T>::writeHeader(void)
+inline bool RAWFormat::writeHeader(void)
 {
   writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
   return true;
 }
 
-template<typename T>
-bool RAWFormat<T>::writeImage(void)
+inline bool RAWFormat::writeImage(void)
 {
   const char* outfile = fileName_.c_str();
   uint16_t compno, numcomps;
@@ -168,8 +168,8 @@ bool RAWFormat<T>::writeImage(void)
     bool sgnd = comp->sgnd;
     auto prec = comp->prec;
 
-    T lower = sgnd ? -(1 << (prec - 1)) : 0;
-    T upper = sgnd ? -lower - 1 : (1 << comp->prec) - 1;
+    int32_t lower = sgnd ? -(1 << (prec - 1)) : 0;
+    int32_t upper = sgnd ? -lower - 1 : (1 << comp->prec) - 1;
     bool isInt16 = comp->data_type == GRK_INT_16;
 
     bool rc;
@@ -179,7 +179,7 @@ bool RAWFormat<T>::writeImage(void)
       {
         // widen int16 → int32 for writeToFile; data is 8-bit so this path is rare
         auto src16 = (int16_t*)comp->data;
-        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        auto widened = std::make_unique<int32_t[]>((uint64_t)stride * h);
         for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
           widened[idx] = src16[idx];
         if(sgnd)
@@ -191,7 +191,7 @@ bool RAWFormat<T>::writeImage(void)
       }
       else
       {
-        auto ptr = (T*)comp->data;
+        auto ptr = (int32_t*)comp->data;
         if(sgnd)
           rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
                                    upper);
@@ -207,7 +207,7 @@ bool RAWFormat<T>::writeImage(void)
       if(isInt16)
       {
         auto src16 = (int16_t*)comp->data;
-        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        auto widened = std::make_unique<int32_t[]>((uint64_t)stride * h);
         for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
           widened[idx] = src16[idx];
         if(sgnd)
@@ -219,7 +219,7 @@ bool RAWFormat<T>::writeImage(void)
       }
       else
       {
-        auto ptr = (T*)comp->data;
+        auto ptr = (int32_t*)comp->data;
         if(sgnd)
           rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
                                     upper);
@@ -243,8 +243,7 @@ beach:
   return success;
 }
 
-template<typename T>
-bool RAWFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool RAWFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   // RAW writes component-planar data — band-by-band not supported
   if(yBegin != 0 || yEnd != image_->comps[0].h)
@@ -255,34 +254,15 @@ bool RAWFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   return writeImage();
 }
 
-template<typename T>
-bool RAWFormat<T>::writeFinish(void)
+inline bool RAWFormat::writeFinish(void)
 {
   return fileIO_->close();
 }
 
-template<typename T>
-grk_image* RAWFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
-{
-  return readImage(filename.c_str(), parameters, bigEndian);
-}
-
-template<typename T>
-grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parameters,
-                                   bool bigEndian)
+inline std::optional<ImageFileHeader> RAWFormat::readHeader(const std::string& filename,
+                                                            grk_cparameters* parameters)
 {
   grk_raw_cparameters* raw_cp = &parameters->raw_cp;
-  uint32_t subsampling_dx = parameters->subsampling_dx;
-  uint32_t subsampling_dy = parameters->subsampling_dy;
-
-  uint32_t i, w, h;
-  uint16_t numcomps, compno;
-  GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-  grk_image_comp* cmptparm;
-  grk_image* image = nullptr;
-  uint16_t ch;
-  bool success = false;
-
   if(!(raw_cp->width && raw_cp->height && raw_cp->numcomps && raw_cp->prec))
   {
     spdlog::error("invalid raw image parameters");
@@ -291,18 +271,46 @@ grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parame
     spdlog::error("If subsampling is omitted, 1x1 is assumed for all components");
     spdlog::error("Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
     spdlog::error("         for raw 512x512 image with 4:2:0 subsampling");
-    return nullptr;
+    return std::nullopt;
   }
-  if(fileIO_)
-    delete fileIO_;
+  for(uint16_t compno = 0; compno < raw_cp->numcomps; compno++)
+  {
+    if(raw_cp->comps[compno].dx * raw_cp->comps[compno].dy != 1)
+    {
+      spdlog::error("Subsampled raw images are not currently supported");
+      return std::nullopt;
+    }
+  }
+  if(raw_cp->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+  {
+    spdlog::error("Grok cannot encode raw components with bit depth higher than %d bits.",
+                  GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+    return std::nullopt;
+  }
+  delete fileIO_;
   fileIO_ = new FileStandardIO();
   if(!fileIO_->open(filename, "rb"))
   {
     spdlog::error("Failed to open {} for reading", filename);
-    goto cleanup;
+    return std::nullopt;
   }
 
-  numcomps = raw_cp->numcomps;
+  return ImageFileHeader{raw_cp->numcomps, raw_cp->prec};
+}
+
+inline grk_image* RAWFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  grk_raw_cparameters* raw_cp = &parameters->raw_cp;
+  uint32_t subsampling_dx = parameters->subsampling_dx;
+  uint32_t subsampling_dy = parameters->subsampling_dy;
+  uint16_t numcomps = raw_cp->numcomps;
+  uint32_t w = raw_cp->width;
+  uint32_t h = raw_cp->height;
+  GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
+  uint16_t ch;
+  bool success = false;
+  grk_image* image = nullptr;
+
   if(numcomps == 1)
     color_space = GRK_CLRSPC_GRAY;
   else if((numcomps >= 3) && (parameters->mct == 0))
@@ -310,31 +318,23 @@ grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parame
   else if((numcomps >= 3) && (parameters->mct != 2))
     color_space = GRK_CLRSPC_SRGB;
 
-  w = raw_cp->width;
-  h = raw_cp->height;
-  cmptparm = new grk_image_comp[numcomps];
+  auto cmptparm = std::make_unique<grk_image_comp[]>(numcomps);
   /* initialize image components */
-  for(i = 0; i < numcomps; i++)
+  for(uint16_t i = 0; i < numcomps; i++)
   {
-    memset(cmptparm + i, 0, sizeof(grk_image_comp));
+    memset(&cmptparm[i], 0, sizeof(grk_image_comp));
     cmptparm[i].prec = raw_cp->prec;
     cmptparm[i].sgnd = raw_cp->sgnd;
-    if constexpr(sizeof(T) == 2)
-      cmptparm[i].data_type = GRK_INT_16;
+    cmptparm[i].data_type = dataType;
     cmptparm[i].dx = (uint8_t)(subsampling_dx * raw_cp->comps[i].dx);
     cmptparm[i].dy = (uint8_t)(subsampling_dy * raw_cp->comps[i].dy);
     cmptparm[i].w = w;
     cmptparm[i].h = h;
-
-    if(raw_cp->comps[i].dx * raw_cp->comps[i].dy != 1)
-    {
-      spdlog::error("Subsampled raw images are not currently supported");
-      goto cleanup;
-    }
   }
   /* create the image */
   image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
-  delete[] cmptparm;
+  if(!image)
+    goto cleanup;
 
   /* set image offset and reference grid */
   image->x0 = parameters->image_offset_x0;
@@ -342,54 +342,9 @@ grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parame
   image->x1 = parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1;
   image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
 
-  if(raw_cp->prec <= 8)
-  {
-    for(compno = 0; compno < numcomps; compno++)
-    {
-      auto ptr = (T*)image->comps[compno].data;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        bool rc;
-        if(raw_cp->sgnd)
-          rc = readFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-        else
-          rc = readFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-        if(!rc)
-        {
-          spdlog::error("Error reading raw file. End of file probably reached.");
-          goto cleanup;
-        }
-        ptr += image->comps[compno].stride;
-      }
-    }
-  }
-  else if(raw_cp->prec <= 16)
-  {
-    for(compno = 0; compno < numcomps; compno++)
-    {
-      auto ptr = (T*)image->comps[compno].data;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        bool rc;
-        if(raw_cp->sgnd)
-          rc = readFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-        else
-          rc = readFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-        if(!rc)
-        {
-          spdlog::error("Error reading raw file. End of file probably reached.");
-          goto cleanup;
-        }
-        ptr += image->comps[compno].stride;
-      }
-    }
-  }
-  else
-  {
-    spdlog::error("Grok cannot encode raw components with bit depth higher than %d bits.",
-                  GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+  if(!readSamplesAs(dataType,
+                    [&](auto sample) { return readSamples<decltype(sample)>(image, raw_cp); }))
     goto cleanup;
-  }
 
   if(fread(&ch, 1, 1, fileIO_->getFileHandle()))
     spdlog::warn("End of raw file not reached... processing anyway");
@@ -403,4 +358,33 @@ cleanup:
     image = nullptr;
   }
   return image;
+}
+
+template<typename T>
+bool RAWFormat::readSamples(grk_image* image, const grk_raw_cparameters* raw_cp)
+{
+  uint32_t w = raw_cp->width;
+  uint32_t h = raw_cp->height;
+  for(uint16_t compno = 0; compno < image->numcomps; compno++)
+  {
+    auto ptr = (T*)image->comps[compno].data;
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      bool rc;
+      if(raw_cp->prec <= 8)
+        rc = raw_cp->sgnd ? readFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w)
+                          : readFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
+      else
+        rc = raw_cp->sgnd ? readFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w)
+                          : readFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
+      if(!rc)
+      {
+        spdlog::error("Error reading raw file. End of file probably reached.");
+        return false;
+      }
+      ptr += image->comps[compno].stride;
+    }
+  }
+
+  return true;
 }

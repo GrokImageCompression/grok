@@ -266,10 +266,8 @@ static void validateCinema(const std::string& arg, uint16_t profile, grk_cparame
   parameters->numgbits = (profile == GRK_PROFILE_CINEMA_2K) ? 1 : 2;
 }
 
-template<typename T>
 static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
 {
-  grk_image* image = nullptr;
   GRK_SUPPORTED_FILE_FMT fmt = parameters->decod_format;
   if(fmt == GRK_FMT_UNK)
   {
@@ -278,58 +276,59 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
       return nullptr;
     fmt = (GRK_SUPPORTED_FILE_FMT)f;
   }
+  std::unique_ptr<IImageReader> reader;
   switch(fmt)
   {
-    case GRK_FMT_PGX: {
-      PGXFormat<T> pgx;
-      image = pgx.readImage(filename, parameters);
-    }
-    break;
-    case GRK_FMT_PXM: {
-      PNMFormat<T> pnm(false);
-      image = pnm.readImage(filename, parameters);
-    }
-    break;
-    case GRK_FMT_BMP: {
-      BMPFormat<T> bmp;
-      image = bmp.readImage(filename, parameters);
-    }
-    break;
+    case GRK_FMT_PGX:
+      reader = std::make_unique<PGXFormat>();
+      break;
+    case GRK_FMT_PXM:
+      reader = std::make_unique<PNMFormat>(false);
+      break;
+    case GRK_FMT_BMP:
+      reader = std::make_unique<BMPFormat>();
+      break;
 #ifdef GROK_HAVE_LIBTIFF
-    case GRK_FMT_TIF: {
-      TIFFFormat<T> tif;
-      image = tif.readImage(filename, parameters);
-    }
-    break;
+    case GRK_FMT_TIF:
+      reader = std::make_unique<TIFFFormat>();
+      break;
 #endif
-    case GRK_FMT_RAW: {
-      RAWFormat<T> raw(true);
-      image = raw.readImage(filename, parameters);
-    }
-    break;
-    case GRK_FMT_RAWL: {
-      RAWFormat<T> raw(false);
-      image = raw.readImage(filename, parameters);
-    }
-    break;
+    case GRK_FMT_RAW:
+      reader = std::make_unique<RAWFormat>(true);
+      break;
+    case GRK_FMT_RAWL:
+      reader = std::make_unique<RAWFormat>(false);
+      break;
 #ifdef GROK_HAVE_LIBPNG
-    case GRK_FMT_PNG: {
-      PNGFormat<T> png;
-      image = png.readImage(filename, parameters);
-    }
-    break;
+    case GRK_FMT_PNG:
+      reader = std::make_unique<PNGFormat>();
+      break;
 #endif
 #ifdef GROK_HAVE_LIBJPEG
-    case GRK_FMT_JPG: {
-      JPEGFormat<T> jpeg;
-      image = jpeg.readImage(filename, parameters);
-    }
-    break;
+    case GRK_FMT_JPG:
+      reader = std::make_unique<JPEGFormat>();
+      break;
 #endif
     default:
-      break;
+      return nullptr;
   }
-  return image;
+  auto header = reader->readHeader(filename, parameters);
+  if(!header)
+    return nullptr;
+
+  grk_cparameters resolvedParameters = *parameters;
+  if(resolvedParameters.mct == 255)
+    resolvedParameters.mct = (header->numcomps >= 3) ? 1 : 0;
+  grk_data_type dataType = GRK_INT_16;
+  for(uint16_t compno = 0; compno < header->numcomps; ++compno)
+  {
+    bool isMctComponent = resolvedParameters.mct == 1 && compno < 3;
+    if(grk_compress_get_recommended_data_type(&resolvedParameters, header->maxPrecision,
+                                              isMctComponent) != GRK_INT_16)
+      dataType = GRK_INT_32;
+  }
+
+  return reader->readPixels(parameters, dataType);
 }
 
 int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stream_params* stream)
@@ -403,8 +402,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         initParams.parameters.rate_control_algorithm = rate_control_algorithm;
         initParams.parameters.decod_format = GRK_FMT_UNK;
 
-        grk_image* image =
-            loadInputImage<int32_t>(filePath.string().c_str(), &initParams.parameters);
+        grk_image* image = loadInputImage(filePath.string().c_str(), &initParams.parameters);
         if(!image)
         {
           spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());
@@ -2206,7 +2204,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       }
     }
     /* decode the source image */
-    image = loadInputImage<int32_t>(info->input_file_name, info->compressor_parameters);
+    image = loadInputImage(info->input_file_name, info->compressor_parameters);
     if(!image)
     {
       spdlog::error("Unable to load input file");
@@ -2359,7 +2357,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   // the plugin reads only the pixels of a TIFF, not its metadata tags
   if(info->tile && !createdImage && info->input_file_name && info->input_file_name[0])
   {
-    TIFFFormat<int32_t> tif;
+    TIFFFormat tif;
     if(!tif.readMetadata(info->input_file_name, image, &frameParameters))
       goto cleanup;
     attachedPluginMetadata = true;

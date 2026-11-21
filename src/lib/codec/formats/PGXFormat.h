@@ -65,7 +65,6 @@ T readshort(FILE* f, bool bigendian)
     return (T)((c2 << 8) + c1);
 }
 
-template<typename T>
 class PGXFormat : public ImageFormat
 {
 public:
@@ -74,37 +73,40 @@ public:
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+
+private:
+  template<typename T>
+  void readSamples(grk_image* image);
+
+  uint32_t width_ = 0;
+  uint32_t height_ = 0;
+  uint8_t prec_ = 0;
+  bool sgnd_ = false;
+  bool bigEndian_ = false;
 };
 
-template<typename T>
-grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
+inline std::optional<ImageFileHeader>
+    PGXFormat::readHeader(const std::string& filename, [[maybe_unused]] grk_cparameters* parameters)
 {
-  uint32_t w, stride_diff, h;
-  uint16_t numcomps = 1;
   uint32_t prec;
-  uint64_t i = 0, index = 0;
-  GRK_COLOR_SPACE color_space = GRK_CLRSPC_GRAY;
-  grk_image* image = nullptr;
+  uint64_t i = 0;
   int c;
   char endian1, endian2;
   char signtmp[32];
-  bool sign = false;
   char temp[32];
-  bool bigendian;
-  grk_image_comp cmptparm; /* maximum of 1 component  */
-  uint8_t shift = 0;
-  T* dest = nullptr;
+  FILE* f;
 
-  memset(&cmptparm, 0, sizeof(grk_image_comp));
-  auto f = fopen(filename, "rb");
-  if(!f)
-  {
-    spdlog::error("Failed to open {} for reading.", filename);
-    return nullptr;
-  }
+  sgnd_ = false;
+  delete fileIO_;
+  fileIO_ = new FileStandardIO();
+  if(!fileIO_->open(filename, "rb"))
+    return std::nullopt;
+  f = fileIO_->getFileHandle();
   if(fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp, &endian1, &endian2, signtmp,
-            &prec, temp, &w, temp, &h) != 9)
+            &prec, temp, &width_, temp, &height_) != 9)
   {
     spdlog::error(" Failed to read the right number of element from the fscanf() function.");
     goto cleanup;
@@ -115,11 +117,12 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
     spdlog::error("Precision must be >= 4");
     goto cleanup;
   }
+  prec_ = (uint8_t)prec;
   while(signtmp[i] != '\0')
   {
     if(signtmp[i] == '-')
     {
-      sign = true;
+      sgnd_ = true;
       break;
     }
     i++;
@@ -130,53 +133,83 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
     goto cleanup;
   if(endian1 == 'M' && endian2 == 'L')
   {
-    bigendian = true;
+    bigEndian_ = true;
   }
   else if(endian2 == 'M' && endian1 == 'L')
   {
-    bigendian = false;
+    bigEndian_ = false;
   }
   else
   {
     spdlog::error("Bad pgx header, please check input file");
     goto cleanup;
   }
+  return ImageFileHeader{1, prec_};
+cleanup:
+  fileIO_->close();
+  return std::nullopt;
+}
+
+inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  grk_image_comp cmptparm; /* maximum of 1 component  */
+  memset(&cmptparm, 0, sizeof(grk_image_comp));
   cmptparm.x0 = parameters->image_offset_x0;
   cmptparm.y0 = parameters->image_offset_y0;
-  cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1)
-                            : cmptparm.x0 + (uint32_t)(w - 1) * parameters->subsampling_dx + 1;
-  cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1)
-                            : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
-  cmptparm.sgnd = sign;
-  cmptparm.prec = (uint8_t)prec;
-  if constexpr(sizeof(T) == 2)
-    cmptparm.data_type = GRK_INT_16;
+  cmptparm.w = !cmptparm.x0 ? ((width_ - 1) * parameters->subsampling_dx + 1)
+                            : cmptparm.x0 + (uint32_t)(width_ - 1) * parameters->subsampling_dx + 1;
+  cmptparm.h = !cmptparm.y0
+                   ? ((height_ - 1) * parameters->subsampling_dy + 1)
+                   : cmptparm.y0 + (uint32_t)(height_ - 1) * parameters->subsampling_dy + 1;
+  cmptparm.sgnd = sgnd_;
+  cmptparm.prec = prec_;
+  cmptparm.data_type = dataType;
   cmptparm.dx = parameters->subsampling_dx;
   cmptparm.dy = parameters->subsampling_dy;
 
   /* create the image */
-  image = grk_image_new(numcomps, &cmptparm, color_space, true);
-  if(!image)
-    goto cleanup;
-
-  /* set image offset and reference grid */
-  image->x0 = cmptparm.x0;
-  image->y0 = cmptparm.x0;
-  image->x1 = cmptparm.w;
-  image->y1 = cmptparm.h;
-
-  /* set image data */
-  stride_diff = image->comps->stride - w;
-  shift = (uint8_t)(sizeof(T) * 8 - prec);
-  dest = (T*)image->comps->data;
-  for(uint32_t j = 0; j < h; ++j)
+  auto image = grk_image_new(1, &cmptparm, GRK_CLRSPC_GRAY, true);
+  if(image)
   {
-    for(uint32_t k = 0; k < w; ++k)
+    /* set image offset and reference grid */
+    image->x0 = cmptparm.x0;
+    image->y0 = cmptparm.x0;
+    image->x1 = cmptparm.w;
+    image->y1 = cmptparm.h;
+    if(!readSamplesAs(dataType, [&](auto sample) {
+         readSamples<decltype(sample)>(image);
+         return true;
+       }))
+    {
+      grk_object_unref(&image->obj);
+      image = nullptr;
+    }
+  }
+  if(!fileIO_->close() && image)
+  {
+    grk_object_unref(&image->obj);
+    image = nullptr;
+  }
+
+  return image;
+}
+
+template<typename T>
+void PGXFormat::readSamples(grk_image* image)
+{
+  auto f = fileIO_->getFileHandle();
+  uint64_t index = 0;
+  uint32_t stride_diff = image->comps->stride - width_;
+  uint8_t shift = (uint8_t)(sizeof(T) * 8 - prec_);
+  auto dest = (T*)image->comps->data;
+  for(uint32_t j = 0; j < height_; ++j)
+  {
+    for(uint32_t k = 0; k < width_; ++k)
     {
       int32_t v = 0;
-      if(prec < 8)
+      if(prec_ < 8)
       {
-        v = sign ? sign_extend((T)readchar<int8_t>(f), shift) : readchar<int8_t>(f);
+        v = sgnd_ ? sign_extend((T)readchar<int8_t>(f), shift) : readchar<int8_t>(f);
       }
       else
       {
@@ -190,31 +223,22 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
         else
         {
           if(!image->comps->sgnd)
-            v = (T)readshort<uint16_t>(f, bigendian);
+            v = (T)readshort<uint16_t>(f, bigEndian_);
           else
-            v = (T)readshort<int16_t>(f, bigendian);
+            v = (T)readshort<int16_t>(f, bigEndian_);
         }
       }
-      dest[index++] = v;
+      dest[index++] = (T)v;
     }
     index += stride_diff;
   }
-cleanup:
-  if(!grk::safe_fclose(f))
-  {
-    grk_object_unref(&image->obj);
-    image = nullptr;
-  }
-
-  return image;
 }
 
-template<typename T>
-bool PGXFormat<T>::writeHeader(void)
+inline bool PGXFormat::writeHeader(void)
 {
   if(!allComponentsSanityCheck(image_, false))
   {
-    spdlog::error("PGXFormat<T>::writeHeader: image sanity check failed.");
+    spdlog::error("PGXFormat::writeHeader: image sanity check failed.");
     return false;
   }
 
@@ -222,8 +246,7 @@ bool PGXFormat<T>::writeHeader(void)
   return true;
 }
 
-template<typename T>
-bool PGXFormat<T>::writeImage(void)
+inline bool PGXFormat::writeImage(void)
 {
   bool success = false;
   for(uint16_t compno = 0; compno < image_->numcomps; compno++)
@@ -283,7 +306,8 @@ bool PGXFormat<T>::writeImage(void)
       {
         for(uint32_t i = 0; i < w; ++i)
         {
-          const int32_t val = isInt16 ? ((int16_t*)comp->data)[index++] : ((T*)comp->data)[index++];
+          const int32_t val =
+              isInt16 ? ((int16_t*)comp->data)[index++] : ((int32_t*)comp->data)[index++];
           if(!grk::writeBytes<uint8_t>((uint8_t)val, buf, &outPtr, &outCount, bufSize, true,
                                        fileIO_->getFileHandle()))
           {
@@ -312,7 +336,7 @@ bool PGXFormat<T>::writeImage(void)
         for(uint32_t i = 0; i < w; ++i)
         {
           const int32_t val = isInt16 ? ((int16_t*)image_->comps[compno].data)[index++]
-                                      : ((T*)image_->comps[compno].data)[index++];
+                                      : ((int32_t*)image_->comps[compno].data)[index++];
           if(!grk::writeBytes<uint16_t>((uint16_t)val, buf, &outPtr, &outCount, bufSize, true,
                                         fileIO_->getFileHandle()))
           {
@@ -343,8 +367,7 @@ beach:
   return success;
 }
 
-template<typename T>
-bool PGXFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool PGXFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   // PGX writes separate files per component — band-by-band not supported
   if(yBegin != 0 || yEnd != image_->comps[0].h)
@@ -355,14 +378,7 @@ bool PGXFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   return writeImage();
 }
 
-template<typename T>
-bool PGXFormat<T>::writeFinish(void)
+inline bool PGXFormat::writeFinish(void)
 {
   return !fileIO_ || fileIO_->close();
-}
-
-template<typename T>
-grk_image* PGXFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
-{
-  return pgxtoimage<T>(filename.c_str(), parameters);
 }

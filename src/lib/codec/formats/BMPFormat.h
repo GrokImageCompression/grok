@@ -97,7 +97,6 @@ void put_int(uint8_t** buf, T val)
   *buf += sizeof(T);
 }
 
-template<typename T>
 class BMPFormat : public ImageFormat
 {
 public:
@@ -108,12 +107,19 @@ public:
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
 
 private:
   uint64_t off_;
+  template<typename T>
+  bool readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image);
+  template<typename T>
   grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, bool topDown);
+  template<typename T>
   grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
+  template<typename T>
   grk_image* bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
   bool readFileHeader(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
@@ -125,37 +131,48 @@ private:
   uint64_t srcIndex_;
   GRK_BITMAPFILEHEADER fileHeader_;
   GRK_BITMAPINFOHEADER infoHeader_;
+  bool topDown_ = false;
+  uint8_t lutRed_[256];
+  uint8_t lutGreen_[256];
+  uint8_t lutBlue_[256];
+  uint32_t paletteNumEntries_ = 0;
+  bool paletteHasColour_ = false;
+  uint16_t numcomps_ = 0;
+  GRK_COLOR_SPACE colourSpace_ = GRK_CLRSPC_UNKNOWN;
 
+  template<typename T>
   void conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
                   uint32_t destWidth, uint32_t destHeight);
+  template<typename T>
   void conv_4u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
                   uint32_t destWidth, uint32_t destHeight);
+  template<typename T>
   void conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
                   uint32_t width, uint32_t height);
 
+  template<typename T>
   void mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
                      uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
+  template<typename T>
   void mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
                      uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
+  template<typename T>
   void bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
   void maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec);
 };
 
-template<typename T>
-BMPFormat<T>::BMPFormat(void) : off_(0), header_(nullptr), srcIndex_(0)
+inline BMPFormat::BMPFormat(void) : off_(0), header_(nullptr), srcIndex_(0)
 {
   memset(&fileHeader_, 0, sizeof(GRK_BITMAPFILEHEADER));
   memset(&infoHeader_, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
-template<typename T>
-BMPFormat<T>::~BMPFormat(void)
+inline BMPFormat::~BMPFormat(void)
 {
   delete[] header_;
 }
 
-template<typename T>
-bool BMPFormat<T>::writeHeader(void)
+inline bool BMPFormat::writeHeader(void)
 {
   if(isHeaderWritten())
     return true;
@@ -303,8 +320,7 @@ cleanup:
   return ret;
 }
 
-template<typename T>
-bool BMPFormat<T>::writeImage()
+inline bool BMPFormat::writeImage()
 {
   if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
@@ -316,8 +332,7 @@ bool BMPFormat<T>::writeImage()
   return writeImageBand(0, image_->decompress_height);
 }
 
-template<typename T>
-bool BMPFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool BMPFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   // BMP writes rows bottom-up — partial bands are not supported
   if(yBegin != 0 || yEnd != image_->decompress_height)
@@ -387,7 +402,7 @@ bool BMPFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
           if(isInt16)
             r = ((int16_t*)image_->comps[compno].data)[srcIndex_ + i];
           else
-            r = ((T*)image_->comps[compno].data)[srcIndex_ + i];
+            r = ((int32_t*)image_->comps[compno].data)[srcIndex_ + i];
           r += shift[compno];
           if(scaleType[compno] == 1)
             r *= scale[compno];
@@ -431,8 +446,7 @@ cleanup:
   return ret;
 }
 
-template<typename T>
-bool BMPFormat<T>::writeFinish(void)
+inline bool BMPFormat::writeFinish(void)
 {
   if(image_->meta && image_->meta->color.icc_profile_buf)
   {
@@ -450,7 +464,7 @@ bool BMPFormat<T>::writeFinish(void)
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
@@ -461,7 +475,7 @@ grk_image* BMPFormat<T>::bmp1toimage(const uint8_t* pData, uint32_t srcStride, g
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
@@ -472,8 +486,8 @@ grk_image* BMPFormat<T>::bmp4toimage(const uint8_t* pData, uint32_t srcStride, g
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                     bool topDown)
+grk_image* BMPFormat::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
+                                  bool topDown)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
@@ -484,9 +498,8 @@ grk_image* BMPFormat<T>::bmp8toimage(const uint8_t* pData, uint32_t srcStride, g
   return image;
 }
 
-template<typename T>
-bool BMPFormat<T>::readFileHeader(GRK_BITMAPFILEHEADER* fileHeader,
-                                  GRK_BITMAPINFOHEADER* infoHeader)
+inline bool BMPFormat::readFileHeader(GRK_BITMAPFILEHEADER* fileHeader,
+                                      GRK_BITMAPINFOHEADER* infoHeader)
 {
   memset(infoHeader, 0, sizeof(*infoHeader));
   const size_t len = fileHeaderSize + sizeof(uint32_t);
@@ -509,9 +522,8 @@ bool BMPFormat<T>::readFileHeader(GRK_BITMAPFILEHEADER* fileHeader,
   return true;
 }
 
-template<typename T>
-bool BMPFormat<T>::readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader,
-                                  GRK_BITMAPINFOHEADER* infoHeader)
+inline bool BMPFormat::readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader,
+                                      GRK_BITMAPINFOHEADER* infoHeader)
 {
   // Validate biSize against the legal header-size set BEFORE using it to size
   // the read: an unvalidated biSize either underflows len_initial (biSize < 4)
@@ -616,14 +628,13 @@ bool BMPFormat<T>::readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader,
   return true;
 }
 
-template<typename T>
-bool BMPFormat<T>::readRawData(uint8_t* pData, uint32_t stride, uint32_t height)
+inline bool BMPFormat::readRawData(uint8_t* pData, uint32_t stride, uint32_t height)
 {
   return read(pData, (size_t)stride * height);
 }
 
-template<typename T>
-bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
+inline bool BMPFormat::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
+                                    uint32_t height)
 {
   uint32_t x = 0, y = 0, written = 0;
   uint8_t* pix = nullptr;
@@ -713,8 +724,8 @@ cleanup:
   return rc;
 }
 
-template<typename T>
-bool BMPFormat<T>::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
+inline bool BMPFormat::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width,
+                                    uint32_t height)
 {
   uint32_t x = 0, y = 0, written = 0;
   uint8_t* pix = nullptr;
@@ -807,27 +818,19 @@ cleanup:
   return rc;
 }
 
-template<typename T>
-grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* parameters)
+inline std::optional<ImageFileHeader>
+    BMPFormat::readHeader(const std::string& fname, [[maybe_unused]] grk_cparameters* parameters)
 {
-  grk_image_comp cmptparm[4]; /* maximum of 4 components */
-  uint8_t lut_R[256], lut_G[256], lut_B[256];
-  grk_image* image = nullptr;
-  bool result = false;
-  uint8_t* pData = nullptr;
-  uint32_t bmpStride;
-  bool handled = true;
-  bool topDown = false;
   bool is_os2 = false;
-  uint8_t* palette = nullptr;
-  uint32_t palette_num_entries = 0;
   uint8_t palette_has_colour = 0U;
-  uint16_t numcmpts = 1U;
-  GRK_COLOR_SPACE colour_space = GRK_CLRSPC_UNKNOWN;
+  uint8_t maxPrecision = 0;
 
-  image_ = image;
+  image_ = nullptr;
+  topDown_ = false;
+  paletteNumEntries_ = 0;
+  numcomps_ = 1U;
   if(!open(fname, "r"))
-    return nullptr;
+    return std::nullopt;
 
   if(!readFileHeader(&fileHeader_, &infoHeader_))
     goto cleanup;
@@ -853,54 +856,85 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
   }
   if(infoHeader_.biHeight < 0)
   {
-    topDown = true;
+    topDown_ = true;
     infoHeader_.biHeight = -infoHeader_.biHeight;
   }
   /* Load palette */
   if(infoHeader_.biBitCount <= 8U)
   {
-    memset(lut_R, 0, sizeof(lut_R));
-    memset(lut_G, 0, sizeof(lut_G));
-    memset(lut_B, 0, sizeof(lut_B));
+    memset(lutRed_, 0, sizeof(lutRed_));
+    memset(lutGreen_, 0, sizeof(lutGreen_));
+    memset(lutBlue_, 0, sizeof(lutBlue_));
 
-    palette_num_entries = infoHeader_.biClrUsed;
+    paletteNumEntries_ = infoHeader_.biClrUsed;
     // need to check this a second time for OS2 files
-    if(palette_num_entries == 0U)
-      palette_num_entries = (1U << infoHeader_.biBitCount);
-    else if(palette_num_entries > 256U)
-      palette_num_entries = 256U;
+    if(paletteNumEntries_ == 0U)
+      paletteNumEntries_ = (1U << infoHeader_.biBitCount);
+    else if(paletteNumEntries_ > 256U)
+      paletteNumEntries_ = 256U;
 
     const uint32_t palette_bytes =
-        palette_num_entries * (is_os2 ? os2_palette_element_len : palette_element_len);
-    palette = new uint8_t[palette_bytes];
-    if(!read(palette, palette_bytes))
+        paletteNumEntries_ * (is_os2 ? os2_palette_element_len : palette_element_len);
+    std::vector<uint8_t> palette(palette_bytes);
+    if(!read(palette.data(), palette_bytes))
       goto cleanup;
-    const uint8_t* pal_ptr = palette;
+    const uint8_t* pal_ptr = palette.data();
 
-    if(palette_num_entries > 0U)
+    if(paletteNumEntries_ > 0U)
     {
-      for(uint32_t i = 0U; i < palette_num_entries; i++)
+      for(uint32_t i = 0U; i < paletteNumEntries_; i++)
       {
-        lut_B[i] = *pal_ptr++;
-        lut_G[i] = *pal_ptr++;
-        lut_R[i] = *pal_ptr++;
+        lutBlue_[i] = *pal_ptr++;
+        lutGreen_[i] = *pal_ptr++;
+        lutRed_[i] = *pal_ptr++;
         if(!is_os2)
           pal_ptr++;
-        palette_has_colour |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
+        palette_has_colour |= (lutBlue_[i] ^ lutGreen_[i]) | (lutGreen_[i] ^ lutRed_[i]);
       }
       if(palette_has_colour)
-        numcmpts = 3U;
+        numcomps_ = 3U;
     }
   }
   else
   {
-    numcmpts = 3U;
+    numcomps_ = 3U;
     if((infoHeader_.biCompression == 3) && (infoHeader_.biAlphaMask != 0U))
-      numcmpts++;
+      numcomps_++;
   }
+  paletteHasColour_ = palette_has_colour != 0;
 
   if(infoHeader_.biWidth == 0 || infoHeader_.biHeight == 0)
     goto cleanup;
+
+  colourSpace_ = (numcomps_ == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB;
+  if(infoHeader_.biBitCount <= 8U && paletteHasColour_)
+    numcomps_ = 1;
+
+  maxPrecision = (numcomps_ == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
+  if(infoHeader_.biCompression == 3)
+  {
+    for(uint32_t mask : {infoHeader_.biRedMask, infoHeader_.biGreenMask, infoHeader_.biBlueMask,
+                         infoHeader_.biAlphaMask})
+    {
+      uint8_t shift, prec;
+      maskGetShiftAndPrec(mask, &shift, &prec);
+      maxPrecision = std::max(maxPrecision, prec);
+    }
+  }
+  return ImageFileHeader{numcomps_, maxPrecision};
+cleanup:
+  fileIO_->close();
+  return std::nullopt;
+}
+
+inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  grk_image_comp cmptparm[4]; /* maximum of 4 components */
+  grk_image* image = nullptr;
+  bool result = false;
+  uint8_t* pData = nullptr;
+  uint32_t bmpStride;
+
   if(infoHeader_.biBitCount > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)infoHeader_.biWidth)
     goto cleanup;
 
@@ -948,35 +982,30 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
     goto cleanup;
   }
 
-  colour_space = (numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB;
-  if(palette && palette_has_colour)
-    numcmpts = 1;
-
   /* create the image */
   memset(&cmptparm[0], 0, sizeof(cmptparm));
-  for(uint32_t i = 0; i < numcmpts; i++)
+  for(uint32_t i = 0; i < numcomps_; i++)
   {
     auto img_comp = cmptparm + i;
-    img_comp->prec = (numcmpts == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
+    img_comp->prec = (numcomps_ == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
     img_comp->sgnd = false;
-    if constexpr(sizeof(T) == 2)
-      img_comp->data_type = GRK_INT_16;
+    img_comp->data_type = dataType;
     img_comp->dx = parameters->subsampling_dx;
     img_comp->dy = parameters->subsampling_dy;
     img_comp->w = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biWidth, img_comp->dx);
     img_comp->h = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biHeight, img_comp->dy);
   }
 
-  image = grk_image_new(numcmpts, &cmptparm[0], colour_space, true);
+  image = grk_image_new(numcomps_, &cmptparm[0], colourSpace_, true);
   if(!image)
     goto cleanup;
 
-  if(palette)
+  if(infoHeader_.biBitCount <= 8U)
   {
-    uint8_t num_channels = palette_has_colour ? 3U : 1U;
+    uint8_t num_channels = paletteHasColour_ ? 3U : 1U;
     createMeta(image);
     auto meta = image->meta;
-    allocPalette(&meta->color, num_channels, (uint16_t)palette_num_entries);
+    allocPalette(&meta->color, num_channels, (uint16_t)paletteNumEntries_);
     auto cmap = new _grk_component_mapping_comp[num_channels];
     for(uint8_t i = 0; i < num_channels; ++i)
     {
@@ -988,17 +1017,16 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
     }
     meta->color.palette->component_mapping = cmap;
     auto lut_ptr = meta->color.palette->lut;
-    for(uint16_t i = 0; i < palette_num_entries; i++)
+    for(uint16_t i = 0; i < paletteNumEntries_; i++)
     {
-      *lut_ptr++ = lut_R[i];
+      *lut_ptr++ = lutRed_[i];
       if(num_channels == 3)
       {
-        *lut_ptr++ = lut_G[i];
-        *lut_ptr++ = lut_B[i];
+        *lut_ptr++ = lutGreen_[i];
+        *lut_ptr++ = lutBlue_[i];
       }
     }
   }
-
   // ICC profile
   if(infoHeader_.biSize == sizeof(GRK_BITMAPINFOHEADER) &&
      infoHeader_.biColorSpaceType == ICC_PROFILE_EMBEDDED && infoHeader_.biIccProfileSize &&
@@ -1019,7 +1047,7 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
     copyICC(image, iccbuf, infoHeader_.biIccProfileSize);
     delete[] iccbuf;
   }
-  if(numcmpts == 4U)
+  if(numcomps_ == 4U)
   {
     image->comps[3].type = GRK_CHANNEL_TYPE_OPACITY;
     image->comps[3].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
@@ -1031,6 +1059,23 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
   image->x1 = image->x0 + ((uint32_t)infoHeader_.biWidth - 1U) * parameters->subsampling_dx + 1U;
   image->y1 = image->y0 + ((uint32_t)infoHeader_.biHeight - 1U) * parameters->subsampling_dy + 1U;
 
+  if(!readSamplesAs(dataType, [&](auto sample) {
+       return readSamples<decltype(sample)>(pData, bmpStride, image);
+     }))
+  {
+    grk_object_unref(&image->obj);
+    image = nullptr;
+  }
+cleanup:
+  delete[] pData;
+  fileIO_->close();
+  return image;
+}
+
+template<typename T>
+bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image)
+{
+  bool handled = true;
   /* Read the data */
   switch(infoHeader_.biCompression)
   {
@@ -1038,23 +1083,23 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       switch(infoHeader_.biBitCount)
       {
         case 32: /* RGBX */
-          mask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
-                        0x00000000U);
+          mask32toimage<T>(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
+                           0x00000000U);
           break;
         case 24: /*RGB */
-          bmp24toimage(pData, bmpStride, image);
+          bmp24toimage<T>(pData, bmpStride, image);
           break;
         case 16: /*RGBX */
-          mask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
+          mask16toimage<T>(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
           break;
         case 8: /* RGB 8bpp Indexed */
-          bmp8toimage(pData, bmpStride, image, topDown);
+          bmp8toimage<T>(pData, bmpStride, image, topDown_);
           break;
         case 4: /* RGB 4bpp Indexed */
-          bmp4toimage(pData, bmpStride, image);
+          bmp4toimage<T>(pData, bmpStride, image);
           break;
         case 1: /* Grayscale 1bpp Indexed */
-          bmp1toimage(pData, bmpStride, image);
+          bmp1toimage<T>(pData, bmpStride, image);
           break;
         default:
           handled = false;
@@ -1065,7 +1110,7 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       switch(infoHeader_.biBitCount)
       {
         case 8: /*RLE8*/
-          bmp8toimage(pData, bmpStride, image, topDown);
+          bmp8toimage<T>(pData, bmpStride, image, topDown_);
           break;
         default:
           handled = false;
@@ -1076,8 +1121,8 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       switch(infoHeader_.biBitCount)
       {
         case 4: /*RLE4*/
-          bmp8toimage(pData, bmpStride, image,
-                      topDown); /* RLE 4 gets decoded as 8 bits data for now */
+          bmp8toimage<T>(pData, bmpStride, image,
+                         topDown_); /* RLE 4 gets decoded as 8 bits data for now */
           break;
         default:
           handled = false;
@@ -1138,9 +1183,7 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
                             "{0:b}\n"
                             "{0:b}",
                             m[0], m[1], m[2], m[3]);
-              grk_object_unref(&image->obj);
-              image = nullptr;
-              goto cleanup;
+              return false;
             }
           }
           else
@@ -1150,8 +1193,8 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
             break;
           }
 
-          mask32toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-                        infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
+          mask32toimage<T>(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+                           infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
           break;
         case 16: /* BITFIELDS bit mask*/
           if((infoHeader_.biRedMask == 0U) && (infoHeader_.biGreenMask == 0U) &&
@@ -1161,8 +1204,8 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
             infoHeader_.biGreenMask = 0x07E0U;
             infoHeader_.biBlueMask = 0x001FU;
           }
-          mask16toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-                        infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
+          mask16toimage<T>(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+                           infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
           break;
         default:
           handled = false;
@@ -1175,23 +1218,15 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
       break;
   }
   if(!handled)
-  {
-    grk_object_unref(&image->obj);
-    image = nullptr;
     spdlog::error("Precision [{}] does not match supported precision: "
                   "24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
                   infoHeader_.biBitCount);
-  }
-cleanup:
-  delete[] palette;
-  delete[] pData;
-  fileIO_->close();
-  return image;
+  return handled;
 }
 
 template<typename T>
-void BMPFormat<T>::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
-                              uint32_t destWidth, uint32_t destHeight)
+void BMPFormat::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
+                           uint32_t destWidth, uint32_t destHeight)
 {
   uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
   for(uint32_t y = destHeight; y != 0U; --y)
@@ -1213,8 +1248,8 @@ void BMPFormat<T>::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
 }
 
 template<typename T>
-void BMPFormat<T>::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
-                              uint32_t destWidth, uint32_t destHeight)
+void BMPFormat::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
+                           uint32_t destWidth, uint32_t destHeight)
 {
   uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
   for(uint32_t y = destHeight; y != 0U; --y)
@@ -1236,8 +1271,8 @@ void BMPFormat<T>::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
 }
 
 template<typename T>
-void BMPFormat<T>::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
-                              uint32_t width, uint32_t height)
+void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
+                           uint32_t width, uint32_t height)
 {
   for(uint32_t y = height; y != 0U; --y)
   {
@@ -1249,7 +1284,7 @@ void BMPFormat<T>::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, i
 }
 
 template<typename T>
-void BMPFormat<T>::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+void BMPFormat::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
 {
   uint32_t index;
   uint32_t width, height;
@@ -1278,8 +1313,7 @@ void BMPFormat<T>::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_im
   }
 }
 
-template<typename T>
-void BMPFormat<T>::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec)
+inline void BMPFormat::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec)
 {
   uint8_t tempShift, tempPrecision;
   tempShift = tempPrecision = 0U;
@@ -1301,9 +1335,9 @@ void BMPFormat<T>::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* p
 }
 
 template<typename T>
-void BMPFormat<T>::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                 uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
-                                 uint32_t alphaMask)
+void BMPFormat::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
+                              uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
+                              uint32_t alphaMask)
 {
   uint8_t redShift, redPrec;
   uint8_t greenShift, greenPrec;
@@ -1357,9 +1391,9 @@ void BMPFormat<T>::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_i
 }
 
 template<typename T>
-void BMPFormat<T>::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                 uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
-                                 uint32_t alphaMask)
+void BMPFormat::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
+                              uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
+                              uint32_t alphaMask)
 {
   uint8_t redShift, redPrec;
   uint8_t greenShift, greenPrec;

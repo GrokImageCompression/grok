@@ -24,8 +24,25 @@
 #include "IFileIO.h"
 #include "BufferPool.h"
 #include "FileOrchestratorIO.h"
+#include "spdlogwrapper.h"
 
 const uint32_t reclaimSize = 5;
+
+template<typename ReadSamples>
+bool readSamplesAs(grk_data_type dataType, ReadSamples readSamples)
+{
+  switch(dataType)
+  {
+    case GRK_INT_16:
+      return readSamples(int16_t{});
+    case GRK_INT_32:
+      return readSamples(int32_t{});
+    default:
+      spdlog::error("image readers support only 16 and 32 bit samples, not data type {}",
+                    (int)dataType);
+      return false;
+  }
+}
 
 class ImageFormat : public IImageFormat
 {

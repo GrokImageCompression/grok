@@ -35,7 +35,6 @@ static constexpr int MAGIC_SIZE = 8;
 
 void pngSetVerboseFlag(bool verbose);
 
-template<typename T>
 class PNGFormat : public ImageFormat
 {
 public:
@@ -50,16 +49,19 @@ public:
   }
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
 
 private:
-  grk_image* do_decode(grk_cparameters* params);
+  template<typename T>
+  bool readSamples(void);
 
   png_infop info_;
   png_structp png_;
   uint8_t* row_buf_;
   uint8_t** row_buf_array_;
-  T* row32s_;
+  int32_t* row32s_;
   GRK_COLOR_SPACE colorSpace_;
   uint8_t prec_;
   uint16_t nr_comp_;
@@ -91,22 +93,19 @@ static inline void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const
   spdlog::error("libpng error: {}", message);
 }
 
-template<typename T>
-PNGFormat<T>::PNGFormat()
+inline PNGFormat::PNGFormat()
     : info_(nullptr), png_(nullptr), row_buf_(nullptr), row_buf_array_(nullptr), row32s_(nullptr),
       colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0), interleaver_(nullptr),
       interleaver16_(nullptr)
 {}
 
-template<typename T>
-PNGFormat<T>::~PNGFormat()
+inline PNGFormat::~PNGFormat()
 {
   delete interleaver_;
   delete interleaver16_;
 }
 
-template<typename T>
-bool PNGFormat<T>::writeHeader(void)
+inline bool PNGFormat::writeHeader(void)
 {
   if(isHeaderWritten())
     return true;
@@ -311,7 +310,7 @@ bool PNGFormat<T>::writeHeader(void)
       spdlog::error("Can't allocate memory for PNG row");
       goto beach;
     }
-    row32s_ = (T*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(T));
+    row32s_ = (int32_t*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(int32_t));
     if(row32s_ == nullptr)
     {
       spdlog::error("Can't allocate memory for interleaved 32s row");
@@ -326,14 +325,12 @@ beach:
   return !fails;
 }
 
-template<typename T>
-bool PNGFormat<T>::writeImage(void)
+inline bool PNGFormat::writeImage(void)
 {
   return writeImageBand(0, maxY(image_->comps->h));
 }
 
-template<typename T>
-bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool PNGFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   auto stride = image_->comps[0].stride;
   png_bytep row_buf_cpy = row_buf_;
@@ -363,7 +360,7 @@ bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   {
     int32_t const* planes[4];
     for(uint16_t compno = 0; compno < nr_comp_; ++compno)
-      planes[compno] = (T*)image_->comps[compno].data + (uint64_t)yBegin * stride;
+      planes[compno] = (int32_t*)image_->comps[compno].data + (uint64_t)yBegin * stride;
     int32_t adjust = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
     if(!interleaver_)
     {
@@ -374,7 +371,7 @@ bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     }
     for(uint32_t y = yBegin; y < max; ++y)
     {
-      interleaver_->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
+      interleaver_->interleave((int32_t**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
                                image_->comps[0].w, 1, adjust);
       png_write_row(png_, row_buf_cpy);
     }
@@ -383,8 +380,7 @@ bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   return true;
 }
 
-template<typename T>
-bool PNGFormat<T>::writeFinish(void)
+inline bool PNGFormat::writeFinish(void)
 {
   if(setjmp(png_jmpbuf(png_)))
     return false;
@@ -401,40 +397,29 @@ bool PNGFormat<T>::writeFinish(void)
   return rc;
 }
 
-template<typename T>
-grk_image* PNGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
-{
-  fileName_ = filename;
-  return do_decode(parameters);
-}
-
-template<typename T>
-grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
+inline std::optional<ImageFileHeader> PNGFormat::readHeader(const std::string& filename,
+                                                            grk_cparameters* parameters)
 {
   int bit_depth, interlace_type, compression_type, filter_type;
   png_uint_32 width = 0U, height = 0U;
-  uint32_t stride;
   int color_type;
-  grk_image_comp cmptparm[4];
   uint8_t sigbuf[8];
   int srgbIntent = -1;
-  png_textp text_ptr;
-  int num_comments = 0;
-  int unit;
-  png_uint_32 resx, resy;
 
-  if(params->subsampling_dx != 1 || params->subsampling_dy != 1)
+  fileName_ = filename;
+  if(parameters->subsampling_dx != 1 || parameters->subsampling_dy != 1)
   {
-    spdlog::error("pngtoimage: unsupported sub-sampling ({},{})", params->subsampling_dx,
-                  params->subsampling_dy);
-    return nullptr;
+    spdlog::error("pngtoimage: unsupported sub-sampling ({},{})", parameters->subsampling_dx,
+                  parameters->subsampling_dy);
+    return std::nullopt;
   }
 
+  delete fileIO_;
   fileIO_ = new FileStandardIO();
   if(!fileIO_->open(fileName_.c_str(), "rb"))
   {
     spdlog::error("pngtoimage: can not open {}", fileName_.c_str());
-    return nullptr;
+    return std::nullopt;
   }
 
   if(fread(sigbuf, 1, MAGIC_SIZE, fileIO_->getFileHandle()) != MAGIC_SIZE ||
@@ -540,6 +525,28 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     goto beach;
   }
 
+  prec_ = (uint8_t)bit_depth;
+  return ImageFileHeader{nr_comp_, prec_};
+beach:
+  if(png_)
+    png_destroy_read_struct(&png_, &info_, nullptr);
+  fileIO_->close();
+  return std::nullopt;
+}
+
+inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  png_uint_32 width = png_get_image_width(png_, info_);
+  png_uint_32 height = png_get_image_height(png_, info_);
+  grk_image_comp cmptparm[4];
+  png_textp text_ptr;
+  int num_comments = 0;
+  int unit;
+  png_uint_32 resx, resy;
+
+  if(setjmp(png_jmpbuf(png_)))
+    goto beach;
+
   row_buf_array_ = (uint8_t**)calloc(height, sizeof(uint8_t*));
   if(row_buf_array_ == nullptr)
   {
@@ -563,12 +570,11 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
   for(uint32_t i = 0; i < nr_comp_; ++i)
   {
     auto img_comp = cmptparm + i;
-    img_comp->prec = (uint8_t)bit_depth;
+    img_comp->prec = prec_;
     img_comp->sgnd = false;
-    if constexpr(sizeof(T) == 2)
-      img_comp->data_type = GRK_INT_16;
-    img_comp->dx = params->subsampling_dx;
-    img_comp->dy = params->subsampling_dy;
+    img_comp->data_type = dataType;
+    img_comp->dx = parameters->subsampling_dx;
+    img_comp->dy = parameters->subsampling_dy;
     img_comp->w = grk::ceildiv<uint32_t>(width, img_comp->dx);
     img_comp->h = grk::ceildiv<uint32_t>(height, img_comp->dy);
   }
@@ -576,10 +582,10 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
   image_ = grk_image_new(nr_comp_, &cmptparm[0], colorSpace_, true);
   if(image_ == nullptr)
     goto beach;
-  image_->x0 = params->image_offset_x0;
-  image_->y0 = params->image_offset_y0;
-  image_->x1 = image_->x0 + (width - 1) * params->subsampling_dx + 1;
-  image_->y1 = image_->y0 + (height - 1) * params->subsampling_dy + 1;
+  image_->x0 = parameters->image_offset_x0;
+  image_->y0 = parameters->image_offset_y0;
+  image_->x1 = image_->x0 + (width - 1) * parameters->subsampling_dx + 1;
+  image_->y1 = image_->y0 + (height - 1) * parameters->subsampling_dy + 1;
 
   /* Set alpha channel. Only non-premultiplied alpha is supported */
   if((nr_comp_ & 1U) == 0)
@@ -683,7 +689,31 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     }
   }
 
-  stride = image_->comps[0].stride;
+  if(!readSamplesAs(dataType, [&](auto sample) { return readSamples<decltype(sample)>(); }))
+  {
+    grk_object_unref(&image_->obj);
+    image_ = nullptr;
+  }
+beach:
+  if(row_buf_array_)
+  {
+    for(uint32_t i = 0; i < height; ++i)
+      free(row_buf_array_[i]);
+    free(row_buf_array_);
+  }
+  free(row32s_);
+  if(png_)
+    png_destroy_read_struct(&png_, &info_, nullptr);
+  fileIO_->close();
+  return image_;
+}
+
+template<typename T>
+bool PNGFormat::readSamples(void)
+{
+  uint32_t width = png_get_image_width(png_, info_);
+  uint32_t height = png_get_image_height(png_, info_);
+  uint32_t stride = image_->comps[0].stride;
 
   // parallel row conversion — all row data is available from png_read_image
   {
@@ -705,7 +735,7 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
       }
       for(uint32_t r = rowBegin; r < rowEnd; ++r)
       {
-        switch(bit_depth)
+        switch(prec_)
         {
           case 1:
             convertToOutput<1, false, T>(row_buf_array_[r], row32s, pixelCount, false);
@@ -760,18 +790,7 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
         t.join();
     }
     if(convError.load())
-      goto beach;
+      return false;
   }
-beach:
-  if(row_buf_array_)
-  {
-    for(uint32_t i = 0; i < height; ++i)
-      free(row_buf_array_[i]);
-    free(row_buf_array_);
-  }
-  free(row32s_);
-  if(png_)
-    png_destroy_read_struct(&png_, &info_, nullptr);
-  fileIO_->close();
-  return image_;
-} /* pngtoimage() */
+  return true;
+}

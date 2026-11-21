@@ -87,7 +87,6 @@ METHODDEF(void) my_error_exit(j_common_ptr cinfo)
  * temporary files are deleted if the program is interrupted.  See libjpeg.txt.
  */
 
-template<typename T>
 class JPEGFormat : public ImageFormat
 {
 public:
@@ -102,17 +101,20 @@ public:
   }
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  std::optional<ImageFileHeader> readHeader(const std::string& filename,
+                                            grk_cparameters* parameters) override;
+  grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
 
 private:
-  grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
+  template<typename T>
+  void readScanlines(JSAMPARRAY rowBuffer);
   bool imagetojpeg(grk_image* image, const char* filename, uint32_t compression_level);
 
   bool success;
   uint8_t* buffer;
-  T* buffer32s;
+  int32_t* buffer32s;
   J_COLOR_SPACE color_space;
-  T adjust;
+  int32_t adjust;
   bool readFromStdin;
 
   /* This struct contains the JPEG compression parameters and pointers to
@@ -122,136 +124,120 @@ private:
    * to any one struct (and its associated working data) as a "JPEG object".
    */
   struct jpeg_compress_struct cinfo;
-  T const* planes[4];
-  grk::PlanarToInterleaved<T>* interleaver_;
+  struct jpeg_decompress_struct decompressInfo_;
+  struct my_error_mgr decompressErrorManager_;
+  int32_t const* planes[4];
+  grk::PlanarToInterleaved<int32_t>* interleaver_;
   grk::PlanarToInterleaved<int16_t>* interleaver16_;
 };
 
-template<typename T>
-grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* parameters)
+inline std::optional<ImageFileHeader>
+    JPEGFormat::readHeader(const std::string& filename,
+                           [[maybe_unused]] grk_cparameters* parameters)
 {
-  T* planes[3];
-  JDIMENSION w = 0, h = 0;
-  uint32_t dest_stride;
-  int bps = 0;
-  uint16_t decompress_num_comps = 0;
-  GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-  grk_image_comp cmptparm[3]; /* mono or RGB */
-  JOCTET* icc_data_ptr = nullptr;
-  unsigned int icc_data_len = 0;
-
-  /* This struct contains the JPEG decompression parameters and pointers to
-   * working space (which is allocated as needed by the JPEG library).
-   */
-  struct jpeg_decompress_struct cinfo;
-  /* We use our private extension JPEG error handler.
-   * Note that this struct must live as long as the main JPEG parameter
-   * struct, to avoid dangling-pointer problems.
-   */
-  struct my_error_mgr jerr;
-  /* More stuff */
-  JSAMPARRAY buffer; /* Output row buffer */
-  int row_stride; /* physical row width in output buffer */
-
   /* In this example we want to open the input file before doing anything else,
    * so that the setjmp() error recovery below can assume the file is open.
    * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
    * requires it in order to read binary files.
    */
-  if(fileIO_)
-    delete fileIO_;
+  delete fileIO_;
   fileIO_ = new FileStandardIO();
   if(!fileIO_->open(filename, "rb"))
   {
     spdlog::error("can't open {}", filename);
-    return 0;
+    return std::nullopt;
   }
 
   /* Step 1: allocate and initialize JPEG decompression object */
 
   /* We set up the normal JPEG error routines, then override error_exit. */
-  cinfo.err = jpeg_std_error(&jerr.pub);
-  jerr.pub.error_exit = my_error_exit;
+  decompressInfo_.err = jpeg_std_error(&decompressErrorManager_.pub);
+  decompressErrorManager_.pub.error_exit = my_error_exit;
   /* Establish the setjmp return context for my_error_exit to use. */
-  if(setjmp(jerr.setjmp_buffer))
-  {
-    success = false;
+  if(setjmp(decompressErrorManager_.setjmp_buffer))
     goto cleanup;
-  }
   /* Now we can initialize the JPEG decompression object. */
-  jpeg_create_decompress(&cinfo);
-  setup_read_icc_profile(&cinfo);
+  jpeg_create_decompress(&decompressInfo_);
+  setup_read_icc_profile(&decompressInfo_);
   // save APP1 markers for EXIF extraction
-  jpeg_save_markers(&cinfo, JPEG_APP0 + 1, 0xFFFF);
+  jpeg_save_markers(&decompressInfo_, JPEG_APP0 + 1, 0xFFFF);
 
   /* Step 2: specify data source (eg, a file) */
-  jpeg_stdio_src(&cinfo, fileIO_->getFileHandle());
+  jpeg_stdio_src(&decompressInfo_, fileIO_->getFileHandle());
 
   /* Step 3: read file parameters with jpeg_read_header() */
 
-  jpeg_read_header(&cinfo, TRUE);
+  jpeg_read_header(&decompressInfo_, TRUE);
   /* We can ignore the return value from jpeg_read_header since
    *   (a) suspension is not possible with the stdio data source, and
    *   (b) we passed TRUE to reject a tables-only JPEG file as an error.
    * See libjpeg.txt for more info.
    */
+  jpeg_calc_output_dimensions(&decompressInfo_);
 
-  // read ICC profile
-  if(!read_icc_profile(&cinfo, &icc_data_ptr, &icc_data_len))
+  if(decompressInfo_.data_precision != 8)
   {
-    spdlog::warn("jpegtoimage: Failed to read ICC profile");
-  }
-
-  /* Step 4: set parameters for decompression */
-
-  /* In this example, we don't need to change any of the defaults set by
-   * jpeg_read_header(), so we do nothing here.
-   */
-
-  /* Step 5: Start decompressor */
-
-  jpeg_start_decompress(&cinfo);
-  /* We can ignore the return value since suspension is not possible
-   * with the stdio data source.
-   */
-
-  bps = cinfo.data_precision;
-  if(bps != 8)
-  {
-    spdlog::error("jpegtoimage: Unsupported image_ precision {}", bps);
-    success = false;
+    spdlog::error("jpegtoimage: Unsupported image_ precision {}", decompressInfo_.data_precision);
     goto cleanup;
   }
   // cmptparm[]/planes[] are sized for at most 3 components; a 4-component
   // (Adobe CMYK/YCCK) JPEG would otherwise overflow those stack arrays.
-  if(cinfo.output_components > 3)
+  if(decompressInfo_.output_components > 3)
   {
-    spdlog::error("jpegtoimage: Unsupported number of components {}", cinfo.output_components);
+    spdlog::error("jpegtoimage: Unsupported number of components {}",
+                  decompressInfo_.output_components);
+    goto cleanup;
+  }
+  return ImageFileHeader{(uint16_t)decompressInfo_.output_components, 8};
+cleanup:
+  jpeg_destroy_decompress(&decompressInfo_);
+  fileIO_->close();
+  return std::nullopt;
+}
+
+inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  JDIMENSION w = decompressInfo_.image_width;
+  JDIMENSION h = decompressInfo_.image_height;
+  uint16_t decompress_num_comps = (uint16_t)decompressInfo_.output_components;
+  grk_image_comp cmptparm[3]; /* mono or RGB */
+  JOCTET* icc_data_ptr = nullptr;
+  unsigned int icc_data_len = 0;
+  JSAMPARRAY rowBuffer; /* Output row buffer */
+  int row_stride; /* physical row width in output buffer */
+
+  if(setjmp(decompressErrorManager_.setjmp_buffer))
+  {
     success = false;
     goto cleanup;
   }
 
-  decompress_num_comps = (uint16_t)cinfo.output_components;
-  w = cinfo.image_width;
-  h = cinfo.image_height;
-  memset(&cmptparm[0], 0, 3 * sizeof(grk_image_comp));
-  if(cinfo.output_components == 3)
-    color_space = GRK_CLRSPC_SRGB;
-  else
-    color_space = GRK_CLRSPC_GRAY;
-
-  for(int j = 0; j < cinfo.output_components; j++)
+  // read ICC profile
+  if(!read_icc_profile(&decompressInfo_, &icc_data_ptr, &icc_data_len))
   {
-    cmptparm[j].prec = (uint8_t)bps;
-    if constexpr(sizeof(T) == 2)
-      cmptparm[j].data_type = GRK_INT_16;
+    spdlog::warn("jpegtoimage: Failed to read ICC profile");
+  }
+
+  /* Step 5: Start decompressor */
+
+  jpeg_start_decompress(&decompressInfo_);
+  /* We can ignore the return value since suspension is not possible
+   * with the stdio data source.
+   */
+
+  memset(&cmptparm[0], 0, 3 * sizeof(grk_image_comp));
+  for(int j = 0; j < decompress_num_comps; j++)
+  {
+    cmptparm[j].prec = 8;
+    cmptparm[j].data_type = dataType;
     cmptparm[j].dx = 1;
     cmptparm[j].dy = 1;
     cmptparm[j].w = w;
     cmptparm[j].h = h;
   }
 
-  image_ = grk_image_new((uint16_t)decompress_num_comps, &cmptparm[0], color_space, true);
+  image_ = grk_image_new(decompress_num_comps, &cmptparm[0],
+                         decompress_num_comps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY, true);
   if(!image_)
   {
     success = false;
@@ -265,7 +251,7 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
   free(icc_data_ptr);
   icc_data_ptr = nullptr;
   // extract EXIF from APP1 markers
-  for(auto marker = cinfo.marker_list; marker; marker = marker->next)
+  for(auto marker = decompressInfo_.marker_list; marker; marker = marker->next)
   {
     if(marker->marker == (JPEG_APP0 + 1) && marker->data_length >= 6 &&
        memcmp(marker->data, "Exif\0\0", 6) == 0)
@@ -305,13 +291,6 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
     goto cleanup;
   }
 
-  for(int j = 0; j < decompress_num_comps; j++)
-  {
-    planes[j] = (T*)image_->comps[j].data;
-  }
-
-  buffer32s = new T[w * (size_t)decompress_num_comps];
-
   /* We may need to do some setup of our own at this point before reading
    * the data.  After jpeg_start_decompress() we have the correct scaled
    * output image_ dimensions available, as well as the output colormap
@@ -319,60 +298,37 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
    * In this example, we need to make an output work buffer of the right size.
    */
   /* JSAMPLEs per row in output buffer */
-  row_stride = (int)cinfo.output_width * cinfo.output_components;
+  row_stride = (int)decompressInfo_.output_width * decompressInfo_.output_components;
   /* Make a one-row-high sample array that will go away when done with image_ */
-  buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, (JDIMENSION)row_stride, 1);
-  if(!buffer)
+  rowBuffer = (*decompressInfo_.mem->alloc_sarray)((j_common_ptr)&decompressInfo_, JPOOL_IMAGE,
+                                                   (JDIMENSION)row_stride, 1);
+  if(!rowBuffer)
   {
     success = false;
     goto cleanup;
   }
-
-  /* Step 6: while (scan lines remain to be read) */
-  /*           jpeg_read_scanlines(...); */
-
-  /* Here we use the library's state variable cinfo.output_scanline as the
-   * loop counter, so that we don't have to keep track ourselves.
-   */
-  dest_stride = image_->comps[0].stride;
-  while(cinfo.output_scanline < cinfo.output_height)
-  {
-    /* jpeg_read_scanlines expects an array of pointers to scanlines.
-     * Here the array is only one element long, but you could ask for
-     * more than one scanline at a time if that's more convenient.
-     */
-    jpeg_read_scanlines(&cinfo, buffer, 1);
-
-    // convert 8 bit buffer to 32 bit buffer
-    for(size_t i = 0; i < w * decompress_num_comps; i++)
-      buffer32s[i] = buffer[0][i];
-
-    // convert to planar
-    interleave(buffer32s, planes, w, decompress_num_comps);
-
-    planes[0] += dest_stride;
-    planes[1] += dest_stride;
-    planes[2] += dest_stride;
-  }
+  success = readSamplesAs(dataType, [&](auto sample) {
+    readScanlines<decltype(sample)>(rowBuffer);
+    return true;
+  });
 
   /* Step 7: Finish decompression */
 
-  jpeg_finish_decompress(&cinfo);
+  jpeg_finish_decompress(&decompressInfo_);
 /* We can ignore the return value since suspension is not possible
  * with the stdio data source.
  */
 cleanup:
   free(icc_data_ptr);
-  jpeg_destroy_decompress(&cinfo);
-
-  delete[] buffer32s;
+  jpeg_destroy_decompress(&decompressInfo_);
 
   /* At this point you may want to check to see whether any corrupt-data
    * warnings occurred (test whether jerr.pub.num_warnings is nonzero).
    */
-  if(jerr.pub.num_warnings != 0)
+  if(decompressErrorManager_.pub.num_warnings != 0)
   {
-    spdlog::warn("JPEG library reported {} of corrupt data warnings", (int)jerr.pub.num_warnings);
+    spdlog::warn("JPEG library reported {} of corrupt data warnings",
+                 (int)decompressErrorManager_.pub.num_warnings);
   }
 
   if(!success)
@@ -390,23 +346,56 @@ cleanup:
     image_ = nullptr;
   }
   return image_;
-} /* jpegtoimage() */
+}
 
 template<typename T>
-JPEGFormat<T>::JPEGFormat(void)
+void JPEGFormat::readScanlines(JSAMPARRAY rowBuffer)
+{
+  JDIMENSION w = decompressInfo_.image_width;
+  uint16_t decompress_num_comps = image_->numcomps;
+  uint32_t dest_stride = image_->comps[0].stride;
+  T* planes[3];
+  for(uint16_t j = 0; j < decompress_num_comps; j++)
+    planes[j] = (T*)image_->comps[j].data;
+  // libjpeg frees JPOOL_IMAGE allocations when decompression finishes or fails
+  auto row = (T*)(*decompressInfo_.mem->alloc_large)((j_common_ptr)&decompressInfo_, JPOOL_IMAGE,
+                                                     (size_t)w * decompress_num_comps * sizeof(T));
+
+  /* Here we use the library's state variable cinfo.output_scanline as the
+   * loop counter, so that we don't have to keep track ourselves.
+   */
+  while(decompressInfo_.output_scanline < decompressInfo_.output_height)
+  {
+    /* jpeg_read_scanlines expects an array of pointers to scanlines.
+     * Here the array is only one element long, but you could ask for
+     * more than one scanline at a time if that's more convenient.
+     */
+    jpeg_read_scanlines(&decompressInfo_, rowBuffer, 1);
+
+    // convert 8 bit buffer to sample buffer
+    for(size_t i = 0; i < w * decompress_num_comps; i++)
+      row[i] = rowBuffer[0][i];
+
+    // convert to planar
+    interleave(row, planes, w, decompress_num_comps);
+
+    for(uint16_t j = 0; j < decompress_num_comps; j++)
+      planes[j] += dest_stride;
+  }
+}
+
+inline JPEGFormat::JPEGFormat(void)
     : success(true), buffer(nullptr), buffer32s(nullptr), color_space(JCS_UNKNOWN), adjust(0),
       readFromStdin(false), planes{0, 0, 0}, interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
-template<typename T>
-JPEGFormat<T>::~JPEGFormat()
+inline JPEGFormat::~JPEGFormat()
 {
   delete interleaver_;
   delete interleaver16_;
 }
 
-template<typename T>
-bool JPEGFormat<T>::writeHeader(void)
+inline bool JPEGFormat::writeHeader(void)
 {
   if(isHeaderWritten())
     return true;
@@ -419,7 +408,7 @@ bool JPEGFormat<T>::writeHeader(void)
   uint8_t prec = image_->decompress_prec;
   uint16_t decompress_num_comps = image_->decompress_num_comps;
   uint32_t sgnd = image_->comps[0].sgnd;
-  adjust = sgnd ? (T)(1 << (prec - 1)) : 0;
+  adjust = sgnd ? (int32_t)(1 << (prec - 1)) : 0;
 
   uint32_t i = 0;
 
@@ -447,7 +436,7 @@ bool JPEGFormat<T>::writeHeader(void)
   // sub-sampling not supported at the moment
   if(isFinalOutputSubsampled(image_))
   {
-    spdlog::error("JPEGFormat<T>::writeHeader: subsampling not currently supported.");
+    spdlog::error("JPEGFormat::writeHeader: subsampling not currently supported.");
     return false;
   }
 
@@ -475,14 +464,14 @@ bool JPEGFormat<T>::writeHeader(void)
         color_space = JCS_GRAYSCALE;
       else
       {
-        spdlog::error("JPEGFormat<T>::writeHeader: unrecognized colour space");
+        spdlog::error("JPEGFormat::writeHeader: unrecognized colour space");
       }
       break;
   }
 
   if(image_->decompress_num_comps > 4)
   {
-    spdlog::error("JPEGFormat<T>::writeHeader: number of components {} "
+    spdlog::error("JPEGFormat::writeHeader: number of components {} "
                   "is greater than 4.",
                   image_->decompress_num_comps);
     return false;
@@ -492,7 +481,7 @@ bool JPEGFormat<T>::writeHeader(void)
 
   if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
   {
-    spdlog::error("JPEGFormat<T>::writeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
+    spdlog::error("JPEGFormat::writeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
                   prec);
     return false;
   }
@@ -509,16 +498,16 @@ bool JPEGFormat<T>::writeHeader(void)
   // We assume that alpha channels occur as last channels in image_.
   if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= decompress_num_comps))
   {
-    spdlog::warn("JPEGFormat<T>::writeHeader: PNG requires that alpha channels occur"
+    spdlog::warn("JPEGFormat::writeHeader: PNG requires that alpha channels occur"
                  " as last channels in image_.");
     numAlphaChannels = 0;
   }
   buffer = new uint8_t[width * decompress_num_comps];
-  buffer32s = new T[width * decompress_num_comps];
+  buffer32s = new int32_t[width * decompress_num_comps];
 
-  planes[0] = (T*)image_->comps[0].data;
+  planes[0] = (int32_t*)image_->comps[0].data;
   for(i = 1U; i < decompress_num_comps; ++i)
-    planes[i] = (T*)image_->comps[i].data;
+    planes[i] = (int32_t*)image_->comps[i].data;
 
   /* We set up the normal JPEG error routines, then override error_exit. */
   cinfo.err = jpeg_std_error(&jerr.pub);
@@ -607,14 +596,12 @@ bool JPEGFormat<T>::writeHeader(void)
   return true;
 }
 
-template<typename T>
-bool JPEGFormat<T>::writeImage(void)
+inline bool JPEGFormat::writeImage(void)
 {
   return writeImageBand(0, cinfo.image_height);
 }
 
-template<typename T>
-bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+inline bool JPEGFormat::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
   if(yBegin != cinfo.next_scanline)
   {
@@ -650,13 +637,13 @@ bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   {
     if(!interleaver_)
     {
-      interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(8);
+      interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(8);
       if(!interleaver_)
         return false;
     }
-    T* bandPlanes[4];
+    int32_t* bandPlanes[4];
     for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
-      bandPlanes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * stride;
+      bandPlanes[i] = (int32_t*)image_->comps[i].data + (uint64_t)yBegin * stride;
     while(cinfo.next_scanline < yEnd)
     {
       interleaver_->interleave(bandPlanes, image_->decompress_num_comps, (uint8_t*)buffer,
@@ -671,8 +658,7 @@ bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   return true;
 }
 
-template<typename T>
-bool JPEGFormat<T>::writeFinish(void)
+inline bool JPEGFormat::writeFinish(void)
 {
   /* Step 6: Finish compression */
   jpeg_finish_compress(&cinfo);
@@ -687,10 +673,4 @@ bool JPEGFormat<T>::writeFinish(void)
 
   /* After finish_compress, we can close the output file. */
   return ImageFormat::writeFinish() && success;
-}
-
-template<typename T>
-grk_image* JPEGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
-{
-  return jpegtoimage(filename.c_str(), parameters);
 }

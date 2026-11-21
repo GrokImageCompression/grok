@@ -152,8 +152,8 @@ GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
     std::string file =
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
-    PGXFormat<int32_t> pgx;
-    GrkImagePtr src(pgx.readImage(file.c_str(), &parameters));
+    PGXFormat pgx;
+    GrkImagePtr src(pgx.readInt32Image(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load pgx file: {}", file);
@@ -188,8 +188,8 @@ GrkImagePtr readImageFromFileBMP(const std::string& filename)
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_FMT_BMP;
 
-  BMPFormat<int32_t> bmp;
-  GrkImagePtr img(bmp.readImage(filename.c_str(), &parameters));
+  BMPFormat bmp;
+  GrkImagePtr img(bmp.readInt32Image(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load BMP file: {}", filename);
@@ -204,8 +204,8 @@ GrkImagePtr readImageFromFilePNG(const std::string& filename)
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_FMT_PNG;
 
-  PNGFormat<int32_t> png;
-  GrkImagePtr img(png.readImage(filename.c_str(), &parameters));
+  PNGFormat png;
+  GrkImagePtr img(png.readInt32Image(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load PNG file: {}", filename);
@@ -230,8 +230,8 @@ GrkImagePtr readImageFromFileTIF(const std::string& filename, const std::string&
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_FMT_TIF;
 
-  TIFFFormat<int32_t> tif;
-  GrkImagePtr img(tif.readImage(filename.c_str(), &parameters));
+  TIFFFormat tif;
+  GrkImagePtr img(tif.readInt32Image(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load TIF file: {}", filename);
@@ -268,8 +268,8 @@ GrkImagePtr readImageFromFilePPM(const std::string& filename, uint16_t numFiles,
     std::string file =
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
-    PNMFormat<int32_t> pnm(false);
-    GrkImagePtr src(pnm.readImage(file.c_str(), &parameters));
+    PNMFormat pnm(false);
+    GrkImagePtr src(pnm.readInt32Image(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load ppm file: {}", file);
