@@ -19,6 +19,7 @@
 #include "Coder.h"
 #include "t1_common.h"
 #include "BlockCoder.h"
+#include "PreCompressFilters.h"
 
 namespace grk::t1::part1
 {
@@ -59,20 +60,8 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
   {
     if(block->uses16BitBuffer)
     {
-      auto tileData = static_cast<const int16_t*>(block->tileData);
-      for(auto row = 0U; row < h; ++row)
-      {
-        for(auto column = 0U; column < w; ++column)
-        {
-          int32_t temp = tileData[tile_index++] * (1 << T1_NMSEDEC_FRACBITS);
-          int32_t magnitude = temp * ((temp > 0) - (temp < 0));
-          if((uint32_t)magnitude > maximum)
-            maximum = (uint32_t)magnitude;
-          int32_t sign = int32_t((uint32_t)(magnitude != temp) * 0x80000000);
-          uncompressedData[cblk_index++] = sign | magnitude;
-        }
-        tile_index += tileLineAdvance;
-      }
+      maximum = toSignMagnitude16(uncompressedData, static_cast<const int16_t*>(block->tileData),
+                                  block->tile_width, w, h);
     }
     else
     {
