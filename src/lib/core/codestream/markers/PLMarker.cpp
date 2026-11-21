@@ -71,6 +71,7 @@ void PLMarker::pushInit(bool isFinal)
 {
   clearMarkers();
   totalBytesWritten_ = 0;
+  segmentBytes_ = 0;
   isFinal_ = isFinal;
 }
 bool PLMarker::pushPL(uint32_t len)
@@ -81,8 +82,7 @@ bool PLMarker::pushPL(uint32_t len)
   uint32_t numBytes = (numbits + 6) / 7;
   assert(numBytes <= 5);
 
-  if(rawMarkers_->empty() || (currMarkerIter_->second->back()->offset() + numBytes >
-                              currMarkerIter_->second->back()->num_elts()))
+  if(rawMarkers_->empty() || segmentBytes_ + numBytes > plWriteBufferLen)
   {
     uint8_t markerId = rawMarkers_->size() & 0xFF;
     if(!findMarker((uint32_t)rawMarkers_->size(), true))
@@ -94,6 +94,7 @@ bool PLMarker::pushPL(uint32_t len)
       return false;
     // account for marker header
     totalBytesWritten_ += 2 + 2 + 1;
+    segmentBytes_ = 1;
   }
 
   if(isFinal_)
@@ -119,6 +120,7 @@ bool PLMarker::pushPL(uint32_t len)
       return false;
   }
   totalBytesWritten_ += numBytes;
+  segmentBytes_ += numBytes;
 
   return true;
 }

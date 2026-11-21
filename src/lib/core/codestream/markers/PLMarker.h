@@ -142,6 +142,8 @@ private:
   ////////////////////////////////
   // compress
   uint32_t totalBytesWritten_;
+  // index byte and packet lengths in the current marker segment
+  uint32_t segmentBytes_ = 0;
   bool isFinal_;
   IStream* stream_;
   ////////////////////////////////
