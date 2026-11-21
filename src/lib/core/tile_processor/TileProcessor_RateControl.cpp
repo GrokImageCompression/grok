@@ -290,7 +290,7 @@ bool TileProcessorCompress::makeLayerFeasible(uint16_t layno, uint16_t thresh, b
             if(cblk->getNumPassesInPreviousLayers() == 0)
             {
               layer->len = cblk->getPass(cumulative_included_passes_in_block - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream();
+              layer->data = cblk->getCompressedBytes();
               layer->distortion =
                   cblk->getPass(cumulative_included_passes_in_block - 1)->distortiondec_;
             }
@@ -298,7 +298,7 @@ bool TileProcessorCompress::makeLayerFeasible(uint16_t layno, uint16_t thresh, b
             {
               layer->len = cblk->getPass(cumulative_included_passes_in_block - 1)->rate_ -
                            cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream() +
+              layer->data = cblk->getCompressedBytes() +
                             cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
               layer->distortion =
                   cblk->getPass(cumulative_included_passes_in_block - 1)->distortiondec_ -
@@ -521,7 +521,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
           if(cblk->getNumPassesInPreviousLayers() == 0)
           {
             layer->len = cblk->getPass(cumulative_included_passes_in_block - 1)->rate_;
-            layer->data = cblk->getPaddedCompressedStream();
+            layer->data = cblk->getCompressedBytes();
             layer->distortion =
                 cblk->getPass(cumulative_included_passes_in_block - 1)->distortiondec_;
           }
@@ -529,7 +529,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
           {
             layer->len = cblk->getPass(cumulative_included_passes_in_block - 1)->rate_ -
                          cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
-            layer->data = cblk->getPaddedCompressedStream() +
+            layer->data = cblk->getCompressedBytes() +
                           cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
             layer->distortion =
                 cblk->getPass(cumulative_included_passes_in_block - 1)->distortiondec_ -
@@ -1113,14 +1113,14 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
           if(cblk->getNumPassesInPreviousLayers() == 0)
           {
             layer->len = cblk->getPass(included_blk_passes - 1)->rate_;
-            layer->data = cblk->getPaddedCompressedStream();
+            layer->data = cblk->getCompressedBytes();
             layer->distortion = cblk->getPass(included_blk_passes - 1)->distortiondec_;
           }
           else
           {
             layer->len = cblk->getPass(included_blk_passes - 1)->rate_ -
                          cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
-            layer->data = cblk->getPaddedCompressedStream() +
+            layer->data = cblk->getCompressedBytes() +
                           cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
             layer->distortion =
                 cblk->getPass(included_blk_passes - 1)->distortiondec_ -
@@ -1339,14 +1339,14 @@ void TileProcessorCompress::makeLayerSimple(uint16_t layno, double thresh, bool 
             if(cblk->getNumPassesInPreviousLayers() == 0)
             {
               layer->len = cblk->getPass(included_blk_passes - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream();
+              layer->data = cblk->getCompressedBytes();
               layer->distortion = cblk->getPass(included_blk_passes - 1)->distortiondec_;
             }
             else
             {
               layer->len = cblk->getPass(included_blk_passes - 1)->rate_ -
                            cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream() +
+              layer->data = cblk->getCompressedBytes() +
                             cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
               layer->distortion =
                   cblk->getPass(included_blk_passes - 1)->distortiondec_ -
@@ -1394,14 +1394,14 @@ void TileProcessorCompress::makeLayerFinal(uint16_t layno)
             if(cblk->getNumPassesInPreviousLayers() == 0)
             {
               layer->len = cblk->getPass(included_blk_passes - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream();
+              layer->data = cblk->getCompressedBytes();
               layer->distortion = cblk->getPass(included_blk_passes - 1)->distortiondec_;
             }
             else
             {
               layer->len = cblk->getPass(included_blk_passes - 1)->rate_ -
                            cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
-              layer->data = cblk->getPaddedCompressedStream() +
+              layer->data = cblk->getCompressedBytes() +
                             cblk->getPass(cblk->getNumPassesInPreviousLayers() - 1)->rate_;
               layer->distortion =
                   cblk->getPass(included_blk_passes - 1)->distortiondec_ -

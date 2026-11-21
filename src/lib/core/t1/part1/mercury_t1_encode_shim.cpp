@@ -88,11 +88,7 @@ extern "C" GRK_MERCURY_SHIM_API int32_t mercury_grok_t1_encode(
   std::memcpy(coder->getUncompressedData(), samples,
               (size_t)num_cols * (size_t)num_rows * sizeof(int32_t));
 
-  // classic sizes the stream like PrecinctCodeblockStorage and pads it for the coder's data[-1]
-  size_t streamBytes =
-      std::max<size_t>((size_t)num_cols * (size_t)num_rows * sizeof(uint32_t),
-                       PrecinctCodeblockStorage::minCompressedStreamBytes) +
-      grk_cblk_enc_compressed_data_pad_left;
+  size_t streamBytes = compressedStreamScratchBytes((uint32_t)num_cols * (uint32_t)num_rows);
   if(stream.size() < streamBytes)
     stream.resize(streamBytes);
   stream[0] = 0;

@@ -143,8 +143,7 @@ PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers, u
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
-    blockStorage_ = new t1::PrecinctCodeblockStorage((uint32_t)num_blocks, numLayers,
-                                                     prec->getNominalBlockSize(), maxPasses);
+    blockStorage_ = new t1::PrecinctCodeblockStorage((uint32_t)num_blocks, numLayers, maxPasses);
     enc_ = static_cast<t1::CodeblockCompress*>(
         ::operator new(sizeof(t1::CodeblockCompress) * num_blocks,
                        std::align_val_t(alignof(t1::CodeblockCompress))));

@@ -18,11 +18,20 @@
 #pragma once
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include "CodeStreamLimits.h"
 #include "CodeblockImpl.h"
 const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
+
+// a small block with many bit planes can emit more than four bytes per sample
+inline size_t compressedStreamScratchBytes(uint32_t numSamples)
+{
+  return std::max<size_t>((size_t)numSamples * sizeof(uint32_t), 4096) +
+         grk_cblk_enc_compressed_data_pad_left;
+}
 
 namespace grk::t1
 {
@@ -99,15 +108,8 @@ struct Layer
 
 struct PrecinctCodeblockStorage
 {
-  // a small block with many bit planes can emit more than nominalBlockSize * 4 bytes
-  static constexpr uint32_t minCompressedStreamBytes = 4096;
-
-  PrecinctCodeblockStorage(uint32_t numBlocks, uint16_t numLayers, uint16_t nominalBlockSize,
-                           uint8_t maxPasses)
-      : numBlocks_(numBlocks), numLayers_(numLayers), maxPasses_(maxPasses),
-        compressedStreamBytes_(std::max((uint32_t)nominalBlockSize * (uint32_t)sizeof(uint32_t),
-                                        minCompressedStreamBytes) +
-                               grk_cblk_enc_compressed_data_pad_left),
+  PrecinctCodeblockStorage(uint32_t numBlocks, uint16_t numLayers, uint8_t maxPasses)
+      : numLayers_(numLayers), maxPasses_(maxPasses),
         passesOffset_((size_t)numBlocks * numLayers * sizeof(Layer)),
         storage_(new uint8_t[passesOffset_ + (size_t)numBlocks * maxPasses * sizeof(CodePass)])
   {
@@ -129,49 +131,51 @@ struct PrecinctCodeblockStorage
     return reinterpret_cast<CodePass*>(storage_.get() + passesOffset_) +
            (size_t)cblkno * maxPasses_;
   }
-  // a plugin that codes the blocks never asks for these
-  uint8_t* getCompressedStream(uint32_t cblkno)
+  // blocks of one precinct are coded on different threads
+  uint8_t* storeCompressedBytes(const uint8_t* bytes, uint32_t length)
   {
-    std::call_once(streamsAllocated_, [this] {
-      streams_.reset(new uint8_t[(size_t)numBlocks_ * compressedStreamBytes_]);
-    });
-    return streams_.get() + (size_t)cblkno * compressedStreamBytes_;
-  }
-  uint32_t getCompressedStreamBytes(void) const
-  {
-    return compressedStreamBytes_;
+    std::lock_guard<std::mutex> lock(streamChunksMutex_);
+    if(streamChunks_.empty() || streamChunkUsed_ + length > streamChunkCapacity_)
+    {
+      streamChunkCapacity_ =
+          std::max<size_t>(length, std::clamp<size_t>(2 * streamChunkCapacity_, 4096, 262144));
+      streamChunks_.emplace_back(new uint8_t[streamChunkCapacity_]);
+      streamChunkUsed_ = 0;
+    }
+    auto dest = streamChunks_.back().get() + streamChunkUsed_;
+    memcpy(dest, bytes, length);
+    streamChunkUsed_ += length;
+    return dest;
   }
 
 private:
-  uint32_t numBlocks_;
   uint16_t numLayers_;
   uint8_t maxPasses_;
-  uint32_t compressedStreamBytes_;
   size_t passesOffset_;
   std::unique_ptr<uint8_t[]> storage_;
-  std::once_flag streamsAllocated_;
-  std::unique_ptr<uint8_t[]> streams_;
+  std::mutex streamChunksMutex_;
+  std::vector<std::unique_ptr<uint8_t[]>> streamChunks_;
+  size_t streamChunkCapacity_ = 0;
+  size_t streamChunkUsed_ = 0;
 };
 
 struct CodeblockCompressImpl : public CodeblockImpl
 {
   explicit CodeblockCompressImpl(uint16_t numLayers)
-      : CodeblockImpl(numLayers), paddedCompressedStream(nullptr), layers(nullptr), passes(nullptr),
-        storage_(nullptr), cblkno_(0), numPassesInPreviousPackets(0), totalPasses_(0)
+      : CodeblockImpl(numLayers), compressedBytes_(nullptr), layers(nullptr), passes(nullptr),
+        storage_(nullptr), numPassesInPreviousPackets(0), totalPasses_(0)
 #ifdef PLUGIN_DEBUG_ENCODE
         ,
         context_stream(nullptr)
 #endif
   {}
   ~CodeblockCompressImpl() = default;
-  // the mq coder is initialized to data[-1], so the output starts two bytes into the slice
   void init(PrecinctCodeblockStorage* storage, uint32_t cblkno)
   {
     CodeblockImpl::init();
     layers = storage->getLayers(cblkno);
     passes = storage->getPasses(cblkno);
     storage_ = storage;
-    cblkno_ = cblkno;
   }
   CodePass* getPass(uint8_t passno)
   {
@@ -201,22 +205,17 @@ struct CodeblockCompressImpl : public CodeblockImpl
   {
     return layers + layno;
   }
-  uint8_t* getPaddedCompressedStream(void)
+  uint8_t* getCompressedBytes(void)
   {
-    if(!paddedCompressedStream && storage_)
-    {
-      auto buf = storage_->getCompressedStream(cblkno_);
-      buf[0] = 0;
-      buf[1] = 0;
-      paddedCompressedStream = buf + grk_cblk_enc_compressed_data_pad_left;
-      compressedStream.set_buf(buf, storage_->getCompressedStreamBytes() -
-                                        grk_cblk_enc_compressed_data_pad_left);
-    }
-    return paddedCompressedStream;
+    return compressedBytes_;
   }
-  void setPaddedCompressedStream(uint8_t* stream)
+  void setCompressedBytes(uint8_t* bytes)
   {
-    paddedCompressedStream = stream;
+    compressedBytes_ = bytes;
+  }
+  void storeCompressedBytes(const uint8_t* bytes, uint32_t length)
+  {
+    compressedBytes_ = storage_->storeCompressedBytes(bytes, length);
   }
   uint8_t getNumPassesInPreviousLayers(void)
   {
@@ -228,11 +227,10 @@ struct CodeblockCompressImpl : public CodeblockImpl
   }
 
 private:
-  uint8_t* paddedCompressedStream;
+  uint8_t* compressedBytes_;
   Layer* layers;
   CodePass* passes;
   PrecinctCodeblockStorage* storage_;
-  uint32_t cblkno_;
   uint8_t numPassesInPreviousPackets;
   uint8_t totalPasses_; /* total number of passes in all layers */
 #ifdef PLUGIN_DEBUG_ENCODE

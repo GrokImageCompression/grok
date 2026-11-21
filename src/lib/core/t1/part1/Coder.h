@@ -38,6 +38,7 @@ public:
 private:
   bool preCompress(CompressBlockExec* block, uint32_t& max);
   BlockCoder* blockCoder_;
+  std::vector<uint8_t> streamScratch_;
 };
 
 } // namespace  grk::t1::part1

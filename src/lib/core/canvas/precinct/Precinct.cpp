@@ -52,10 +52,6 @@ TagTreeU8* Precinct::getImsbTree(void)
 {
   return getImpl()->getIMsbTagTree();
 }
-uint16_t Precinct::getNominalBlockSize(void)
-{
-  return uint16_t((1U << cblk_expn_.x) * (1U << cblk_expn_.y));
-}
 uint32_t Precinct::getNumCblks(void)
 {
   return (uint32_t)getImpl()->cblk_grid_.area();

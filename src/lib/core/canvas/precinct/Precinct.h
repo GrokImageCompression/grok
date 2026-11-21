@@ -79,13 +79,6 @@ struct Precinct : public Rect32_16
   TagTreeU8* getImsbTree(void);
 
   /**
-   * @brief Gets nominal size (area) of code block
-   *
-   * @return uint16_t nominal size
-   */
-  uint16_t getNominalBlockSize(void);
-
-  /**
    * @brief Gets the number of code blocks in the precinct
    *
    * @return uint32_t number of code blocks

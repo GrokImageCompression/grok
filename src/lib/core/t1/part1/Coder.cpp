@@ -25,7 +25,10 @@ namespace grk::t1::part1
 
 Coder::Coder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH, uint32_t cacheStrategy)
     : blockCoder_(new BlockCoder(isCompressor, maxCblkW, maxCblkH, cacheStrategy))
-{}
+{
+  if(isCompressor)
+    streamScratch_.resize(compressedStreamScratchBytes((uint32_t)maxCblkW * maxCblkH));
+}
 Coder::~Coder()
 {
   delete blockCoder_;
@@ -126,7 +129,9 @@ bool Coder::compress(CompressBlockExec* block)
   assert(cblk->width() > 0);
   assert(cblk->height() > 0);
 
-  cblkexp.data = cblk->getPaddedCompressedStream();
+  streamScratch_[0] = 0;
+  streamScratch_[1] = 0;
+  cblkexp.data = streamScratch_.data() + grk_cblk_enc_compressed_data_pad_left;
 #ifdef PLUGIN_DEBUG_ENCODE
   cblkexp.context_stream = cblk->context_stream;
 #endif
@@ -138,6 +143,8 @@ bool Coder::compress(CompressBlockExec* block)
 
   cblk->setNumPasses(cblkexp.numPassesTotal);
   cblk->setNumBps(cblkexp.numbps);
+  cblk->storeCompressedBytes(
+      cblkexp.data, cblkexp.numPassesTotal ? cblkexp.passes[cblkexp.numPassesTotal - 1].rate : 0);
   for(uint8_t i = 0; i < cblk->getNumPasses(); ++i)
   {
     auto passexp = cblkexp.passes + i;

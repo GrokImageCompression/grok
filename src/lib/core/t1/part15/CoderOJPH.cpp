@@ -205,8 +205,7 @@ bool T1OJPH::compress(CompressBlockExec* block)
   cblk->getPass(0)->len_ = (uint16_t)pass_length[0];
   cblk->getPass(0)->rate_ = (uint16_t)pass_length[0];
   cblk->setNumBps(1);
-  assert(cblk->getPaddedCompressedStream());
-  memcpy(cblk->getPaddedCompressedStream(), next_coded->buf, (size_t)pass_length[0]);
+  cblk->storeCompressedBytes(next_coded->buf, pass_length[0]);
 
   return true;
 }

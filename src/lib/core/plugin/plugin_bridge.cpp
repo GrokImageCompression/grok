@@ -176,7 +176,7 @@ void compress_synch_with_plugin(ITileProcessorCompress* tileProcessor, uint16_t 
 
       for(uint32_t p = 0; p < totalRate; ++p)
       {
-        auto stream = cblk->getPaddedCompressedStream();
+        auto stream = cblk->getCompressedBytes();
         if(stream[p] != plugin_cblk->compressed_data[p])
         {
           grklog.warn("data differs at position=%u, component=%u, res=%u, band=%u, "
@@ -189,7 +189,7 @@ void compress_synch_with_plugin(ITileProcessorCompress* tileProcessor, uint16_t 
     }
 
     if(goodData)
-      cblk->setPaddedCompressedStream(plugin_cblk->compressed_data);
+      cblk->setCompressedBytes(plugin_cblk->compressed_data);
     auto blockStream = cblk->getCompressedStream();
     blockStream->set_num_elts((uint32_t)plugin_cblk->compressed_data_length);
     blockStream->set_owns_data(false);

@@ -135,17 +135,21 @@ struct CodeblockCompress : public Codeblock
   {
     return getImpl()->getLayer(layno);
   }
-  uint8_t* getPaddedCompressedStream(void)
+  uint8_t* getCompressedBytes(void)
   {
-    return getImpl()->getPaddedCompressedStream();
+    return getImpl()->getCompressedBytes();
+  }
+  void storeCompressedBytes(const uint8_t* bytes, uint32_t length)
+  {
+    getImpl()->storeCompressedBytes(bytes, length);
   }
   uint8_t maxPasses(void)
   {
     return getImpl()->maxPasses();
   }
-  void setPaddedCompressedStream(uint8_t* stream)
+  void setCompressedBytes(uint8_t* bytes)
   {
-    getImpl()->setPaddedCompressedStream(stream);
+    getImpl()->setCompressedBytes(bytes);
   }
   uint8_t getNumPassesInPreviousLayers(void)
   {
