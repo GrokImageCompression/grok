@@ -36,11 +36,11 @@
 # REFFILE:      Path to the canonical md5refs.txt file
 # OUTFILENAME:  The name of the generated file to check
 # PLATFORM_KEY: (optional) Platform key string (e.g. "ubuntu-dynamic",
-#               "macos-static") used to select a platform-specific
-#               md5refs-<PLATFORM_KEY>.txt that overrides REFFILE when it exists.
-#               This lets each OS ⨉ linkage combination carry its own checksums
-#               for floating-point-sensitive codecs (e.g. 9/7 wavelet) without
-#               requiring separate branches.
+#               "macos-static", "ubuntu-dynamic-debug") used to select a
+#               platform-specific md5refs-<PLATFORM_KEY>.txt that overrides
+#               REFFILE when it exists. This lets each OS ⨉ linkage ⨉ build
+#               type combination carry its own checksums for floating-point
+#               sensitive codecs (e.g. 9/7 wavelet) without separate branches.
 
 # Resolve the active reference file: prefer platform-specific override.
 # Platform-specific files only contain entries that *differ* from canonical;
@@ -77,20 +77,34 @@ if(PLATFORM_KEY)
     endif()
 endif()
 
-# Extract filename without extension
-get_filename_component(OUTFILENAME_NAME_WE ${OUTFILENAME} NAME_WE)
+# Match only this decode's own outputs. The stem keeps everything up to the
+# final extension (issue205.jp2.pgx -> issue205.jp2) and the glob is pinned to
+# the output's own extension, so a multi-component decode (issue205.jp2_0.pgx)
+# is still caught while a sibling test's issue205-tif.jp2.tif or issue205.jp2_r0.tif
+# is not: a broader glob hashed those mid-write and flaked.
+get_filename_component(_outfilename_name ${OUTFILENAME} NAME)
+string(REGEX REPLACE "\\.[^.]*$" "" _outfilename_stem "${_outfilename_name}")
+string(REGEX MATCH "\\.[^.]*$" _outfilename_ext "${_outfilename_name}")
 
-# Search for the files with different extensions
-file(GLOB globfiles
-    "Temporary/${OUTFILENAME_NAME_WE}*.pgx"
-    "Temporary/${OUTFILENAME_NAME_WE}*.pgm"
-    "Temporary/${OUTFILENAME_NAME_WE}*.png"
-    "Temporary/${OUTFILENAME_NAME_WE}*.bmp"
-    "Temporary/${OUTFILENAME_NAME_WE}*.tif")
+file(GLOB globfiles "Temporary/${_outfilename_stem}*${_outfilename_ext}")
+
+# Reject prefix matches such as Bretagne2_ht_lossy.
+string(REGEX REPLACE "([][+.*()^$?|\\])" "\\\\\\1" _stem_re "${_outfilename_stem}")
+string(REGEX REPLACE "([][+.*()^$?|\\])" "\\\\\\1" _ext_re "${_outfilename_ext}")
+set(_ownfiles "")
+foreach(_path ${globfiles})
+  get_filename_component(_name ${_path} NAME)
+  if(_name STREQUAL _outfilename_name)
+    list(APPEND _ownfiles ${_path})
+  elseif(_name MATCHES "^${_stem_re}_[0-9]+${_ext_re}$")
+    list(APPEND _ownfiles ${_path})
+  endif()
+endforeach()
+set(globfiles ${_ownfiles})
 
 # Check if no files are found
 if(NOT globfiles)
-    message(SEND_ERROR "Could not find output PGX/PGM/PNG/BMP/TIF files: ${OUTFILENAME_NAME_WE}")
+    message(SEND_ERROR "Could not find output files: Temporary/${_outfilename_stem}*${_outfilename_ext}")
 endif()
 
 # Read the active reference file content
@@ -104,9 +118,29 @@ endif()
 
 # Loop through all globbed files and compare MD5 hash
 foreach(file_path ${globfiles})
-  # Get MD5 hash and filename
-  file(MD5 ${file_path} file_md5)
   get_filename_component(file_name ${file_path} NAME)
+
+  # PNG and TIFF are deflate-compressed, so their raw bytes depend on the
+  # zlib implementation, and PNM writers stamp the grok version into the
+  # header. Hash a canonical dump of the decoded image instead
+  # (CANON_TOOL may be a command list, e.g. with an emulator prefix).
+  string(TOLOWER "${file_name}" _file_name_lower)
+  if(CANON_TOOL AND _file_name_lower MATCHES "\\.(png|tiff?|p[gpbn]m|pam)$")
+    # md5 tests with overlapping globs run in parallel, so the sidecar name
+    # must be unique to this test invocation
+    get_filename_component(_outfile_full ${OUTFILENAME} NAME)
+    set(_canon_file "${file_path}.${_outfile_full}.canon")
+    execute_process(COMMAND ${CANON_TOOL} ${file_path} ${_canon_file}
+                    RESULT_VARIABLE _canon_rc)
+    if(NOT _canon_rc EQUAL 0)
+        message(SEND_ERROR "image_canon_dump failed for ${file_name}")
+        continue()
+    endif()
+    file(MD5 ${_canon_file} file_md5)
+    file(REMOVE ${_canon_file})
+  else()
+    file(MD5 ${file_path} file_md5)
+  endif()
 
   # Skip files that are blacklisted for this platform.
   # A blacklist entry of "*" means skip ALL md5 checks for this platform.

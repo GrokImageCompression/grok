@@ -18,7 +18,7 @@
 #include "geometry.h"
 #include "BitIO.h"
 #include "TagTree.h"
-#include "SparseCache.h"
+#include "BlockCache.h"
 #include "CodeblockDecompress.h"
 #include "CodeblockCompress.h"
 #include "Precinct.h"
@@ -27,8 +27,9 @@
 namespace grk
 {
 
-Precinct::Precinct(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn)
-    : Rect32_16(bounds), numLayers_(numLayers), cblk_expn_(cblk_expn)
+Precinct::Precinct(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                   Point8 cblk_expn)
+    : Rect32_16(bounds), precinctIndex_(precinctIndex), numLayers_(numLayers), cblk_expn_(cblk_expn)
 
 {}
 Precinct::~Precinct()
@@ -51,14 +52,6 @@ TagTreeU8* Precinct::getImsbTree(void)
 {
   return getImpl()->getIMsbTagTree();
 }
-uint16_t Precinct::getCblkGridwidth(void)
-{
-  return getImpl()->cblk_grid_.width();
-}
-uint16_t Precinct::getCblkGridHeight(void)
-{
-  return impl_->cblk_grid_.height();
-}
 uint16_t Precinct::getNominalBlockSize(void)
 {
   return uint16_t((1U << cblk_expn_.x) * (1U << cblk_expn_.y));
@@ -69,7 +62,7 @@ uint32_t Precinct::getNumCblks(void)
 }
 t1::CodeblockCompress* Precinct::getCompressBlock(uint32_t cblkno)
 {
-  return getImpl()->enc_->get(cblkno);
+  return getImpl()->enc_ + cblkno;
 }
 t1::CodeblockDecompress* Precinct::getDecompressBlock(uint32_t cblkno)
 {
@@ -97,11 +90,11 @@ PrecinctImpl* Precinct::getImpl(void)
 
 PrecinctImpl* PrecinctCompress::makeImpl(void)
 {
-  return new PrecinctImplCompress(this, numLayers_);
+  return new PrecinctImplCompress(this, numLayers_, maxPasses_);
 }
 PrecinctImpl* PrecinctDecompress::makeImpl(void)
 {
-  return new PrecinctImplDecompress(this, numLayers_);
+  return new(arena_) PrecinctImplDecompress(this, numLayers_, arena_);
 }
 
 } // namespace grk

@@ -15,7 +15,10 @@
  *
  */
 
+#include <optional>
+
 #include "TFSingleton.h"
+#include "plugin_accelerate.h"
 
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
@@ -50,14 +53,35 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "CodeblockCompress.h"
-#include "SchedulerExcalibur.h"
+#include "MinHeap.h"
 #include "PacketManager.h"
 #include "mct.h"
 #include "ITileProcessor.h"
 #include "ITileProcessorCompress.h"
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
+#include "Qfactor.h"
 #include "TileProcessorCompress.h"
+#include "XYZTransform.h"
+
+static bool compressionUses32BitPreprocessing(const grk_cparameters* parameters)
+{
+  return parameters->apply_icc || parameters->apply_xyz_transform ||
+         GRK_IS_CINEMA(parameters->rsiz) || grk::pluginAcceleratesCompress(parameters);
+}
+
+grk_data_type grk_compress_get_recommended_data_type(const grk_cparameters* parameters,
+                                                     uint8_t precision, bool is_mct_component)
+{
+  if(!parameters || precision == 0 || parameters->numresolution <= 1 || parameters->irreversible ||
+     parameters->mct == 2 || parameters->mct_data || compressionUses32BitPreprocessing(parameters))
+    return GRK_INT_32;
+  if(grk::Profile::usesIrreversibleWavelet(parameters->rsiz))
+    return GRK_INT_32;
+
+  bool usesStandardMct = parameters->mct == 1 && is_mct_component;
+  return grk_get_data_type(true, precision, usesStandardMct, 1);
+}
 
 namespace grk
 {
@@ -98,6 +122,7 @@ static prog_order prog_order_list[] = {{GRK_CPRL, "CPRL"}, {GRK_LRCP, "LRCP"},
                                        {GRK_RPCL, "RPCL"}, {(GRK_PROG_ORDER)-1, ""}};
 
 CodeStreamCompress::CodeStreamCompress(IStream* stream) : CodeStream(stream), totalTileParts_(0) {}
+CodeStreamCompress::~CodeStreamCompress() = default;
 
 char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
 {
@@ -158,13 +183,73 @@ bool CodeStreamCompress::start(void)
   if(!init_header_writing())
     return false;
 
+  headerStartPosition_ = stream_->tell();
   /* write header */
-  return exec(procedureList_);
+  if(!exec(procedureList_))
+    return false;
+  headerEndPosition_ = stream_->tell();
+
+  return true;
 }
+bool CodeStreamCompress::prepareNextFrame(uint16_t rateControlSlopeHint)
+{
+  if(!stream_->seek(headerEndPosition_))
+    return false;
+  slopeThreshold_.store(0, std::memory_order_relaxed);
+  cp_.codingParams_.enc_.rateControlSlopeHint_ = rateControlSlopeHint;
+  if(cp_.tlmMarkers_)
+    cp_.tlmMarkers_->clearTilePartLengths();
+
+  return true;
+}
+// round-to-nearest right shift of unsigned int32 samples to targetPrec
+static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
+{
+  uint32_t shift = (uint32_t)(comp->prec - targetPrec);
+  int32_t half = 1 << (shift - 1);
+  int32_t maxVal = (1 << targetPrec) - 1;
+  auto data = (int32_t*)comp->data;
+  for(uint32_t y = 0; y < comp->h; ++y)
+  {
+    auto row = data + (uint64_t)y * comp->stride;
+    for(uint32_t x = 0; x < comp->w; ++x)
+      row[x] = std::min((row[x] + half) >> shift, maxVal);
+  }
+  comp->prec = targetPrec;
+}
+
+static bool widen16BitComponents(GrkImage* image)
+{
+  for(uint16_t componentIndex = 0; componentIndex < image->numcomps; ++componentIndex)
+  {
+    auto component = image->comps + componentIndex;
+    if(component->data_type != GRK_INT_16)
+      continue;
+
+    auto source = static_cast<const int16_t*>(component->data);
+    uint32_t sourceStride = component->stride;
+    component->data_type = GRK_INT_32;
+    if(!source)
+      continue;
+    if(!GrkImage::allocData(component))
+      return false;
+
+    auto destination = static_cast<int32_t*>(component->data);
+    for(uint32_t row = 0; row < component->h; ++row)
+      for(uint32_t column = 0; column < component->w; ++column)
+        destination[(size_t)row * component->stride + column] =
+            source[(size_t)row * sourceStride + column];
+  }
+  return true;
+}
+
 bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
   if(!parameters || !image)
     return false;
+  bool failOnRateControlOvershoot =
+      parameters->strict_compression_ratios || GRK_IS_CINEMA(parameters->rsiz) ||
+      GRK_IS_BROADCAST(parameters->rsiz) || GRK_IS_IMF(parameters->rsiz);
 
   bool isHT = (parameters->cblk_sty & 0X7F) == GRK_CBLKSTY_HT_ONLY;
 
@@ -196,25 +281,62 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       grklog.error("Invalid component precision of 0 found while setting up JP2 compressor");
       return false;
     }
+    bool valid16BitInput = comp->data_type == GRK_INT_16 && comp->prec <= (comp->sgnd ? 16 : 15);
+    if(comp->data_type != GRK_INT_32 && !valid16BitInput)
+    {
+      grklog.error(
+          "Compressor cannot use component data type %d at precision %u with signedness %d",
+          (int)comp->data_type, comp->prec, comp->sgnd);
+      return false;
+    }
   }
+
+  headerImage_ = new GrkImage();
+  image->copyHeaderTo(headerImage_);
+  image = headerImage_;
+
+  bool requires32BitInput = compressionUses32BitPreprocessing(parameters);
+  if(requires32BitInput && !widen16BitComponents(image))
+    return false;
+
   if(parameters->apply_icc)
     image->applyICC<int32_t>();
 
-  // create private sanitized copy of image
-  headerImage_ = new GrkImage();
-  image->copyHeaderTo(headerImage_);
-  if(image->comps)
+  if(parameters->apply_xyz_transform)
   {
-    for(uint16_t compno = 0; compno < image->numcomps; compno++)
+    // cinema profiles require 12-bit samples, so the transform emits 12 bits
+    // whether the source is 8 or 16
+    uint8_t xyzTargetPrec = xyzTargetPrecision(parameters->rsiz);
+    // skip when the caller (e.g. the CLI) already transformed this image
+    bool transformed = image->color_space == GRK_CLRSPC_CUSTOM_CIE ||
+                       deferXyzToMercury(parameters, image) ||
+                       applyXYZTransform(image, xyzTargetPrec);
+    if(!transformed)
     {
-      if(image->comps[compno].data)
+      grklog.error("Failed to apply XYZ colour transform");
+      return false;
+    }
+  }
+
+  // reduce unsigned sources deeper than 12 bits (e.g. 16-bit already in
+  // X'Y'Z') to the 12 bits cinema profiles require, instead of failing the
+  // profile compliance check below
+  if(GRK_IS_CINEMA(parameters->rsiz))
+  {
+    for(uint16_t i = 0; i < image->numcomps; ++i)
+    {
+      auto comp = image->comps + i;
+      if(comp->prec > 12 && !comp->sgnd && comp->data)
       {
-        headerImage_->comps[compno].data = image->comps[compno].data;
-        headerImage_->comps[compno].owns_data = false;
-        headerImage_->comps[compno].stride = image->comps[compno].stride;
+        reduceComponentPrecision(comp, 12);
+        grklog.info("Reduced component %u to 12-bit for cinema profile", i);
       }
     }
   }
+
+  // the plugin gets the image after the colour transform and precision cut above
+  if(pluginAcceleratesCompress(parameters))
+    pluginParameters_ = std::make_unique<grk_cparameters>(*parameters);
 
   if(isHT)
   {
@@ -282,55 +404,62 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   }
 
   /* Manage profiles and applications and set RSIZ */
-  /* set cinema parameters if required */
+  /* An explicitly requested profile that cannot be honoured is a hard error:
+   * silently downgrading to GRK_PROFILE_NONE produced code streams that pass
+   * here but fail downstream conformance checks. */
   if(isHT)
     parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
   if(GRK_IS_CINEMA(parameters->rsiz))
   {
     if((parameters->rsiz == GRK_PROFILE_CINEMA_S2K) || (parameters->rsiz == GRK_PROFILE_CINEMA_S4K))
     {
-      grklog.warn("JPEG 2000 Scalable Digital Cinema profiles not supported");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("JPEG 2000 Scalable Digital Cinema profiles not supported");
+      return false;
     }
-    else
+    if(!Profile::isCinemaCompliant(image, parameters->rsiz))
     {
-      if(Profile::isCinemaCompliant(image, parameters->rsiz))
-        Profile::setCinemaParams(parameters, image);
-      else
-        parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("Input is not compliant with requested cinema profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
     }
+    Profile::setCinemaParams(parameters, image);
   }
   else if(GRK_IS_STORAGE(parameters->rsiz))
   {
-    grklog.warn("JPEG 2000 Long Term Storage profile not supported");
-    parameters->rsiz = GRK_PROFILE_NONE;
+    grklog.error("JPEG 2000 Long Term Storage profile not supported");
+    return false;
   }
   else if(GRK_IS_BROADCAST(parameters->rsiz))
   {
     Profile::setBroadcastParams(parameters);
     if(!Profile::isBroadcastCompliant(parameters, image))
-      parameters->rsiz = GRK_PROFILE_NONE;
+    {
+      grklog.error("Parameters are not compliant with requested broadcast profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
+    }
   }
   else if(GRK_IS_IMF(parameters->rsiz))
   {
     Profile::setImfParams(parameters, image);
     if(!Profile::isImfCompliant(parameters, image))
-      parameters->rsiz = GRK_PROFILE_NONE;
+    {
+      grklog.error("Parameters are not compliant with requested IMF profile RSIZ %#x",
+                   parameters->rsiz);
+      return false;
+    }
   }
   else if(GRK_IS_PART2(parameters->rsiz))
   {
     if(parameters->rsiz == ((GRK_PROFILE_PART2) | (GRK_EXTENSION_NONE)))
     {
-      grklog.warn("JPEG 2000 Part-2 profile defined\n"
-                  "but no Part-2 extension enabled.\n"
-                  "Profile set to NONE.");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("JPEG 2000 Part-2 profile defined but no Part-2 extension enabled");
+      return false;
     }
-    else if(parameters->rsiz != ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT)))
+    if(parameters->rsiz != ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT)))
     {
-      grklog.warn("Unsupported Part-2 extension enabled\n"
-                  "Profile set to NONE.");
-      parameters->rsiz = GRK_PROFILE_NONE;
+      grklog.error("Unsupported Part-2 extension enabled");
+      return false;
     }
   }
 
@@ -355,6 +484,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   cp_.codingParams_.enc_.writePlt_ = parameters->write_plt;
   cp_.codingParams_.enc_.writeTlm_ = parameters->write_tlm;
   cp_.codingParams_.enc_.rateControlAlgorithm_ = parameters->rate_control_algorithm;
+  cp_.codingParams_.enc_.progressiveRateControl_ = parameters->progressive_rate_control;
+  cp_.codingParams_.enc_.rateControlSlopeHint_ = parameters->rate_control_slope_hint;
+  cp_.codingParams_.enc_.rateControlTolerance_ = parameters->rate_control_tolerance;
+  cp_.codingParams_.enc_.failOnRateControlOvershoot_ = failOnRateControlOvershoot;
 
   /* tiles */
   cp_.t_width_ = parameters->t_width;
@@ -390,7 +523,11 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   else
   {
     /* Create default comment for code stream */
-    auto comment = std::string("Created by Grok version ") + grk_version();
+    // fixed width keeps the main header length the same across versions
+    constexpr size_t versionFieldWidth = 16;
+    auto version = std::string(grk_version());
+    version.resize(std::max(version.size(), versionFieldWidth), ' ');
+    auto comment = std::string("Created by Grok version ") + version;
     auto comment_len = comment.size();
     cp_.comment_[0] = new char[comment_len];
     memcpy(cp_.comment_[0], comment.c_str(), comment_len);
@@ -441,6 +578,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       parameters->numresolution = maxRes;
     }
   }
+  // the plugin copied the parameters before the profiles and the clamp above set this
+  if(pluginParameters_)
+    pluginParameters_->numresolution = parameters->numresolution;
   if(parameters->enable_tile_part_generation)
   {
     cp_.codingParams_.enc_.newTilePartProgressionDivider_ =
@@ -453,16 +593,70 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     grklog.error("Number of guard bits %u is greater than 7", numgbits);
     return false;
   }
+  if(parameters->quant_step_shift > maxQuantStepShift)
+  {
+    grklog.error("Quantization step shift %u is greater than %u", parameters->quant_step_shift,
+                 maxQuantStepShift);
+    return false;
+  }
+  double quantStepScale = (double)(1U << parameters->quant_step_shift);
+  if(parameters->quant_step_shift && (!parameters->irreversible || parameters->qfactor))
+  {
+    grklog.warn("Quantization step shift applies only to irreversible compression without a "
+                "quality factor, ignoring it");
+    quantStepScale = 1.0;
+  }
+  // a zero hint means the previous frame kept every pass
+  if(!parameters->rate_control_slope_hint)
+    quantStepScale = 1.0;
+  if(parameters->rate_control_tolerance < 0.0 || parameters->rate_control_tolerance >= 0.5)
+  {
+    grklog.error("Rate control tolerance %f must lie in [0, 0.5)",
+                 parameters->rate_control_tolerance);
+    return false;
+  }
+  if(parameters->qfactor)
+  {
+    if(parameters->qfactor > maxQfactor)
+    {
+      grklog.error("Quality factor %u is greater than %u", parameters->qfactor, maxQfactor);
+      return false;
+    }
+    if(!parameters->irreversible)
+    {
+      grklog.error("Quality factor requires irreversible compression");
+      return false;
+    }
+    if(image->numcomps != 1 && image->numcomps != 3)
+    {
+      grklog.error("Quality factor requires a single component or a colour image, not %u "
+                   "components",
+                   image->numcomps);
+      return false;
+    }
+  }
   for(uint16_t tileno = 0; tileno < (uint16_t)(cp_.t_grid_width_ * cp_.t_grid_height_); tileno++)
   {
     auto tcp = cp_.tcps_.get(tileno);
     tcp->tccps_ = new TileComponentCodingParams[image->numcomps];
 
     tcp->setIsHT(isHT, !parameters->irreversible, numgbits);
+    if(!isHT)
+      tcp->qcd_->setStepScale(quantStepScale);
     tcp->qcd_->generate((uint8_t)(parameters->numresolution - 1), image->comps[0].prec,
                         parameters->mct > 0, image->comps[0].sgnd);
     for(uint16_t i = 0; i < image->numcomps; i++)
       tcp->qcd_->pull((tcp->tccps_ + i)->stepsizes_);
+    if(parameters->qfactor)
+    {
+      auto subsampling = chromaSubsampling(image);
+      for(uint16_t i = 0; i < image->numcomps; i++)
+        generateQfactorStepsizes(parameters->qfactor, (uint8_t)(parameters->numresolution - 1),
+                                 image->comps[i].prec, i, subsampling,
+                                 (tcp->tccps_ + i)->stepsizes_);
+      // CAP and any other marker derived from the quantizer must see the same steps
+      tcp->qcd_->push(tcp->tccps_->stepsizes_);
+    }
 
     tcp->numLayers_ = parameters->numlayers;
     for(uint16_t j = 0; j < tcp->numLayers_; j++)
@@ -484,14 +678,14 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
         {
           auto tcp_poc = tcp->progressionOrderChange_ + numTileProgressions;
 
-          tcp_poc->res_s = parameters->progression[numTileProgressions].res_s;
-          tcp_poc->comp_s = parameters->progression[numTileProgressions].comp_s;
-          tcp_poc->lay_e = parameters->progression[numTileProgressions].lay_e;
-          tcp_poc->res_e = parameters->progression[numTileProgressions].res_e;
-          tcp_poc->comp_e = parameters->progression[numTileProgressions].comp_e;
+          tcp_poc->res_s = parameters->progression[i].res_s;
+          tcp_poc->comp_s = parameters->progression[i].comp_s;
+          tcp_poc->lay_e = parameters->progression[i].lay_e;
+          tcp_poc->res_e = parameters->progression[i].res_e;
+          tcp_poc->comp_e = parameters->progression[i].comp_e;
           tcp_poc->specified_compression_poc_prog =
-              parameters->progression[numTileProgressions].specified_compression_poc_prog;
-          tcp_poc->tileno = parameters->progression[numTileProgressions].tileno;
+              parameters->progression[i].specified_compression_poc_prog;
+          tcp_poc->tileno = parameters->progression[i].tileno;
           numTileProgressions++;
         }
       }
@@ -501,16 +695,18 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
         return false;
       }
       tcp->numpocs_ = numTileProgressions - 1;
+      tcp->hasPoc_ = true;
     }
     else
     {
       tcp->numpocs_ = 0;
+      tcp->hasPoc_ = false;
     }
     if(parameters->mct_data)
     {
       uint64_t lMctSize = (uint64_t)image->numcomps * image->numcomps * sizeof(float);
       auto lTmpBuf = (float*)grk_malloc(lMctSize);
-      auto dc_shift = (int32_t*)((uint8_t*)parameters->mct_data + lMctSize);
+      const auto dc_shift = (const int32_t*)((const uint8_t*)parameters->mct_data + lMctSize);
       if(!lTmpBuf)
       {
         grklog.error("Not enough memory to allocate temp buffer");
@@ -590,6 +786,9 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
           }
         }
       }
+      // the plugin copied the parameters before mct could be cleared here
+      if(pluginParameters_)
+        pluginParameters_->mct = tcp->mct_;
       for(uint16_t i = 0; i < image->numcomps; i++)
       {
         auto tccp = tcp->tccps_ + i;
@@ -665,32 +864,72 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       }
     }
   }
+  if(!selectMercuryEncode(parameters))
+    return false;
   grk_free(parameters->mct_data);
   parameters->mct_data = nullptr;
+
+  // num_threads == 1 requests a single-threaded codec: give it its own inline
+  // (0-worker) executor so concurrent compresses run on their own thread
+  // instead of contending on (or resizing) the global singleton.  Also used
+  // when the global pool itself is single-threaded, mirroring decompress.
+  // guard on null: never replace an executor a compress may already be running on
+  if(!localExecutor_ && (parameters->num_threads || TFSingleton::isSingleThreaded()))
+  {
+    if(parameters->num_threads)
+      localNumThreads_ = parameters->num_threads;
+    localExecutor_ = TFSingleton::makeLocalExecutor(localNumThreads_);
+  }
 
   return true;
 }
 
-void CodeStreamCompress::handleTileProcessor(
-    ITileProcessorCompress* proc, MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
-    std::atomic<bool>& success)
-{
-  std::unique_lock<std::mutex> lk(heapMutex_);
-  auto seq = heap.pop(proc);
-  for(const auto& s : seq)
-  {
-    // printf("Write tile %d\n", s->getIndex());
-    if(success)
-    {
-      if(!writeTileParts(s))
-        success = false;
-    }
-    delete s;
-  }
-}
-
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this compress is in flight.
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // compressing (single-threaded mode only; no-op when localExecutor_ is null).
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+
+  // with a plugin on the device has done shift, colour transform, wavelet and T1
+  struct PluginTileRelease
+  {
+    grk_plugin_tile* tile = nullptr;
+    void* raw = nullptr;
+    ~PluginTileRelease()
+    {
+      pluginReleaseEncodedTile(tile, raw);
+    }
+  } pluginTile;
+  // the plugin's file and batch encodes pass in the tile they coded
+  if(tile)
+    pluginCountAcceleratedFrame();
+  if(!tile && pluginParameters_ && pluginAcceleratesCompress(pluginParameters_.get()))
+  {
+    int32_t rc;
+    {
+      std::lock_guard<std::mutex> guard(pluginFrameMutex());
+      rc = pluginEncodeImage(pluginParameters_.get(), headerImage_, &pluginTile.tile,
+                             &pluginTile.raw);
+    }
+    if(rc < 0)
+    {
+      grklog.error("The accelerator plugin failed to compress the image");
+      return 0;
+    }
+    if(rc == 0)
+    {
+      tile = pluginTile.tile;
+      pluginCountAcceleratedFrame();
+    }
+  }
+
+  if(!tile && mercuryEncode_)
+    return compressWithMercury();
+
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)
   {
@@ -704,88 +943,85 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
   if(numTiles == 1)
   {
     // Single-tile fast path: no DAG needed
-    auto tileProcessor = new TileProcessorCompress(0, cp_.tcps_.get(0), this, stream_);
+    if(!singleTileProcessor_)
+      singleTileProcessor_ =
+          std::make_unique<TileProcessorCompress>(0, cp_.tcps_.get(0), this, stream_);
+    auto tileProcessor = singleTileProcessor_.get();
     tileProcessor->setCurrentPluginTile(tile);
+    tileProcessor->resetForNextFrame();
     if(!tileProcessor->preCompressTile(0) || !tileProcessor->doCompress())
     {
-      delete tileProcessor;
       success = false;
     }
     else
     {
       if(!writeTileParts(tileProcessor))
         success = false;
-      delete tileProcessor;
+      recordSlopeThreshold(tileProcessor->getSlopeThreshold());
     }
     if(success)
       success = end();
+    if(!success)
+      singleTileProcessor_.reset();
     return success ? stream_->tell() : 0;
   }
 
-  // Multi-tile path: use DAG-based scheduling with no nested run().wait()
-  std::vector<TileProcessorCompress*> tileProcessors(numTiles);
-
-  // Create all tile processors
-  for(uint16_t i = 0; i < numTiles; ++i)
-    tileProcessors[i] = new TileProcessorCompress(i, cp_.tcps_.get(i), this, stream_);
-
-  // Phase 1: preCompress all tiles (parallel via TFSingleton)
-  {
-    tf::Taskflow preFlow;
-    for(uint16_t j = 0; j < numTiles; ++j)
+  MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker> completedTiles;
+  std::mutex completedTilesMutex;
+  auto finishTiles = [&](TileProcessorCompress* tileProcessor) {
+    std::lock_guard<std::mutex> lock(completedTilesMutex);
+    for(auto* completedTile : completedTiles.pop(tileProcessor))
     {
-      preFlow.emplace([&tileProcessors, j, &success] {
-        if(success)
+      if(success && !writeTileParts(completedTile))
+        success = false;
+      recordSlopeThreshold(completedTile->getSlopeThreshold());
+      delete completedTile;
+    }
+  };
+
+  tf::Taskflow tileFlow;
+  for(uint16_t tileIndex = 0; tileIndex < numTiles; ++tileIndex)
+  {
+    tileFlow.emplace([&, tileIndex] {
+      auto tileProcessor =
+          new TileProcessorCompress(tileIndex, cp_.tcps_.get(tileIndex), this, stream_);
+      if(success)
+      {
+        if(!tileProcessor->preCompressTile(TFSingleton::workerId()))
+          success = false;
+        else
         {
-          if(!tileProcessors[j]->preCompressTile(0))
+          tileProcessor->buildCompressDAG();
+          tileProcessor->runCompressionTasks();
+          if(!tileProcessor->compressDAGSuccess())
             success = false;
         }
-      });
-    }
-    TFSingleton::get().run(preFlow).wait();
-  }
-  if(!success)
-    goto cleanup;
-
-  // Phase 2: Build compress DAGs and submit them all
-  {
-    std::vector<tf::Future<void>> futures;
-    for(uint16_t j = 0; j < numTiles; ++j)
-    {
-      tileProcessors[j]->buildCompressDAG();
-      futures.push_back(tileProcessors[j]->submitCompressDAG());
-    }
-    for(auto& f : futures)
-      f.wait();
-    for(uint16_t j = 0; j < numTiles; ++j)
-    {
-      if(!tileProcessors[j]->compressDAGSuccess())
-      {
-        success = false;
-        break;
       }
-    }
+      finishTiles(tileProcessor);
+    });
   }
-  if(!success)
-    goto cleanup;
+  TFSingleton::get().run(tileFlow).wait();
+  finishTiles(nullptr);
 
-  // Phase 3: Write tile parts sequentially in tile order
-  for(uint16_t j = 0; j < numTiles; ++j)
-  {
-    if(!writeTileParts(tileProcessors[j]))
-    {
-      success = false;
-      break;
-    }
-  }
-
-cleanup:
-  for(auto tp : tileProcessors)
-    delete tp;
   if(success)
     success = end();
 
   return success ? stream_->tell() : 0;
+}
+uint16_t CodeStreamCompress::getSlopeThreshold(void) const
+{
+  return slopeThreshold_.load(std::memory_order_relaxed);
+}
+void CodeStreamCompress::recordSlopeThreshold(uint16_t tileThreshold)
+{
+  if(tileThreshold == 0)
+    return;
+  uint16_t current = slopeThreshold_.load(std::memory_order_relaxed);
+  while(current == 0 || tileThreshold < current)
+  {
+    if(slopeThreshold_.compare_exchange_weak(current, tileThreshold, std::memory_order_relaxed))
+      break;
+  }
 }
 bool CodeStreamCompress::end(void)
 {
@@ -883,7 +1119,7 @@ bool CodeStreamCompress::init_header_writing(void)
   if(cp_.codingParams_.enc_.writeTlm_)
     procedureList_.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
   if(cp_.tcps_.get(0)->hasPoc())
-    procedureList_.push_back(std::bind(&CodeStreamCompress::writePoc, this));
+    procedureList_.push_back([this] { return writePoc(0); });
 
   procedureList_.push_back(std::bind(&CodeStreamCompress::write_regions, this));
   procedureList_.push_back(std::bind(&CodeStreamCompress::write_com, this));
@@ -911,7 +1147,7 @@ bool CodeStreamCompress::writeTilePart(ITileProcessorCompress* tileProcessor)
   // 2. write POC marker to first tile part
   if(tileProcessor->canWritePocMarker())
   {
-    if(!writePoc())
+    if(!writePoc(tileProcessor->getIndex()))
       return false;
     auto tcp = cp_.tcps_.get(tileProcessor->getIndex());
     tilePartBytesWritten += getPocSize(headerImage_->numcomps, tcp->getNumProgressions());
@@ -959,7 +1195,7 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
   uint32_t prog_iter_num;
   auto tcp = cp_.tcps_.get(tileProcessor->getIndex());
   // write tile parts for first progression order
-  uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->getIndex());
+  uint64_t numTileParts = cp_.numTilePartsForProgression(0, tileProcessor->getIndex());
   if(numTileParts > maxTilePartsPerTileJ2K)
   {
     grklog.error("Number of tile parts %u for first POC exceeds maximum number of tile parts %u",
@@ -976,7 +1212,7 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
   for(prog_iter_num = 1; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     tileProcessor->setProgIterNum(prog_iter_num);
-    numTileParts = getNumTilePartsForProgression(prog_iter_num, tileProcessor->getIndex());
+    numTileParts = cp_.numTilePartsForProgression(prog_iter_num, tileProcessor->getIndex());
     if(numTileParts > maxTilePartsPerTileJ2K)
     {
       grklog.error("Number of tile parts %u exceeds maximum number of "
@@ -995,6 +1231,12 @@ bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
 
   return true;
 }
+// an empty last layer leaves the image blank
+static const char* unmetRatioAction(bool lastLayer)
+{
+  return lastLayer ? "Ignoring the ratio for this layer" : "Writing an empty layer";
+}
+
 bool CodeStreamCompress::updateRates(void)
 {
   auto cp = &cp_;
@@ -1007,6 +1249,8 @@ bool CodeStreamCompress::updateRates(void)
   uint32_t bits_empty = 8 * (uint32_t)image->comps->dx * image->comps->dy;
   uint32_t size_pixel = (uint32_t)image->numcomps * image->comps->prec;
   auto headerSize = (double)stream_->tell();
+  // a non-positive target is treated as no rate constraint
+  bool enforceRate = cp->codingParams_.enc_.allocationByRateDistortion_;
 
   for(uint16_t tile_y = 0; tile_y < cp->t_grid_height_; ++tile_y)
   {
@@ -1014,9 +1258,8 @@ bool CodeStreamCompress::updateRates(void)
     {
       uint16_t tileId = (uint16_t)(tile_y * cp->t_grid_width_ + tile_x);
       auto tcp = cp->tcps_.get(tileId);
-      double stride = 0;
-      if(cp->codingParams_.enc_.enableTilePartGeneration_)
-        stride = (tcp->signalledNumTileParts_ - 1) * 14;
+      // every tile part costs SOT (12) + SOD (2) bytes, the first one included
+      double stride = (double)tcp->signalledNumTileParts_ * 14;
       double offset = stride / tcp->numLayers_;
       auto tileBounds = cp->getTileBounds(image->getBounds(), tile_x, tile_y);
       uint64_t numTilePixels = tileBounds.area();
@@ -1025,9 +1268,28 @@ bool CodeStreamCompress::updateRates(void)
         double* rates = tcp->rates_ + k;
         // convert to target bytes for layer
         if(*rates > 0.0f)
-          *rates = ((((double)size_pixel * (double)numTilePixels)) /
-                    ((double)*rates * (double)bits_empty)) -
-                   offset;
+        {
+          double rawBudget =
+              ((double)size_pixel * (double)numTilePixels) / ((double)*rates * (double)bits_empty);
+          double byteTarget = rawBudget - offset;
+          if(enforceRate && byteTarget <= 0.0)
+          {
+            if(cp->codingParams_.enc_.failOnRateControlOvershoot_)
+            {
+              grklog.error("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                           "budget does not cover the %.0f byte tile-part overhead",
+                           k, tileId, rawBudget, offset);
+              return false;
+            }
+            bool lastLayer = k + 1 == tcp->numLayers_;
+            grklog.warn("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                        "budget does not cover the %.0f byte tile-part overhead. %s",
+                        k, tileId, rawBudget, offset, unmetRatioAction(lastLayer));
+            tcp->writeEmptyLayer_[k] = !lastLayer;
+            byteTarget = 0.0;
+          }
+          *rates = byteTarget;
+        }
       }
     }
   }
@@ -1042,14 +1304,36 @@ bool CodeStreamCompress::updateRates(void)
       uint64_t numTilePixels = tileBounds.area();
       // correction for header size is distributed amongst all tiles
       double sot_adjust = ((double)numTilePixels * (double)headerSize) / ((double)width * height);
-      for(uint16_t k = 0; k < (uint16_t)(tcp->numLayers_ - 1); ++k)
+      for(uint16_t k = 0; k < tcp->numLayers_; ++k)
       {
-        if(*rates > 0.0)
-          *rates -= sot_adjust;
-        ++rates;
+        double overhead = sot_adjust;
+        if(k + 1 == tcp->numLayers_)
+          overhead += 2.0;
+        if(rates[k] > 0.0)
+        {
+          if(enforceRate && rates[k] <= overhead)
+          {
+            if(cp->codingParams_.enc_.failOnRateControlOvershoot_)
+            {
+              grklog.error(
+                  "Layer %u of tile %u cannot meet its compression ratio: its %.0f byte budget "
+                  "does not cover its %.0f byte share of the %.0f byte file header. The header "
+                  "counts toward the ratio, and for a JP2 file it includes the ICC profile",
+                  k, tileId, rates[k], overhead, headerSize);
+              return false;
+            }
+            bool lastLayer = k + 1 == tcp->numLayers_;
+            grklog.warn("Layer %u of tile %u cannot meet its compression ratio: its %.0f byte "
+                        "budget does not cover its %.0f byte share of the %.0f byte file "
+                        "header. %s",
+                        k, tileId, rates[k], overhead, headerSize, unmetRatioAction(lastLayer));
+            tcp->writeEmptyLayer_[k] = !lastLayer;
+            rates[k] = 0.0;
+            continue;
+          }
+          rates[k] -= overhead;
+        }
       }
-      if(*rates > 0.0)
-        *rates -= (sot_adjust + 2.0);
     }
   }
 
@@ -1258,9 +1542,9 @@ bool CodeStreamCompress::compare_qcc(uint16_t first_comp_no, uint16_t second_com
 {
   return compare_SQcd_SQcc(first_comp_no, second_comp_no);
 }
-bool CodeStreamCompress::writePoc()
+bool CodeStreamCompress::writePoc(uint16_t tileIndex)
 {
-  auto tcp = cp_.tcps_.get(0);
+  auto tcp = cp_.tcps_.get(tileIndex);
   auto tccp = tcp->tccps_;
   auto image = getHeaderImage();
   uint16_t numComps = image->numcomps;
@@ -1312,7 +1596,9 @@ bool CodeStreamCompress::writePoc()
         return false;
     }
     /* Ppoc_i */
-    if(!stream_->write8u((uint8_t)current_prog->progression))
+    // rate allocation parks the COD order in progression until the final T2 pass, so take the
+    // order the caller asked for
+    if(!stream_->write8u((uint8_t)current_prog->specified_compression_poc_prog))
       return false;
 
     /* change the value of the max layer according to the actual number of layers in the file,
@@ -1475,7 +1761,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
     }
   }
 
-  tmcc = ((uint32_t)((!p_mcc_record->is_irreversible_) & 1U)) << 16;
+  tmcc = (p_mcc_record->is_irreversible_ ? 0U : 1U) << 16;
 
   if(p_mcc_record->decorrelation_array_)
     tmcc |= p_mcc_record->decorrelation_array_->index_;
@@ -1792,7 +2078,7 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* tcp, GrkImage* imag
   grk_simple_mcc_decorrelation_data* mcc_data;
   uint32_t mct_size, nb_elem;
   float *data, *current_data;
-  TileComponentCodingParams* tccp;
+  const TileComponentCodingParams* tccp;
 
   assert(tcp != nullptr);
 
@@ -1933,65 +2219,6 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* tcp, GrkImage* imag
 
   return true;
 }
-uint8_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno)
-{
-  uint64_t numTileParts = 1;
-  auto cp = &cp_;
-  auto tcp = cp->tcps_.get(tileno);
-  assert(tcp != nullptr);
-
-  /*  preconditions */
-  assert(tileno < (cp->t_grid_width_ * cp->t_grid_height_));
-  assert(prog_iter_num < tcp->getNumProgressions());
-
-  auto current_poc = &(tcp->progressionOrderChange_[prog_iter_num]);
-  assert(current_poc != 0);
-
-  /* get the progression order as a character string */
-  auto prog = convertProgressionOrder(tcp->prg_);
-  assert(strlen(prog) > 0);
-
-  if(cp->codingParams_.enc_.enableTilePartGeneration_)
-  {
-    for(uint8_t i = 0; i < 4; ++i)
-    {
-      switch(prog[i])
-      {
-        /* component wise */
-        case 'C':
-          numTileParts *= current_poc->tp_comp_e;
-          break;
-          /* resolution wise */
-        case 'R':
-          numTileParts *= current_poc->tp_res_e;
-          break;
-          /* precinct wise */
-        case 'P':
-          numTileParts *= current_poc->tp_prec_e;
-          break;
-          /* layer wise */
-        case 'L':
-          numTileParts *= current_poc->tp_lay_e;
-          break;
-      }
-      // we start a new tile part when progression matches specified tile part
-      // divider
-      if(cp->codingParams_.enc_.newTilePartProgressionDivider_ == prog[i])
-      {
-        assert(prog[i] != 'P');
-        cp->codingParams_.enc_.newTilePartProgressionPosition_ = i;
-        break;
-      }
-    }
-  }
-  else
-  {
-    numTileParts = 1;
-  }
-  assert(numTileParts < maxTilePartsPerTileJ2K);
-
-  return (uint8_t)numTileParts;
-}
 bool CodeStreamCompress::getNumTileParts(uint32_t* numTilePartsForAllTiles, GrkImage* image)
 {
   assert(numTilePartsForAllTiles != nullptr);
@@ -2006,7 +2233,7 @@ bool CodeStreamCompress::getNumTileParts(uint32_t* numTilePartsForAllTiles, GrkI
     PacketManager::updateCompressParams(image, &cp_, tcp, tileno);
     for(uint32_t prog_iter_num = 0; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
     {
-      auto numTilePartsForProgression = getNumTilePartsForProgression(prog_iter_num, tileno);
+      auto numTilePartsForProgression = cp_.numTilePartsForProgression(prog_iter_num, tileno);
       uint16_t newTotalTilePartsForTile =
           uint16_t(numTilePartsForProgression + totalTilePartsForTile);
       if(newTotalTilePartsForTile > maxTilePartsPerTileJ2K)

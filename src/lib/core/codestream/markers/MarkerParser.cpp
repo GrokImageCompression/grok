@@ -181,7 +181,7 @@ std::pair<bool, uint16_t> MarkerParser::processMarker(void)
     grklog.error("Zero-size marker in header.");
     return {false, markerBodyLength};
   }
-  auto processor = currentProcessor();
+  const auto processor = currentProcessor();
   if(!processor)
   {
     grklog.error("Unknown marker 0x%x encountered", currMarkerId_);
@@ -272,6 +272,12 @@ std::string MarkerParser::markerString(uint16_t marker)
       return "EOC";
     case CAP:
       return "CAP";
+    case PRF:
+      return "PRF";
+    case DFS:
+      return "DFS";
+    case ATK:
+      return "ATK";
     case SIZ:
       return "SIZ";
     case COD:

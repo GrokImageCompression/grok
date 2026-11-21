@@ -51,9 +51,10 @@ void hwy_scale_div_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, i
 /* YCC 4:4:4 to RGB conversion using Highway SIMD.
  * Reads from planar y/cb/cr, writes to planar r/g/b.
  * offset = 1 << (prec - 1), upb = (1 << prec) - 1 */
-void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr, int32_t* r,
-                            int32_t* g, int32_t* b, uint32_t w, uint32_t h, uint32_t src_stride,
-                            uint32_t dst_stride, int32_t offset, int32_t upb);
+GRK_SIMD_API void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr,
+                                         int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
+                                         uint32_t src_stride, uint32_t dst_stride, int32_t offset,
+                                         int32_t upb);
 
 /* eYCC to RGB conversion using Highway SIMD.
  * In-place: reads/writes from the same yd/bd/rd arrays. */
@@ -92,11 +93,6 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
  * Equivalent to the N=8 unsigned path of convertToOutput. */
 GRK_SIMD_API void hwy_unpack_8u_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 
-/* Unpack packed uint8 bytes → int32 array with sign extension from 8 bits,
- * plus optional bitwise invert.
- * Equivalent to the N=8 signed path of convertToOutput. */
-GRK_SIMD_API void hwy_unpack_8s_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);
-
 /* Unpack big-endian uint16 pairs → int32 array, with optional 16-bit XOR invert.
  * Used by PNG decode (N=16 path). */
 GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert);
@@ -120,6 +116,11 @@ GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPl
  * Same semantics as hwy_pack_planar_to_8 but for 16-bit output. */
 GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes,
                                         uint16_t* dest, uint32_t w, int32_t adjust);
+
+/* Pack N planar int32 components into interleaved big-endian uint16 output.
+ * Same as hwy_pack_planar_to_16 but each uint16 is stored in big-endian byte order. */
+GRK_SIMD_API void hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes,
+                                          uint8_t* dest, uint32_t w, int32_t adjust);
 
 /* Scale int32 component data by power-of-two multiply, with stride. */
 GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,

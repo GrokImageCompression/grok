@@ -51,7 +51,6 @@ struct ITileProcessor;
 #include "FileFormatJP2Family.h"
 #include "FileFormatMJ2.h"
 #include "FileFormatMJ2Decompress.h"
-#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
@@ -64,34 +63,46 @@ namespace grk
 FileFormatMJ2Decompress::FileFormatMJ2Decompress(IStream* stream)
     : FileFormatMJ2(stream), decompressParams_{}, decompressParamsSet_(false)
 {
+  // only tkhd allocates current_track_
+  using TrackBoxReader = bool (FileFormatMJ2Decompress::*)(uint8_t*, uint32_t);
+  auto inTrack = [this](TrackBoxReader read) -> BOX_FUNC {
+    return [this, read](uint8_t* data, uint32_t len) {
+      if(!current_track_)
+      {
+        grklog.error("MJ2: track box before tkhd");
+        return false;
+      }
+      return (this->*read)(data, len);
+    };
+  };
   std::unordered_map<uint32_t, BOX_FUNC> handlers = {
       {MJ2_MOOV, nullptr},
       {MJ2_MVHD, [this](uint8_t* data, uint32_t len) { return read_mvhd(data, len); }},
       {MJ2_TRAK, nullptr},
       {MJ2_TKHD, [this](uint8_t* data, uint32_t len) { return read_tkhd(data, len); }},
       {MJ2_MDIA, nullptr},
-      {MJ2_MDHD, [this](uint8_t* data, uint32_t len) { return read_mdhd(data, len); }},
+      {MJ2_MDHD, inTrack(&FileFormatMJ2Decompress::read_mdhd)},
       {MJ2_MINF, nullptr},
       {MJ2_DINF, nullptr},
       {MJ2_STBL, nullptr},
-      {MJ2_HDLR, [this](uint8_t* data, uint32_t len) { return read_hdlr(data, len); }},
-      {MJ2_VMHD, [this](uint8_t* data, uint32_t len) { return read_vmhd(data, len); }},
-      {MJ2_DREF, [this](uint8_t* data, uint32_t len) { return read_dref(data, len); }},
-      {MJ2_STSD, [this](uint8_t* data, uint32_t len) { return read_stsd(data, len); }},
-      {MJ2_STTS, [this](uint8_t* data, uint32_t len) { return read_stts(data, len); }},
-      {MJ2_STSC, [this](uint8_t* data, uint32_t len) { return read_stsc(data, len); }},
-      {MJ2_STSZ, [this](uint8_t* data, uint32_t len) { return read_stsz(data, len); }},
-      {MJ2_STCO, [this](uint8_t* data, uint32_t len) { return read_stco(data, len); }},
+      {MJ2_HDLR, inTrack(&FileFormatMJ2Decompress::read_hdlr)},
+      {MJ2_VMHD, inTrack(&FileFormatMJ2Decompress::read_vmhd)},
+      {MJ2_DREF, inTrack(&FileFormatMJ2Decompress::read_dref)},
+      {MJ2_STSD, inTrack(&FileFormatMJ2Decompress::read_stsd)},
+      {MJ2_STTS, inTrack(&FileFormatMJ2Decompress::read_stts)},
+      {MJ2_STSC, inTrack(&FileFormatMJ2Decompress::read_stsc)},
+      {MJ2_STSZ, inTrack(&FileFormatMJ2Decompress::read_stsz)},
+      {MJ2_STCO, inTrack(&FileFormatMJ2Decompress::read_stco)},
       {MJ2_MDAT, [this](uint8_t* data, uint32_t len) { return read_mdat(data, len); }}
 
   };
   header.insert(handlers.begin(), handlers.end());
 
-  handlers = {{MJ2_FIEL, [this](uint8_t* data, uint32_t len) { return read_fiel(data, len); }},
-              {MJ2_JP2P, [this](uint8_t* data, uint32_t len) { return read_jp2p(data, len); }},
-              {MJ2_JP2X, [this](uint8_t* data, uint32_t len) { return read_jp2x(data, len); }},
-              {MJ2_JSUB, [this](uint8_t* data, uint32_t len) { return read_jsub(data, len); }},
-              {MJ2_ORFO, [this](uint8_t* data, uint32_t len) { return read_orfo(data, len); }}};
+  handlers = {{MJ2_FIEL, inTrack(&FileFormatMJ2Decompress::read_fiel)},
+              {MJ2_JP2P, inTrack(&FileFormatMJ2Decompress::read_jp2p)},
+              {MJ2_JP2X, inTrack(&FileFormatMJ2Decompress::read_jp2x)},
+              {MJ2_JSUB, inTrack(&FileFormatMJ2Decompress::read_jsub)},
+              {MJ2_ORFO, inTrack(&FileFormatMJ2Decompress::read_orfo)}};
   img_header.insert(handlers.begin(), handlers.end());
 
   headerImage_ = new GrkImage();
@@ -102,7 +113,7 @@ FileFormatMJ2Decompress::~FileFormatMJ2Decompress()
 {
   for(auto img : decompressedImages_)
     grk_unref(img);
-  for(auto& scs : sampleCodeStreams_)
+  for(const auto& scs : sampleCodeStreams_)
   {
     delete scs.codeStream;
     delete scs.stream;
@@ -334,6 +345,10 @@ bool FileFormatMJ2Decompress::read_vmhd(uint8_t* headerData, uint32_t headerSize
 
 bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 {
+  // version+flags is a 4-byte fullbox header; guard the subtraction so a short
+  // box does not underflow headerSize into a huge value and over-read below.
+  if(headerSize < 4)
+    return false;
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
@@ -356,6 +371,10 @@ bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 
 bool FileFormatMJ2Decompress::read_urn(uint8_t* headerData, uint32_t headerSize)
 {
+  // version+flags is a 4-byte fullbox header; guard the subtraction so a short
+  // box does not underflow headerSize into a huge value and over-read below.
+  if(headerSize < 4)
+    return false;
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
@@ -505,11 +524,23 @@ bool FileFormatMJ2Decompress::read_stsd(uint8_t* headerData, uint32_t headerSize
  * Time To Sample box Decompact
  *
  */
-void FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
+bool FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
 {
+  // Each materialised sample must map to at least one byte of media data, so
+  // the total sample count cannot exceed the file size. This caps a crafted
+  // STTS samples_count_ (raw uint32) that would otherwise drive billions of
+  // push_backs, and prevents num_samples_ (uint32) from wrapping.
+  uint64_t streamLen = stream_ ? stream_->tell() + stream_->numBytesLeft() : 0;
+  uint64_t total = tk->num_samples_;
   for(const auto& tts : tk->tts_)
   {
-    tk->num_samples_ += tts.samples_count_;
+    total += tts.samples_count_;
+    if(total > streamLen)
+    {
+      grklog.error("MJ2 STTS: sample count %llu exceeds %llu-byte stream",
+                   (unsigned long long)total, (unsigned long long)streamLen);
+      return false;
+    }
     for(uint32_t j = 0; j < tts.samples_count_; j++)
     {
       mj2_sample sample;
@@ -517,6 +548,8 @@ void FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
       tk->samples_.push_back(sample);
     }
   }
+  tk->num_samples_ = (uint32_t)total;
+  return true;
 }
 
 bool FileFormatMJ2Decompress::read_stts(uint8_t* headerData, uint32_t headerSize)
@@ -535,7 +568,8 @@ bool FileFormatMJ2Decompress::read_stts(uint8_t* headerData, uint32_t headerSize
     tk->tts_.push_back(tts);
   }
 
-  tts_decompact(tk);
+  if(!tts_decompact(tk))
+    return false;
 
   return true;
 }
@@ -548,12 +582,18 @@ void FileFormatMJ2Decompress::stsc_decompact(mj2_tk* tk)
 {
   if(tk->sampletochunk_.size() == 1)
   {
-    auto num_chunks = (uint32_t)ceil((double)tk->samples_.size() /
-                                     (double)tk->sampletochunk_[0].samples_per_chunk_);
+    auto samples_per_chunk = tk->sampletochunk_[0].samples_per_chunk_;
+    if(samples_per_chunk == 0 || samples_per_chunk > tk->samples_.size())
+    {
+      grklog.error("MJ2 STSC: samples_per_chunk %u is inconsistent with sample count %u",
+                   samples_per_chunk, (uint32_t)tk->samples_.size());
+      return;
+    }
+    auto num_chunks = (uint32_t)ceil((double)tk->samples_.size() / (double)samples_per_chunk);
     for(uint32_t k = 0; k < num_chunks; k++)
     {
       mj2_chunk chunk;
-      chunk.num_samples_ = tk->sampletochunk_[0].samples_per_chunk_;
+      chunk.num_samples_ = samples_per_chunk;
       tk->chunks_.push_back(chunk);
     }
   }
@@ -627,6 +667,11 @@ void FileFormatMJ2Decompress::stco_decompact(mj2_tk* tk)
     uint32_t intra_chunk_offset = 0;
     for(uint32_t j = 0; j < chunk.num_samples_; j++)
     {
+      if(samples_count >= tk->samples_.size())
+      {
+        grklog.error("MJ2 STCO: chunk samples exceed declared sample count");
+        return;
+      }
       tk->samples_[samples_count].offset_ = intra_chunk_offset + chunk.offset_;
       intra_chunk_offset += tk->samples_[samples_count].samples_size_;
       samples_count++;
@@ -692,6 +737,18 @@ bool FileFormatMJ2Decompress::decompressTile(uint16_t tile_index)
 void FileFormatMJ2Decompress::dump([[maybe_unused]] uint32_t flag,
                                    [[maybe_unused]] FILE* outputFileStream) {};
 void FileFormatMJ2Decompress::wait([[maybe_unused]] grk_wait_swath* swath) {}
+CodingParams* FileFormatMJ2Decompress::getCodingParams(void)
+{
+  throw std::runtime_error("MJ2 has one code stream per sample, not one set of coding parameters");
+}
+void FileFormatMJ2Decompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  for(auto& sc : sampleCodeStreams_)
+  {
+    if(sc.codeStream)
+      sc.codeStream->setBandCallback(callback, user_data);
+  }
+}
 bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
 {
   bool rc = FileFormatJP2Family::readHeader(header_info, headerImage_);
@@ -699,11 +756,24 @@ bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
     return false;
   if(current_track_)
   {
+    // capture the total input size before seeking: numBytesLeft() is not
+    // reliable after seek(0) on the file buffer.
+    streamLength_ = stream_->tell() + stream_->numBytesLeft();
     // seek to beginning of file to get base pointer for absolute STCO offsets
     stream_->seek(0);
     auto basePtr = stream_->currPtr();
     for(const auto& sample : current_track_->samples_)
     {
+      // offset_/samples_size_ come straight from the STCO/STSZ tables and are
+      // used as raw offsets into the file buffer; reject samples that fall
+      // outside it (also covers the 4-byte box-length probe below).
+      if((uint64_t)sample.offset_ + sample.samples_size_ > streamLength_ ||
+         (uint64_t)sample.offset_ + sizeof(uint32_t) > streamLength_)
+      {
+        grklog.error("MJ2: sample at offset %u (size %u) lies outside the %llu-byte stream",
+                     sample.offset_, sample.samples_size_, (unsigned long long)streamLength_);
+        return false;
+      }
       auto ptr = basePtr + sample.offset_;
       // cross-check sample size with box length
       // as long as box is not XL
@@ -743,6 +813,17 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   stream_->seek(0);
   auto basePtr = stream_->currPtr();
 
+  // bound the sample against the file buffer before using offset_ as a pointer
+  // (streamLength_ was captured in readHeader before any seek)
+  if((uint64_t)sample.offset_ + sample.samples_size_ > streamLength_ ||
+     (uint64_t)sample.offset_ + sizeof(uint32_t) > streamLength_)
+  {
+    grklog.error("MJ2: sample %u at offset %u (size %u) lies outside the %llu-byte stream",
+                 sampleIndex, sample.offset_, sample.samples_size_,
+                 (unsigned long long)streamLength_);
+    return false;
+  }
+
   auto samplePtr = basePtr + sample.offset_;
 
   // skip 8-byte JP2C box header (4 bytes length + 4 bytes type)
@@ -763,7 +844,7 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   auto j2kLen = sample.samples_size_ - boxHeaderSize;
 
   // create a memory stream for this J2K codestream (non-owning)
-  auto subStream = memStreamCreate(j2kData, j2kLen, false, nullptr, GRK_CODEC_J2K, true);
+  auto subStream = memStreamCreate(j2kData, j2kLen, GRK_CODEC_J2K, true);
   if(!subStream)
   {
     grklog.error("MJ2: failed to create memory stream for sample %d", sampleIndex);
@@ -781,6 +862,7 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   if(decompressParamsSet_)
   {
     sampleHeaderInfo.force_rgb = decompressParams_.force_rgb;
+    sampleHeaderInfo.apply_palette = decompressParams_.apply_palette;
     sampleHeaderInfo.upsample = decompressParams_.upsample;
   }
   sampleHeaderInfo.color_space = headerImage_->color_space;
@@ -838,6 +920,11 @@ cleanup:
   return success;
 }
 
+bool FileFormatMJ2Decompress::postProcessPluginImage([[maybe_unused]] const grk_image* decoded)
+{
+  grklog.error("MJ2: the plugin does not decode MJ2");
+  return false;
+}
 bool FileFormatMJ2Decompress::decompress([[maybe_unused]] grk_plugin_tile* tile)
 {
   if(!current_track_)

@@ -46,16 +46,18 @@ const uint8_t MSIG_UUID[16] = {0x96, 0xA9, 0xF1, 0xF1, 0xDC, 0x98, 0x40, 0x2D,
 class FileFormatJP2Decompress final : public FileFormatJP2Family, public IDecompressor
 {
 public:
-  FileFormatJP2Decompress(IStream* stream);
+  explicit FileFormatJP2Decompress(IStream* stream);
   ~FileFormatJP2Decompress();
 
   bool readHeader(grk_header_info* header_info) override;
   GrkImage* getImage(uint16_t tile_index, bool wait) override;
   GrkImage* getImage(void) override;
   void init(grk_decompress_parameters* param) override;
+  void setInputFilePath(const char* path) override;
   grk_progression_state getProgressionState(uint16_t tile_index) override;
   bool setProgressionState(grk_progression_state state) override;
   bool decompress(grk_plugin_tile* tile) override;
+  bool postProcessPluginImage(const grk_image* decoded) override;
   bool decompressTile(uint16_t tile_index) override;
   bool end(void);
   bool postProcess(GrkImage* img);
@@ -63,7 +65,8 @@ public:
   void wait(grk_wait_swath* swath) override;
   void scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf) override;
   void waitSwathCopy() override;
-  CodingParams* getCodingParams(void);
+  void setBandCallback(grk_io_band_callback callback, void* user_data) override;
+  CodingParams* getCodingParams(void) override;
 
 private:
   GrkImage* getHeaderImage(void) override;

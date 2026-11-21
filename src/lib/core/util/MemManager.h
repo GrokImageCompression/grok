@@ -28,9 +28,9 @@
 
 #ifdef _WIN32
 #include <malloc.h>
-#include <windows.h>
-#elif defined(__linux__)
-#include <malloc.h>
+#endif
+#ifdef __linux__
+#include <sys/mman.h>
 #endif
 
 #ifndef SIZE_MAX
@@ -40,15 +40,30 @@
 namespace grk
 {
 
-const size_t grk_buffer_alignment = 64;
+// Align buffers on 64 byte cache lines
+// This also works for SIMD up to AVX512 which
+// needs alignment on 512 bits == 64 bytes
+const size_t grk_buffer_alignment_bytes = 64;
 
+// ensure width is divisible by grk_buffer_alignment_bytes bytes
 template<typename T>
 uint32_t grk_make_aligned_width(uint32_t width)
 {
   assert(width);
-  assert(sizeof(T) <= grk_buffer_alignment);
-  size_t align = grk_buffer_alignment / sizeof(T);
+  assert(sizeof(T) <= grk_buffer_alignment_bytes);
+  size_t align = grk_buffer_alignment_bytes / sizeof(T);
   return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
+}
+
+// Worst-case alignment (in elements) across data types used by the decoder.
+// int16_t produces the strictest alignment in element units: grk_buffer_alignment_bytes / 2.
+constexpr uint32_t grk_max_align_elements = grk_buffer_alignment_bytes / sizeof(int16_t);
+
+// True if `width` can be SIMD-aligned without overflowing uint32_t.
+// Allocations use uint32_t stride, so widths past this limit are unallocatable.
+inline bool grk_aligned_width_fits(uint32_t width)
+{
+  return (uint64_t)width + grk_max_align_elements - 1 <= UINT32_MAX;
 }
 
 class MemoryManager
@@ -58,15 +73,6 @@ public:
   {
     static MemoryManager instance;
     return instance;
-  }
-
-  static void releaseFreedPages()
-  {
-#ifdef __linux__
-    malloc_trim(0);
-#elif defined(_WIN32)
-    HeapCompact(GetProcessHeap(), 0);
-#endif
   }
 
   void* malloc(size_t size)
@@ -108,7 +114,7 @@ public:
 
   void* aligned_malloc(size_t bytes)
   {
-    return aligned_malloc(grk_buffer_alignment, bytes);
+    return aligned_malloc(grk_buffer_alignment_bytes, bytes);
   }
 
   void* aligned_malloc(size_t alignment, size_t bytes)
@@ -124,7 +130,18 @@ public:
 #ifdef _WIN32
     void* ptr = _aligned_malloc(bytes, alignment);
 #else
-    void* ptr = std::aligned_alloc(alignment, bytes);
+    void* ptr = nullptr;
+    if(bytes >= huge_page_bytes)
+    {
+#ifdef __linux__
+      ptr = mapHugePages(bytes);
+#else
+      if(posix_memalign(&ptr, huge_page_bytes, bytes) != 0)
+        ptr = nullptr;
+#endif
+    }
+    else
+      ptr = ::aligned_alloc(alignment, bytes);
 #endif
 
     if(ptr && track_stats)
@@ -224,6 +241,10 @@ public:
 #ifdef _WIN32
     _aligned_free(ptr);
 #else
+#ifdef __linux__
+    if(((uintptr_t)ptr & (huge_page_bytes - 1)) == 0 && unmapHugePages(ptr))
+      return;
+#endif
     std::free(ptr);
 #endif
   }
@@ -266,6 +287,51 @@ public:
   }
 
 private:
+  // two megabyte pages so the vertical wavelet pass stops missing the second level TLB
+  static constexpr size_t huge_page_bytes = 2u << 20;
+
+#ifdef __linux__
+  // glibc keeps freed blocks below its dynamic mmap threshold in per-thread arenas
+  void* mapHugePages(size_t bytes)
+  {
+    const size_t page_bytes = 4096;
+    const size_t mapped = (bytes + page_bytes - 1) & ~(page_bytes - 1);
+    const size_t span = mapped + huge_page_bytes;
+    auto base = (uint8_t*)mmap(nullptr, span, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
+                               -1, 0);
+    if(base == MAP_FAILED)
+      return nullptr;
+    auto ptr = (uint8_t*)(((uintptr_t)base + huge_page_bytes - 1) & ~(uintptr_t)(huge_page_bytes - 1));
+    if(ptr > base)
+      munmap(base, (size_t)(ptr - base));
+    const size_t tail = (size_t)(base + span - (ptr + mapped));
+    if(tail)
+      munmap(ptr + mapped, tail);
+    madvise(ptr, mapped, MADV_HUGEPAGE);
+    std::lock_guard<std::mutex> lock(mapped_mutex);
+    mapped_bytes[ptr] = mapped;
+    return ptr;
+  }
+
+  bool unmapHugePages(void* ptr)
+  {
+    size_t mapped = 0;
+    {
+      std::lock_guard<std::mutex> lock(mapped_mutex);
+      auto it = mapped_bytes.find(ptr);
+      if(it == mapped_bytes.end())
+        return false;
+      mapped = it->second;
+      mapped_bytes.erase(it);
+    }
+    munmap(ptr, mapped);
+    return true;
+  }
+
+  std::mutex mapped_mutex;
+  std::unordered_map<void*, size_t> mapped_bytes;
+#endif
+
   MemoryManager()
   {
     const char* debug_env = std::getenv("GRK_DEBUG");

@@ -28,8 +28,8 @@ class CodeStreamDecompress;
 class FileFormatMJ2Decompress : public IDecompressor, public FileFormatMJ2
 {
 public:
-  FileFormatMJ2Decompress(IStream* stream);
-  virtual ~FileFormatMJ2Decompress();
+  explicit FileFormatMJ2Decompress(IStream* stream);
+  ~FileFormatMJ2Decompress() override;
   bool readHeader(grk_header_info* header_info) override;
   GrkImage* getImage(uint16_t tile_index, bool wait) override;
   GrkImage* getImage(void) override;
@@ -37,9 +37,13 @@ public:
   grk_progression_state getProgressionState(uint16_t tile_index) override;
   bool setProgressionState(grk_progression_state state) override;
   bool decompress(grk_plugin_tile* tile) override;
+  bool postProcessPluginImage(const grk_image* decoded) override;
   bool decompressTile(uint16_t tile_index) override;
   void dump(uint32_t flag, FILE* outputFileStream) override;
   void wait(grk_wait_swath* swath) override;
+  CodingParams* getCodingParams(void) override;
+
+  void setBandCallback(grk_io_band_callback callback, void* user_data) override;
 
   uint32_t getNumSamples(void) override;
   bool decompressSample(uint32_t sampleIndex) override;
@@ -75,13 +79,17 @@ private:
   bool read_url(uint8_t* headerData, uint32_t headerSize);
   bool read_urn(uint8_t* headerData, uint32_t headerSize);
 
-  void tts_decompact(mj2_tk* tk);
+  bool tts_decompact(mj2_tk* tk);
   void stsc_decompact(mj2_tk* tk);
   void stco_decompact(mj2_tk* tk);
 
   grk_decompress_parameters decompressParams_;
   bool decompressParamsSet_;
   std::vector<GrkImage*> decompressedImages_;
+  // total input size, captured during readHeader before any seek (numBytesLeft
+  // is not reliable after seek(0) on the file buffer); used to bound raw
+  // STCO/STSZ sample offsets.
+  uint64_t streamLength_ = 0;
 
   struct SampleCodeStream
   {

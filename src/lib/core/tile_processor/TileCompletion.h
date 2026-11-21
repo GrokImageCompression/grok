@@ -26,11 +26,16 @@
 #include <vector>
 #include <functional>
 #include "MinHeap.h"
-#include "MemManager.h"
 
 namespace grk
 {
 
+/**
+ * @class TileCompletion
+ * @brief Tracks per-tile completion and fires row callbacks for incremental compositing.
+ *
+ * @see doc/IncrementalStripeCompositing.md for the full incremental write pipeline.
+ */
 class TileCompletion
 {
 public:
@@ -38,6 +43,8 @@ public:
   using RowCompletionCallback = std::function<void(uint16_t tileIndexBegin, uint16_t tileIndexEnd)>;
   // Callback fired after wait() releases tile rows, to trigger deferred scheduling
   using RowsReleasedCallback = std::function<void()>;
+  // true when a tile that is not complete already holds every row below fullResY1
+  using TileRowsReadyCallback = std::function<bool(uint16_t tileIndex, uint32_t fullResY1)>;
 
   // Constructor for full region or subregion
   TileCompletion(TileCache* tileCache, const Rect32& imageBounds, uint32_t tileWidth,
@@ -160,8 +167,6 @@ public:
     uint32_t x1 = swath->x1;
     uint32_t y1 = swath->y1;
 
-    bool shouldNotifyRelease = false;
-
     grklog.debug("Swath canvas: x0=%u, y0=%u, x1=%u, y1=%u", x0, y0, x1, y1);
 
     // Validate swath bounds against image bounds
@@ -220,8 +225,11 @@ public:
 
     // Tell the scheduler how far ahead we need tiles decompressed
     neededTileY1_.store(static_cast<int32_t>(tileY1), std::memory_order_release);
+    swathY0_.store(y0, std::memory_order_release);
+    swathY1_.store(y1, std::memory_order_release);
 
     // Check if tile row has advanced for clearing previous rows
+    std::vector<uint16_t> tilesToRelease;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if(tileY0 > currentTileY_ && static_cast<int32_t>(tileY0) > lastClearedTileY_)
@@ -247,30 +255,30 @@ public:
                 grklog.debug(
                     "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
-                tileCache_->release(tileIndex);
+                tilesToRelease.push_back(tileIndex);
               }
             }
           }
         }
         lastClearedTileY_ = static_cast<int32_t>(tileY0) - 1;
         grklog.debug("Cleared tile rows up to tileY=%d", lastClearedTileY_);
-        shouldNotifyRelease = true;
       }
       currentTileY_ = tileY0;
       grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%d", currentTileY_,
                    lastClearedTileY_);
     }
+    // worker threads block in complete() while mutex_ is held
+    for(uint16_t tileIndex : tilesToRelease)
+      tileCache_->releaseForSwath(tileIndex);
 
-    // Return freed pages to the OS so RSS drops after tile release
-    if(shouldNotifyRelease)
-    {
-      MemoryManager::releaseFreedPages();
-      if(rowsReleasedCallback_)
-        rowsReleasedCallback_();
-    }
+    // neededTileY1_ just moved, so the scheduler has to re-check its throttle even
+    // when no row was released, or a swath it stopped short of never gets scheduled
+    if(rowsReleasedCallback_)
+      rowsReleasedCallback_();
 
     // Compute all local indices in the swath
     std::vector<uint16_t> swathIndices;
+    std::vector<uint16_t> swathTileIndices;
     for(uint16_t tileY = tileY0; tileY < tileY1; ++tileY)
     {
       for(uint16_t tileX = tileX0; tileX < tileX1; ++tileX)
@@ -279,6 +287,7 @@ public:
         uint16_t localY = tileY - tileY0_;
         uint16_t localIndex = static_cast<uint16_t>(localY * subregionWidth_ + localX);
         swathIndices.push_back(localIndex);
+        swathTileIndices.push_back(static_cast<uint16_t>(tileY * numTileCols_ + tileX));
       }
     }
     uint16_t localEnd = swathIndices.empty() ? 0 : swathIndices.back();
@@ -287,10 +296,13 @@ public:
     {
       std::unique_lock<std::mutex> lock(mutex_);
       auto allCompleted = [&]() {
-        for(uint16_t idx : swathIndices)
+        for(size_t i = 0; i < swathIndices.size(); i++)
         {
-          if(!completedTiles_[idx])
-            return false;
+          if(completedTiles_[swathIndices[i]])
+            continue;
+          if(tileRowsReady_ && tileRowsReady_(swathTileIndices[i], y1))
+            continue;
+          return false;
         }
         return true;
       };
@@ -319,15 +331,43 @@ public:
     return finalWait;
   }
 
+  void setTileRowsReady(TileRowsReadyCallback callback)
+  {
+    tileRowsReady_ = std::move(callback);
+  }
+
+  // wakes a swath wait that may now be satisfied by rows alone
+  void notifyProgress()
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    completionCV_.notify_all();
+  }
+
   int32_t getLastClearedTileY() const
   {
     std::lock_guard<std::mutex> lock(mutex_);
     return lastClearedTileY_;
   }
 
+  void setLastClearedTileY(int32_t val)
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    lastClearedTileY_ = val;
+  }
+
   int32_t getNeededTileY1() const
   {
     return neededTileY1_.load(std::memory_order_acquire);
+  }
+
+  uint32_t getSwathY0() const
+  {
+    return swathY0_.load(std::memory_order_acquire);
+  }
+
+  uint32_t getSwathY1() const
+  {
+    return swathY1_.load(std::memory_order_acquire);
   }
 
   uint16_t getNumTileCols() const
@@ -352,8 +392,11 @@ private:
   uint16_t currentTileY_; // Tracks the current swath's starting tile row
   int32_t lastClearedTileY_; // Tracks the last tile row cleared (-1 = none)
   std::atomic<int32_t> neededTileY1_{0}; // Max tile row the consumer is currently waiting for
+  std::atomic<uint32_t> swathY0_{0};
+  std::atomic<uint32_t> swathY1_{0};
   RowCompletionCallback rowCallback_; // Callback for row completion
   RowsReleasedCallback rowsReleasedCallback_; // Callback after wait() releases rows
+  TileRowsReadyCallback tileRowsReady_;
 };
 
 } // namespace grk

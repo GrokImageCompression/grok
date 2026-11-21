@@ -1,0 +1,65 @@
+name: Perf Compare
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+  S2_URL: https://storage.googleapis.com/gcp-public-data-sentinel-2/tiles/32/T/QM/S2B_MSIL1C_20240701T100559_N0510_R022_T32TQM_20240701T121156.SAFE/GRANULE/L1C_T32TQM_A038229_20240701T101053/IMG_DATA
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 2
+
+    - name: dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y libpsl-dev libcurl4-openssl-dev
+        rustup toolchain install stable --profile minimal || curl https://sh.rustup.rs -sSf | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: build head
+      run: |
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING:BOOL=ON -DGRK_ENABLE_LIBCURL=ON
+        cmake --build build -j$(nproc) --target grk_perf_bench
+
+    # HEAD^ of a pull request merge commit is the target branch
+    - name: build base
+      run: |
+        git worktree add base-tree HEAD^
+        git -C base-tree submodule update --init --recursive
+        cmake -B base-build -S base-tree -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON -DGRK_ENABLE_LIBCURL=ON
+        cmake --build base-build -j$(nproc) --target grokj2k
+
+    - name: assert mercury is in both builds
+      run: |
+        nm -D build/bin/libgrokj2k.so | grep -q mercury_warp_loom
+        nm -D base-build/bin/libgrokj2k.so | grep -q mercury_warp_loom
+
+    - name: cache sentinel-2 images
+      uses: actions/cache@v4
+      with:
+        path: perf-images
+        key: perf-images-s2b-20240701-t32tqm
+
+    - name: download images
+      run: |
+        mkdir -p perf-images
+        [ -f perf-images/B04.jp2 ] || curl -sSfL -o perf-images/B04.jp2 $S2_URL/T32TQM_20240701T100559_B04.jp2
+        [ -f perf-images/TCI.jp2 ] || curl -sSfL -o perf-images/TCI.jp2 $S2_URL/T32TQM_20240701T100559_TCI.jp2
+        LD_LIBRARY_PATH=build/bin build/bin/grk_perf_bench generate perf-images/single_tile.j2k 4096 0
+
+    - name: runner cpu
+      run: lscpu
+
+    - name: compare
+      run: |
+        python3 tests/perf_compare.py build/bin/grk_perf_bench \
+          $PWD/base-build/bin/libgrokj2k.so $PWD/build/bin/libgrokj2k.so \
+          perf-images/B04.jp2 perf-images/TCI.jp2 perf-images/single_tile.j2k

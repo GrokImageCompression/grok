@@ -30,6 +30,12 @@ namespace grk
 
 class AZFetcher : public CurlFetcher
 {
+public:
+  ~AZFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {

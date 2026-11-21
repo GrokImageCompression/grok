@@ -146,12 +146,16 @@ function(add_encoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
                            PROPERTIES DEPENDS NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-encode)
 
       if(NOT NO_RAW)
-        add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-compare_dec-ref-out2base
-                 COMMAND compare_raw_files
-                         -b ${BASELINE_NR}/${OUTPUT_FILENAME_NAME_WE}-ENC-${TEST_NUM}.raw
-                         -t ${OUTPUT_FILENAME}.raw)
-        set_tests_properties(NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-compare_dec-ref-out2base
-                             PROPERTIES DEPENDS NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-ref)
+        # Debug 9/7 encode is not bit-identical to the release Kakadu raw baselines.
+        string(TOUPPER "${CMAKE_BUILD_TYPE}" _enc_cfg)
+        if(NOT _enc_cfg STREQUAL "DEBUG")
+          add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-compare_dec-ref-out2base
+                   COMMAND compare_raw_files
+                           -b ${BASELINE_NR}/${OUTPUT_FILENAME_NAME_WE}-ENC-${TEST_NUM}.raw
+                           -t ${OUTPUT_FILENAME}.raw)
+          set_tests_properties(NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-compare_dec-ref-out2base
+                               PROPERTIES DEPENDS NR-ENC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-ref)
+        endif()
       endif()
     endif()
 
@@ -201,8 +205,9 @@ function(add_decoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
       # Build a platform key matching the CI matrix naming convention:
       #   ubuntu-dynamic, ubuntu-static, macos-dynamic, macos-static,
       #   windows-dynamic, windows-static
-      # The canonical md5refs.txt is ubuntu-dynamic, so that combo gets an
-      # empty key (no platform override file needed).
+      # Debug appends -debug for unfused 9/7.
+      # The canonical md5refs.txt is ubuntu-dynamic Release, so that combo
+      # gets an empty key (no platform override file needed).
       set(_os_key "")
       if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
           set(_os_key "ubuntu")
@@ -218,17 +223,21 @@ function(add_decoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
       else()
           set(_link_key "static")
       endif()
-      # ubuntu-dynamic is canonical — no platform key needed
-      if(_os_key STREQUAL "ubuntu" AND _link_key STREQUAL "dynamic")
+      set(_md5_platform "${_os_key}-${_link_key}")
+      string(TOUPPER "${CMAKE_BUILD_TYPE}" _md5_cfg)
+      if(_md5_cfg STREQUAL "DEBUG")
+          set(_md5_platform "${_md5_platform}-debug")
+      endif()
+      # ubuntu-dynamic Release is canonical, no platform key needed
+      if(_md5_platform STREQUAL "ubuntu-dynamic")
           set(_md5_platform "")
-      else()
-          set(_md5_platform "${_os_key}-${_link_key}")
       endif()
       add_test(NAME NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                COMMAND ${CMAKE_COMMAND}
                        -DREFFILE:STRING=${CMAKE_CURRENT_SOURCE_DIR}/md5refs.txt
                        -DOUTFILENAME:STRING=${OUTPUT_FILENAME}
                        -DPLATFORM_KEY:STRING=${_md5_platform}
+                       -DCANON_TOOL:STRING=${EXECUTABLE_OUTPUT_PATH}/image_canon_dump
                        -P ${CMAKE_CURRENT_SOURCE_DIR}/checkmd5refs.cmake)
       set_tests_properties(NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                            PROPERTIES DEPENDS NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode)
@@ -282,7 +291,6 @@ foreach(TEST_CMD_LINE ${TEST_CMD_LINE_LIST})
     if(IS_FAILING)
       set(FAILED_TEST_FOUND 1)
       string(SUBSTRING ${EXE_NAME} 1 -1 EXE_NAME)  # Remove '!' from !grk_compress or !core_decompress
-      list(REMOVE_AT CMD_ARG_LIST 0)
     endif()
 
     string(REGEX MATCH "^grk_compress$|^grk_compress_no_raw$|^grk_compress_no_raw_lossless$|^grk_decompress$|^core_decompress$" EXE_NAME_FOUND ${EXE_NAME})

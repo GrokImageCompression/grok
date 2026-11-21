@@ -19,16 +19,13 @@
 #include "Coder.h"
 #include "t1_common.h"
 #include "BlockCoder.h"
-#include "SchedulerFactory.h"
 
 namespace grk::t1::part1
 {
 
 Coder::Coder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH, uint32_t cacheStrategy)
-    : blockCoder_(nullptr), cacheStrategy_(cacheStrategy)
-{
-  blockCoder_ = new BlockCoder(isCompressor, maxCblkW, maxCblkH, cacheStrategy);
-}
+    : blockCoder_(new BlockCoder(isCompressor, maxCblkW, maxCblkH, cacheStrategy))
+{}
 Coder::~Coder()
 {
   delete blockCoder_;
@@ -57,29 +54,50 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
   auto uncompressedData = blockCoder_->getUncompressedData();
   if(block->qmfbid == 1)
   {
-    for(auto j = 0U; j < h; ++j)
+    if(block->uses16BitBuffer)
     {
-      for(auto i = 0U; i < w; ++i)
+      auto tileData = static_cast<const int16_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
       {
-        int32_t temp = (block->tiledp[tile_index++] *= (1 << T1_NMSEDEC_FRACBITS));
-        int32_t mag = temp * ((temp > 0) - (temp < 0));
-        if((uint32_t)mag > maximum)
-          maximum = (uint32_t)mag;
-        int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
-        uncompressedData[cblk_index++] = sgn | mag;
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t temp = tileData[tile_index++] * (1 << T1_NMSEDEC_FRACBITS);
+          int32_t magnitude = temp * ((temp > 0) - (temp < 0));
+          if((uint32_t)magnitude > maximum)
+            maximum = (uint32_t)magnitude;
+          int32_t sign = int32_t((uint32_t)(magnitude != temp) * 0x80000000);
+          uncompressedData[cblk_index++] = sign | magnitude;
+        }
+        tile_index += tileLineAdvance;
       }
-      tile_index += tileLineAdvance;
+    }
+    else
+    {
+      auto tileData = static_cast<int32_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
+      {
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t temp = (tileData[tile_index++] *= (1 << T1_NMSEDEC_FRACBITS));
+          int32_t magnitude = temp * ((temp > 0) - (temp < 0));
+          if((uint32_t)magnitude > maximum)
+            maximum = (uint32_t)magnitude;
+          int32_t sign = int32_t((uint32_t)(magnitude != temp) * 0x80000000);
+          uncompressedData[cblk_index++] = sign | magnitude;
+        }
+        tile_index += tileLineAdvance;
+      }
     }
   }
   else
   {
-    const auto* const tiledp = (float*)block->tiledp;
+    const auto* const tileData = static_cast<float*>(block->tileData);
     double quant = 1.0 / block->stepsize;
     for(auto j = 0U; j < h; ++j)
     {
       for(auto i = 0U; i < w; ++i)
       {
-        int32_t temp = (int32_t)grk_lrintf((float)(((double)tiledp[tile_index++] * quant)) *
+        int32_t temp = (int32_t)grk_lrintf((float)(((double)tileData[tile_index++] * quant)) *
                                            (1 << T1_NMSEDEC_FRACBITS));
         int32_t mag = temp * ((temp > 0) - (temp < 0));
         if((uint32_t)mag > maximum)
@@ -116,7 +134,7 @@ bool Coder::compress(CompressBlockExec* block)
   auto distortion =
       blockCoder_->compress_cblk(&cblkexp, max, block->bandOrientation, block->compno, block->level,
                                  block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms,
-                                 block->mct_numcomps, block->doRateControl);
+                                 block->mct_numcomps, block->doRateControl, block->earlyStopSlope);
 
   cblk->setNumPasses(cblkexp.numPassesTotal);
   cblk->setNumBps(cblkexp.numbps);
@@ -129,9 +147,6 @@ bool Coder::compress(CompressBlockExec* block)
     passgrk->rate_ = passexp->rate;
     passgrk->term_ = passexp->term;
   }
-
-  blockCoder_->code_block_enc_deallocate(&cblkexp);
-  cblkexp.data = nullptr;
 
   block->distortion = distortion;
 

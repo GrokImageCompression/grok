@@ -45,6 +45,7 @@ public:
   virtual void generate(uint8_t decomps, uint8_t max_bit_depth, bool color_transform,
                         bool is_signed);
   virtual bool write(t1_t2::IStreamWriter* stream);
+  void setStepScale(double scale);
 
 protected:
   uint32_t get_num_guard_bits() const;
@@ -56,6 +57,7 @@ protected:
   };
   uint32_t num_decomps;
   bool isReversible;
+  double stepScale;
 };
 
 } // namespace grk

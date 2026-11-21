@@ -46,48 +46,16 @@ struct ITileProcessor;
 
 #include "ICoder.h"
 #include "CoderPool.h"
-#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
-#include "TLMFile.h"
 
 namespace grk
 {
-
-struct TilePartLengthPOD
-{
-  uint16_t tileIndex_;
-  uint32_t length_;
-};
-
-// TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
-const uint32_t tlm_marker_start_bytes = 6;
 
 TLMMarker::TLMMarker(uint16_t numSignalledTiles)
     : markerManager_(std::make_unique<TLMMarkerManager>()), numSignalledTiles_(numSignalledTiles)
 {
   tilePartsPerTile_.resize(numSignalledTiles_);
-}
-
-TLMMarker::TLMMarker(std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart)
-    : TLMMarker(numSignalledTiles)
-{
-  valid_ = false;
-  auto serialized = TLMFile<TilePartLengthPOD>::load(filePath);
-  if(serialized)
-  {
-    for(auto& tplp : serialized.value())
-    {
-      TilePartLength<uint32_t> tpl(tplp.tileIndex_, tplp.length_);
-      add(tpl);
-    }
-    readComplete(tileStreamStart);
-    valid_ = true;
-  }
-  else
-  {
-    filePath_ = filePath;
-  }
 }
 
 TLMMarker::TLMMarker(IStream* stream) : TLMMarker(USHRT_MAX)
@@ -275,13 +243,74 @@ const TPSEQ_VEC& TLMMarker::getTileParts(void) const
   return tilePartsPerTile_;
 }
 
+std::unique_ptr<TLMMarker> TLMMarker::forSotWalk(uint16_t numSignalledTiles)
+{
+  auto tlm = std::make_unique<TLMMarker>(numSignalledTiles);
+  tlm->builtFromSotWalk_ = true;
+  tlm->valid_ = false;
+  tlm->tileComplete_.assign(numSignalledTiles, 0);
+  return tlm;
+}
+
+bool TLMMarker::builtFromSotWalk() const noexcept
+{
+  return builtFromSotWalk_;
+}
+
+void TLMMarker::setValid(bool valid) noexcept
+{
+  valid_ = valid;
+}
+
+bool TLMMarker::tileComplete(uint16_t tileIndex) const noexcept
+{
+  return tileComplete_[tileIndex] != 0;
+}
+
+const std::optional<SotWalkPosition>& TLMMarker::sotWalk() const noexcept
+{
+  return sotWalk_;
+}
+
+void TLMMarker::setSotWalk(SotWalkPosition walk)
+{
+  sotWalk_ = walk;
+  // tiles still short of TNsot at the end of the stream are truncated
+  if(walk.reachedEnd)
+    std::ranges::fill(tileComplete_, 1);
+}
+
+bool TLMMarker::addWalkedTilePart(uint16_t tileIndex, uint64_t offset, uint64_t length,
+                                  uint8_t tilePart, uint8_t numTileParts, bool completesTile)
+{
+  auto& tpSeq = tilePartsPerTile_[tileIndex];
+  if(!tpSeq)
+    tpSeq = std::make_unique<TPSeq>();
+  if(!tpSeq->push_back(tilePart, numTileParts, offset, length))
+    return false;
+  if(completesTile)
+    tileComplete_[tileIndex] = 1;
+  return true;
+}
+
+void TLMMarker::clearSotWalk()
+{
+  for(auto& tpSeq : tilePartsPerTile_)
+    tpSeq.reset();
+  std::ranges::fill(tileComplete_, 0);
+  sotWalk_.reset();
+  valid_ = false;
+}
+
 uint8_t TLMMarker::getNumTileParts(uint16_t tileIndex) const noexcept
 {
   if(!valid_ || tileIndex >= tilePartsPerTile_.size())
     return 0;
 
   auto& partsPerTile = tilePartsPerTile_[tileIndex];
-  return partsPerTile ? static_cast<uint8_t>(partsPerTile->size()) : 0;
+  if(!partsPerTile || (builtFromSotWalk_ && !tileComplete_[tileIndex]))
+    return 0;
+  return static_cast<uint8_t>(partsPerTile->size());
 }
 
 /**
@@ -315,55 +344,6 @@ TilePartLength<uint32_t>* TLMMarker::next(bool peek)
 }
 
 /**
- * Seek to next slated tile part.
- *
- */
-void TLMMarker::seekNextSlated(TileWindow* tilesToDecompress, TileCache* tileCache, IStream* stream)
-{
-  assert(stream);
-
-  auto currentPosition = stream->tell();
-
-  // Lambda to restore position if an error occurs
-  auto restore = [stream, currentPosition]() { stream->seek(currentPosition); };
-
-  try
-  {
-    uint64_t skip = 0;
-    while(auto tilePart = next(true))
-    {
-      if(tilePart->length_ == 0)
-      {
-        restore();
-        grklog.error("corrupt TLM marker");
-        throw CorruptTLMException();
-      }
-
-      // with TLM marker enabled, a tile will be in one of two states:
-      // 1. no tile parts for this tile have been parsed
-      // or
-      // 2. all tile parts in the stream for this tile have been parsed
-      if(tilesToDecompress->isSlated(tilePart->tileIndex_))
-      {
-        auto cacheEntry = tileCache->get(tilePart->tileIndex_);
-        if(!cacheEntry || !cacheEntry->processor->allSOTMarkersParsed())
-          break;
-      }
-
-      skip += tilePart->length_;
-      next(false);
-    }
-
-    if(skip && !stream->seek(currentPosition + skip))
-      throw CorruptTLMException();
-  }
-  catch(...)
-  {
-    restore();
-    throw;
-  }
-}
-/**
  * @brief Prepares to write TLM marker to code stream
  * @param numTilePartsTotal total number of tile parts in image
  * @return true if successful
@@ -371,40 +351,55 @@ void TLMMarker::seekNextSlated(TileWindow* tilesToDecompress, TileCache* tileCac
 bool TLMMarker::writeBegin(uint32_t numTilePartsTotal)
 {
   streamStart = stream_->tell();
+  numTilePartsTotal_ = numTilePartsTotal;
+
+  uint64_t numSegments =
+      (numTilePartsTotal + maxTilePartsPerTlmSegment - 1) / maxTilePartsPerTlmSegment;
+  /* make room for segment headers and tile part lengths */
+  if(!stream_->skip((int64_t)(numSegments * tlm_marker_start_bytes +
+                              (uint64_t)tlmMarkerBytesPerTilePart * numTilePartsTotal)))
+  {
+    grklog.error("Failed to skip space for TLM markers");
+    return false;
+  }
+
+  return true;
+}
+
+bool TLMMarker::writeSegmentHeader(IStream* stream, uint32_t segmentIndex, uint32_t numTileParts)
+{
+  if(segmentIndex > UINT8_MAX)
+  {
+    grklog.error("Too many tile parts for 256 TLM marker segments");
+    return false;
+  }
 
   /* TLM */
-  if(!stream_->write(TLM))
+  if(!stream->write(TLM))
   {
     grklog.error("Failed to write TLM marker");
     return false;
   }
 
   /* Ltlm */
-  uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTilePartsTotal;
-  if(!stream_->write(static_cast<uint16_t>(tlm_size - MARKER_BYTES)))
+  uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTileParts;
+  if(!stream->write(static_cast<uint16_t>(tlm_size - MARKER_BYTES)))
   {
     grklog.error("Failed to write Ltlm length");
     return false;
   }
 
-  /* Ztlm=0 */
-  if(!stream_->write8u(0))
+  /* Ztlm */
+  if(!stream->write8u(static_cast<uint8_t>(segmentIndex)))
   {
     grklog.error("Failed to write Ztlm value");
     return false;
   }
 
-  /* Stlm ST=1(8bits-255 tiles max), SP=1(Ptlm=32bits) */
-  if(!stream_->write8u(0x60))
+  /* Stlm ST=2(16 bit tile indices), SP=1(Ptlm=32bits) */
+  if(!stream->write8u(0x60))
   {
     grklog.error("Failed to write Stlm value");
-    return false;
-  }
-
-  /* make room for tile part lengths */
-  if(!stream_->skip(tlmMarkerBytesPerTilePart * numTilePartsTotal))
-  {
-    grklog.error("Failed to skip space for tile part lengths");
     return false;
   }
 
@@ -416,6 +411,11 @@ void TLMMarker::add(uint16_t tile_index, uint32_t tile_part_size) noexcept
   markerManager_->push_back(TilePartLength<uint32_t>(tile_index, tile_part_size));
 }
 
+void TLMMarker::clearTilePartLengths() noexcept
+{
+  markerManager_ = std::make_unique<TLMMarkerManager>();
+}
+
 /**
  * @brief Finalizes writing of TLM marker by updating tile part lengths
  * @return true if successful, false on fatal error
@@ -423,25 +423,44 @@ void TLMMarker::add(uint16_t tile_index, uint32_t tile_part_size) noexcept
 bool TLMMarker::writeEnd()
 {
   uint64_t current_position = stream_->tell();
-  if(!stream_->seek(streamStart + tlm_marker_start_bytes))
+  if(!stream_->seek(streamStart))
   {
-    grklog.error("Failed to seek to start of TLM marker data");
+    grklog.error("Failed to seek to start of TLM markers");
     return false;
   }
 
   markerManager_->reset();
-  while(auto tilePart = markerManager_->next(false))
+  uint32_t segmentIndex = 0;
+  for(uint32_t tilePartsLeft = numTilePartsTotal_; tilePartsLeft > 0;)
   {
-    if(!stream_->write(tilePart->tileIndex_))
-    {
-      grklog.error("Failed to write tile index");
+    uint32_t numInSegment = std::min(tilePartsLeft, maxTilePartsPerTlmSegment);
+    if(!writeSegmentHeader(stream_, segmentIndex++, numInSegment))
       return false;
-    }
-    if(!stream_->write(tilePart->length_))
+    for(uint32_t i = 0; i < numInSegment; ++i)
     {
-      grklog.error("Failed to write tile part length");
-      return false;
+      auto tilePart = markerManager_->next(false);
+      if(!tilePart)
+      {
+        grklog.error("TLM: fewer tile parts written than the %u signalled", numTilePartsTotal_);
+        return false;
+      }
+      if(!stream_->write(tilePart->tileIndex_))
+      {
+        grklog.error("Failed to write tile index");
+        return false;
+      }
+      if(!stream_->write(tilePart->length_))
+      {
+        grklog.error("Failed to write tile part length");
+        return false;
+      }
     }
+    tilePartsLeft -= numInSegment;
+  }
+  if(markerManager_->next(true))
+  {
+    grklog.error("TLM: more tile parts written than the %u signalled", numTilePartsTotal_);
+    return false;
   }
 
   if(!stream_->seek(current_position))

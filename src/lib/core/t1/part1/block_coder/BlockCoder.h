@@ -33,23 +33,23 @@ public:
   void print(void);
   bool alloc(uint16_t w, uint16_t h);
 
-  void code_block_enc_deallocate(cblk_enc* p_code_block);
   double compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
                        uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
-                       const double* mct_norms, uint16_t mct_numcomps, bool doRateControl);
+                       const double* mct_norms, uint16_t mct_numcomps, bool doRateControl,
+                       uint16_t earlyStopSlope = 0);
   static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
 
   bool decompress_cblk(CodeblockDecompress* cblk, uint8_t orientation, uint32_t cblksty);
   int32_t* getUncompressedData(void);
   void decompressInitOrientation(uint8_t orientation);
-  void decompressInitSegment(uint8_t type, uint8_t** buffers, uint32_t* buffer_lengths,
-                             uint16_t num_buffers);
-  void decompressUpdateSegment(uint8_t** buffers, uint32_t* buffer_lengths, uint16_t num_buffers);
+  void decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks);
+  void decompressUpdateSegment(const DataChunk* chunks, uint16_t numChunks);
   bool decompressPass(uint8_t passno, uint8_t passtype, uint8_t numBpsToDecompress, uint8_t type,
                       uint32_t cblksty);
   void decompressFinish(uint32_t cblksty, bool finalLayer);
   void decompressBackup(void);
   void decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress);
+  void decompressDiscardBackup(void);
   void setFinalLayer(bool isFinal);
   static bool cacheAll(uint32_t strategy);
 
@@ -92,6 +92,8 @@ private:
   grk_flag* flags_;
   uint32_t flagsLen_;
   bool compressor;
+
+  pass_enc encoderPasses_[maxCodePassesPerBlock];
 
   void checkSegSym(int32_t cblksty);
 

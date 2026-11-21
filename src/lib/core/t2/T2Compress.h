@@ -57,7 +57,8 @@ struct T2Compress
    */
   bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers, uint32_t* p_data_written,
                                uint32_t max_len, uint8_t newTilePartProgressionPosition,
-                               PLMarker* markers, bool isFinal, bool debug);
+                               PLMarker* markers, bool isFinal, bool debug,
+                               uint64_t* tilePartBytes = nullptr);
 
 private:
   ITileProcessorCompress* tileProcessor;

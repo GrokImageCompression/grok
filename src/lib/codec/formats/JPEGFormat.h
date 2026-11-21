@@ -92,11 +92,17 @@ class JPEGFormat : public ImageFormat
 {
 public:
   JPEGFormat(void);
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  ~JPEGFormat() override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    return true;
+  }
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
@@ -117,6 +123,8 @@ private:
    */
   struct jpeg_compress_struct cinfo;
   T const* planes[4];
+  grk::PlanarToInterleaved<T>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
 };
 
 template<typename T>
@@ -214,6 +222,14 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
     success = false;
     goto cleanup;
   }
+  // cmptparm[]/planes[] are sized for at most 3 components; a 4-component
+  // (Adobe CMYK/YCCK) JPEG would otherwise overflow those stack arrays.
+  if(cinfo.output_components > 3)
+  {
+    spdlog::error("jpegtoimage: Unsupported number of components {}", cinfo.output_components);
+    success = false;
+    goto cleanup;
+  }
 
   decompress_num_comps = (uint16_t)cinfo.output_components;
   w = cinfo.image_width;
@@ -227,6 +243,8 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
   for(int j = 0; j < cinfo.output_components; j++)
   {
     cmptparm[j].prec = (uint8_t)bps;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[j].data_type = GRK_INT_16;
     cmptparm[j].dx = 1;
     cmptparm[j].dy = 1;
     cmptparm[j].w = w;
@@ -377,13 +395,20 @@ cleanup:
 template<typename T>
 JPEGFormat<T>::JPEGFormat(void)
     : success(true), buffer(nullptr), buffer32s(nullptr), color_space(JCS_UNKNOWN), adjust(0),
-      readFromStdin(false), planes{0, 0, 0}
+      readFromStdin(false), planes{0, 0, 0}, interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
 template<typename T>
-bool JPEGFormat<T>::encodeHeader(void)
+JPEGFormat<T>::~JPEGFormat()
 {
-  if(isHeaderEncoded())
+  delete interleaver_;
+  delete interleaver16_;
+}
+
+template<typename T>
+bool JPEGFormat<T>::writeHeader(void)
+{
+  if(isHeaderWritten())
     return true;
 
   int32_t firstAlpha = -1;
@@ -422,7 +447,7 @@ bool JPEGFormat<T>::encodeHeader(void)
   // sub-sampling not supported at the moment
   if(isFinalOutputSubsampled(image_))
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: subsampling not currently supported.");
+    spdlog::error("JPEGFormat<T>::writeHeader: subsampling not currently supported.");
     return false;
   }
 
@@ -450,14 +475,14 @@ bool JPEGFormat<T>::encodeHeader(void)
         color_space = JCS_GRAYSCALE;
       else
       {
-        spdlog::error("JPEGFormat<T>::encodeHeader: unrecognized colour space");
+        spdlog::error("JPEGFormat<T>::writeHeader: unrecognized colour space");
       }
       break;
   }
 
   if(image_->decompress_num_comps > 4)
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: number of components {} "
+    spdlog::error("JPEGFormat<T>::writeHeader: number of components {} "
                   "is greater than 4.",
                   image_->decompress_num_comps);
     return false;
@@ -467,7 +492,7 @@ bool JPEGFormat<T>::encodeHeader(void)
 
   if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
+    spdlog::error("JPEGFormat<T>::writeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
                   prec);
     return false;
   }
@@ -484,7 +509,7 @@ bool JPEGFormat<T>::encodeHeader(void)
   // We assume that alpha channels occur as last channels in image_.
   if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= decompress_num_comps))
   {
-    spdlog::warn("JPEGFormat<T>::encodeHeader: PNG requires that alpha channels occur"
+    spdlog::warn("JPEGFormat<T>::writeHeader: PNG requires that alpha channels occur"
                  " as last channels in image_.");
     numAlphaChannels = 0;
   }
@@ -577,45 +602,77 @@ bool JPEGFormat<T>::encodeHeader(void)
     jpeg_write_marker(&cinfo, JPEG_APP0 + 1, exif_app1, (unsigned int)exif_app1_len);
     delete[] exif_app1;
   }
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
   return true;
 }
 
 template<typename T>
-bool JPEGFormat<T>::encodePixels(void)
+bool JPEGFormat<T>::writeImage(void)
 {
-  /* Step 5: while (scan lines remain to be written) */
-  /*           jpeg_write_scanlines(...); */
+  return writeImageBand(0, cinfo.image_height);
+}
 
-  /* Here we use the library's state variable cinfo.next_scanline as the
-   * loop counter, so that we don't have to keep track ourselves.
-   * To keep things simple, we pass one scanline per call; you can pass
-   * more if you wish, though.
-   */
-  auto iter = grk::InterleaverFactory<T>::makeInterleaver(8);
-  if(!iter)
-    return false;
-  while(cinfo.next_scanline < cinfo.image_height)
+template<typename T>
+bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  if(yBegin != cinfo.next_scanline)
   {
-    /* jpeg_write_scanlines expects an array of pointers to scanlines.
-     * Here the array is only one element long, but you could pass
-     * more than one scanline at a time if that's more convenient.
-     */
-    iter->interleave((T**)planes, image_->decompress_num_comps, (uint8_t*)buffer,
-                     image_->decompress_width, image_->comps[0].stride, image_->decompress_width, 1,
-                     adjust);
-    JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
-    row_pointer[0] = buffer;
-    jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    spdlog::error("JPEGFormat: band yBegin ({}) must equal next_scanline ({})", yBegin,
+                  cinfo.next_scanline);
+    return false;
   }
-  delete iter;
+  auto stride = image_->comps[0].stride;
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
+  {
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(8);
+      if(!interleaver16_)
+        return false;
+    }
+    int16_t* bandPlanes16[4];
+    for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
+      bandPlanes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * stride;
+    int16_t adjust16 = (int16_t)adjust;
+    while(cinfo.next_scanline < yEnd)
+    {
+      interleaver16_->interleave(bandPlanes16, image_->decompress_num_comps, (uint8_t*)buffer,
+                                 image_->decompress_width, stride, image_->decompress_width, 1,
+                                 adjust16);
+      JSAMPROW row_pointer[1];
+      row_pointer[0] = buffer;
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+  }
+  else
+  {
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(8);
+      if(!interleaver_)
+        return false;
+    }
+    T* bandPlanes[4];
+    for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
+      bandPlanes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * stride;
+    while(cinfo.next_scanline < yEnd)
+    {
+      interleaver_->interleave(bandPlanes, image_->decompress_num_comps, (uint8_t*)buffer,
+                               image_->decompress_width, stride, image_->decompress_width, 1,
+                               adjust);
+      JSAMPROW row_pointer[1];
+      row_pointer[0] = buffer;
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+  }
 
   return true;
 }
 
 template<typename T>
-bool JPEGFormat<T>::encodeFinish(void)
+bool JPEGFormat<T>::writeFinish(void)
 {
   /* Step 6: Finish compression */
   jpeg_finish_compress(&cinfo);
@@ -629,11 +686,11 @@ bool JPEGFormat<T>::encodeFinish(void)
   delete[] buffer32s;
 
   /* After finish_compress, we can close the output file. */
-  return ImageFormat::encodeFinish() && success;
+  return ImageFormat::writeFinish() && success;
 }
 
 template<typename T>
-grk_image* JPEGFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* JPEGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   return jpegtoimage(filename.c_str(), parameters);
 }

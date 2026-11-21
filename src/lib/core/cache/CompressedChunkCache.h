@@ -352,7 +352,7 @@ private:
         std::memcpy(seq[i]->data_.get(), ptr, length);
         seq[i]->fetchOffset_ = length;
         seq[i]->stream_ = std::unique_ptr<IStream>(
-            memStreamCreate(seq[i]->data_.get(), length, false, nullptr, codecFormat_, true));
+            memStreamCreate(seq[i]->data_.get(), length, codecFormat_, true));
         ptr += length;
       }
     }

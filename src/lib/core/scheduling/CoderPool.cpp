@@ -28,13 +28,15 @@ namespace grk
 bool CoderPool::contains(uint8_t maxCblkWExp, uint8_t maxCblkHExp)
 {
   auto key = CoderKey(maxCblkWExp, maxCblkHExp);
+  std::lock_guard<std::mutex> lock(mutex_);
   return coderMap_.find(key) != coderMap_.end();
 }
 
 void CoderPool::makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxCblkHExp,
                            std::function<std::shared_ptr<t1::ICoder>()> creator)
 {
-  if(contains(maxCblkWExp, maxCblkHExp))
+  std::lock_guard<std::mutex> lock(mutex_);
+  if(coderMap_.find({maxCblkWExp, maxCblkHExp}) != coderMap_.end())
     return;
   std::vector<std::shared_ptr<t1::ICoder>> coders;
   for(uint32_t i = 0; i < numCoders; ++i)
@@ -44,6 +46,7 @@ void CoderPool::makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxC
 std::shared_ptr<t1::ICoder> CoderPool::getCoder(size_t worker, uint8_t maxCblkWExp,
                                                 uint8_t maxCblkHExp)
 {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = coderMap_.find({maxCblkWExp, maxCblkHExp});
   if(it == coderMap_.end())
   {

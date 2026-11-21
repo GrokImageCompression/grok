@@ -18,6 +18,7 @@
 #pragma once
 
 #include <limits>
+#include <utility>
 
 namespace grk
 {
@@ -80,8 +81,8 @@ struct ResPrecinctInfo
    * @param tileWindow      decode window in unreduced tile coordinates (used only if windowed)
    * @return true on success, false if resolution is degenerate or overflows
    */
-  bool init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds, uint32_t dx, uint32_t dy,
-            bool windowed, Rect32 tileWindow);
+  bool init(uint8_t resno, uint8_t decompLevelX, uint8_t decompLevelY, Rect32 tileBounds,
+            uint32_t dx, uint32_t dy, bool windowed, Rect32 tileWindow);
 
   /**
    * @brief Prints resolution precinct info for debugging.
@@ -153,6 +154,8 @@ struct ResPrecinctInfo
 
   /** true if init() completed successfully */
   bool valid;
+
+  uint64_t precinctsToWindow(uint64_t precinctIndex) const;
 };
 
 /**
@@ -198,6 +201,10 @@ struct PacketIterInfoComponent
   uint32_t dy;
   /** number of resolution levels for this component (1 to GRK_MAXRLVLS) */
   uint8_t numresolutions;
+  /** decompositions along each axis after the given number of levels (Part 2 DFS) */
+  uint8_t horizontalDepth[GRK_MAXRLVLS];
+  uint8_t verticalDepth[GRK_MAXRLVLS];
+  bool usesPart2Transform;
   /** array of resolution-level precinct grid info, length = numresolutions */
   PacketIterInfoResolution* resolutions;
 };
@@ -226,7 +233,6 @@ class PacketManager;
  * 2. No subsampling (all components have dx=dy=1)
  * 3. Constant number of resolutions across all components
  * 4. Non-decreasing projected precinct size as resolution decreases (CPRL/PCRL only)
- * 5. Tile origin at (0,0)
  *
  * ## Spatial Progressions and Step Sizes
  *
@@ -281,6 +287,13 @@ struct PacketIter
    */
   void enable_tile_part_generation(uint32_t prog_iter_num, bool first_poc_tile_part,
                                    uint8_t newTilePartProgressionPosition);
+
+  /**
+   * @brief True when each enable_tile_part_generation call confines the walk to one tile part
+   * @param cp   coding parameters
+   * @param mode T2 mode
+   */
+  static bool walksOneTilePart(CodingParams* cp, T2_MODE mode);
 
   /**
    * @brief Generates optimized precinct information
@@ -420,6 +433,9 @@ private:
   bool singleProgression_ = false;
   /** true when used for compression, false for decompression */
   bool compression_ = false;
+  uint64_t packetSlots_ = 0;
+  uint64_t packetSlotLimit_ = std::numeric_limits<uint64_t>::max();
+  bool packetBudgetRemaining(void);
   /**
    * Cached per-resolution precinct info for the optimized iteration path.
    * Non-null only when all OPT preconditions are met. Length = comps[0].numresolutions.
@@ -433,7 +449,16 @@ private:
 
   /** RPCL OPT: tracks whether left-of-window precincts have been skipped for current row */
   bool skippedLeft_ = false;
+  /** first position of the PCRL/CPRL spatial loops: the highest resolution's precinct grid start */
+  uint64_t spatialStartX_ = 0;
+  uint64_t spatialStartY_ = 0;
+  bool precinctRowStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t yPos) const;
+  bool precinctColumnStartsOPT(const ResPrecinctInfo* rpInfo, uint64_t xPos) const;
 
+  /**
+   * @brief Tests whether a precinct row of rpInfo starts at the current y (non-OPT path).
+   */
+  bool precinctStartsAtY(const ResPrecinctInfo* rpInfo) const;
   /**
    * @brief Computes py0grid_ for the current (x,y) position (non-OPT path).
    * @return false if current y is not aligned to a precinct boundary
@@ -466,10 +491,27 @@ private:
   /** @brief Computes precinctIndex from (px0grid_, py0grid_) and precinct grid width. */
   void generatePrecinctIndex(void);
   /**
+   * @brief Selects the precinct info that applies to (componentIndex, resolutionIndex).
+   * @param compressionScratch storage that the compression path initializes in place
+   * @return null when that component and resolution has no valid precinct info
+   */
+  ResPrecinctInfo* precinctInfoFor(uint16_t componentIndex, uint8_t resolutionIndex,
+                                   ResPrecinctInfo* compressionScratch);
+  /**
    * @brief Validates the current precinct and computes grid coordinates.
    * @return true if precinct is valid, false otherwise (skip this packet position)
    */
   bool validatePrecinct(void);
+  /**
+   * @brief Tests whether any component in [componentStart, componentEnd) and resolution in
+   * [resolutionStart, resolutionEnd) has a precinct starting at the current y.
+   *
+   * Reads only y, so it can be called mid-row without disturbing iteration state.
+   */
+  bool anyPrecinctStartsAtY(uint16_t componentStart, uint16_t componentEnd, uint8_t resolutionStart,
+                            uint8_t resolutionEnd);
+  uint32_t nextYAfterCurrent(uint16_t componentStart, uint16_t componentEnd,
+                             uint8_t resolutionStart, uint8_t resolutionEnd);
   /**
    * @brief Computes dx/dy for a single component and merges into the global minimum.
    * @param comp component info
@@ -485,7 +527,7 @@ private:
    Get next packet in component-precinct-resolution-layer order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
-  bool next_cprl(SparseBuffer* compressedPackets);
+  bool next_cprl(SparseBuffer*);
   bool next_cprlOPT(SparseBuffer* compressedPackets);
 
   /**
@@ -493,25 +535,31 @@ private:
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_pcrl();
-  bool next_pcrlOPT();
+  /** next packet in precinct-resolution-component-layer order (Part 2) */
+  bool next_prcl();
+  bool next_pcrlOPT(SparseBuffer* compressedPackets);
+  uint64_t packetsInRowsOPT(uint64_t yBegin, uint64_t yEnd) const;
+  uint64_t packetsInColumnsOPT(uint64_t y, uint64_t xBegin, uint64_t xEnd) const;
+  std::pair<uint64_t, uint64_t> windowRowsOPT(void) const;
+  std::pair<uint64_t, uint64_t> windowColumnsOPT(uint64_t y) const;
 
   /**
    Get next packet in layer-resolution-component-precinct order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_lrcp();
-  bool next_lrcpOPT();
+  bool next_lrcpOPT(SparseBuffer* compressedPackets);
   /**
    Get next packet in resolution-layer-component-precinct order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
   bool next_rlcp();
-  bool next_rlcpOPT();
+  bool next_rlcpOPT(SparseBuffer* compressedPackets);
   /**
    Get next packet in resolution-precinct-component-layer order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
-  bool next_rpcl(SparseBuffer* compressedPackets);
+  bool next_rpcl(SparseBuffer*);
   bool next_rpclOPT(SparseBuffer* compressedPackets);
 
   bool skipPackets(SparseBuffer* compressedPackets, uint64_t numPackets);

@@ -68,10 +68,11 @@ struct ITileProcessor;
 namespace grk
 {
 
-DecompressScheduler::DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool)
+DecompressScheduler::DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool,
+                                         WaveletPoolData* waveletPoolData)
     : SchedulerStandard(numcomps), prec_(prec), blocksByTile_(TileBlocks(numcomps)),
       differentialInfo_(new DifferentialInfo[numcomps]), prePostProc_(nullptr),
-      streamPool_(streamPool)
+      streamPool_(streamPool), waveletPoolData_(waveletPoolData)
 {
   for(uint16_t compno = 0; compno < numcomps; ++compno)
     waveletReverse_.push_back(nullptr);
@@ -89,7 +90,7 @@ DecompressScheduler::~DecompressScheduler()
   }
 
   delete[] differentialInfo_;
-  release();
+  DecompressScheduler::release();
 }
 
 void DecompressScheduler::release(void)
@@ -111,10 +112,55 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   bool cacheAll =
       (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
+  bool inlineWindowDecode = doPostT1 && !tileProcessor->getTile()->comps_->isWholeTileDecoding();
+  bool hasMctFlow = mctPostProc != nullptr;
+  uint32_t mctCompHasBlocks = 0;
+
+  auto scheduleMct = [&]() {
+    if(!(doPostT1 && numcomps_ >= 3 && mctPostProc && mctCompHasBlocks == 3))
+      return true;
+    if(tcp->mct_ == 2)
+      return false;
+    if(tcp->tccps_->qmfbid_ == 1)
+      mct->schedule_decompress_rev(mctPostProc, true);
+    else
+      mct->schedule_decompress_irrev(mctPostProc, true);
+
+    return true;
+  };
+
+  auto runWindowComponents = [&](uint16_t firstComponent, uint16_t lastComponent) {
+    auto& executor = TFSingleton::get();
+    if(executor.this_worker_id() >= 0)
+      executor.corun(static_cast<tf::Taskflow&>(*this));
+    else
+      executor.run(static_cast<tf::Taskflow&>(*this)).wait();
+
+    bool success = !tileProcessor->hasError();
+    for(uint16_t componentNumber = firstComponent; componentNumber <= lastComponent;
+        ++componentNumber)
+    {
+      if(imageComponentFlow_[componentNumber] &&
+         !tileProcessor->transferDecompressedComponent(componentNumber))
+        success = false;
+      delete imageComponentFlow_[componentNumber];
+      imageComponentFlow_[componentNumber] = nullptr;
+      delete waveletReverse_[componentNumber];
+      waveletReverse_[componentNumber] = nullptr;
+      if(!cacheAll)
+      {
+        for(auto& block : blocksByTile_[componentNumber])
+          block.release();
+        blocksByTile_[componentNumber].clear();
+      }
+    }
+    clear();
+
+    return success;
+  };
 
   uint8_t resMin = std::numeric_limits<uint8_t>::max();
   uint8_t resMax = 0;
-  uint32_t mctCompHasBlocks = 0;
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
     auto tilec = tileProcessor->getTile()->comps_ + compno;
@@ -126,6 +172,12 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     resMax = std::max(resMax, resUpperBound);
   }
   ResolutionChecker rChecker(numcomps_, tileProcessor->getTile()->comps_, cacheAll);
+  uint32_t maxDimension = 0;
+  for(uint16_t componentNumber = 0; componentNumber < numcomps_; ++componentNumber)
+  {
+    auto window = (tileProcessor->getTile()->comps_ + componentNumber)->windowUnreducedBounds();
+    maxDimension = std::max({maxDimension, window.width(), window.height()});
+  }
 
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
@@ -136,8 +188,8 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     // schedule blocks
     auto tccp = tcp->tccps_ + compno;
     // nominal code block dimensions
-    uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)1 << tccp->cblkw_expn_ : 0;
-    uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)1 << tccp->cblkh_expn_ : 0;
+    uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)(1 << tccp->cblkw_expn_) : 0;
+    uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)(1 << tccp->cblkh_expn_) : 0;
     auto activePool = &coderPool_;
     if(streamPool_ && streamPool_->contains(tccp->cblkw_expn_, tccp->cblkh_expn_))
       activePool = streamPool_;
@@ -153,9 +205,21 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     auto tilec = tileProcessor->getTile()->comps_ + compno;
     auto wholeTileDecoding = tilec->isWholeTileDecoding();
     auto diffInfo = differentialInfo_ + compno;
+    // resolutions missing from a truncated stream decode as empty bands
+    uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead()
+                         ? tilec->resolutions_to_decompress_
+                         : 0;
 
     // 1. create blocks and store in blocksByRes
     auto& componentBlocks = blocksByTile_[compno];
+    // When not caching all, clear stale blocks from previous decompress
+    // to avoid accumulating entries that exceed the ImageComponentFlow's resFlows_ array.
+    if(!cacheAll)
+    {
+      for(auto& block : componentBlocks)
+        block.release();
+      componentBlocks.clear();
+    }
     diffInfo->layersDecompressed_ = tcp->layersToDecompress_;
     bool finalLayer = tcp->layersToDecompress_ == tcp->numLayers_;
 
@@ -166,47 +230,61 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     for(; resno < resUpperBound; ++resno)
     {
       auto res = tilec->resolutions_ + resno;
+      if(wholeTileDecoding)
+      {
+        size_t numBlocks = resBlocks.blocks_.size();
+        for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
+          for(auto precinct : res->band[bandIndex].precincts_)
+            numBlocks += precinct->getNumCblks();
+        resBlocks.blocks_.reserve(numBlocks);
+      }
       for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
-        auto paddedBandWindow = tilec->getWindow()->getBandWindowPadded(resno, band->orientation_);
+        auto paddedBandWindow = tilec->getBandWindowPadded(resno, band->orientation_);
         for(auto precinct : band->precincts_)
         {
-          if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
-            continue;
-          for(uint32_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
+          auto scheduleBlock = [&](uint32_t cblkno) {
+            auto cblk = precinct->getDecompressBlock(cblkno);
+            resBlocks.blocks_.emplace_back(cacheAll);
+            auto block = &resBlocks.blocks_.back();
+            block->x = cblk->x0();
+            block->y = cblk->y0();
+            bool htBlock = tcp->isHT() && !cblk->isPart1Block();
+            block->postProcessor_ =
+                htBlock ? t1::DecompressBlockPostProcessor<int32_t>(
+                              [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                      uint16_t stride) {
+                                tilec->postProcessBlockHT(srcData, block, stride);
+                              })
+                        : t1::DecompressBlockPostProcessor<int32_t>(
+                              [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                      [[maybe_unused]] uint16_t stride) {
+                                tilec->postProcessBlock(srcData, block);
+                              });
+            block->bandIndex = bandIndex;
+            block->bandNumbps = band->maxBitPlanes_;
+            block->bandOrientation = band->orientation_;
+            block->cblk = cblk;
+            block->cblk_sty = tccp->cblkStyle_;
+            block->qmfbid = tccp->qmfbid_;
+            block->qShift = tilec->qShift();
+            block->resno = resno;
+            block->roishift = tccp->roishift_;
+            block->stepsize = band->stepsize_;
+            block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+            if(htBlock)
+              block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
+            block->R_b = prec_ + gain_b[band->orientation_];
+          };
+          if(wholeTileDecoding)
           {
-            auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-            if(wholeTileDecoding || paddedBandWindow->nonEmptyIntersection(&cblkBounds))
-            {
-              auto cblk = precinct->getDecompressBlock(cblkno);
-              auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
-              block->x = cblk->x0();
-              block->y = cblk->y0();
-              block->postProcessor_ =
-                  tcp->isHT() ? t1::DecompressBlockPostProcessor<int32_t>(
-                                    [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                            uint16_t stride) {
-                                      tilec->postProcessHT(srcData, block, stride);
-                                    })
-                              : t1::DecompressBlockPostProcessor<int32_t>(
-                                    [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
-                                            [[maybe_unused]] uint16_t stride) {
-                                      tilec->postProcess(srcData, block);
-                                    });
-              block->bandIndex = bandIndex;
-              block->bandNumbps = band->maxBitPlanes_;
-              block->bandOrientation = band->orientation_;
-              block->cblk = cblk;
-              block->cblk_sty = tccp->cblkStyle_;
-              block->qmfbid = tccp->qmfbid_;
-              block->resno = resno;
-              block->roishift = tccp->roishift_;
-              block->stepsize = band->stepsize_;
-              block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
-              block->R_b = prec_ + gain_b[band->orientation_];
-              resBlocks.blocks_.push_back(block);
-            }
+            for(uint32_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
+              scheduleBlock(cblkno);
+          }
+          else
+          {
+            precinct->forEachCodeBlockIn(paddedBandWindow, scheduleBlock);
           }
         }
       }
@@ -214,7 +292,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       if(componentBlocks.size() == 1 && resno == 1 && !resBlocks.blocks_.empty())
       {
         resBlocks.combine(componentBlocks[0]);
-        componentBlocks[0] = resBlocks;
+        componentBlocks[0] = std::move(resBlocks);
         resBlocks.clear();
         continue;
       }
@@ -225,7 +303,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       }
       else if(!resBlocks.blocks_.empty())
       {
-        componentBlocks.push_back(resBlocks);
+        componentBlocks.push_back(std::move(resBlocks));
         resBlocks.clear();
       }
     }
@@ -235,69 +313,81 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     }
     else
     {
+      // a truncated stream can declare hundreds of components with no code blocks
+      if(!wholeTileDecoding)
+      {
+        try
+        {
+          tilec->allocRegionWindow(numRes);
+        }
+        catch([[maybe_unused]] const std::runtime_error& ex)
+        {
+          for(auto& block : componentBlocks)
+            block.release();
+          componentBlocks.clear();
+          continue;
+        }
+        catch([[maybe_unused]] const std::bad_alloc& baex)
+        {
+          return false;
+        }
+      }
+      if(!tilec->allocWindow())
+      {
+        grklog.error("Not enough memory for tile data");
+        return false;
+      }
       // 2. prepare for decompression
       if(compno < 3)
         mctCompHasBlocks++;
       if(imageComponentFlow_[compno])
         delete imageComponentFlow_[compno];
-      imageComponentFlow_[compno] =
-          new ImageComponentFlow(tilec->nextPacketProgressionState_.numResolutionsRead());
+      imageComponentFlow_[compno] = new ImageComponentFlow(numRes);
       if(!tileProcessor->getTile()->comps_->isWholeTileDecoding())
         imageComponentFlow_[compno]->setRegionDecompression();
 
       // 3. decompress
-      success_ = true;
       resno = 0;
     }
+    const size_t samplesPerTask = 64 * 64;
+    const size_t blocksPerTask =
+        cbw && cbh ? std::max<size_t>(1, samplesPerTask / ((size_t)cbw * cbh)) : 1;
     for(auto& rblocks : componentBlocks)
     {
-      Resflow* resFlow = nullptr;
-      resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
-      for(auto& block : rblocks.blocks_)
+      Resflow* resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
+      auto& blocks = rblocks.blocks_;
+      for(size_t first = 0; first < blocks.size(); first += blocksPerTask)
       {
-        auto blockFunc = [this, activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll,
+        const size_t last = std::min(blocks.size(), first + blocksPerTask);
+        auto batchFunc = [activePool, tileProcessor, &blocks, first, last, tccp, cbw, cbh, cacheAll,
                           finalLayer] {
-          if(!success_)
+          std::shared_ptr<t1::ICoder> pooled;
+          if(!cacheAll)
+            pooled = activePool->getCoder((size_t)TFSingleton::get().this_worker_id(),
+                                          tccp->cblkw_expn_, tccp->cblkh_expn_);
+          for(size_t i = first; i < last; i++)
           {
-            block.reset();
-          }
-          else
-          {
-            block->finalLayer_ = finalLayer;
-            t1::ICoder* coder = nullptr;
-            if(block->needsCachedCoder())
-            {
-              // make a new coder for this block
+            auto& block = blocks[i];
+            block.finalLayer_ = finalLayer;
+            t1::ICoder* coder = pooled.get();
+            if(block.needsCachedCoder())
               coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
                                                   tileProcessor->getTileCacheStrategy());
-            }
-            else if(!cacheAll)
-            {
-              // get coder from pool
-              auto threadnum = TFSingleton::get().this_worker_id();
-              coder = activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
-                          .get();
-            }
             try
             {
-              if(!block->open(coder))
-                success_ = false;
+              block.open(coder);
             }
             catch(const std::runtime_error& rerr)
             {
-              block.reset();
               grklog.error(rerr.what());
-              success_ = false;
             }
           }
         };
-        resFlow->blocks_->nextTask().work(blockFunc);
+        resFlow->blocks_->nextTask().work(batchFunc);
       }
       resno++;
     }
     tilec->currentPacketProgressionState_ = tilec->nextPacketProgressionState_;
-    if(!success_)
-      return false;
 
     auto imageFlow = getImageComponentFlow(compno);
     if(imageFlow)
@@ -307,48 +397,54 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       // generate dependency graph
       graph(compno);
     }
-    uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
+    // MCT components clamp after the inverse colour transform, never in the wavelet.
+    // a Part 2 level may end without a vertical pass. the float 9/7 canvas holds float
+    // bits the fused shift would corrupt, so that one stays standalone.
+    bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
+    bool partialCanFuse = tccp->qmfbid_ == 1 || tilec->is16BitDwt();
+    bool fuseDcShift = numRes > 1 && !tccp->usesPart2Transform() && !isMctComp &&
+                       (tileProcessor->getTCP()->wholeTileDecompress_ || partialCanFuse);
     if(numRes > 0)
     {
       if(waveletReverse_[compno])
         delete waveletReverse_[compno];
 
-      auto maxDim = std::max(tileProcessor->getCodingParams()->t_width_,
-                             tileProcessor->getCodingParams()->t_height_);
-
-      // compute DC shift for fusion into wavelet last level
-      // DC shift fusion only works for whole tile decompress (decompressPartial doesn't support it)
-      bool wholeDecompress = tileProcessor->getTCP()->wholeTileDecompress_;
+      // scratch is sized off the decoded region (the tile-component window,
+      // i.e. the tile intersected with any decode window), not the nominal
+      // tile grid: a codestream can declare a tile far larger than the image
+      // (XTsiz/YTsiz), and a decode window can ask for a small region of a
+      // huge image, either of which would otherwise drive a giant scratch.
+      // the pool is shared across the tile's components and grows in place,
+      // so every component must pass the SAME maxDim or a reallocation would
+      // race a concurrent component's decode: take the max over all of them.
+      // compute DC shift for the wavelet to fuse
       DcShiftParam dcShift;
-      if(numRes > 1 && wholeDecompress)
+      if(fuseDcShift)
       {
-        auto tccp = tcp->tccps_ + compno;
-        bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
-        // For MCT components: don't fuse DC shift into wavelet.
-        // Wavelet fusion applies clamp before inverse color transform,
-        // but correct behavior requires clamp after MCT.
-        if(!isMctComp)
+        auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
+        dcShift.shift = tccp->dcLevelShift_;
+        if(img_comp->sgnd)
         {
-          auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
-          dcShift.shift = tccp->dcLevelShift_;
-          if(img_comp->sgnd)
-          {
-            dcShift.min = -(1 << (img_comp->prec - 1));
-            dcShift.max = (1 << (img_comp->prec - 1)) - 1;
-          }
-          else
-          {
-            dcShift.min = 0;
-            dcShift.max = (1 << img_comp->prec) - 1;
-          }
-          dcShift.enabled = (dcShift.shift != 0) || (tccp->qmfbid_ == 0);
+          dcShift.min = -(1 << (img_comp->prec - 1));
+          dcShift.max = (1 << (img_comp->prec - 1)) - 1;
         }
+        else
+        {
+          dcShift.min = 0;
+          dcShift.max = (1 << img_comp->prec) - 1;
+        }
+        // a zero shift still needs the clamp, the standalone pass below is
+        // skipped whenever the wavelet is trusted with it
+        dcShift.enabled = true;
       }
 
+      const TransformKernel* kernel = nullptr;
+      if(tccp->atkIndex_)
+        kernel = &tcp->cp_->transformKernels_.at(tccp->atkIndex_);
       waveletReverse_[compno] = new WaveletReverse(
-          tileProcessor->getScheduler(), tilec, compno, tilec->getWindow()->unreducedBounds(),
-          numRes, (tcp->tccps_ + compno)->qmfbid_, maxDim,
-          tileProcessor->getTCP()->wholeTileDecompress_, &waveletPoolData_, dcShift);
+          tileProcessor->getScheduler(), tilec, compno, tilec->windowUnreducedBounds(), numRes,
+          (tcp->tccps_ + compno)->qmfbid_, maxDimension,
+          tileProcessor->getTCP()->wholeTileDecompress_, waveletPoolData_, dcShift, tccp, kernel);
 
       if(!waveletReverse_[compno]->decompress())
         return false;
@@ -369,9 +465,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         if(!tileProcessor->needsMctDecompress(compno) || tcp->mct_ == 2)
         {
           // standalone DC shift when wavelet didn't fuse it
-          uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
-          bool waveletFusedDc = (numRes > 1 && tileProcessor->getTCP()->wholeTileDecompress_);
-          if(!waveletFusedDc)
+          if(!fuseDcShift)
           {
             auto dcPostProc = imageComponentFlow->getPrePostProc(*this);
             imageComponentFlow->getFinalFlowT1()->precede(*dcPostProc);
@@ -383,42 +477,26 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         }
       }
     }
+
+    if(inlineWindowDecode && (!hasMctFlow || compno >= 2))
+    {
+      bool completesMctGroup = hasMctFlow && mctPostProc;
+      if(completesMctGroup && !scheduleMct())
+        return false;
+      uint16_t firstComponent = completesMctGroup ? 0 : compno;
+      if(!runWindowComponents(firstComponent, compno))
+        return false;
+      if(completesMctGroup)
+      {
+        delete prePostProc_;
+        prePostProc_ = nullptr;
+        mctPostProc = nullptr;
+      }
+    }
   }
 
-  // sanity check on MCT scheduling
-  if(doPostT1 && numcomps_ >= 3 && mctPostProc && mctCompHasBlocks == 3)
-  {
-    // custom MCT
-    if(tcp->mct_ == 2)
-    {
-      /*
-      auto data = new uint8_t*[tile->numcomps_];
-      for(uint16_t i = 0; i < tile->numcomps_; ++i)
-      {
-        auto tile_comp = tile->comps + i;
-        data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
-      }
-      uint64_t samples = tile->comps->getWindow()->stridedArea();
-      bool rc = Mct::decompress_custom((uint8_t*)tcp_->mct_decoding_matrix_, samples, data,
-                                      tile->numcomps_, headerImage->comps->sgnd);
-      return rc;
-      */
-      return false;
-    }
-    else
-    {
-      // DC shift is never fused into wavelet for MCT components,
-      // so MCT always handles DC shift
-      if(tcp->tccps_->qmfbid_ == 1)
-      {
-        mct->schedule_decompress_rev(mctPostProc, true);
-      }
-      else
-      {
-        mct->schedule_decompress_irrev(mctPostProc, true);
-      }
-    }
-  }
+  if(!inlineWindowDecode && !scheduleMct())
+    return false;
 
   return true;
 }

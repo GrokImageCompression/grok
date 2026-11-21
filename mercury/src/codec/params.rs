@@ -1,0 +1,383 @@
+//! JPEG 2000 main-header parameters (SIZ/COD/QCD/QCC), decode-only.
+//!
+//! Coding parameters the host (grok) parsed from the main header and handed to
+//! mercury across the C API; mercury no longer parses the main header itself.
+
+use crate::codec::tile_geom::Dims;
+
+// ─── Progression orders ──────────────────────────────────────────────────────
+
+/// Progression order (Corder).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ProgressionOrder {
+    Lrcp = 0,
+    Rlcp = 1,
+    Rpcl = 2,
+    Pcrl = 3,
+    Cprl = 4,
+}
+
+impl ProgressionOrder {
+    /// From host-supplied order (0=LRCP..4=CPRL).
+    pub fn from_host(v: u8) -> Result<Self, ()> {
+        match v {
+            0 => Ok(Self::Lrcp),
+            1 => Ok(Self::Rlcp),
+            2 => Ok(Self::Rpcl),
+            3 => Ok(Self::Pcrl),
+            4 => Ok(Self::Cprl),
+            _ => Err(()),
+        }
+    }
+}
+
+/// One POC progression volume (T.800 A.6.6): layers `[0, lay_e)`, resolutions
+/// `[res_s, res_e)`, components `[comp_s, comp_e)`, every precinct, walked in
+/// `order`.
+#[derive(Debug, Clone, Copy)]
+pub struct ProgressionVolume {
+    pub res_s: u8,
+    pub comp_s: u16,
+    pub lay_e: u16,
+    pub res_e: u8,
+    pub comp_e: u16,
+    pub order: ProgressionOrder,
+}
+
+// ─── Block coding modes ──────────────────────────────────────────────────────
+
+/// Block coder mode flags (Cmodes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CodingModes(pub u32);
+
+impl CodingModes {
+    pub const BYPASS: u32 = 1;
+    pub const RESET: u32 = 2;
+    pub const TERMALL: u32 = 4;
+    pub const CAUSAL: u32 = 8;
+    pub const ERTERM: u32 = 16;
+    pub const SEGMARK: u32 = 32;
+}
+
+// ─── SIZ parameters ─────────────────────────────────────────────────────────
+
+/// Per-component information from the SIZ marker.
+#[derive(Debug, Clone)]
+pub struct SizComponent {
+    pub precision: u8,
+    pub is_signed: bool,
+    pub xr_siz: u8,
+    pub yr_siz: u8,
+}
+
+/// Parsed SIZ marker segment.
+#[derive(Debug, Clone)]
+pub struct SizParams {
+    /// Canvas width (Xsiz).
+    pub x_siz: u32,
+    /// Canvas height (Ysiz).
+    pub y_siz: u32,
+    /// Image horizontal origin (XOsiz).
+    pub x_o_siz: u32,
+    /// Image vertical origin (YOsiz).
+    pub y_o_siz: u32,
+    /// Tile width (XTsiz).
+    pub xt_siz: u32,
+    /// Tile height (YTsiz).
+    pub yt_siz: u32,
+    /// Tile horizontal origin (XTOsiz).
+    pub xt_o_siz: u32,
+    /// Tile vertical origin (YTOsiz).
+    pub yt_o_siz: u32,
+    /// Per-component information.
+    pub components: Vec<SizComponent>,
+}
+
+impl SizParams {
+    /// Number of components.
+    pub fn comp_count(&self) -> usize {
+        self.components.len()
+    }
+
+    pub fn tile_rect(&self, tile: u32) -> Dims {
+        let (tx, ty) = (tile % self.tiles_across(), tile / self.tiles_across());
+        Dims {
+            x0: (self.xt_o_siz + tx * self.xt_siz).max(self.x_o_siz),
+            y0: (self.yt_o_siz + ty * self.yt_siz).max(self.y_o_siz),
+            x1: (self.xt_o_siz + (tx + 1) * self.xt_siz).min(self.x_siz),
+            y1: (self.yt_o_siz + (ty + 1) * self.yt_siz).min(self.y_siz),
+        }
+    }
+
+    /// Number of tiles in X direction.
+    pub fn tiles_across(&self) -> u32 {
+        if self.xt_siz == 0 {
+            return 1;
+        }
+        (self.x_siz - self.xt_o_siz).div_ceil(self.xt_siz)
+    }
+
+    /// Number of tiles in Y direction.
+    pub fn tiles_down(&self) -> u32 {
+        if self.yt_siz == 0 {
+            return 1;
+        }
+        (self.y_siz - self.yt_o_siz).div_ceil(self.yt_siz)
+    }
+}
+
+// ─── COD parameters ─────────────────────────────────────────────────────────
+
+/// Precinct size for one resolution level.
+#[derive(Debug, Clone, Copy)]
+pub struct PrecinctSize {
+    /// Precinct width (power of 2).
+    pub width: u32,
+    /// Precinct height (power of 2).
+    pub height: u32,
+}
+
+/// Most decomposition levels a component may carry (T.800 Table A.15).
+pub const MAX_LEVELS: u8 = 32;
+/// Code-block sides are powers of two with at most 4096 samples (T.800 Table A.18).
+const MIN_BLOCK_SIDE: u32 = 4;
+const MAX_BLOCK_SIDE: u32 = 1024;
+const MAX_BLOCK_SAMPLES: u32 = 4096;
+/// Largest precinct exponent a 4-bit PPx/PPy field can hold (T.800 Table A.21).
+const MAX_PRECINCT_SIDE: u32 = 1 << 15;
+
+/// One component's coding style: the COD default, or its COC override
+/// (T.800 A.6.2).
+#[derive(Debug, Clone)]
+pub struct CompCodingStyle {
+    /// Number of DWT decomposition levels.
+    pub num_levels: u8,
+    /// Code-block width (power of 2, e.g. 64).
+    pub block_width: u32,
+    /// Code-block height (power of 2, e.g. 64).
+    pub block_height: u32,
+    /// Block coding mode flags.
+    pub modes: CodingModes,
+    /// Reversible transform.
+    pub reversible: bool,
+    /// Custom precinct sizes per resolution (level 0=LL up to NL).
+    /// Empty ⇒ default 2^15 × 2^15.
+    pub precincts: Vec<PrecinctSize>,
+}
+
+impl CompCodingStyle {
+    /// Reject a coding style the COD/COC marker syntax cannot express.
+    pub fn check(&self) -> Result<(), String> {
+        if self.num_levels > MAX_LEVELS {
+            return Err(format!("{} decomposition levels", self.num_levels));
+        }
+        let block_side_ok =
+            |side: u32| side.is_power_of_two() && (MIN_BLOCK_SIDE..=MAX_BLOCK_SIDE).contains(&side);
+        if !block_side_ok(self.block_width)
+            || !block_side_ok(self.block_height)
+            || self.block_width * self.block_height > MAX_BLOCK_SAMPLES
+        {
+            return Err(format!(
+                "code-block size {} x {}",
+                self.block_width, self.block_height
+            ));
+        }
+        if !self.precincts.is_empty() && self.precincts.len() != self.num_levels as usize + 1 {
+            return Err(format!(
+                "{} precinct sizes for {} resolutions",
+                self.precincts.len(),
+                self.num_levels as usize + 1
+            ));
+        }
+        for (res, ps) in self.precincts.iter().enumerate() {
+            let min_side = if res == 0 { 1 } else { 2 };
+            let precinct_side_ok = |side: u32| {
+                side.is_power_of_two() && (min_side..=MAX_PRECINCT_SIDE).contains(&side)
+            };
+            if !precinct_side_ok(ps.width) || !precinct_side_ok(ps.height) {
+                return Err(format!(
+                    "precinct {} x {} at resolution {res}",
+                    ps.width, ps.height
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Precinct size for a resolution level (0=full res); default 2^15×2^15
+    /// if no custom precincts.
+    pub fn precinct_span(&self, res_level: u8) -> PrecinctSize {
+        if self.precincts.is_empty() {
+            PrecinctSize {
+                width: MAX_PRECINCT_SIDE,
+                height: MAX_PRECINCT_SIDE,
+            }
+        } else {
+            self.precincts[res_level as usize]
+        }
+    }
+
+    /// Effective code-block size at a resolution level (T.800 B.7:
+    /// xcb' = min(xcb, PPx)). Above resolution 0 the precinct halves per axis
+    /// into the band domain.
+    pub fn block_span(&self, res_level: u8) -> (u32, u32) {
+        let ps = self.precinct_span(res_level);
+        let band_scale = if res_level == 0 { 1 } else { 2 };
+        (
+            self.block_width.min((ps.width / band_scale).max(1)),
+            self.block_height.min((ps.height / band_scale).max(1)),
+        )
+    }
+}
+
+/// Parsed COD marker segment: the tile-wide fields plus one coding style per
+/// component, each the COD default unless a COC replaced it.
+#[derive(Debug, Clone)]
+pub struct CodParams {
+    /// Progression order.
+    pub order: ProgressionOrder,
+    /// Main-header POC volume list, in order. Empty means no POC, so `order`
+    /// covers the whole tile.
+    pub pocs: Vec<ProgressionVolume>,
+    /// Number of quality layers.
+    pub num_layers: u16,
+    /// Multiple component transform (YCC).
+    pub use_ycc: bool,
+    /// Use SOP markers.
+    pub use_sop: bool,
+    /// Use EPH markers.
+    pub use_eph: bool,
+    /// One entry per component, in component order.
+    pub comps: Vec<CompCodingStyle>,
+}
+
+// ─── QCD parameters ─────────────────────────────────────────────────────────
+
+/// Quantization style.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuantStyle {
+    /// Reversible: no quantization, just bit-shift.
+    Reversible,
+    /// Irreversible, derived from LL band.
+    Derived,
+    /// Irreversible, expounded: one step per band.
+    Expounded,
+}
+
+/// Parsed QCD marker segment (quantization default).
+#[derive(Debug, Clone)]
+pub struct QcdParams {
+    /// Number of guard bits.
+    pub guard_bits: u8,
+    /// Quantization style.
+    pub style: QuantStyle,
+    /// For reversible: ranging exponents (epsilon values), per band.
+    pub ranges: Vec<u8>,
+    /// For irreversible: step sizes, per band.
+    pub steps: Vec<f32>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn style() -> CompCodingStyle {
+        CompCodingStyle {
+            num_levels: 2,
+            block_width: 64,
+            block_height: 64,
+            modes: CodingModes(0),
+            reversible: true,
+            precincts: vec![],
+        }
+    }
+
+    #[test]
+    fn spec_conformant_styles_pass() {
+        assert_eq!(style().check(), Ok(()));
+        let mut s = style();
+        s.block_width = 1024;
+        s.block_height = 4;
+        s.precincts = vec![
+            PrecinctSize {
+                width: 1,
+                height: 1,
+            },
+            PrecinctSize {
+                width: 2,
+                height: MAX_PRECINCT_SIDE,
+            },
+            PrecinctSize {
+                width: 256,
+                height: 256,
+            },
+        ];
+        assert_eq!(s.check(), Ok(()));
+    }
+
+    #[test]
+    fn out_of_range_blocks_are_rejected() {
+        for (w, h) in [
+            (1 << 20, 4),
+            (2, 64),
+            (2048, 2),
+            (64, 128),
+            (0, 64),
+            (48, 64),
+        ] {
+            let mut s = style();
+            s.block_width = w;
+            s.block_height = h;
+            let msg = s.check().expect_err("block must be rejected");
+            assert!(msg.contains("code-block"), "{w}x{h}: {msg}");
+        }
+    }
+
+    #[test]
+    fn too_many_levels_are_rejected() {
+        let mut s = style();
+        s.num_levels = MAX_LEVELS + 1;
+        assert!(s.check().is_err());
+    }
+
+    #[test]
+    fn precinct_lists_must_match_resolutions_and_be_powers_of_two() {
+        let one = PrecinctSize {
+            width: 64,
+            height: 64,
+        };
+        let mut s = style();
+        s.precincts = vec![one; 2];
+        assert!(s.check().unwrap_err().contains("precinct sizes"));
+        s.precincts = vec![one; 4];
+        assert!(s.check().unwrap_err().contains("precinct sizes"));
+        s.precincts = vec![
+            one,
+            PrecinctSize {
+                width: 1,
+                height: 64,
+            },
+            one,
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 1"));
+        s.precincts = vec![
+            one,
+            one,
+            PrecinctSize {
+                width: 96,
+                height: 64,
+            },
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 2"));
+        s.precincts = vec![
+            one,
+            one,
+            PrecinctSize {
+                width: MAX_PRECINCT_SIDE * 2,
+                height: 64,
+            },
+        ];
+        assert!(s.check().unwrap_err().contains("at resolution 2"));
+    }
+}

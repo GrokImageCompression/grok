@@ -37,11 +37,16 @@ public:
 private:
   bool preCompress(CompressBlockExec* block);
   bool postProcess(DecompressBlockExec* block);
+  ICoder* part1Coder();
 
   uint32_t coded_data_size;
   uint8_t* coded_data;
   uint32_t unencoded_data_size;
   int32_t* unencoded_data;
+  uint32_t maxCblkW_;
+  uint32_t maxCblkH_;
+  // mixed mode tiles hold Part 1 code blocks next to HT ones
+  ICoder* part1Coder_ = nullptr;
 
   mem_fixed_allocator* allocator;
   mem_elastic_allocator* elastic_alloc;

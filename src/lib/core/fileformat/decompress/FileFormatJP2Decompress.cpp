@@ -47,7 +47,6 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "FileFormatJP2Family.h"
 #include "FileFormatJP2Decompress.h"
-#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
@@ -96,6 +95,7 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
   auto image = getHeaderImage();
   if(!FileFormatJP2Family::readHeader(header_info, image))
     return false;
+  codeStream->setCodestreamExtent(codestreamOffset_, codestreamLength_);
   if(codeStream->needsHeaderRead())
   {
     if(!codeStream->readHeader(header_info))
@@ -103,8 +103,13 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
       headerError_ = true;
       return false;
     }
-    image = codeStream->getImage();
+    image = codeStream->getCompositeNoWait();
     image->validateICC();
+    // Update decompress_colour_space after validateICC may have changed color_space
+    // (e.g. to GRK_CLRSPC_ICC).  postReadHeader() ran before validateICC, so
+    // decompress_colour_space still holds the old value.  Writers that emit
+    // headers before decompress() rely on this being current.
+    image->decompress_colour_space = image->color_space;
 
     // check RGB subsampling
     if(image->color_space == GRK_CLRSPC_SRGB)
@@ -218,6 +223,15 @@ void FileFormatJP2Decompress::init(grk_decompress_parameters* parameters)
   /* set up the J2K codec */
   codeStream->init(parameters);
 }
+
+bool FileFormatJP2Decompress::postProcessPluginImage(const grk_image* decoded)
+{
+  return codeStream->postProcessPluginImage(decoded);
+}
+void FileFormatJP2Decompress::setInputFilePath(const char* path)
+{
+  codeStream->setInputFilePath(path);
+}
 bool FileFormatJP2Decompress::decompress(grk_plugin_tile* tile)
 {
   if(!codeStream->decompress(tile))
@@ -241,12 +255,18 @@ bool FileFormatJP2Decompress::postProcess(GrkImage* img)
     for(uint16_t i = 0; i < n; ++i)
     {
       uint16_t channel = info[i].channel;
-      // auto img = codeStream->getImage();
-      if(!hasPalette && channel >= img->numcomps)
+      if(channel >= img->numcomps)
       {
-        grklog.error("channel definition: channel=%u must be strictly less than numcomps=%u",
-                     channel, img->numcomps);
-        return false;
+        // Without a palette this is a hard error; with a palette the cdef
+        // channel may reference a palette channel that is not a materialized
+        // image component, so skip rather than writing out of bounds.
+        if(!hasPalette)
+        {
+          grklog.error("channel definition: channel=%u must be strictly less than numcomps=%u",
+                       channel, img->numcomps);
+          return false;
+        }
+        continue;
       }
       img->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
     }
@@ -264,6 +284,10 @@ void FileFormatJP2Decompress::dump(uint32_t flag, FILE* outputFileStream)
 CodingParams* FileFormatJP2Decompress::getCodingParams(void)
 {
   return codeStream->getCodingParams();
+}
+void FileFormatJP2Decompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  codeStream->setBandCallback(callback, user_data);
 }
 
 bool FileFormatJP2Decompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)

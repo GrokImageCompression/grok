@@ -22,6 +22,7 @@
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
 #include <cstring>
+#include "util/SyccToRGB.h"
 
 HWY_BEFORE_NAMESPACE();
 namespace grk
@@ -51,7 +52,7 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m = hn::FirstN(di, w - i);
-        auto v = hn::MaskedLoad(m, di, row + i);
+        auto v = hn::LoadN(di, row + i, w - i);
         hn::BlendedStore(Clamp(v, vMin, vMax), m, di, row + i);
       }
     }
@@ -77,7 +78,7 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m = hn::FirstN(di, w - i);
-        auto v = hn::MaskedLoad(m, di, row + i);
+        auto v = hn::LoadN(di, row + i, w - i);
         hn::BlendedStore(Mul(v, vScale), m, di, row + i);
       }
     }
@@ -105,33 +106,36 @@ namespace HWY_NAMESPACE
       if(i < w)
       {
         auto m_i = hn::FirstN(di, w - i);
-        auto v = ConvertTo(df, hn::MaskedLoad(m_i, di, row + i));
+        auto v = ConvertTo(df, hn::LoadN(di, row + i, w - i));
         hn::BlendedStore(ConvertTo(di, Div(v, vScale)), m_i, di, row + i);
       }
     }
   }
 
   /* ─── YCC 4:4:4 → RGB ───
-   * Matches scalar: cb -= offset; cr -= offset; r = y + (int)(1.402 * cr); etc.
-   * Key: truncation to int happens between the float multiply and the int add. */
+   * Fixed point twin of grk::sycc_to_rgb in SyccToRGB.h: the scaled coefficient times a
+   * chroma sample is an exact integer in double, so both paths round to nearest on the
+   * same value. Double lanes give half the lanes of int32 on AVX2. */
   static void Hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr,
                                      int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
                                      uint32_t src_stride, uint32_t dst_stride, int32_t offset,
                                      int32_t upb)
   {
-    const HWY_FULL(float) df;
+    const HWY_FULL(double) dd;
     const HWY_FULL(int32_t) di;
-    const uint32_t L = (uint32_t)Lanes(df);
+    const hn::Half<decltype(di)> di_half;
+    const uint32_t L = (uint32_t)Lanes(dd);
 
-    const auto vOffset_i = Set(di, offset);
-    const auto vZero_i = Zero(di);
-    const auto vUpb_i = Set(di, upb);
+    const auto vOffset = Set(di_half, offset);
+    const auto vZero = Zero(di_half);
+    const auto vUpb = Set(di_half, upb);
+    const auto vRounding = Set(dd, (double)syccRoundingOffset);
+    const auto vInverseScale = Set(dd, 1.0 / syccCoefficientScale);
 
-    /* YCC→RGB coefficients (positive values for correct truncation matching) */
-    const auto c_cr_r = Set(df, 1.402f);
-    const auto c_cb_g = Set(df, 0.344f);
-    const auto c_cr_g = Set(df, 0.714f);
-    const auto c_cb_b = Set(df, 1.772f);
+    const auto c_cr_r = Set(dd, (double)syccCrToRed);
+    const auto c_cb_g = Set(dd, (double)syccCbToGreen);
+    const auto c_cr_g = Set(dd, (double)syccCrToGreen);
+    const auto c_cb_b = Set(dd, (double)syccCbToBlue);
 
     for(uint32_t j = 0; j < h; ++j)
     {
@@ -145,44 +149,31 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto vi_y = LoadU(di, yRow + i);
-        /* Integer offset subtraction (matches: cb -= offset) */
-        auto vi_cb = Sub(LoadU(di, cbRow + i), vOffset_i);
-        auto vi_cr = Sub(LoadU(di, crRow + i), vOffset_i);
-        auto fcb = ConvertTo(df, vi_cb);
-        auto fcr = ConvertTo(df, vi_cr);
+        auto vi_y = LoadU(di_half, yRow + i);
+        auto vcb = PromoteTo(dd, Sub(LoadU(di_half, cbRow + i), vOffset));
+        auto vcr = PromoteTo(dd, Sub(LoadU(di_half, crRow + i), vOffset));
 
-        /* r = y + (int)(1.402 * cr) */
-        auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
-        /* g = y - (int)(0.344 * cb + 0.714 * cr) */
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
-                        vUpb_i);
-        /* b = y + (int)(1.772 * cb) */
-        auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
+        auto scaledRed = Mul(c_cr_r, vcr);
+        auto scaledGreen = Add(Mul(c_cb_g, vcb), Mul(c_cr_g, vcr));
+        auto scaledBlue = Mul(c_cb_b, vcb);
 
-        StoreU(vr, di, rRow + i);
-        StoreU(vg, di, gRow + i);
-        StoreU(vb, di, bRow + i);
+        auto vr = Clamp(
+            Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledRed, vRounding), vInverseScale)))),
+            vZero, vUpb);
+        auto vg = Clamp(
+            Sub(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledGreen, vRounding), vInverseScale)))),
+            vZero, vUpb);
+        auto vb = Clamp(
+            Add(vi_y, DemoteTo(di_half, Floor(Mul(Add(scaledBlue, vRounding), vInverseScale)))),
+            vZero, vUpb);
+
+        StoreU(vr, di_half, rRow + i);
+        StoreU(vg, di_half, gRow + i);
+        StoreU(vb, di_half, bRow + i);
       }
-      if(i < w)
-      {
-        auto m_i = hn::FirstN(di, w - i);
-
-        auto vi_y = hn::MaskedLoad(m_i, di, yRow + i);
-        auto vi_cb = Sub(hn::MaskedLoad(m_i, di, cbRow + i), vOffset_i);
-        auto vi_cr = Sub(hn::MaskedLoad(m_i, di, crRow + i), vOffset_i);
-        auto fcb = ConvertTo(df, vi_cb);
-        auto fcr = ConvertTo(df, vi_cr);
-
-        auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
-                        vUpb_i);
-        auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
-
-        hn::BlendedStore(vr, m_i, di, rRow + i);
-        hn::BlendedStore(vg, m_i, di, gRow + i);
-        hn::BlendedStore(vb, m_i, di, bRow + i);
-      }
+      for(; i < w; ++i)
+        grk::sycc_to_rgb<int32_t>(offset, upb, yRow[i], cbRow[i], crRow[i], rRow + i, gRow + i,
+                                  bRow + i);
     }
   }
 
@@ -282,6 +273,7 @@ namespace HWY_NAMESPACE
                                      uint8_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8;
     const uint32_t L = (uint32_t)Lanes(di);
 
     for(uint32_t j = 0; j < h; ++j)
@@ -294,16 +286,10 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto vr = LoadU(di, rRow + i);
-        auto vg = LoadU(di, gRow + i);
-        auto vb = LoadU(di, bRow + i);
-        /* Scalar store for the narrowing conversion — simple and correct */
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dst[(i + k) * 3 + 0] = (uint8_t)ExtractLane(vr, k);
-          dst[(i + k) * 3 + 1] = (uint8_t)ExtractLane(vg, k);
-          dst[(i + k) * 3 + 2] = (uint8_t)ExtractLane(vb, k);
-        }
+        auto vr = DemoteTo(du8, LoadU(di, rRow + i));
+        auto vg = DemoteTo(du8, LoadU(di, gRow + i));
+        auto vb = DemoteTo(du8, LoadU(di, bRow + i));
+        StoreInterleaved3(vr, vg, vb, du8, dst + i * 3);
       }
       for(; i < w; ++i)
       {
@@ -319,6 +305,7 @@ namespace HWY_NAMESPACE
                                      uint32_t w, uint32_t h, uint32_t dst_stride)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8;
     const uint32_t L = (uint32_t)Lanes(di);
 
     for(uint32_t j = 0; j < h; ++j)
@@ -331,19 +318,11 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        /* Scalar load for the widening conversion */
-        HWY_ALIGN int32_t tmpR[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t tmpG[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t tmpB[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          tmpR[k] = (int32_t)src[(i + k) * 3 + 0];
-          tmpG[k] = (int32_t)src[(i + k) * 3 + 1];
-          tmpB[k] = (int32_t)src[(i + k) * 3 + 2];
-        }
-        StoreU(Load(di, tmpR), di, rRow + i);
-        StoreU(Load(di, tmpG), di, gRow + i);
-        StoreU(Load(di, tmpB), di, bRow + i);
+        hn::VFromD<decltype(du8)> vr, vg, vb;
+        LoadInterleaved3(du8, src + i * 3, vr, vg, vb);
+        StoreU(PromoteTo(di, vr), di, rRow + i);
+        StoreU(PromoteTo(di, vg), di, gRow + i);
+        StoreU(PromoteTo(di, vb), di, bRow + i);
       }
       for(; i < w; ++i)
       {
@@ -359,6 +338,7 @@ namespace HWY_NAMESPACE
                                       uint16_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
     const uint32_t L = (uint32_t)Lanes(di);
 
     for(uint32_t j = 0; j < h; ++j)
@@ -371,15 +351,10 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto vr = LoadU(di, rRow + i);
-        auto vg = LoadU(di, gRow + i);
-        auto vb = LoadU(di, bRow + i);
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dst[(i + k) * 3 + 0] = (uint16_t)ExtractLane(vr, k);
-          dst[(i + k) * 3 + 1] = (uint16_t)ExtractLane(vg, k);
-          dst[(i + k) * 3 + 2] = (uint16_t)ExtractLane(vb, k);
-        }
+        auto vr = DemoteTo(du16, LoadU(di, rRow + i));
+        auto vg = DemoteTo(du16, LoadU(di, gRow + i));
+        auto vb = DemoteTo(du16, LoadU(di, bRow + i));
+        StoreInterleaved3(vr, vg, vb, du16, dst + i * 3);
       }
       for(; i < w; ++i)
       {
@@ -395,6 +370,7 @@ namespace HWY_NAMESPACE
                                       uint32_t w, uint32_t h, uint32_t dst_stride)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
     const uint32_t L = (uint32_t)Lanes(di);
 
     for(uint32_t j = 0; j < h; ++j)
@@ -407,18 +383,11 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        HWY_ALIGN int32_t tmpR[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t tmpG[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t tmpB[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          tmpR[k] = (int32_t)src[(i + k) * 3 + 0];
-          tmpG[k] = (int32_t)src[(i + k) * 3 + 1];
-          tmpB[k] = (int32_t)src[(i + k) * 3 + 2];
-        }
-        StoreU(Load(di, tmpR), di, rRow + i);
-        StoreU(Load(di, tmpG), di, gRow + i);
-        StoreU(Load(di, tmpB), di, bRow + i);
+        hn::VFromD<decltype(du16)> vr, vg, vb;
+        LoadInterleaved3(du16, src + i * 3, vr, vg, vb);
+        StoreU(PromoteTo(di, vr), di, rRow + i);
+        StoreU(PromoteTo(di, vg), di, gRow + i);
+        StoreU(PromoteTo(di, vb), di, bRow + i);
       }
       for(; i < w; ++i)
       {
@@ -434,6 +403,7 @@ namespace HWY_NAMESPACE
                                      uint32_t n)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8;
     const uint32_t L = (uint32_t)Lanes(di);
     const auto vZero = Zero(di);
     const auto vMax = Set(di, 255);
@@ -441,13 +411,30 @@ namespace HWY_NAMESPACE
     uint32_t i = 0;
     for(; i + L <= n; i += L)
     {
+      /* Clamp to [0,255] then saturating narrow to uint8 */
       auto v = Clamp(LoadU(di, src + i), vZero, vMax);
-      for(uint32_t k = 0; k < L; ++k)
-        dst[i + k] = (uint8_t)ExtractLane(v, k);
+      StoreU(DemoteTo(du8, v), du8, dst + i);
     }
     for(; i < n; ++i)
     {
       int32_t v = src[i];
+      dst[i] = v <= 0 ? (uint8_t)0 : v >= 255 ? (uint8_t)255 : (uint8_t)v;
+    }
+  }
+
+  static void Hwy_copy_i16_to_u8_row(const int16_t* HWY_RESTRICT src, uint8_t* HWY_RESTRICT dst,
+                                     uint32_t n)
+  {
+    const HWY_FULL(int16_t) di16;
+    const hn::Rebind<uint8_t, decltype(di16)> du8;
+    const uint32_t L = (uint32_t)Lanes(di16);
+
+    uint32_t i = 0;
+    for(; i + L <= n; i += L)
+      StoreU(DemoteTo(du8, LoadU(di16, src + i)), du8, dst + i);
+    for(; i < n; ++i)
+    {
+      int16_t v = src[i];
       dst[i] = v <= 0 ? (uint8_t)0 : v >= 255 ? (uint8_t)255 : (uint8_t)v;
     }
   }
@@ -457,16 +444,14 @@ namespace HWY_NAMESPACE
                                       uint32_t n)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<int16_t, decltype(di)> di16;
     const uint32_t L = (uint32_t)Lanes(di);
-    const auto vMin = Set(di, -32768);
-    const auto vMax = Set(di, 32767);
 
     uint32_t i = 0;
     for(; i + L <= n; i += L)
     {
-      auto v = Clamp(LoadU(di, src + i), vMin, vMax);
-      for(uint32_t k = 0; k < L; ++k)
-        dst[i + k] = (int16_t)ExtractLane(v, k);
+      /* DemoteTo int16 saturates to [-32768, 32767] */
+      StoreU(DemoteTo(di16, LoadU(di, src + i)), di16, dst + i);
     }
     for(; i < n; ++i)
     {
@@ -480,6 +465,7 @@ namespace HWY_NAMESPACE
                                       uint32_t n)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
     const uint32_t L = (uint32_t)Lanes(di);
     const auto vZero = Zero(di);
     const auto vMax = Set(di, 65535);
@@ -487,9 +473,9 @@ namespace HWY_NAMESPACE
     uint32_t i = 0;
     for(; i + L <= n; i += L)
     {
+      /* Clamp to [0,65535] then saturating narrow to uint16 */
       auto v = Clamp(LoadU(di, src + i), vZero, vMax);
-      for(uint32_t k = 0; k < L; ++k)
-        dst[i + k] = (uint16_t)ExtractLane(v, k);
+      StoreU(DemoteTo(du16, v), du16, dst + i);
     }
     for(; i < n; ++i)
     {
@@ -503,15 +489,16 @@ namespace HWY_NAMESPACE
                                       uint32_t n)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint32_t, decltype(di)> du32;
     const uint32_t L = (uint32_t)Lanes(di);
     const auto vZero = Zero(di);
 
     uint32_t i = 0;
     for(; i + L <= n; i += L)
     {
+      /* Clamp negatives to 0 and reinterpret as uint32 */
       auto v = Max(LoadU(di, src + i), vZero);
-      for(uint32_t k = 0; k < L; ++k)
-        dst[i + k] = (uint32_t)ExtractLane(v, k);
+      StoreU(BitCast(du32, v), du32, dst + i);
     }
     for(; i < n; ++i)
       dst[i] = src[i] < 0 ? 0u : (uint32_t)src[i];
@@ -536,33 +523,6 @@ namespace HWY_NAMESPACE
     }
     for(; i < w; ++i)
       dest[i] = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
-  }
-
-  /* ─── Unpack uint8 → int32 (signed with sign extension, optional invert) ─── */
-  static void Hwy_unpack_8s_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
-                                   size_t w, bool invert)
-  {
-    const HWY_FULL(int32_t) di;
-    const hn::Rebind<uint8_t, decltype(di)> du8_part;
-    const uint32_t L = (uint32_t)Lanes(di);
-    const auto vXor = Set(di, invert ? 0xFF : 0);
-
-    size_t i = 0;
-    for(; i + L <= w; i += L)
-    {
-      auto v8 = LoadU(du8_part, src + i);
-      auto vi = Xor(PromoteTo(di, v8), vXor);
-      /* sign extend from 8 bits: shift left 24, then arithmetic shift right 24 */
-      vi = ShiftRight<24>(ShiftLeft<24>(vi));
-      StoreU(vi, di, dest + i);
-    }
-    for(; i < w; ++i)
-    {
-      int32_t v = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
-      v <<= 24;
-      v >>= 24;
-      dest[i] = v;
-    }
   }
 
   /* ─── Unpack big-endian uint16 pairs → int32 (PNG decode path) ─── */
@@ -631,19 +591,11 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        /* Scalar gather from interleaved source, vectorized store */
-        HWY_ALIGN int32_t t0[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t t1[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t t2[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          t0[k] = src[(i + k) * 3 + 0];
-          t1[k] = src[(i + k) * 3 + 1];
-          t2[k] = src[(i + k) * 3 + 2];
-        }
-        StoreU(Load(di, t0), di, dest[0] + i);
-        StoreU(Load(di, t1), di, dest[1] + i);
-        StoreU(Load(di, t2), di, dest[2] + i);
+        hn::VFromD<decltype(di)> v0, v1, v2;
+        LoadInterleaved3(di, src + i * 3, v0, v1, v2);
+        StoreU(v0, di, dest[0] + i);
+        StoreU(v1, di, dest[1] + i);
+        StoreU(v2, di, dest[2] + i);
       }
       for(; i < w; ++i)
       {
@@ -657,21 +609,12 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        HWY_ALIGN int32_t t0[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t t1[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t t2[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        HWY_ALIGN int32_t t3[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          t0[k] = src[(i + k) * 4 + 0];
-          t1[k] = src[(i + k) * 4 + 1];
-          t2[k] = src[(i + k) * 4 + 2];
-          t3[k] = src[(i + k) * 4 + 3];
-        }
-        StoreU(Load(di, t0), di, dest[0] + i);
-        StoreU(Load(di, t1), di, dest[1] + i);
-        StoreU(Load(di, t2), di, dest[2] + i);
-        StoreU(Load(di, t3), di, dest[3] + i);
+        hn::VFromD<decltype(di)> v0, v1, v2, v3;
+        LoadInterleaved4(di, src + i * 4, v0, v1, v2, v3);
+        StoreU(v0, di, dest[0] + i);
+        StoreU(v1, di, dest[1] + i);
+        StoreU(v2, di, dest[2] + i);
+        StoreU(v3, di, dest[3] + i);
       }
       for(; i < w; ++i)
       {
@@ -696,6 +639,7 @@ namespace HWY_NAMESPACE
                                    uint32_t w, int32_t adjust)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8;
     const uint32_t L = (uint32_t)Lanes(di);
     const auto vAdj = Set(di, adjust);
 
@@ -704,15 +648,10 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
-        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
-        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dest[(i + k) * 3 + 0] = (uint8_t)ExtractLane(v0, k);
-          dest[(i + k) * 3 + 1] = (uint8_t)ExtractLane(v1, k);
-          dest[(i + k) * 3 + 2] = (uint8_t)ExtractLane(v2, k);
-        }
+        auto v0 = DemoteTo(du8, Add(LoadU(di, src[0] + i), vAdj));
+        auto v1 = DemoteTo(du8, Add(LoadU(di, src[1] + i), vAdj));
+        auto v2 = DemoteTo(du8, Add(LoadU(di, src[2] + i), vAdj));
+        StoreInterleaved3(v0, v1, v2, du8, dest + i * 3);
       }
       for(; i < w; ++i)
       {
@@ -726,17 +665,11 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
-        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
-        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
-        auto v3 = Add(LoadU(di, src[3] + i), vAdj);
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dest[(i + k) * 4 + 0] = (uint8_t)ExtractLane(v0, k);
-          dest[(i + k) * 4 + 1] = (uint8_t)ExtractLane(v1, k);
-          dest[(i + k) * 4 + 2] = (uint8_t)ExtractLane(v2, k);
-          dest[(i + k) * 4 + 3] = (uint8_t)ExtractLane(v3, k);
-        }
+        auto v0 = DemoteTo(du8, Add(LoadU(di, src[0] + i), vAdj));
+        auto v1 = DemoteTo(du8, Add(LoadU(di, src[1] + i), vAdj));
+        auto v2 = DemoteTo(du8, Add(LoadU(di, src[2] + i), vAdj));
+        auto v3 = DemoteTo(du8, Add(LoadU(di, src[3] + i), vAdj));
+        StoreInterleaved4(v0, v1, v2, v3, du8, dest + i * 4);
       }
       for(; i < w; ++i)
       {
@@ -761,6 +694,7 @@ namespace HWY_NAMESPACE
                                     uint32_t w, int32_t adjust)
   {
     const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
     const uint32_t L = (uint32_t)Lanes(di);
     const auto vAdj = Set(di, adjust);
 
@@ -769,15 +703,10 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
-        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
-        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dest[(i + k) * 3 + 0] = (uint16_t)ExtractLane(v0, k);
-          dest[(i + k) * 3 + 1] = (uint16_t)ExtractLane(v1, k);
-          dest[(i + k) * 3 + 2] = (uint16_t)ExtractLane(v2, k);
-        }
+        auto v0 = DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj));
+        auto v1 = DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj));
+        auto v2 = DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj));
+        StoreInterleaved3(v0, v1, v2, du16, dest + i * 3);
       }
       for(; i < w; ++i)
       {
@@ -791,17 +720,11 @@ namespace HWY_NAMESPACE
       uint32_t i = 0;
       for(; i + L <= w; i += L)
       {
-        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
-        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
-        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
-        auto v3 = Add(LoadU(di, src[3] + i), vAdj);
-        for(uint32_t k = 0; k < L; ++k)
-        {
-          dest[(i + k) * 4 + 0] = (uint16_t)ExtractLane(v0, k);
-          dest[(i + k) * 4 + 1] = (uint16_t)ExtractLane(v1, k);
-          dest[(i + k) * 4 + 2] = (uint16_t)ExtractLane(v2, k);
-          dest[(i + k) * 4 + 3] = (uint16_t)ExtractLane(v3, k);
-        }
+        auto v0 = DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj));
+        auto v1 = DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj));
+        auto v2 = DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj));
+        auto v3 = DemoteTo(du16, Add(LoadU(di, src[3] + i), vAdj));
+        StoreInterleaved4(v0, v1, v2, v3, du16, dest + i * 4);
       }
       for(; i < w; ++i)
       {
@@ -817,6 +740,89 @@ namespace HWY_NAMESPACE
       for(uint32_t j = 0; j < w; ++j)
         for(uint32_t k = 0; k < numPlanes; ++k)
           *destPtr++ = (uint16_t)(src[k][j] + adjust);
+    }
+  }
+
+  /* ─── Pack N planar int32 → interleaved big-endian uint16, one row ─── */
+  static void Hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
+                                      uint32_t w, int32_t adjust)
+  {
+    // native lanes are already big-endian on BE hosts
+    const auto toBE16 = [](auto v) {
+#if HWY_IS_LITTLE_ENDIAN
+      return ReverseLaneBytes(v);
+#else
+      return v;
+#endif
+    };
+    const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vAdj = Set(di, adjust);
+    auto dest16 = (uint16_t*)dest;
+
+    if(numPlanes == 3)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = toBE16(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = toBE16(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = toBE16(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        StoreInterleaved3(v0, v1, v2, du16, dest16 + i * 3);
+      }
+      for(; i < w; ++i)
+      {
+        uint32_t val0 = (uint32_t)(src[0][i] + adjust);
+        uint32_t val1 = (uint32_t)(src[1][i] + adjust);
+        uint32_t val2 = (uint32_t)(src[2][i] + adjust);
+        auto p = dest + (size_t)i * 6;
+        p[0] = (uint8_t)(val0 >> 8);
+        p[1] = (uint8_t)val0;
+        p[2] = (uint8_t)(val1 >> 8);
+        p[3] = (uint8_t)val1;
+        p[4] = (uint8_t)(val2 >> 8);
+        p[5] = (uint8_t)val2;
+      }
+    }
+    else if(numPlanes == 4)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = toBE16(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = toBE16(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = toBE16(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        auto v3 = toBE16(DemoteTo(du16, Add(LoadU(di, src[3] + i), vAdj)));
+        StoreInterleaved4(v0, v1, v2, v3, du16, dest16 + i * 4);
+      }
+      for(; i < w; ++i)
+      {
+        uint32_t val0 = (uint32_t)(src[0][i] + adjust);
+        uint32_t val1 = (uint32_t)(src[1][i] + adjust);
+        uint32_t val2 = (uint32_t)(src[2][i] + adjust);
+        uint32_t val3 = (uint32_t)(src[3][i] + adjust);
+        auto p = dest + (size_t)i * 8;
+        p[0] = (uint8_t)(val0 >> 8);
+        p[1] = (uint8_t)val0;
+        p[2] = (uint8_t)(val1 >> 8);
+        p[3] = (uint8_t)val1;
+        p[4] = (uint8_t)(val2 >> 8);
+        p[5] = (uint8_t)val2;
+        p[6] = (uint8_t)(val3 >> 8);
+        p[7] = (uint8_t)val3;
+      }
+    }
+    else
+    {
+      auto destPtr = dest;
+      for(uint32_t j = 0; j < w; ++j)
+        for(uint32_t k = 0; k < numPlanes; ++k)
+        {
+          uint32_t val = (uint32_t)(src[k][j] + adjust);
+          *destPtr++ = (uint8_t)(val >> 8);
+          *destPtr++ = (uint8_t)val;
+        }
     }
   }
 
@@ -882,16 +888,17 @@ HWY_EXPORT(Hwy_packed_to_planar_8);
 HWY_EXPORT(Hwy_planar_to_packed_16);
 HWY_EXPORT(Hwy_packed_to_planar_16);
 HWY_EXPORT(Hwy_copy_i32_to_u8_row);
+HWY_EXPORT(Hwy_copy_i16_to_u8_row);
 HWY_EXPORT(Hwy_copy_i32_to_i16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u32_row);
 HWY_EXPORT(Hwy_unpack_8u_to_i32);
-HWY_EXPORT(Hwy_unpack_8s_to_i32);
 HWY_EXPORT(Hwy_unpack_16be_to_i32);
 HWY_EXPORT(Hwy_unpack_16le_to_i32);
 HWY_EXPORT(Hwy_deinterleave_i32);
 HWY_EXPORT(Hwy_pack_planar_to_8);
 HWY_EXPORT(Hwy_pack_planar_to_16);
+HWY_EXPORT(Hwy_pack_planar_to_16be);
 HWY_EXPORT(Hwy_scale_component_up);
 HWY_EXPORT(Hwy_scale_component_down);
 
@@ -956,11 +963,6 @@ GRK_SIMD_API void hwy_unpack_8u_to_i32(const uint8_t* src, int32_t* dest, size_t
   HWY_DYNAMIC_DISPATCH(Hwy_unpack_8u_to_i32)(src, dest, w, invert);
 }
 
-GRK_SIMD_API void hwy_unpack_8s_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
-{
-  HWY_DYNAMIC_DISPATCH(Hwy_unpack_8s_to_i32)(src, dest, w, invert);
-}
-
 GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_unpack_16be_to_i32)(src, dest, w, invert);
@@ -987,6 +989,12 @@ GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numP
                                         uint16_t* dest, uint32_t w, int32_t adjust)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16)(src, numPlanes, dest, w, adjust);
+}
+
+GRK_SIMD_API void hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes,
+                                          uint8_t* dest, uint32_t w, int32_t adjust)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16be)(src, numPlanes, dest, w, adjust);
 }
 
 GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
@@ -1022,7 +1030,10 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
     const grk_image_comp& comp = tile_img->comps[compIdx];
     if(!comp.data)
       continue;
-    const int32_t* src = static_cast<const int32_t*>(comp.data);
+    const bool src16 = (comp.data_type == GRK_INT_16);
+    // unsigned 16-bit components in a 16-bit plane hold uint16 samples
+    const bool srcUint16 = src16 && !comp.sgnd && comp.prec > 15;
+    const bool dstUint16 = buf->prec > 8 && buf->prec <= 16 && !buf->sgnd;
 
     // Clip to swath y range
     const uint32_t tileY0 = comp.y0;
@@ -1054,60 +1065,124 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
       const uint32_t srcRowIdx = y - tileY0;
       const uint32_t dstRowIdx = y - swath_y0;
 
-      const int32_t* srcPtr = src + static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
-
       uint8_t* dstRowBase = base + static_cast<int64_t>(i) * buf->band_space +
                             static_cast<int64_t>(dstRowIdx) * buf->line_space +
                             static_cast<int64_t>(dstXOff) * buf->pixel_space;
 
-      if(packed && !doPromote)
+      if(src16)
       {
-        // Fast path: contiguous output — use SIMD dispatch
-        if(buf->prec <= 8)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u8_row)(srcPtr, dstRowBase, cols);
-        else if(buf->prec <= 16 && buf->sgnd)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(
-              srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
-        else if(buf->prec <= 16)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(
-              srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
-        else if(buf->sgnd)
-          memcpy(dstRowBase, srcPtr, static_cast<size_t>(cols) * sizeof(int32_t));
-        else
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(
-              srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
-      }
-      else
-      {
-        // Slow path: strided output or alpha promotion
-        for(uint32_t x = 0; x < cols; ++x)
+        // Source data is int16 (from 16-bit DWT path)
+        const int16_t* srcPtr16 = static_cast<const int16_t*>(comp.data) +
+                                  static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
+
+        if(packed && !doPromote && (!srcUint16 || dstUint16))
         {
-          int32_t v = srcPtr[x];
-          if(doPromote)
-            v *= 255;
-          uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
           if(buf->prec <= 8)
-          {
-            *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
-          }
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i16_to_u8_row)(srcPtr16, dstRowBase, cols);
           else if(buf->prec <= 16 && buf->sgnd)
-          {
-            int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
-            memcpy(dstPx, &w, sizeof(int16_t));
-          }
+            memcpy(dstRowBase, srcPtr16, static_cast<size_t>(cols) * sizeof(int16_t));
           else if(buf->prec <= 16)
           {
-            uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
-            memcpy(dstPx, &w, sizeof(uint16_t));
-          }
-          else if(buf->sgnd)
-          {
-            memcpy(dstPx, &v, sizeof(int32_t));
+            // int16 source → uint16 dest: values should be non-negative for unsigned source
+            memcpy(dstRowBase, srcPtr16, static_cast<size_t>(cols) * sizeof(int16_t));
           }
           else
           {
-            uint32_t w = v < 0 ? 0u : (uint32_t)v;
-            memcpy(dstPx, &w, sizeof(uint32_t));
+            // Widen int16 → int32/uint32
+            auto dst32 = reinterpret_cast<int32_t*>(dstRowBase);
+            for(uint32_t x = 0; x < cols; ++x)
+              dst32[x] = srcPtr16[x];
+          }
+        }
+        else
+        {
+          for(uint32_t x = 0; x < cols; ++x)
+          {
+            int32_t v = srcUint16 ? static_cast<uint16_t>(srcPtr16[x]) : srcPtr16[x];
+            if(doPromote)
+              v *= 255;
+            uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
+            if(buf->prec <= 8)
+            {
+              *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            }
+            else if(buf->prec <= 16 && buf->sgnd)
+            {
+              int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              memcpy(dstPx, &w, sizeof(int16_t));
+            }
+            else if(buf->prec <= 16)
+            {
+              uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
+              memcpy(dstPx, &w, sizeof(uint16_t));
+            }
+            else if(buf->sgnd)
+            {
+              memcpy(dstPx, &v, sizeof(int32_t));
+            }
+            else
+            {
+              uint32_t w = v < 0 ? 0u : (uint32_t)v;
+              memcpy(dstPx, &w, sizeof(uint32_t));
+            }
+          }
+        }
+      }
+      else
+      {
+        // Source data is int32 (default path)
+        const int32_t* srcPtr = static_cast<const int32_t*>(comp.data) +
+                                static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
+
+        if(packed && !doPromote)
+        {
+          // Fast path: contiguous output — use SIMD dispatch
+          if(buf->prec <= 8)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u8_row)(srcPtr, dstRowBase, cols);
+          else if(buf->prec <= 16 && buf->sgnd)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(
+                srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
+          else if(buf->prec <= 16)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(
+                srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
+          else if(buf->sgnd)
+            memcpy(dstRowBase, srcPtr, static_cast<size_t>(cols) * sizeof(int32_t));
+          else
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(
+                srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
+        }
+        else
+        {
+          // Slow path: strided output or alpha promotion
+          for(uint32_t x = 0; x < cols; ++x)
+          {
+            int32_t v = srcPtr[x];
+            if(doPromote)
+              v *= 255;
+            uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
+            if(buf->prec <= 8)
+            {
+              *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            }
+            else if(buf->prec <= 16 && buf->sgnd)
+            {
+              int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              memcpy(dstPx, &w, sizeof(int16_t));
+            }
+            else if(buf->prec <= 16)
+            {
+              uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
+              memcpy(dstPx, &w, sizeof(uint16_t));
+            }
+            else if(buf->sgnd)
+            {
+              memcpy(dstPx, &v, sizeof(int32_t));
+            }
+            else
+            {
+              uint32_t w = v < 0 ? 0u : (uint32_t)v;
+              memcpy(dstPx, &w, sizeof(uint32_t));
+            }
           }
         }
       }

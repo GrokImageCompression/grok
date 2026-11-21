@@ -28,6 +28,7 @@ class FlowComponent;
 
 namespace grk
 {
+struct T2Compress;
 struct WaveletFwdScheduleData;
 
 /**
@@ -69,25 +70,42 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   uint8_t getTilePartCounter(void) const override;
   void incTilePartCounter(void) override;
 
-  // Build and submit the compress DAG (MCT → DWT → T1 → rateAlloc).
-  // Must be called after preCompressTile().
   void buildCompressDAG(void);
-  tf::Future<void> submitCompressDAG(void);
+  void runCompressionTasks(void);
   bool compressDAGSuccess(void) const;
+  uint16_t getSlopeThreshold(void) const;
+  void resetForNextFrame(void);
 
 private:
+  enum class MinimumLayerSizeResult
+  {
+    fits,
+    empty,
+    error
+  };
+
   void transferTileDataFromImage(void);
   void dcLevelShiftCompress();
   void scheduleCompressT1();
   bool compressT2(uint32_t* packet_bytes_written);
   bool rateAllocate(uint32_t* allPacketBytes, bool disableRateControl);
+  bool rateAllocateWithFallback(uint32_t* allPacketBytes);
+  void resetRateControlInclusion(void);
+  void makeLayerEmpty(uint16_t layno);
+  MinimumLayerSizeResult checkMinimumLayerSize(T2Compress& tier2, uint16_t layno,
+                                               uint32_t* maximumLayerBytes);
   bool layerNeedsRateControl(uint16_t layno);
+  bool layerNeedsMinimumSizeCheck(uint16_t layno, bool disableRateControl);
   bool makeSingleLosslessLayer();
   void makeLayerFinal(uint16_t layno);
   bool pcrdBisectSimple(uint32_t* p_data_written, bool disableRateControl);
   void makeLayerSimple(uint16_t layno, double thresh, bool finalAttempt);
   bool pcrdBisectFeasible(uint32_t* p_data_written, bool disableRateControl);
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
+  void syncPluginCodeBlockData();
+  uint16_t slopeThreshold_ = 0;
+  bool ignoreSlopeHint_ = false;
+  bool checkMinimumLayerSizes_ = false;
   void prepareBlockForFirstLayer(t1::CodeblockCompress* cblk);
 
   uint32_t preCalculatedTileLen_ = 0;

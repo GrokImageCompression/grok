@@ -116,6 +116,21 @@ public:
   }
 };
 
+inline uint64_t packedRowBytes(GRK_SUPPORTED_FILE_FMT format, uint16_t numcomps, uint32_t width,
+                               uint8_t prec)
+{
+  switch(format)
+  {
+    case GRK_FMT_BMP:
+      // bmp rows are eight bit samples padded to four bytes
+      return (((uint64_t)numcomps * width + 3) >> 2) << 2;
+    case GRK_FMT_PXM:
+      return PlanarToInterleaved<int32_t>::getPackedBytes(numcomps, width, prec > 8 ? 16 : 8);
+    default:
+      return PlanarToInterleaved<int32_t>::getPackedBytes(numcomps, width, prec);
+  }
+}
+
 template<typename T>
 class PlanarToInterleaved1 : public PlanarToInterleaved<T>
 {
@@ -924,19 +939,33 @@ public:
                   const uint32_t srcStride, const uint64_t destStride, const uint32_t h,
                   const int32_t adjust) override
   {
-    for(uint32_t i = 0; i < h; i++)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      auto destPtr = dest;
-      for(size_t j = 0; j < srcWidth; j++)
+      for(uint32_t i = 0; i < h; i++)
+      {
+        grk::hwy_pack_planar_to_16be(const_cast<const int32_t* const*>(src), numPlanes, dest,
+                                     srcWidth, adjust);
+        dest += destStride;
         for(size_t k = 0; k < numPlanes; ++k)
-        {
-          uint32_t val = (uint32_t)(src[k][j] + adjust);
-          *(destPtr)++ = (uint8_t)(val >> 8);
-          *(destPtr)++ = (uint8_t)val;
-        }
-      dest += destStride;
-      for(size_t k = 0; k < numPlanes; ++k)
-        src[k] += srcStride;
+          src[k] += srcStride;
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < h; i++)
+      {
+        auto destPtr = dest;
+        for(size_t j = 0; j < srcWidth; j++)
+          for(size_t k = 0; k < numPlanes; ++k)
+          {
+            uint32_t val = (uint32_t)(src[k][j] + adjust);
+            *(destPtr)++ = (uint8_t)(val >> 8);
+            *(destPtr)++ = (uint8_t)val;
+          }
+        dest += destStride;
+        for(size_t k = 0; k < numPlanes; ++k)
+          src[k] += srcStride;
+      }
     }
   }
 };

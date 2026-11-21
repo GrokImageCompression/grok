@@ -17,6 +17,20 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
+
+// the reversible 5/3 inverse lifting accumulates sums of two samples: valid
+// jpeg 2000 coefficients stay in range, but fuzzer-crafted ones overflow the
+// int32 accumulator. the intended result is 2's-complement wraparound (the
+// -fwrapv build option defines it as such), so mark these functions to keep
+// oss-fuzz's explicit signed-integer-overflow check from flagging it.
+#if defined(__clang__) || defined(__GNUC__)
+#define GRK_NO_SANITIZE_OVERFLOW __attribute__((no_sanitize("signed-integer-overflow")))
+#else
+#define GRK_NO_SANITIZE_OVERFLOW
+#endif
+
 namespace grk
 {
 
@@ -28,6 +42,16 @@ public:
 
   void encode_h(int32_t* row, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
                 uint32_t rows, int32_t dcShift = 0);
+};
+
+class dwt53_16
+{
+public:
+  void encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols, int16_t dcShift = 0, bool intInput = false);
+
+  void encode_h(int16_t* row, int16_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t rows, int16_t dcShift = 0);
 };
 
 class dwt97
@@ -85,5 +109,25 @@ struct vec
 };
 
 typedef vec<float, 4> vec4f;
+// one 128-bit pack of the int16 9/7 partial lifting: 8 rows of a horizontal strip,
+// or 8 columns of a vertical one
+typedef vec<int16_t, 8> vec8s;
+
+// int16 saturating add, matching Highway SaturatedAdd
+inline int16_t sat_add_16(int16_t a, int16_t b)
+{
+  return (int16_t)std::clamp((int32_t)a + (int32_t)b, -32768, 32767);
+}
+
+// right shift, rounding to nearest with ties to even. one value in 2^shift lands exactly
+// halfway between two outputs, and sending all of those up brightens the decoded image.
+// the int16 9/7 uses it for the beta step and for the Q-format synthesis sink.
+inline int16_t rshift_even_16(int16_t x, int shift)
+{
+  if(shift <= 0)
+    return x;
+  int16_t bias = (int16_t)((1 << (shift - 1)) - 1 + ((x >> shift) & 1));
+  return (int16_t)(sat_add_16(x, bias) >> shift);
+}
 
 } // namespace grk

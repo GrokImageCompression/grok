@@ -14,12 +14,14 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../../lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core/util
+  ${GROK_SOURCE_DIR}/src/lib/core/scheduling
   ${GROK_SOURCE_DIR}/src/include
   ${GROK_SOURCE_DIR}/src/include/CLI11/include
   ${CMAKE_CURRENT_SOURCE_DIR}/formats
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/fileio
   ${CMAKE_CURRENT_SOURCE_DIR}/common
   ${CMAKE_CURRENT_SOURCE_DIR}/apps
+  ${CMAKE_CURRENT_SOURCE_DIR}/shared
 )
 
 set(GROK_CODEC_SRCS
@@ -28,12 +30,12 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/ImageFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/fileio/FileStandardIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/fileio/FileOrchestratorIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/formats/YUVFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/common/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDump.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkCompareImages.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkImageCanonDump.cpp
 )
 
 if(GROK_HAVE_LIBTIFF)
@@ -68,8 +70,11 @@ if(GROK_HAVE_LIBJPEG)
 	target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${JPEG_LIBNAME})
 endif()
 
-if(UNIX)
-  target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+find_package(Threads REQUIRED)
+target_link_libraries(${GROK_CODEC_NAME} PUBLIC Threads::Threads)
+# shared memory (shm_open, sem_open) used by Messenger.h
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(${GROK_CODEC_NAME} PRIVATE rt)
 endif()
 set_target_properties(${GROK_CODEC_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CODEC_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
@@ -81,7 +86,7 @@ endif()
 
 # mips needs explicit linker flag to disable executable stack
 if (GRK_ARCH MATCHES "mips")
-  target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
+  target_link_options(${GROK_CODEC_NAME} PRIVATE "LINKER:-z,noexecstack")
 endif (GRK_ARCH MATCHES "mips")
 
 # Install library
@@ -94,5 +99,8 @@ install(TARGETS ${INSTALL_LIBS}
 
 # Install includes files
 install(FILES grok_codec.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
+)
+install(FILES shared/Messenger.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )

@@ -69,11 +69,12 @@ template<typename T>
 class PGXFormat : public ImageFormat
 {
 public:
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 };
 
 template<typename T>
@@ -148,6 +149,8 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
                             : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
   cmptparm.sgnd = sign;
   cmptparm.prec = (uint8_t)prec;
+  if constexpr(sizeof(T) == 2)
+    cmptparm.data_type = GRK_INT_16;
   cmptparm.dx = parameters->subsampling_dx;
   cmptparm.dy = parameters->subsampling_dy;
 
@@ -164,7 +167,7 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
 
   /* set image data */
   stride_diff = image->comps->stride - w;
-  shift = (uint8_t)(32 - prec);
+  shift = (uint8_t)(sizeof(T) * 8 - prec);
   dest = (T*)image->comps->data;
   for(uint32_t j = 0; j < h; ++j)
   {
@@ -207,25 +210,27 @@ cleanup:
 }
 
 template<typename T>
-bool PGXFormat<T>::encodeHeader(void)
+bool PGXFormat<T>::writeHeader(void)
 {
   if(!allComponentsSanityCheck(image_, false))
   {
-    spdlog::error("PGXFormat<T>::encodeHeader: image sanity check failed.");
+    spdlog::error("PGXFormat<T>::writeHeader: image sanity check failed.");
     return false;
   }
 
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
   return true;
 }
 
 template<typename T>
-bool PGXFormat<T>::encodePixels(void)
+bool PGXFormat<T>::writeImage(void)
 {
   bool success = false;
   for(uint16_t compno = 0; compno < image_->numcomps; compno++)
   {
     auto comp = &image_->comps[compno];
+    if(comp->w == 0 || comp->h == 0)
+      continue;
     int nbytes = 0;
     if(fileName_.size() < 4)
     {
@@ -249,6 +254,11 @@ bool PGXFormat<T>::encodePixels(void)
       goto beach;
     }
 
+    if(!comp->data)
+    {
+      spdlog::error("PGXFormat: component {} has no data", compno);
+      goto beach;
+    }
     uint32_t w = comp->w;
     uint32_t h = comp->h;
 
@@ -264,16 +274,16 @@ bool PGXFormat<T>::encodePixels(void)
     size_t outCount = 0;
     size_t index = 0;
     uint32_t stride_diff = comp->stride - w;
+    bool isInt16 = comp->data_type == GRK_INT_16;
     if(nbytes == 1)
     {
-      auto src = (T*)comp->data;
       uint8_t buf[bufSize];
       uint8_t* outPtr = buf;
       for(uint32_t j = 0; j < h; ++j)
       {
         for(uint32_t i = 0; i < w; ++i)
         {
-          const T val = src[index++];
+          const int32_t val = isInt16 ? ((int16_t*)comp->data)[index++] : ((T*)comp->data)[index++];
           if(!grk::writeBytes<uint8_t>((uint8_t)val, buf, &outPtr, &outCount, bufSize, true,
                                        fileIO_->getFileHandle()))
           {
@@ -297,12 +307,12 @@ bool PGXFormat<T>::encodePixels(void)
     {
       uint16_t buf[bufSize];
       uint16_t* outPtr = buf;
-      auto src = (T*)image_->comps[compno].data;
       for(uint32_t j = 0; j < h; ++j)
       {
         for(uint32_t i = 0; i < w; ++i)
         {
-          const T val = src[index++];
+          const int32_t val = isInt16 ? ((int16_t*)image_->comps[compno].data)[index++]
+                                      : ((T*)image_->comps[compno].data)[index++];
           if(!grk::writeBytes<uint16_t>((uint16_t)val, buf, &outPtr, &outCount, bufSize, true,
                                         fileIO_->getFileHandle()))
           {
@@ -334,13 +344,25 @@ beach:
 }
 
 template<typename T>
-bool PGXFormat<T>::encodeFinish(void)
+bool PGXFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  // PGX writes separate files per component — band-by-band not supported
+  if(yBegin != 0 || yEnd != image_->comps[0].h)
+  {
+    spdlog::error("PGXFormat: partial band writing not supported");
+    return false;
+  }
+  return writeImage();
+}
+
+template<typename T>
+bool PGXFormat<T>::writeFinish(void)
 {
   return !fileIO_ || fileIO_->close();
 }
 
 template<typename T>
-grk_image* PGXFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PGXFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   return pgxtoimage<T>(filename.c_str(), parameters);
 }

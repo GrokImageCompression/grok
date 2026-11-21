@@ -64,7 +64,7 @@ FileFormatMJ2Compress::FileFormatMJ2Compress(IStream* stream)
 FileFormatMJ2Compress::~FileFormatMJ2Compress()
 {
   if(!finalized_ && !sampleRecords_.empty())
-    finalize();
+    FileFormatMJ2Compress::finalize();
 }
 
 bool FileFormatMJ2Compress::init(grk_cparameters* param, GrkImage* image)
@@ -388,10 +388,10 @@ uint8_t* FileFormatMJ2Compress::write_mdhd(uint32_t* p_nb_bytes_written)
 
 uint8_t* FileFormatMJ2Compress::write_hdlr(uint32_t* p_nb_bytes_written)
 {
-  // HDLR: 8 + 25 content = 33 total
+  // HDLR: 8 (box header) + 4 (ver+flags) + 4 (pre-def) + 4 (handler) + 12 (reserved) + name
   const char* name = "vide";
   uint32_t name_len = (uint32_t)strlen(name) + 1; // including null terminator
-  uint32_t box_size = 8 + 20 + name_len;
+  uint32_t box_size = 8 + 24 + name_len;
   auto data = (uint8_t*)grk_calloc(1, box_size);
   if(!data)
     return nullptr;
@@ -687,8 +687,9 @@ uint8_t* FileFormatMJ2Compress::write_stsd(uint32_t* p_nb_bytes_written)
 
 // ========== Super-box assembly helpers ==========
 
-static uint8_t* assemble_super_box(uint32_t box_type, uint8_t** sub_boxes, uint32_t* sub_sizes,
-                                   uint32_t count, uint32_t* p_nb_bytes_written)
+static uint8_t* assemble_super_box(uint32_t box_type, uint8_t** sub_boxes,
+                                   const uint32_t* sub_sizes, uint32_t count,
+                                   uint32_t* p_nb_bytes_written)
 {
   uint32_t total = 8;
   for(uint32_t i = 0; i < count; i++)

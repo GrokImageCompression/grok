@@ -73,6 +73,14 @@
 #include "PPMMarker.h"
 namespace grk
 {
+// COC level byte with this flag set names a DFS marker instead of a level count
+const uint8_t dfsReferenceFlag = 0x80;
+// Sdfs and Ids
+const uint16_t dfsFixedLen = 3;
+// Satk and Natk
+const uint16_t atkFixedLen = 3;
+// transformation bytes 0 and 1 are the Part 1 kernels
+const uint8_t firstAtkIndex = 2;
 struct ITileProcessor;
 struct ITileProcessorCompress;
 } // namespace grk
@@ -97,7 +105,6 @@ struct ITileProcessorCompress;
 #include "Subband.h"
 #include "Resolution.h"
 #include "BlockExec.h"
-#include "SchedulerExcalibur.h"
 #include "SchedulerStandard.h"
 
 #include "TileComponentWindow.h"
@@ -173,7 +180,7 @@ CodingParams::~CodingParams()
   numComments_ = 0;
 }
 
-void CodingParams::init(grk_decompress_parameters* parameters,
+bool CodingParams::init(grk_decompress_parameters* parameters,
                         std::unique_ptr<TileCache>& tileCache)
 {
   assert(parameters);
@@ -181,30 +188,101 @@ void CodingParams::init(grk_decompress_parameters* parameters,
   dw_y0 = parameters->dw_y0;
   dw_x1 = parameters->dw_x1;
   dw_y1 = parameters->dw_y1;
+  dw_reduced = parameters->dw_reduced;
   asynchronous_ = parameters->asynchronous;
   simulate_synchronous_ = parameters->simulate_synchronous;
   decompressCallback_ = parameters->decompress_callback;
   decompressCallbackUserData_ = parameters->decompress_callback_user_data;
   auto core = &parameters->core;
+  // irreversible_int16 changes the sample type of cached tiles
+  bool decodeSettingsChanged =
+      core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
+      core->reduce != codingParams_.dec_.reduce_ ||
+      core->irreversible_int16 != codingParams_.dec_.irreversibleInt16_;
+  if(decodeSettingsChanged)
+    tileCache->setDirty(true);
   codingParams_.dec_.reduce_ = core->reduce;
   codingParams_.dec_.disableRandomAccessFlags_ = core->disable_random_access_flags;
   codingParams_.dec_.skipAllocateComposite_ = core->skip_allocate_composite;
-  if(core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
-     core->reduce != codingParams_.dec_.reduce_)
-  {
-    tileCache->setDirty(true);
-  }
   codingParams_.dec_.layersToDecompress_ = core->layers_to_decompress;
+  codingParams_.dec_.irreversibleInt16_ = core->irreversible_int16;
   if(core->num_comps_to_decode > 0 && core->comps_to_decode)
     compsToDecompress_.assign(core->comps_to_decode,
                               core->comps_to_decode + core->num_comps_to_decode);
   else
     compsToDecompress_.clear();
+
+  return decodeSettingsChanged;
 }
 
 bool CodingParams::hasTLM(void) const noexcept
 {
   return this->tlmMarkers_ && tlmMarkers_->valid();
+}
+uint8_t CodingParams::correctedNumTileParts(uint8_t signalledNumTileParts) const noexcept
+{
+  // TNsot of 0 means the count is unknown
+  if(signalledNumTileParts == 0 || signalledNumTileParts == UINT8_MAX)
+    return signalledNumTileParts;
+  return uint8_t(signalledNumTileParts + numTilePartsCorrection_);
+}
+uint8_t CodingParams::numTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno)
+{
+  uint64_t numTileParts = 1;
+  auto tcp = tcps_.get(tileno);
+  assert(tcp != nullptr);
+
+  /*  preconditions */
+  assert(tileno < (t_grid_width_ * t_grid_height_));
+  assert(prog_iter_num < tcp->getNumProgressions());
+
+  auto current_poc = &(tcp->progressionOrderChange_[prog_iter_num]);
+  assert(current_poc != 0);
+
+  /* get the progression order as a character string */
+  auto prog = CodeStreamCompress::convertProgressionOrder(tcp->prg_);
+  assert(strlen(prog) > 0);
+
+  if(codingParams_.enc_.enableTilePartGeneration_)
+  {
+    for(uint8_t i = 0; i < 4; ++i)
+    {
+      switch(prog[i])
+      {
+        /* component wise */
+        case 'C':
+          numTileParts *= current_poc->tp_comp_e;
+          break;
+          /* resolution wise */
+        case 'R':
+          numTileParts *= current_poc->tp_res_e;
+          break;
+          /* precinct wise */
+        case 'P':
+          numTileParts *= current_poc->tp_prec_e;
+          break;
+          /* layer wise */
+        case 'L':
+          numTileParts *= current_poc->tp_lay_e;
+          break;
+      }
+      // we start a new tile part when progression matches specified tile part
+      // divider
+      if(codingParams_.enc_.newTilePartProgressionDivider_ == prog[i])
+      {
+        assert(prog[i] != 'P');
+        codingParams_.enc_.newTilePartProgressionPosition_ = i;
+        break;
+      }
+    }
+  }
+  else
+  {
+    numTileParts = 1;
+  }
+  assert(numTileParts < maxTilePartsPerTileJ2K);
+
+  return (uint8_t)numTileParts;
 }
 uint8_t CodingParams::getNumTilePartsFromTLM(uint16_t tileIndex) const noexcept
 {
@@ -283,10 +361,239 @@ bool CodingParams::readCom(uint8_t* headerData, uint16_t headerSize)
   return true;
 }
 
+bool CodingParams::readDfs(uint8_t* headerData, uint16_t headerSize)
+{
+  if(headerSize < dfsFixedLen)
+  {
+    grklog.error("Error reading DFS marker");
+    return false;
+  }
+  uint16_t sdfs;
+  grk_read(&headerData, &sdfs);
+  uint8_t index = (uint8_t)(sdfs & 0xFF);
+  DecompositionStyle style;
+  grk_read(&headerData, &style.numLevels);
+  if(index == 0 || style.numLevels > GRK_MAX_DECOMP_LVLS)
+  {
+    grklog.error("DFS marker has index %u and %u levels", index, style.numLevels);
+    return false;
+  }
+  uint16_t codeBytes = (uint16_t)((style.numLevels + 3) / 4);
+  if(headerSize != dfsFixedLen + codeBytes)
+  {
+    grklog.error("DFS marker size %u does not match %u levels", headerSize, style.numLevels);
+    return false;
+  }
+  for(uint8_t level = 0; level < style.numLevels; ++level)
+  {
+    uint8_t code = (uint8_t)((headerData[level / 4] >> (6 - 2 * (level % 4))) & 3);
+    style.levels[level] = (DecompositionSplit)code;
+  }
+  decompositionStyles_[index] = style;
+  return true;
+}
+
+namespace
+{
+  bool readSignedValue(uint8_t** data, uint16_t& remaining, uint8_t numBytes, int64_t& value)
+  {
+    if(remaining < numBytes)
+      return false;
+    uint64_t raw = 0;
+    grk_read(data, &raw, numBytes);
+    remaining = (uint16_t)(remaining - numBytes);
+    uint64_t signBit = (uint64_t)1 << (8 * numBytes - 1);
+    value = (raw & signBit) ? (int64_t)raw - (int64_t)(signBit << 1) : (int64_t)raw;
+    return true;
+  }
+  bool readRealValue(uint8_t** data, uint16_t& remaining, uint8_t numBytes, double& value)
+  {
+    if(remaining < numBytes)
+      return false;
+    if(numBytes == sizeof(float))
+    {
+      uint32_t bits;
+      grk_read(data, &bits);
+      float single;
+      memcpy(&single, &bits, sizeof(single));
+      value = single;
+    }
+    else if(numBytes == sizeof(double))
+    {
+      uint64_t bits;
+      grk_read(data, &bits);
+      memcpy(&value, &bits, sizeof(value));
+    }
+    else
+    {
+      int64_t integer;
+      readSignedValue(data, remaining, numBytes, integer);
+      value = (double)integer;
+      return true;
+    }
+    remaining = (uint16_t)(remaining - numBytes);
+    return true;
+  }
+} // namespace
+
+bool CodingParams::readAtk(uint8_t* headerData, uint16_t headerSize)
+{
+  if(headerSize < atkFixedLen)
+  {
+    grklog.error("Error reading ATK marker");
+    return false;
+  }
+  uint16_t satk;
+  grk_read(&headerData, &satk);
+  headerSize = (uint16_t)(headerSize - sizeof(satk));
+  uint8_t index = (uint8_t)(satk & 0xFF);
+  uint8_t coefficientBytes = (uint8_t)(1 << ((satk >> 8) & 3));
+  TransformKernel kernel;
+  kernel.symmetric = (satk >> 11) & 1;
+  kernel.reversible = (satk >> 12) & 1;
+  uint8_t lastStepUpdatesEven = (satk >> 13) & 1;
+  kernel.lastStepParity = (uint8_t)(1 - lastStepUpdatesEven);
+  kernel.symmetricExtension = (satk >> 14) & 1;
+  if(index < firstAtkIndex)
+  {
+    grklog.error("ATK marker index %u is reserved for the Part 1 kernels", index);
+    return false;
+  }
+  if(kernel.reversible && coefficientBytes > 2)
+  {
+    grklog.error("Reversible ATK marker %u has %u byte coefficients", index, coefficientBytes);
+    return false;
+  }
+  if(!kernel.reversible && !readRealValue(&headerData, headerSize, coefficientBytes, kernel.scale))
+  {
+    grklog.error("Error reading ATK marker scale");
+    return false;
+  }
+  uint8_t numSteps;
+  if(headerSize < 1)
+    return false;
+  grk_read(&headerData, &numSteps);
+  headerSize--;
+  for(uint8_t stepIndex = 0; stepIndex < numSteps; ++stepIndex)
+  {
+    LiftingStep step;
+    int64_t value;
+    if(!kernel.symmetric)
+    {
+      if(!readSignedValue(&headerData, headerSize, 1, value))
+        return false;
+      step.offset = (int8_t)value;
+    }
+    if(kernel.reversible)
+    {
+      if(headerSize < 1)
+        return false;
+      grk_read(&headerData, &step.downshift);
+      headerSize--;
+      if(!readSignedValue(&headerData, headerSize, coefficientBytes, value))
+        return false;
+      step.rounding = (int16_t)value;
+    }
+    if(headerSize < 1)
+      return false;
+    uint8_t signalled;
+    grk_read(&headerData, &signalled);
+    headerSize--;
+    std::vector<double> coefficients;
+    for(uint8_t n = 0; n < signalled; ++n)
+    {
+      double coefficient;
+      if(kernel.reversible)
+      {
+        if(!readSignedValue(&headerData, headerSize, coefficientBytes, value))
+          return false;
+        coefficient = (double)value;
+      }
+      else if(!readRealValue(&headerData, headerSize, coefficientBytes, coefficient))
+        return false;
+      coefficients.push_back(coefficient);
+    }
+    if(kernel.symmetric)
+    {
+      // signalled from the centre outwards, the full step mirrors them
+      uint8_t parity = (uint8_t)((kernel.lastStepParity + stepIndex) & 1);
+      step.offset = (int8_t)-((2 * signalled + parity - 1) >> 1);
+      step.coefficients.assign(coefficients.rbegin(), coefficients.rend());
+      step.coefficients.insert(step.coefficients.end(), coefficients.begin(), coefficients.end());
+    }
+    else
+    {
+      step.coefficients = coefficients;
+    }
+    kernel.steps.push_back(step);
+  }
+  if(headerSize != 0)
+  {
+    grklog.error("ATK marker %u has %u unread bytes", index, headerSize);
+    return false;
+  }
+  transformKernels_[index] = kernel;
+  return true;
+}
+
+bool TileCodingParams::resolvePart2(void)
+{
+  for(uint16_t compno = 0; compno < numComps_; ++compno)
+  {
+    auto tccp = tccps_ + compno;
+    const DecompositionStyle* style = nullptr;
+    if(tccp->dfsIndex_)
+    {
+      auto found = cp_->decompositionStyles_.find(tccp->dfsIndex_);
+      if(found == cp_->decompositionStyles_.end())
+      {
+        grklog.error("Component %u references missing DFS marker %u", compno, tccp->dfsIndex_);
+        return false;
+      }
+      style = &found->second;
+    }
+    tccp->splits_[0] = DecompositionSplit::both;
+    tccp->horizontalDepth_[0] = 0;
+    tccp->verticalDepth_[0] = 0;
+    for(uint8_t level = 1; level < tccp->numresolutions_; ++level)
+    {
+      tccp->splits_[level] = style ? style->split(level) : DecompositionSplit::both;
+      if(tccp->splits_[level] == DecompositionSplit::none)
+      {
+        grklog.error("Component %u DFS marker %u splits neither way at decomposition level %u",
+                     compno, tccp->dfsIndex_, level);
+        return false;
+      }
+      tccp->horizontalDepth_[level] = (uint8_t)(tccp->horizontalDepth_[level - 1] +
+                                                (splitsHorizontally(tccp->splits_[level]) ? 1 : 0));
+      tccp->verticalDepth_[level] = (uint8_t)(tccp->verticalDepth_[level - 1] +
+                                              (splitsVertically(tccp->splits_[level]) ? 1 : 0));
+    }
+    tccp->bandOffset_[0] = 0;
+    for(uint8_t resno = 1; resno < tccp->numresolutions_; ++resno)
+      tccp->bandOffset_[resno] = (uint8_t)(tccp->bandOffset_[resno - 1] +
+                                           tccp->numBandsOfResolution((uint8_t)(resno - 1)));
+    if(tccp->atkIndex_)
+    {
+      auto found = cp_->transformKernels_.find(tccp->atkIndex_);
+      if(found == cp_->transformKernels_.end())
+      {
+        grklog.error("Component %u references missing ATK marker %u", compno, tccp->atkIndex_);
+        return false;
+      }
+      tccp->qmfbid_ = found->second.reversible ? 1 : 0;
+    }
+  }
+  return true;
+}
+
 TileCodingParams::TileCodingParams(CodingParams* cp) : cp_(cp)
 {
   for(auto i = 0; i < maxCompressLayersGRK; ++i)
+  {
     rates_[i] = 0.0;
+    writeEmptyLayer_[i] = false;
+  }
   for(auto i = 0; i < maxCompressLayersGRK; ++i)
     distortion_[i] = 0;
   for(auto i = 0; i < 32; ++i)
@@ -295,8 +602,8 @@ TileCodingParams::TileCodingParams(CodingParams* cp) : cp_(cp)
 TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
     : cp_(rhs.cp_), wholeTileDecompress_(rhs.wholeTileDecompress_), csty_(rhs.csty_),
       prg_(rhs.prg_), numLayers_(rhs.numLayers_), layersToDecompress_(rhs.layersToDecompress_),
-      mct_(rhs.mct_), numpocs_(rhs.numpocs_), pptMarkersCount_(rhs.pptMarkersCount_),
-      pptMarkers_(nullptr), // will be deep copied if needed
+      mct_(rhs.mct_), numpocs_(rhs.numpocs_), hasPoc_(rhs.hasPoc_),
+      pptMarkersCount_(rhs.pptMarkersCount_), pptMarkers_(nullptr), // will be deep copied if needed
       pptData_(nullptr), pptBuffer_(nullptr), pptLength_(rhs.pptLength_),
       mainQcdQntsty(rhs.mainQcdQntsty), mainQcdNumStepSizes(rhs.mainQcdNumStepSizes),
       tccps_(nullptr), tilePartCounter_(rhs.tilePartCounter_),
@@ -309,6 +616,7 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
       numComps_(rhs.numComps_), ht_(rhs.ht_)
 {
   memcpy(rates_, rhs.rates_, sizeof(rates_));
+  memcpy(writeEmptyLayer_, rhs.writeEmptyLayer_, sizeof(writeEmptyLayer_));
   memcpy(distortion_, rhs.distortion_, sizeof(distortion_));
   memcpy(progressionOrderChange_, rhs.progressionOrderChange_, sizeof(progressionOrderChange_));
 
@@ -375,7 +683,7 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
 
   for(uint32_t j = 0; j < rhs.numMaxMccRecords_; ++j)
   {
-    auto src_mcc_rec = rhs.mccRecords_ + j;
+    const auto src_mcc_rec = rhs.mccRecords_ + j;
     auto dest_mcc_rec = mccRecords_ + j;
     if(src_mcc_rec->decorrelation_array_)
     {
@@ -567,6 +875,7 @@ bool TileCodingParams::readCoc(uint8_t* headerData, uint16_t headerSize)
   uint16_t comp_room;
   uint16_t comp_no;
   assert(headerData != nullptr);
+  sawCoc_ = true;
   comp_room = numComps_ <= 256 ? 1 : 2;
 
   /* make sure room is sufficient*/
@@ -587,7 +896,7 @@ bool TileCodingParams::readCoc(uint8_t* headerData, uint16_t headerSize)
 
   tccps_[comp_no].csty_ = *headerData++; /* Scoc */
 
-  if(!readSPCodSPCoc(comp_no, headerData, &headerSize))
+  if(!readSPCodSPCoc(comp_no, headerData, &headerSize, true))
     return false;
 
   if(headerSize != 0)
@@ -653,7 +962,7 @@ bool TileCodingParams::readCod(uint8_t* headerData, uint16_t headerSize)
   for(i = 0; i < numComps_; ++i)
     tccps_[i].csty_ = csty_ & CCP_CSTY_PRECINCT;
 
-  if(!readSPCodSPCoc(0, headerData, &headerSize))
+  if(!readSPCodSPCoc(0, headerData, &headerSize, false))
     return false;
 
   if(headerSize != 0)
@@ -675,6 +984,7 @@ bool TileCodingParams::readCod(uint8_t* headerData, uint16_t headerSize)
     copied_tccp->cblkh_expn_ = ref_tccp->cblkh_expn_;
     copied_tccp->cblkStyle_ = ref_tccp->cblkStyle_;
     copied_tccp->qmfbid_ = ref_tccp->qmfbid_;
+    copied_tccp->atkIndex_ = ref_tccp->atkIndex_;
     memcpy(copied_tccp->precWidthExp_, ref_tccp->precWidthExp_, prc_size);
     memcpy(copied_tccp->precHeightExp_, ref_tccp->precHeightExp_, prc_size);
   }
@@ -778,7 +1088,7 @@ bool TileCodingParams::readPoc(uint8_t* headerData, uint16_t headerSize, int til
     std::lock_guard<std::mutex> lock(pocMutex_);
     if(tilePartIndex == -1)
     {
-      uint32_t oldNum = numpocs_ + 1;
+      uint32_t oldNum = hasPoc_ ? numpocs_ + 1 : 0;
       if(oldNum + currentNumProgressions > GRK_MAXRLVLS)
       {
         grklog.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
@@ -790,6 +1100,7 @@ bool TileCodingParams::readPoc(uint8_t* headerData, uint16_t headerSize, int til
         progressionOrderChange_[oldNum + i] = newPocs[i];
       }
       numpocs_ = oldNum + currentNumProgressions - 1;
+      hasPoc_ = true;
     }
     else
     {
@@ -813,45 +1124,49 @@ void TileCodingParams::finalizePocs(void)
     maxNumResLevels = std::max(maxNumResLevels, tccps_[i].numresolutions_);
   }
 
+  // T.800 A.6.6: a POC in a tile's first tile-part replaces the main header volumes for that tile
+  bool firstTilePartReplaces = !pocLists_.empty() && !pocLists_[0].empty();
+
   // Validate main header POCs if any
-  for(uint32_t i = 0; i < numpocs_; ++i)
-  {
-    auto& prog = progressionOrderChange_[i];
-    prog.lay_e = std::min<uint16_t>(prog.lay_e, numLayers_);
-    prog.res_e = std::min<uint8_t>(prog.res_e, maxNumResLevels);
-    prog.comp_e = std::min<uint16_t>(prog.comp_e, numComps_);
+  if(!firstTilePartReplaces && (hasPoc_ || numpocs_ > 0))
+    for(uint32_t i = 0; i <= numpocs_; ++i)
+    {
+      auto& prog = progressionOrderChange_[i];
+      prog.lay_e = std::min<uint16_t>(prog.lay_e, numLayers_);
+      prog.res_e = std::min<uint8_t>(prog.res_e, maxNumResLevels);
+      prog.comp_e = std::min<uint16_t>(prog.comp_e, numComps_);
 
-    if(prog.res_s >= maxNumResLevels)
-    {
-      grklog.error("finalizePocs: invalid POC start resolution number %u", prog.res_s);
-      // handle error, e.g., throw or set error state
-      return;
+      if(prog.res_s >= maxNumResLevels)
+      {
+        grklog.error("finalizePocs: invalid POC start resolution number %u", prog.res_s);
+        // handle error, e.g., throw or set error state
+        return;
+      }
+      if(prog.res_e <= prog.res_s)
+      {
+        grklog.error("finalizePocs: invalid POC end resolution %u", prog.res_e);
+        return;
+      }
+      if(prog.comp_s >= numComps_)
+      {
+        grklog.error("finalizePocs: invalid POC start component %u", prog.comp_s);
+        return;
+      }
+      if(prog.comp_e <= prog.comp_s)
+      {
+        grklog.error("finalizePocs: invalid POC end component (%u) : end component is "
+                     "less than or equal to POC start component (%u)",
+                     prog.comp_e, prog.comp_s);
+        return;
+      }
+      if(prog.lay_e == 0)
+      {
+        grklog.error("finalizePocs: invalid POC end layer 0");
+        return;
+      }
     }
-    if(prog.res_e <= prog.res_s)
-    {
-      grklog.error("finalizePocs: invalid POC end resolution %u", prog.res_e);
-      return;
-    }
-    if(prog.comp_s >= numComps_)
-    {
-      grklog.error("finalizePocs: invalid POC start component %u", prog.comp_s);
-      return;
-    }
-    if(prog.comp_e <= prog.comp_s)
-    {
-      grklog.error("finalizePocs: invalid POC end component (%u) : end component is "
-                   "less than or equal to POC start component (%u)",
-                   prog.comp_e, prog.comp_s);
-      return;
-    }
-    if(prog.lay_e == 0)
-    {
-      grklog.error("finalizePocs: invalid POC end layer 0");
-      return;
-    }
-  }
 
-  uint32_t pos = numpocs_ + 1;
+  uint32_t pos = firstTilePartReplaces ? 0 : numpocs_ + 1;
   for(uint8_t tp = 0; tp < signalledNumTileParts_; ++tp)
   {
     if(tp >= pocLists_.size())
@@ -901,7 +1216,13 @@ void TileCodingParams::finalizePocs(void)
       ++pos;
     }
   }
-  numpocs_ = pos - 1;
+  // a signalled tile-part count short of the lists read leaves the main header volumes in place
+  if(pos > 0)
+  {
+    numpocs_ = pos - 1;
+    if(firstTilePartReplaces)
+      hasPoc_ = true;
+  }
   pocLists_.clear();
 }
 
@@ -911,7 +1232,7 @@ bool TileCodingParams::readMct(uint8_t* headerData, uint16_t headerSize)
   uint16_t tmp;
   uint16_t indix;
   assert(headerData != nullptr);
-  if(headerSize < 2)
+  if(headerSize <= 6)
   {
     grklog.error("Error reading MCT marker");
     return false;
@@ -1002,11 +1323,6 @@ bool TileCodingParams::readMct(uint8_t* headerData, uint16_t headerSize)
   {
     grklog.warn("multiple MCT markers not supported");
     return true;
-  }
-  if(headerSize <= 6)
-  {
-    grklog.error("Error reading MCT marker");
-    return false;
   }
   headerSize = (uint16_t)(headerSize - 6);
 
@@ -1524,7 +1840,8 @@ bool TileCodingParams::readSQcdSQcc(bool fromTileHeader, bool fromQCC, uint16_t 
   return true;
 }
 
-bool TileCodingParams::readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize)
+bool TileCodingParams::readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize,
+                                      bool fromCoc)
 {
   uint32_t i;
   assert(headerData != nullptr);
@@ -1538,16 +1855,35 @@ bool TileCodingParams::readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint
     return false;
   }
   /* SPcox (D) */
-  // note: we actually read the number of decompositions
-  grk_read(&current_ptr, &tccp->numresolutions_);
-  if(tccp->numresolutions_ > GRK_MAX_DECOMP_LVLS)
+  uint8_t levels;
+  grk_read(&current_ptr, &levels);
+  if(levels & dfsReferenceFlag)
   {
-    grklog.error("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
-                 "allows a maximum number of %u decomposition levels.",
-                 tccp->numresolutions_, GRK_MAX_DECOMP_LVLS);
-    return false;
+    // Part 2 COC: the byte names a DFS marker and the level count comes from COD
+    if(!fromCoc)
+    {
+      grklog.error("COD marker cannot reference a DFS marker");
+      return false;
+    }
+    if(tccp->numresolutions_ == 0)
+    {
+      grklog.error("COC marker referencing a DFS marker must follow the COD marker");
+      return false;
+    }
+    tccp->dfsIndex_ = levels & (uint8_t)~dfsReferenceFlag;
   }
-  ++tccp->numresolutions_;
+  else
+  {
+    if(levels > GRK_MAX_DECOMP_LVLS)
+    {
+      grklog.error("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
+                   "allows a maximum number of %u decomposition levels.",
+                   levels, GRK_MAX_DECOMP_LVLS);
+      return false;
+    }
+    tccp->numresolutions_ = (uint8_t)(levels + 1);
+    tccp->dfsIndex_ = 0;
+  }
 
   /* If user wants to remove more resolutions than the code stream contains, return error */
   if(cp_->codingParams_.dec_.reduce_ >= tccp->numresolutions_)
@@ -1607,13 +1943,17 @@ bool TileCodingParams::readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint
   }
 
   /* SPcoc (H) */
-  tccp->qmfbid_ = *current_ptr++;
-  if(tccp->qmfbid_ > 1)
+  uint8_t transform = *current_ptr++;
+  if(transform > 1)
   {
-    grklog.error("Invalid qmfbid : %u. "
-                 "Should be either 0 or 1",
-                 tccp->qmfbid_);
-    return false;
+    // Part 2: an ATK marker index, reversibility is known once that marker is read
+    tccp->atkIndex_ = transform;
+    tccp->qmfbid_ = 0;
+  }
+  else
+  {
+    tccp->atkIndex_ = 0;
+    tccp->qmfbid_ = transform;
   }
   *headerSize = (uint16_t)(*headerSize - SPCodSPCocLen);
 
@@ -1732,15 +2072,17 @@ bool TileCodingParams::readPpt(uint8_t* headerData, uint16_t headerSize)
 
 bool TileCodingParams::mergePpt(void)
 {
-  assert(pptBuffer_ == nullptr);
   if(!ppt_)
     return true;
 
-  if(pptBuffer_ != nullptr)
+  // T2 advances pptData_ through the merged packet headers on every decode
+  if(pptBuffer_ != nullptr && pptMarkers_ == nullptr)
   {
-    grklog.error("multiple calls to CodeStreamDecompress::merge_ppt()");
-    return false;
+    pptData_ = pptBuffer_;
+    pptLength_ = pptBufferLength_;
+    return true;
   }
+  delete[] pptBuffer_;
 
   uint32_t pptDataSize = 0U;
   for(uint32_t i = 0U; i < pptMarkersCount_; ++i)
@@ -1751,6 +2093,7 @@ bool TileCodingParams::mergePpt(void)
 
   pptBuffer_ = new uint8_t[pptDataSize];
   pptLength_ = pptDataSize;
+  pptBufferLength_ = pptDataSize;
   pptDataSize = 0U;
   for(uint32_t i = 0U; i < pptMarkersCount_; ++i)
   {
@@ -1774,12 +2117,28 @@ bool TileCodingParams::mergePpt(void)
   return true;
 }
 
+bool TileCodingParams::validateMct(void) const
+{
+  if(mct_ != 1 || numComps_ < 3)
+    return true;
+  for(uint16_t k = 1; k < 3; ++k)
+  {
+    if(tccps_[k].qmfbid_ != tccps_[0].qmfbid_)
+    {
+      grklog.error("The colour transform needs one wavelet for components 0 to 2, but component "
+                   "%u uses %s and component 0 uses %s",
+                   k, tccps_[k].qmfbid_ ? "5/3" : "9/7", tccps_[0].qmfbid_ ? "5/3" : "9/7");
+      return false;
+    }
+  }
+  return true;
+}
 bool TileCodingParams::validateQuantization(void)
 {
   // ensure lossy wavelet has quantization set
   for(uint16_t k = 0; k < numComps_; ++k)
   {
-    auto tccp = tccps_ + k;
+    const auto tccp = tccps_ + k;
     if(tccp->qmfbid_ == 0 && tccp->qntsty_ == CCP_QNTSTY_NOQNT)
     {
       grklog.error(
@@ -1797,10 +2156,10 @@ bool TileCodingParams::validateQuantization(void)
   if(mainQcdQntsty != CCP_QNTSTY_SIQNT)
   {
     // 1. Check main QCD
-    uint8_t maxDecompositions = 0;
+    uint8_t maxStepSizesNeeded = 0;
     for(uint16_t k = 0; k < numComps_; ++k)
     {
-      auto tccp = tccps_ + k;
+      const auto tccp = tccps_ + k;
       if(tccp->numresolutions_ == 0)
         continue;
       // only consider number of resolutions from a component
@@ -1809,24 +2168,20 @@ bool TileCodingParams::validateQuantization(void)
       // i.e. under main QCC scope, or tile QCD/QCC scope
       if(tccp->fromQCC_ || tccp->fromTileHeader_)
         continue;
-      auto decomps = (uint8_t)(tccp->numresolutions_ - 1);
-      if(maxDecompositions < decomps)
-        maxDecompositions = decomps;
+      maxStepSizesNeeded = std::max(maxStepSizesNeeded, tccp->numStepSizesNeeded());
     }
-    if((mainQcdNumStepSizes < 3 * (uint32_t)maxDecompositions + 1))
+    if(mainQcdNumStepSizes < maxStepSizesNeeded)
     {
-      grklog.error("From Main QCD marker, "
-                   "number of step sizes (%u) is less than "
-                   "3* (maximum decompositions) + 1, "
-                   "where maximum decompositions = %u ",
-                   mainQcdNumStepSizes, maxDecompositions);
+      grklog.error("From Main QCD marker, number of step sizes (%u) is less than the %u "
+                   "sub-bands of the components it covers",
+                   mainQcdNumStepSizes, maxStepSizesNeeded);
       return false;
     }
     // 2. Check Tile QCD
-    TileComponentCodingParams* qcd_comp = nullptr;
+    const TileComponentCodingParams* qcd_comp = nullptr;
     for(uint16_t k = 0; k < numComps_; ++k)
     {
-      auto tccp = tccps_ + k;
+      const auto tccp = tccps_ + k;
       if(tccp->fromTileHeader_ && !tccp->fromQCC_)
       {
         qcd_comp = tccp;
@@ -1835,10 +2190,10 @@ bool TileCodingParams::validateQuantization(void)
     }
     if(qcd_comp && (qcd_comp->qntsty_ != CCP_QNTSTY_SIQNT))
     {
-      uint8_t maxTileDecompositions = 0;
+      uint8_t maxTileStepSizesNeeded = 0;
       for(uint16_t k = 0; k < numComps_; ++k)
       {
-        auto tccp = tccps_ + k;
+        const auto tccp = tccps_ + k;
         if(tccp->numresolutions_ == 0)
           continue;
         // only consider number of resolutions from a component
@@ -1847,17 +2202,13 @@ bool TileCodingParams::validateQuantization(void)
         // i.e. under Tile QCC scope
         if(tccp->fromQCC_ && tccp->fromTileHeader_)
           continue;
-        auto decomps = (uint8_t)(tccp->numresolutions_ - 1);
-        if(maxTileDecompositions < decomps)
-          maxTileDecompositions = decomps;
+        maxTileStepSizesNeeded = std::max(maxTileStepSizesNeeded, tccp->numStepSizesNeeded());
       }
-      if((qcd_comp->numStepSizes_ < 3 * maxTileDecompositions + 1))
+      if(qcd_comp->numStepSizes_ < maxTileStepSizesNeeded)
       {
-        grklog.error("From Tile QCD marker, "
-                     "number of step sizes (%u) is less than"
-                     " 3* (maximum tile decompositions) + 1, "
-                     "where maximum tile decompositions = %u ",
-                     qcd_comp->numStepSizes_, maxTileDecompositions);
+        grklog.error("From Tile QCD marker, number of step sizes (%u) is less than the %u "
+                     "sub-bands of the components it covers",
+                     qcd_comp->numStepSizes_, maxTileStepSizesNeeded);
 
         return false;
       }
@@ -1883,17 +2234,44 @@ uint32_t TileCodingParams::getNumProgressions()
 }
 bool TileCodingParams::hasPoc(void)
 {
-  return numpocs_ > 0;
+  return hasPoc_ || numpocs_ > 0;
+}
+bool TileCodingParams::sameProgressions(TileCodingParams* other, uint16_t numComps)
+{
+  if(hasPoc() != other->hasPoc() || getNumProgressions() != other->getNumProgressions())
+    return false;
+  uint8_t numResolutions = tccps_ ? tccps_->numresolutions_ : 0;
+  for(uint32_t i = 0; i < getNumProgressions(); ++i)
+  {
+    auto& mine = progressionOrderChange_[i];
+    auto& theirs = other->progressionOrderChange_[i];
+    if(mine.res_s != theirs.res_s || mine.comp_s != theirs.comp_s ||
+       mine.specified_compression_poc_prog != theirs.specified_compression_poc_prog)
+      return false;
+    if(std::min<uint16_t>(mine.lay_e, numLayers_) != std::min<uint16_t>(theirs.lay_e, numLayers_))
+      return false;
+    if(std::min<uint8_t>(mine.res_e, numResolutions) !=
+       std::min<uint8_t>(theirs.res_e, numResolutions))
+      return false;
+    if(std::min<uint16_t>(mine.comp_e, numComps) != std::min<uint16_t>(theirs.comp_e, numComps))
+      return false;
+  }
+  return true;
 }
 TileComponentCodingParams::TileComponentCodingParams()
     : csty_(0), numresolutions_(0), cblkw_expn_(0), cblkh_expn_(0), cblkStyle_(0), qmfbid_(0),
-      quantizationMarkerSet_(false), fromQCC_(false), fromTileHeader_(false), qntsty_(0),
-      numStepSizes_(0), numgbits_(0), roishift_(0), dcLevelShift_(0)
+      atkIndex_(0), dfsIndex_(0), quantizationMarkerSet_(false), fromQCC_(false),
+      fromTileHeader_(false), qntsty_(0), numStepSizes_(0), numgbits_(0), roishift_(0),
+      dcLevelShift_(0)
 {
   for(uint32_t i = 0; i < GRK_MAXRLVLS; ++i)
   {
     precWidthExp_[i] = 0;
     precHeightExp_[i] = 0;
+    splits_[i] = DecompositionSplit::both;
+    horizontalDepth_[i] = (uint8_t)i;
+    verticalDepth_[i] = (uint8_t)i;
+    bandOffset_[i] = (uint8_t)(i == 0 ? 0 : 3 * i - 2);
   }
 }
 

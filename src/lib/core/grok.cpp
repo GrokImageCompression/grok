@@ -28,13 +28,14 @@
 #include <fcntl.h>
 #include <filesystem>
 #include <mutex>
+#include <atomic>
 
 #include "grk_fseek.h"
 #include "TFSingleton.h"
+#include "UsableThreadCount.h"
 
 #include "MinHeap.h"
 #include "SequentialCache.h"
-#include "SparseCache.h"
 #include "CodeStreamLimits.h"
 #include "geometry.h"
 #include "MemManager.h"
@@ -42,6 +43,8 @@
 #include "ChunkBuffer.h"
 #include "minpf_plugin_manager.h"
 #include "plugin_interface.h"
+#include "plugin_gpup_bridge.h"
+#include "plugin_accelerate.h"
 #include "TileWindow.h"
 #include "GrkObjectWrapper.h"
 #include "ChronoTimer.h"
@@ -54,6 +57,7 @@
 #include "SparseCanvas.h"
 #include "intmath.h"
 #include "ImageComponentFlow.h"
+#include "mercury_fastpath.h"
 #include "TileFutureManager.h"
 #include "MarkerCache.h"
 #include "SlabPool.h"
@@ -67,6 +71,7 @@
 #include "GrkImage.h"
 #include "ICompressor.h"
 #include "IDecompressor.h"
+#include "XYZTransform.h"
 
 #include "MemStream.h"
 
@@ -216,31 +221,33 @@ public:
   }
 };
 
-static inline bool areStringsEqual(const char* lhs, const char* rhs)
+void* grk_thread_pool(void)
 {
-  if(lhs == nullptr && rhs == nullptr)
-  {
-    return true;
-  }
-  if(lhs == nullptr || rhs == nullptr)
-  {
-    return false;
-  }
-  return std::strcmp(lhs, rhs) == 0;
+  return &TFSingleton::get();
+}
+
+size_t grk_num_workers(void)
+{
+  return TFSingleton::num_threads();
+}
+
+uint32_t grk_worker_id(void)
+{
+  return TFSingleton::workerId();
 }
 
 struct InitState
 {
   InitState(const char* pluginPath, uint32_t numThreads)
-      : pluginPath_(pluginPath), numThreads_(numThreads), initialized_(false),
+      : pluginPath_(pluginPath ? pluginPath : ""), numThreads_(numThreads), initialized_(false),
         pluginInitialized_(false)
   {}
   InitState(void) : InitState(nullptr, 0) {}
   bool operator==(const InitState& rhs) const
   {
-    return areStringsEqual(pluginPath_, rhs.pluginPath_) && numThreads_ == rhs.numThreads_;
+    return pluginPath_ == rhs.pluginPath_ && numThreads_ == rhs.numThreads_;
   }
-  const char* pluginPath_;
+  std::string pluginPath_;
   uint32_t numThreads_;
   bool initialized_;
   bool pluginInitialized_;
@@ -248,6 +255,24 @@ struct InitState
 
 static InitState initState_;
 static std::mutex initMutex;
+
+void grk_deinitialize(void)
+{
+  grk_plugin_cleanup();
+  TFSingleton::destroy();
+  std::lock_guard<std::mutex> guard(initMutex);
+  initState_ = InitState();
+}
+
+// Plugin loading is suppressed when the GRK_NO_PLUGIN environment variable is
+// set (to any value). Cached on first read so the env is consulted once per
+// process — useful for `make test` and similar contexts that want to force
+// the CPU codec without changing call sites.
+static bool grk_plugin_load_inhibited(void)
+{
+  static const bool inhibited = std::getenv("GRK_NO_PLUGIN") != nullptr;
+  return inhibited;
+}
 
 void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_initialized)
 {
@@ -300,8 +325,8 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
 
     initState_ = newState;
 
-    // 2. try to load plugin
-    if(!initState_.pluginInitialized_)
+    // 2. try to load plugin (skipped when GRK_NO_PLUGIN is set)
+    if(!initState_.pluginInitialized_ && !grk_plugin_load_inhibited())
     {
       grk_plugin_load_info info;
       info.pluginPath = pluginPath;
@@ -320,7 +345,8 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
   if(!obj)
     return nullptr;
   auto wrapper = (RefCounted*)obj->wrapper;
-  wrapper->ref();
+  if(wrapper)
+    wrapper->ref();
 
   return obj;
 }
@@ -329,6 +355,8 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
   if(!obj)
     return;
   auto wrapper = (RefCounted*)obj->wrapper;
+  if(!wrapper)
+    return;
   wrapper->unref();
 }
 
@@ -378,6 +406,24 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
   return GrkImage::create(nullptr, numcmpts, cmptparms, clrspc, alloc_data);
 }
 
+grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
+{
+  if(!compress)
+  {
+    // 5/3 synthesis gain reaches 2^3.03 at eight levels
+    // 12 bit colour transform content at that worst gain wraps in int16
+    if(qmfbid == 1)
+      return prec + 4 <= 16 ? GRK_INT_16 : GRK_INT_32;
+    // 9/7 synthesis gain reaches 2^2.79, plus 3 fraction bits in the int16 lifting
+    return prec + 6 <= 16 ? GRK_INT_16 : GRK_INT_32;
+  }
+  // forward 9/7 fixed point rounds at every lifting step
+  if(qmfbid != 1)
+    return GRK_INT_32;
+  // forward 5/3 kernels add two samples in an int16 lane
+  return (int)prec + (is_mct ? 5 : 4) <= 16 ? GRK_INT_16 : GRK_INT_32;
+}
+
 grk_image_meta* grk_image_meta_new(void)
 {
   return (grk_image_meta*)(new GrkImageMeta());
@@ -412,6 +458,11 @@ static bool resolve_meta_field(grk_image_meta* meta, const char* field, uint8_t*
   {
     *buf_pp = &meta->exif_buf;
     *len_pp = &meta->exif_len;
+  }
+  else if(strcmp(field, "xml") == 0)
+  {
+    *buf_pp = &meta->xml_buf;
+    *len_pp = &meta->xml_len;
   }
   else
   {
@@ -555,6 +606,10 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
 
     return nullptr;
   }
+  // a non-zero initial_offset shifts stream offsets away from file offsets,
+  // so leave the path unset and mercury reads via the stream instead
+  if(streamParams->initial_offset == 0)
+    codecImpl->decompressor_->setInputFilePath(streamParams->file);
   codecImpl->decompressor_->init(decompressParams);
 
   return codec;
@@ -664,9 +719,28 @@ bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
-    return codec->decompressor_ ? codec->decompressor_->decompress(tile) : false;
+    if(!codec->decompressor_)
+      return false;
+    try
+    {
+      return codec->decompressor_->decompress(tile);
+    }
+    // the plugin calls from its own threads, where nothing catches it
+    catch(const grk::PluginDecodeUnsupportedException&)
+    {
+      return false;
+    }
   }
   return false;
+}
+int32_t grk_plugin_decompress_tile(grk_object* codecWrapper, grk_plugin_tile* tile)
+{
+  if(!codecWrapper || !tile)
+    return -1;
+  auto codec = Codec::getImpl(codecWrapper);
+  if(!codec->decompressor_)
+    return -1;
+  return codec->decompressor_->decompressPluginTile(tile);
 }
 bool grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
 {
@@ -775,6 +849,23 @@ grk_image* grk_decompress_get_image(grk_object* codecWrapper)
   return nullptr;
 }
 
+void grk_decompress_set_band_callback(grk_object* codecWrapper, grk_io_band_callback callback,
+                                      void* user_data)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    if(codec->decompressor_)
+      codec->decompressor_->setBandCallback(callback, user_data);
+  }
+}
+bool grk_image_is_post_process_no_op(grk_image* image)
+{
+  if(!image)
+    return true;
+  return static_cast<GrkImage*>(image)->isPostProcessNoOp();
+}
+
 /**
  * @brief Starts compressing image
  * @param codec         compression codec
@@ -835,6 +926,7 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->numlayers = 0;
   parameters->allocation_by_rate_distortion = false;
   parameters->allocation_by_quality = false;
+  parameters->rate_control_algorithm = GRK_RATE_CONTROL_PCRD_OPT;
   parameters->write_plt = false;
   parameters->write_tlm = false;
   parameters->write_sop = false;
@@ -844,6 +936,14 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->transcode_prog_order = GRK_PROG_UNKNOWN;
   parameters->device_id = 0;
   parameters->repeats = 1;
+  parameters->rate_control_slope_hint = 0;
+  parameters->quant_step_shift = 0;
+  parameters->rate_control_tolerance = 0.0;
+  parameters->strict_compression_ratios = false;
+}
+bool grk_apply_xyz_transform(grk_image* image)
+{
+  return grk::applyXYZTransform(image);
 }
 grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* parameters,
                               grk_image* image)
@@ -891,18 +991,17 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
 
   auto codec = Codec::getImpl(codecWrapper);
   bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)image) : false;
-  if(rc)
-  {
-    rc = grkStartCompress(codecWrapper);
-  }
-  else
-  {
+  if(!rc)
     grklog.error("Failed to initialize codec.");
+  else
+    rc = grkStartCompress(codecWrapper);
+  if(!rc)
+  {
     grk_object_unref(codecWrapper);
-    codecWrapper = nullptr;
+    return nullptr;
   }
 
-  return rc ? codecWrapper : nullptr;
+  return codecWrapper;
 }
 
 uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)
@@ -945,6 +1044,17 @@ uint64_t grk_compress_get_compressed_length(grk_object* codecWrapper)
   return 0;
 }
 
+uint16_t grk_compress_get_slope_threshold(grk_object* codecWrapper)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    if(codec->compressor_)
+      return codec->compressor_->getSlopeThreshold();
+  }
+  return 0;
+}
+
 uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStream,
                        grk_cparameters* parameters, grk_image* image)
 {
@@ -956,8 +1066,9 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
 
   grk_initialize(nullptr, UINT32_MAX, nullptr);
 
-  /* Force JP2 format and transcode mode */
-  parameters->cod_format = GRK_FMT_JP2;
+  const bool rawOutput = parameters->cod_format == GRK_FMT_J2K;
+  if(!rawOutput)
+    parameters->cod_format = GRK_FMT_JP2;
   parameters->transcode = true;
   parameters->transcode_src = *srcStream;
 
@@ -998,23 +1109,6 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
     return 0;
   }
 
-  /* Initialize the compressor (transcode mode: skips codestream encoding setup) */
-  if(!compressor->init(parameters, (GrkImage*)image))
-  {
-    grklog.error("grk_transcode: failed to initialize compressor");
-    grk_object_unref(codecWrapper);
-    return 0;
-  }
-
-  /* Write JP2 boxes to destination (signature, ftyp, jp2h, metadata, skip_jp2c) */
-  if(!compressor->start())
-  {
-    grklog.error("grk_transcode: failed to start compressor");
-    grk_object_unref(codecWrapper);
-    return 0;
-  }
-
-  /* Copy the raw codestream from source and finalize */
   srcStream->is_read_stream = true;
   StreamGenerator srcSg(srcStream);
   grk::IStream* inStream = nullptr;
@@ -1036,7 +1130,31 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
   }
   std::unique_ptr<grk::IStream> srcStreamGuard(inStream);
 
-  uint64_t bytesWritten = compressor->transcode(inStream);
+  uint64_t bytesWritten = 0;
+  try
+  {
+    if(rawOutput)
+    {
+      bytesWritten = compressor->transcodeToRawCodestream(parameters, inStream);
+    }
+    else
+    {
+      if(FileFormatJP2Compress::startsWithCodestream(inStream))
+        throw std::runtime_error(
+            "grk_transcode: raw codestream source requires GRK_FMT_J2K output");
+      /* transcode mode skips codestream encoding setup */
+      if(!compressor->init(parameters, (GrkImage*)image))
+        throw std::runtime_error("grk_transcode: failed to initialize compressor");
+      /* signature, ftyp, jp2h, metadata, skip_jp2c */
+      if(!compressor->start())
+        throw std::runtime_error("grk_transcode: failed to start compressor");
+      bytesWritten = compressor->transcode(inStream);
+    }
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("%s", e.what());
+  }
   grk_object_unref(codecWrapper);
 
   return bytesWritten;
@@ -1047,6 +1165,7 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
  ***********************************************************************/
 
 static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
+static const char* plugin_build_info_method_name = "plugin_build_info";
 static const char* plugin_init_method_name = "plugin_init";
 static const char* plugin_encode_method_name = "plugin_encode";
 static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
@@ -1058,11 +1177,12 @@ static const char* plugin_batch_decode_method_name = "plugin_batch_decompress";
 static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decompress";
 
 bool pluginLoaded = false;
+static bool pluginInitialized = false;
+static bool pluginEnabled = true;
+static std::atomic<uint64_t> pluginAcceleratedFrames{0};
+static std::mutex pluginFrameMutex_;
 bool grk_plugin_load(grk_plugin_load_info info)
 {
-  if(!info.pluginPath)
-    return false;
-
   // form plugin name
   std::string pluginName = "";
 #if !defined(_WIN32)
@@ -1070,53 +1190,198 @@ bool grk_plugin_load(grk_plugin_load_info info)
 #endif
   pluginName += std::string(GROK_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
 
-  // form absolute plugin path
-  auto pluginPath = std::string(info.pluginPath) +
-                    static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
-  int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
-
-  // if fails, try local path
-  if(rc)
+  // Try explicit plugin path first, then the directory GRK_PLUGIN_PATH names
+  const char* pluginDir =
+      (info.pluginPath && info.pluginPath[0]) ? info.pluginPath : std::getenv("GRK_PLUGIN_PATH");
+  if(pluginDir)
   {
-    std::string localPlugin =
-        std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
-    rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
+    auto pluginPath = std::string(pluginDir) +
+                      static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
+    Logger::logger_.info("[plugin] Attempting to load plugin from '%s'", pluginPath.c_str());
+    int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
+    if(!rc)
+    {
+      pluginLoaded = true;
+      Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
+      return true;
+    }
   }
-  pluginLoaded = !rc;
-  if(!pluginLoaded)
-    minpf_cleanup_plugin_manager();
-  return pluginLoaded;
+
+  // Fallback: try current working directory (dcpomatic launches grk_compress
+  // from its own binary dir without passing -g)
+  std::string localPlugin =
+      std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
+  Logger::logger_.info("[plugin] Trying local path '%s'", localPlugin.c_str());
+  int32_t rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
+  if(!rc)
+  {
+    pluginLoaded = true;
+    Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
+    return true;
+  }
+
+  // Fallback: try executable's directory
+  std::error_code ec;
+  auto exePath = std::filesystem::read_symlink("/proc/self/exe", ec);
+  if(!ec)
+  {
+    auto exeDir = exePath.parent_path().string();
+    auto exeDirPlugin =
+        exeDir + static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
+    Logger::logger_.info("[plugin] Trying executable dir '%s'", exeDirPlugin.c_str());
+    rc = minpf_load_from_path(exeDirPlugin.c_str(), nullptr);
+    if(!rc)
+    {
+      pluginLoaded = true;
+      Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
+      return true;
+    }
+  }
+
+  minpf_cleanup_plugin_manager();
+  return false;
 }
+// looked up once, the callers ask per code block and dlsym takes the loader lock
+static PLUGIN_GET_DEBUG_STATE funcPluginGetDebugState = nullptr;
 uint32_t grk_plugin_get_debug_state()
 {
   uint32_t rc = GRK_PLUGIN_STATE_NO_DEBUG;
   if(!pluginLoaded)
     return rc;
-  auto mgr = minpf_get_plugin_manager();
-  if(mgr && mgr->num_libraries > 0)
+  if(!funcPluginGetDebugState)
   {
-    auto func = (PLUGIN_GET_DEBUG_STATE)minpf_get_symbol(mgr->dynamic_libraries[0],
-                                                         plugin_get_debug_state_method_name);
-    if(func)
-      rc = func();
+    auto mgr = minpf_get_plugin_manager();
+    if(mgr && mgr->num_libraries > 0)
+      funcPluginGetDebugState = (PLUGIN_GET_DEBUG_STATE)minpf_get_symbol(
+          mgr->dynamic_libraries[0], plugin_get_debug_state_method_name);
   }
+  if(funcPluginGetDebugState)
+    rc = funcPluginGetDebugState();
   return rc;
+}
+const char* grk_plugin_build_info(void)
+{
+  if(!pluginLoaded)
+    return nullptr;
+  auto mgr = minpf_get_plugin_manager();
+  if(!mgr || mgr->num_libraries == 0)
+    return nullptr;
+  auto func =
+      (PLUGIN_BUILD_INFO)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_build_info_method_name);
+  if(!func)
+    return nullptr;
+  return func();
 }
 void grk_plugin_cleanup(void)
 {
   minpf_cleanup_plugin_manager();
   pluginLoaded = false;
+  pluginInitialized = false;
+  funcPluginGetDebugState = nullptr;
 }
+GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled)
+{
+  pluginEnabled = enabled;
+}
+GRK_API uint64_t GRK_CALLCONV grk_plugin_accelerated_frames(void)
+{
+  return pluginAcceleratedFrames.load();
+}
+namespace grk
+{
+bool pluginAccelerates(void)
+{
+  return pluginLoaded && pluginInitialized && pluginEnabled;
+}
+bool pluginAcceleratesCompress(const grk_cparameters* parameters)
+{
+  // the plugin quantizes with its own step sizes, not the qfactor ones
+  return pluginAccelerates() && !parameters->cpu_only && !parameters->qfactor;
+}
+std::mutex& pluginFrameMutex(void)
+{
+  return pluginFrameMutex_;
+}
+void pluginCountAcceleratedFrame(void)
+{
+  pluginAcceleratedFrames.fetch_add(1);
+}
+static const char* gpup_encode_mem_method_name = "gpup_encode_mem";
+static const char* gpup_tile_free_method_name = "gpup_tile_free";
+typedef int32_t (*GPUP_ENCODE_MEM)(gpup_compress_params* compress_parameters, gpup_image* image,
+                                   gpup_tile** out_tile);
+typedef void (*GPUP_TILE_FREE)(gpup_tile* tile);
+
+int32_t pluginEncodeImage(const grk_cparameters* parameters, grk_image* image,
+                          grk_plugin_tile** tile, void** rawTile)
+{
+  *tile = nullptr;
+  *rawTile = nullptr;
+  auto mgr = minpf_get_plugin_manager();
+  if(!pluginLoaded || !mgr || mgr->num_libraries == 0)
+    return 1;
+  auto encode =
+      (GPUP_ENCODE_MEM)minpf_get_symbol(mgr->dynamic_libraries[0], gpup_encode_mem_method_name);
+  if(!encode)
+  {
+    Logger::logger_.warn("[plugin] Plugin missing '%s' symbol, compressing on the CPU",
+                         gpup_encode_mem_method_name);
+    return 1;
+  }
+  gpup_compress_params gpupParameters;
+  grk_to_gpup_compress_params(parameters, &gpupParameters);
+  auto gpupImage = grk_to_gpup_image(image);
+  gpup_tile* gpupTile = nullptr;
+  int32_t rc = encode(&gpupParameters, gpupImage, &gpupTile);
+  gpup_image_free_shell(gpupImage);
+  if(rc != 0)
+    return rc < 0 ? -1 : 1;
+  *tile = gpup_tile_to_grk(gpupTile);
+  *rawTile = gpupTile;
+  return 0;
+}
+void pluginReleaseEncodedTile(grk_plugin_tile* tile, void* rawTile)
+{
+  grk_plugin_tile_free_wrapper(tile);
+  if(!rawTile)
+    return;
+  auto mgr = minpf_get_plugin_manager();
+  if(!mgr || mgr->num_libraries == 0)
+    return;
+  auto freeTile =
+      (GPUP_TILE_FREE)minpf_get_symbol(mgr->dynamic_libraries[0], gpup_tile_free_method_name);
+  if(freeTile)
+    freeTile((gpup_tile*)rawTile);
+}
+} // namespace grk
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
 {
   if(!pluginLoaded)
+  {
     return false;
+  }
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {
     auto func = (PLUGIN_INIT)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_init_method_name);
     if(func)
-      return func(initInfo);
+    {
+      gpup_init_info gpup_info;
+      gpup_info.deviceId = initInfo.device_id;
+      gpup_info.verbose = initInfo.verbose;
+      gpup_info.license = initInfo.license;
+      gpup_info.server = initInfo.server;
+      gpup_info.numThreads = initInfo.num_threads ? initInfo.num_threads : usableThreadCount();
+      bool result = func(gpup_info);
+      bool licenseGiven = initInfo.license && *initInfo.license;
+      // the key itself never goes to the log
+      if(!result)
+        Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, %s)", initInfo.device_id,
+                             licenseGiven ? "license given" : "no license given");
+      pluginInitialized = result;
+      return result;
+    }
+    Logger::logger_.info("[plugin] Plugin missing '%s' symbol", plugin_init_method_name);
   }
   return false;
 }
@@ -1126,45 +1391,129 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
  ********************/
 
 GRK_PLUGIN_COMPRESS_USER_CALLBACK userEncodeCallback = 0;
+static grk_cparameters* s_originalCompressParams = nullptr;
 
-/* wrapper for user's compress callback */
-uint64_t grk_plugin_internal_encode_callback(grk_plugin_compress_user_callback_info* info)
+static const uint16_t maxWrappedComponents = 16;
+
+/* the wrapper tree is deep, so keep it and re-point it when the batch pool
+   hands back the same gpup_tile with new data */
+static grk_plugin_tile* wrapPluginTile(gpup_tile* tile)
+{
+  static thread_local grk_plugin_tile* cachedWrapper = nullptr;
+  static thread_local const gpup_tile* cachedSource = nullptr;
+  if(tile != cachedSource)
+  {
+    grk_plugin_tile_free_wrapper(cachedWrapper);
+    cachedWrapper = gpup_tile_to_grk(tile);
+    cachedSource = tile;
+  }
+  else if(tile && cachedWrapper)
+  {
+    gpup_tile_update_grk(cachedWrapper, tile);
+  }
+  return cachedWrapper;
+}
+
+/* shallow wrapper: image and comps are the caller's storage, sample data is shared */
+static void wrapPluginImage(const gpup_image* source, grk_image* image, grk_image_comp* comps)
+{
+  memset(image, 0, sizeof(*image));
+  memset(comps, 0, sizeof(grk_image_comp) * maxWrappedComponents);
+  image->x0 = source->x0;
+  image->y0 = source->y0;
+  image->x1 = source->x1;
+  image->y1 = source->y1;
+  image->numcomps = source->numcomps;
+  image->color_space = (GRK_COLOR_SPACE)source->color_space;
+  uint16_t numComponents =
+      source->numcomps > maxWrappedComponents ? maxWrappedComponents : source->numcomps;
+  for(uint16_t c = 0; c < numComponents; ++c)
+  {
+    comps[c].x0 = source->comps[c].x0;
+    comps[c].y0 = source->comps[c].y0;
+    comps[c].w = source->comps[c].w;
+    comps[c].stride = source->comps[c].stride;
+    comps[c].h = source->comps[c].h;
+    comps[c].dx = source->comps[c].dx;
+    comps[c].dy = source->comps[c].dy;
+    comps[c].prec = source->comps[c].prec;
+    comps[c].sgnd = source->comps[c].sgnd;
+    comps[c].data = source->comps[c].data;
+  }
+  image->comps = comps;
+}
+
+/* bridge: receives gpup_ callback info from plugin, translates to grk_ for host callback */
+uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
 {
   uint64_t rc = 0;
-  if(userEncodeCallback)
-    rc = userEncodeCallback(info);
+  if(!userEncodeCallback)
+    return rc;
 
+  grk_plugin_compress_user_callback_info grk_info;
+  memset(&grk_info, 0, sizeof(grk_info));
+  grk_info.input_file_name = info->input_file_name;
+  grk_info.output_file_name_is_relative = info->outputFileNameIsRelative;
+  grk_info.output_file_name = info->output_file_name;
+  grk_info.compressor_parameters = s_originalCompressParams;
+  grk_info.tile = wrapPluginTile(info->tile);
+  grk_info.error_code = info->error_code;
+  gpup_to_grk_stream_params(&info->stream_params, &grk_info.stream_params);
+
+  grk_image grk_img;
+  grk_image_comp grk_comps_buf[maxWrappedComponents];
+  if(info->image)
+  {
+    wrapPluginImage(info->image, &grk_img, grk_comps_buf);
+    grk_info.image = &grk_img;
+  }
+
+  rc = userEncodeCallback(&grk_info);
   return rc;
 }
 int32_t grk_plugin_compress(grk_cparameters* compress_parameters,
                             GRK_PLUGIN_COMPRESS_USER_CALLBACK callback)
 {
-  if(!pluginLoaded)
+  if(!pluginAcceleratesCompress(compress_parameters))
     return -1;
   userEncodeCallback = callback;
+  s_originalCompressParams = compress_parameters;
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {
     auto func =
         (PLUGIN_ENCODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_encode_method_name);
     if(func)
-      return func((grk_cparameters*)compress_parameters, grk_plugin_internal_encode_callback);
+    {
+      gpup_compress_params gpup_params;
+      grk_to_gpup_compress_params(compress_parameters, &gpup_params);
+      return func(&gpup_params, grk_plugin_internal_encode_callback);
+    }
   }
   return -1;
 }
 int32_t grk_plugin_batch_compress(grk_plugin_compress_batch_info info)
 {
-  if(!pluginLoaded)
+  if(!pluginAcceleratesCompress(info.compress_parameters))
     return -1;
   userEncodeCallback = info.callback;
+  s_originalCompressParams = info.compress_parameters;
   auto mgr = minpf_get_plugin_manager();
-  info.callback = grk_plugin_internal_encode_callback;
   if(mgr && mgr->num_libraries > 0)
   {
     auto func = (PLUGIN_BATCH_ENCODE)minpf_get_symbol(mgr->dynamic_libraries[0],
                                                       plugin_batch_encode_method_name);
     if(func)
-      return func(info);
+    {
+      gpup_compress_params gpup_params;
+      grk_to_gpup_compress_params(info.compress_parameters, &gpup_params);
+      gpup_compress_batch_info gpup_info;
+      gpup_info.input_dir = info.input_dir;
+      gpup_info.output_dir = info.output_dir;
+      gpup_info.compress_parameters = &gpup_params;
+      gpup_info.callback = grk_plugin_internal_encode_callback;
+      return func(gpup_info);
+    }
   }
   return -1;
 }
@@ -1199,36 +1548,758 @@ void grk_plugin_stop_batch_compress(void)
 }
 
 /*******************
+ In-memory batch compress
+ ********************/
+
+static const char* gpup_batch_memory_begin_method_name = "gpup_batch_memory_begin";
+static const char* gpup_batch_memory_submit_method_name = "gpup_batch_memory_submit";
+static const char* gpup_batch_memory_submit_planes_method_name = "gpup_batch_memory_submit_planes";
+static const char* gpup_batch_memory_end_method_name = "gpup_batch_memory_end";
+typedef int32_t (*GPUP_BATCH_MEMORY_BEGIN)(gpup_batch_memory_info* info);
+typedef bool (*GPUP_BATCH_MEMORY_SUBMIT)(const uint8_t* packed, void* host_data);
+typedef bool (*GPUP_BATCH_MEMORY_SUBMIT_PLANES)(const uint8_t* const planes[3],
+                                                const size_t stride_bytes[3], void* host_data);
+typedef bool (*GPUP_BATCH_MEMORY_END)(void);
+
+namespace
+{
+struct BatchMemoryCodec
+{
+  grk_object* codec = nullptr;
+  // the codec's stream points into this buffer
+  std::vector<uint8_t> codestream;
+};
+struct BatchMemoryState
+{
+  bool running = false;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint16_t numcomps = 0;
+  uint8_t prec = 0;
+  uint8_t sourcePrec = 0;
+  bool applyXYZ = false;
+  // the plugin's preprocess kernel runs the colour transform, so submit leaves the
+  // frame alone and packs it at sourcePrec
+  bool xyzOnDevice = false;
+  GRK_SOURCE_FORMAT sourceFormat = GRK_SOURCE_PLANAR_RGB;
+  uint16_t rsiz = 0;
+  // T2 parameters: the colour transform already ran on the submitted frame
+  grk_cparameters t2Parameters = {};
+  GRK_PLUGIN_BATCH_FRAME_CALLBACK callback = nullptr;
+  void* user = nullptr;
+  std::mutex idleCodecsMutex;
+  std::vector<BatchMemoryCodec> idleCodecs;
+};
+BatchMemoryState batchMemory;
+// the rate control threshold of whichever frame finished last narrows the next search
+std::atomic<uint16_t> batchMemorySlopeHint{0};
+
+// the bound grk_compress uses for a compressed frame
+size_t codestreamBound(const BatchMemoryState& state)
+{
+  return ((size_t)state.width * state.height * state.numcomps * ((state.prec + 7U) / 8U) * 3U) / 2U;
+}
+
+gpup_source_format toGpupSourceFormat(GRK_SOURCE_FORMAT format)
+{
+  switch(format)
+  {
+    case GRK_SOURCE_YUV420P:
+      return GPUP_SOURCE_YUV420P;
+    case GRK_SOURCE_YUV422P:
+      return GPUP_SOURCE_YUV422P;
+    case GRK_SOURCE_RGB48LE:
+      return GPUP_SOURCE_RGB48LE;
+    default:
+      return GPUP_SOURCE_PLANAR_RGB;
+  }
+}
+
+gpup_yuv_matrix toGpupYuvMatrix(GRK_YUV_MATRIX matrix)
+{
+  switch(matrix)
+  {
+    case GRK_YUV_BT601:
+      return GPUP_YUV_BT601;
+    case GRK_YUV_BT2020:
+      return GPUP_YUV_BT2020;
+    default:
+      return GPUP_YUV_BT709;
+  }
+}
+
+void* batchMemorySymbol(const char* name)
+{
+  auto mgr = minpf_get_plugin_manager();
+  if(!pluginLoaded || !pluginInitialized || !mgr || mgr->num_libraries == 0)
+    return nullptr;
+  auto symbol = minpf_get_symbol(mgr->dynamic_libraries[0], name);
+  if(!symbol)
+    Logger::logger_.warn("[plugin] Plugin missing '%s' symbol", name);
+  return symbol;
+}
+} // namespace
+
+namespace
+{
+BatchMemoryCodec takeIdleBatchMemoryCodec()
+{
+  std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+  if(batchMemory.idleCodecs.empty())
+    return {};
+  auto entry = std::move(batchMemory.idleCodecs.back());
+  batchMemory.idleCodecs.pop_back();
+  return entry;
+}
+
+void releaseBatchMemoryCodec(BatchMemoryCodec& entry)
+{
+  grk_object_unref(entry.codec);
+  entry.codec = nullptr;
+}
+
+grk_object* createBatchMemoryCodec(const gpup_image* image, std::vector<uint8_t>& codestream,
+                                   uint16_t slopeHint)
+{
+  grk_image headerImage;
+  grk_image_comp headerComponents[maxWrappedComponents];
+  wrapPluginImage(image, &headerImage, headerComponents);
+  grk_stream_params stream = {};
+  stream.buf = codestream.data();
+  stream.buf_len = codestream.size();
+  grk_cparameters parameters = batchMemory.t2Parameters;
+  parameters.rate_control_slope_hint = slopeHint;
+  return grk_compress_init(&stream, &parameters, &headerImage);
+}
+} // namespace
+
+/* runs T2 on one frame's code blocks, on whichever plugin thread finished it */
+static uint64_t batchMemoryEncodeCallback(gpup_compress_callback_info* info)
+{
+  if(!batchMemory.callback)
+    return 0;
+  // callbacks run concurrently
+  auto entry = takeIdleBatchMemoryCodec();
+  if(entry.codestream.empty())
+    entry.codestream.resize(codestreamBound(batchMemory));
+
+  uint64_t length = 0;
+  if(info->image && info->tile)
+  {
+    auto slopeHint = batchMemorySlopeHint.load(std::memory_order_relaxed);
+    if(!entry.codec)
+      entry.codec = createBatchMemoryCodec(info->image, entry.codestream, slopeHint);
+    else if(!Codec::getImpl(entry.codec)->compressor_->prepareNextFrame(slopeHint))
+      releaseBatchMemoryCodec(entry);
+    if(entry.codec)
+    {
+      length = grk_compress(entry.codec, wrapPluginTile(info->tile));
+      batchMemorySlopeHint.store(grk_compress_get_slope_threshold(entry.codec),
+                                 std::memory_order_relaxed);
+      if(!length)
+        releaseBatchMemoryCodec(entry);
+    }
+  }
+  batchMemory.callback(batchMemory.user, info->host_data, entry.codestream.data(), length);
+  if(entry.codec)
+  {
+    std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+    batchMemory.idleCodecs.push_back(std::move(entry));
+  }
+
+  return length;
+}
+
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_memory_begin(grk_plugin_batch_memory_info info)
+{
+  if(batchMemory.running)
+    return -1;
+  if(!info.compress_parameters || !info.callback || !info.width || !info.height || !info.numcomps ||
+     !info.prec)
+    return -1;
+  auto begin = (GPUP_BATCH_MEMORY_BEGIN)batchMemorySymbol(gpup_batch_memory_begin_method_name);
+  if(!begin)
+    return 1;
+  if(info.source_format != GRK_SOURCE_PLANAR_RGB &&
+     !batchMemorySymbol(gpup_batch_memory_submit_planes_method_name))
+    return 1;
+
+  gpup_compress_params gpupParameters;
+  grk_to_gpup_compress_params(info.compress_parameters, &gpupParameters);
+  if(gpupParameters.mct == 255)
+    gpupParameters.mct = info.numcomps >= 3 ? 1 : 0;
+
+  batchMemory.width = info.width;
+  batchMemory.height = info.height;
+  batchMemory.numcomps = info.numcomps;
+  batchMemory.prec = info.prec;
+  batchMemory.sourcePrec = info.source_prec ? info.source_prec : info.prec;
+  batchMemory.applyXYZ = info.compress_parameters->apply_xyz_transform;
+  batchMemory.xyzOnDevice = false;
+  batchMemory.rsiz = info.compress_parameters->rsiz;
+  batchMemory.t2Parameters = *info.compress_parameters;
+  batchMemorySlopeHint.store(0, std::memory_order_relaxed);
+  batchMemory.t2Parameters.apply_xyz_transform = false;
+  batchMemory.t2Parameters.mct = gpupParameters.mct;
+  batchMemory.callback = info.callback;
+  batchMemory.user = info.user;
+  batchMemory.sourceFormat = info.source_format;
+
+  gpup_batch_memory_info gpupInfo;
+  gpupInfo.compress_parameters = &gpupParameters;
+  gpupInfo.width = info.width;
+  gpupInfo.height = info.height;
+  gpupInfo.numcomps = info.numcomps;
+  gpupInfo.source_prec = batchMemory.sourcePrec;
+  gpupInfo.prec = info.prec;
+  gpupInfo.callback = batchMemoryEncodeCallback;
+  gpupInfo.xyz_on_device = false;
+  gpupInfo.source_format = toGpupSourceFormat(info.source_format);
+  gpupInfo.yuv_matrix = toGpupYuvMatrix(info.yuv_matrix);
+  gpupInfo.yuv_full_range = info.yuv_full_range;
+  int32_t rc = begin(&gpupInfo);
+  batchMemory.running = (rc == 0);
+  batchMemory.xyzOnDevice = batchMemory.running && gpupInfo.xyz_on_device;
+  if(info.xyz_on_device)
+    *info.xyz_on_device = batchMemory.xyzOnDevice;
+
+  return rc;
+}
+
+namespace
+{
+// the planar YUV shape the batch declared, exactly: grok hands the planes over
+// without touching a sample, so anything else is a different picture
+bool planarYuvPlanes(const grk_image* frame, const uint8_t* planes[3], size_t strideBytes[3])
+{
+  bool chromaIsHalfHeight = batchMemory.sourceFormat == GRK_SOURCE_YUV420P;
+  size_t containerBytes = batchMemory.sourcePrec > 8 ? 2 : 1;
+  auto expectedType = containerBytes == 2 ? GRK_INT_16 : GRK_INT_8;
+  if(frame->numcomps != 3)
+    return false;
+  for(uint16_t c = 0; c < 3; ++c)
+  {
+    auto comp = frame->comps + c;
+    bool isChroma = c > 0;
+    uint32_t expectedWidth = isChroma ? (batchMemory.width + 1) / 2 : batchMemory.width;
+    uint32_t expectedHeight =
+        (isChroma && chromaIsHalfHeight) ? (batchMemory.height + 1) / 2 : batchMemory.height;
+    uint8_t expectedSubsamplingX = isChroma ? 2 : 1;
+    uint8_t expectedSubsamplingY = (isChroma && chromaIsHalfHeight) ? 2 : 1;
+    if(!comp->data || comp->data_type != expectedType || comp->w != expectedWidth ||
+       comp->h != expectedHeight || comp->stride < comp->w || comp->dx != expectedSubsamplingX ||
+       comp->dy != expectedSubsamplingY || comp->prec != batchMemory.sourcePrec || comp->sgnd)
+      return false;
+    planes[c] = (const uint8_t*)comp->data;
+    strideBytes[c] = (size_t)comp->stride * containerBytes;
+  }
+
+  return true;
+}
+
+// one interleaved 16 bit buffer, the layout the packed submit builds by hand
+bool interleaved16Buffer(const grk_image* frame, const uint8_t* planes[3], size_t strideBytes[3])
+{
+  if(frame->numcomps != 3)
+    return false;
+  for(uint16_t c = 0; c < 3; ++c)
+  {
+    auto comp = frame->comps + c;
+    if(comp->data_type != GRK_INT_16 || comp->w != batchMemory.width ||
+       comp->h != batchMemory.height || comp->dx != 1 || comp->dy != 1 ||
+       comp->prec != batchMemory.sourcePrec || comp->sgnd)
+      return false;
+  }
+  auto first = frame->comps;
+  if(!first->data || first->stride < (size_t)batchMemory.width * 3)
+    return false;
+  planes[0] = (const uint8_t*)first->data;
+  strideBytes[0] = (size_t)first->stride * sizeof(uint16_t);
+
+  return true;
+}
+} // namespace
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_submit(grk_image* frame, void* frame_user)
+{
+  if(!batchMemory.running || !frame || !frame->comps)
+    return false;
+  if(batchMemory.sourceFormat != GRK_SOURCE_PLANAR_RGB)
+  {
+    const uint8_t* planes[3] = {};
+    size_t strideBytes[3] = {};
+    bool described = batchMemory.sourceFormat == GRK_SOURCE_RGB48LE
+                         ? interleaved16Buffer(frame, planes, strideBytes)
+                         : planarYuvPlanes(frame, planes, strideBytes);
+    if(!described)
+      return false;
+    auto submitPlanes = (GPUP_BATCH_MEMORY_SUBMIT_PLANES)batchMemorySymbol(
+        gpup_batch_memory_submit_planes_method_name);
+    if(!submitPlanes)
+      return false;
+
+    return submitPlanes(planes, strideBytes, frame_user);
+  }
+  if(frame->numcomps != batchMemory.numcomps)
+    return false;
+  for(uint16_t c = 0; c < frame->numcomps; ++c)
+  {
+    auto comp = frame->comps + c;
+    if(comp->w != batchMemory.width || comp->h != batchMemory.height || !comp->data ||
+       comp->data_type != GRK_INT_32)
+      return false;
+  }
+  auto submit = (GPUP_BATCH_MEMORY_SUBMIT)batchMemorySymbol(gpup_batch_memory_submit_method_name);
+  if(!submit)
+    return false;
+  if(batchMemory.xyzOnDevice)
+  {
+    // the kernel reads the source at its declared depth, so anything else is a
+    // different transform
+    for(uint16_t c = 0; c < frame->numcomps; ++c)
+    {
+      if(frame->comps[c].prec != batchMemory.sourcePrec)
+        return false;
+    }
+  }
+  else if(batchMemory.applyXYZ && !applyXYZTransform(frame, xyzTargetPrecision(batchMemory.rsiz)))
+  {
+    return false;
+  }
+
+  // pixel interleaved, little endian 16 bit, the packing the plugin reads.
+  // The buffer is per thread and kept between frames: submit may be called from
+  // several threads and the plugin copies before it returns.
+  static thread_local std::vector<uint8_t> packed;
+  size_t packedSize =
+      (size_t)batchMemory.width * batchMemory.height * batchMemory.numcomps * sizeof(uint16_t);
+  if(packed.size() != packedSize)
+    packed.resize(packedSize);
+  const size_t pixelStride = (size_t)batchMemory.numcomps * sizeof(uint16_t);
+  for(uint16_t c = 0; c < frame->numcomps; ++c)
+  {
+    auto comp = frame->comps + c;
+    uint8_t packedPrec = batchMemory.xyzOnDevice ? batchMemory.sourcePrec : batchMemory.prec;
+    uint8_t shift = comp->prec > packedPrec ? (uint8_t)(comp->prec - packedPrec) : 0;
+    auto data = (const int32_t*)comp->data;
+    auto out = packed.data() + c * sizeof(uint16_t);
+    for(uint32_t y = 0; y < batchMemory.height; ++y)
+    {
+      auto row = data + (size_t)y * comp->stride;
+      for(uint32_t x = 0; x < batchMemory.width; ++x)
+      {
+        auto sample = (uint32_t)(row[x] >> shift);
+        out[0] = (uint8_t)(sample & 0xFF);
+        out[1] = (uint8_t)((sample >> 8) & 0xFF);
+        out += pixelStride;
+      }
+    }
+  }
+
+  return submit(packed.data(), frame_user);
+}
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void)
+{
+  if(!batchMemory.running)
+    return false;
+  batchMemory.running = false;
+  auto end = (GPUP_BATCH_MEMORY_END)batchMemorySymbol(gpup_batch_memory_end_method_name);
+  bool ended = end && end();
+  std::lock_guard<std::mutex> guard(batchMemory.idleCodecsMutex);
+  for(auto& entry : batchMemory.idleCodecs)
+    releaseBatchMemoryCodec(entry);
+  batchMemory.idleCodecs.clear();
+
+  return ended;
+}
+
+/*******************
  Decompress Implementation
  ********************/
 
 grk_plugin_decompress_callback decodeCallback = 0;
+static grk_decompress_parameters* s_originalDecompressParams = nullptr;
+static thread_local GPUP_INIT_DECOMPRESSORS s_gpupInitDecompressorsFn = nullptr;
 
-/* wrapper for user's decompress callback */
+/*
+ * Bridge: grok's decompress_callback calls init_decompressors_func with grk_ types,
+ * but the actual function (from the plugin) expects gpup_ types.
+ */
+static int grk_to_gpup_init_decompressors_bridge(grk_header_info* hdr, grk_image* img)
+{
+  if(!s_gpupInitDecompressorsFn)
+    return -1;
+  gpup_header_info gpup_hdr;
+  grk_to_gpup_header_info(hdr, &gpup_hdr);
+  gpup_image* gpup_img = grk_to_gpup_image(img);
+  int rc = s_gpupInitDecompressorsFn(&gpup_hdr, gpup_img);
+  gpup_to_grk_header_info(&gpup_hdr, hdr);
+  gpup_image_free_shell(gpup_img);
+  return rc;
+}
+
+/* bridge: receives gpup-typed PluginDecodeCallbackInfo from plugin, translates to grk_ for host */
 int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
 {
   int32_t rc = -1;
-  /* set code block data etc on code object */
-  grk_plugin_decompress_callback_info grokInfo = {};
-  grokInfo.init_decompressors_func = info->init_decompressors_func;
+  grk_plugin_decompress_callback_info grokInfo;
+  memset(&grokInfo, 0, sizeof(grk_plugin_decompress_callback_info));
+
+  // Bridge init_decompressors_func: plugin set it to a gpup_ function,
+  // but grok's callback will call it with grk_ types
+  if(info->init_decompressors_func)
+  {
+    s_gpupInitDecompressorsFn = info->init_decompressors_func;
+    grokInfo.init_decompressors_func = grk_to_gpup_init_decompressors_bridge;
+  }
+  else
+  {
+    grokInfo.init_decompressors_func = nullptr;
+  }
   grokInfo.input_file_name = info->inputFile.empty() ? nullptr : info->inputFile.c_str();
   grokInfo.output_file_name = info->outputFile.empty() ? nullptr : info->outputFile.c_str();
-  grokInfo.decod_format = info->decod_format;
-  grokInfo.cod_format = info->cod_format;
-  grokInfo.decompressor_parameters = info->decompressor_parameters;
-  grokInfo.codec = info->codec;
-  grokInfo.image = info->image;
+  grokInfo.decod_format = (GRK_CODEC_FORMAT)info->decod_format;
+  grokInfo.cod_format = (GRK_SUPPORTED_FILE_FMT)info->cod_format;
+  grokInfo.decompressor_parameters = s_originalDecompressParams;
+  grokInfo.codec = (grk_object*)info->codec;
   grokInfo.plugin_owns_image = info->plugin_owns_image;
-  grokInfo.tile = info->tile;
+
+  // Cache the tile wrapper to avoid repeated deep alloc/free on every callback
+  // (the plugin calls back multiple times per tile: HEADER, T2, POST_T1, CLEAN)
+  static thread_local grk_plugin_tile* s_cachedTileWrapper = nullptr;
+  static thread_local const gpup_tile* s_cachedTileSrc = nullptr;
+  if(info->tile != s_cachedTileSrc)
+  {
+    if(s_cachedTileWrapper && info->tile)
+    {
+      // Reuse existing wrapper structure — just update data pointers
+      gpup_tile_update_grk(s_cachedTileWrapper, info->tile);
+    }
+    else
+    {
+      grk_plugin_tile_free_wrapper(s_cachedTileWrapper);
+      s_cachedTileWrapper = info->tile ? gpup_tile_to_grk(info->tile) : nullptr;
+    }
+    s_cachedTileSrc = info->tile;
+  }
+  else if(s_cachedTileWrapper && info->tile && (info->decompress_flags & GPUP_DECODE_T2))
+  {
+    // a batch frees each tile and the next one often lands at the same address
+    gpup_tile_update_grk(s_cachedTileWrapper, info->tile);
+  }
+  grokInfo.tile = s_cachedTileWrapper;
+  grokInfo.codestream = info->codestream;
+  grokInfo.codestream_length = info->codestreamLength;
+  grokInfo.frame_user = info->frameUser;
+
   grokInfo.decompress_flags = info->decompress_flags;
-  grokInfo.user_data = info->decompressor_parameters->user_data;
-  if(decodeCallback)
+  grokInfo.user_data =
+      s_originalDecompressParams
+          ? s_originalDecompressParams->user_data
+          : (info->decompressor_parameters ? info->decompressor_parameters->user_data : nullptr);
+  grokInfo.format_private = info->format_private;
+
+  // header_info: translate gpup → grk
+  gpup_to_grk_header_info(&info->header_info, &grokInfo.header_info);
+
+  // image: wrap gpup_image as grk_image for the host callback
+  grk_image* postProcessedImage = nullptr;
+  bool postProcessFailed = false;
+  grk_image grk_img;
+  grk_image_comp grk_comps_buf[16];
+  memset(&grk_img, 0, sizeof(grk_img));
+  if(info->image)
+  {
+    grk_img.x0 = info->image->x0;
+    grk_img.y0 = info->image->y0;
+    grk_img.x1 = info->image->x1;
+    grk_img.y1 = info->image->y1;
+    grk_img.numcomps = info->image->numcomps;
+    grk_img.color_space = (GRK_COLOR_SPACE)info->image->color_space;
+    uint16_t nc = info->image->numcomps > 16 ? 16 : info->image->numcomps;
+    memset(grk_comps_buf, 0, sizeof(grk_comps_buf));
+    for(uint16_t c = 0; c < nc; ++c)
+    {
+      grk_comps_buf[c].x0 = info->image->comps[c].x0;
+      grk_comps_buf[c].y0 = info->image->comps[c].y0;
+      grk_comps_buf[c].w = info->image->comps[c].w;
+      grk_comps_buf[c].stride = info->image->comps[c].stride;
+      grk_comps_buf[c].h = info->image->comps[c].h;
+      grk_comps_buf[c].dx = info->image->comps[c].dx;
+      grk_comps_buf[c].dy = info->image->comps[c].dy;
+      grk_comps_buf[c].prec = info->image->comps[c].prec;
+      grk_comps_buf[c].sgnd = info->image->comps[c].sgnd;
+      grk_comps_buf[c].data = info->image->comps[c].data;
+    }
+    grk_img.comps = grk_comps_buf;
+    grk_img.decompress_num_comps = info->image->numcomps;
+    grk_img.decompress_width = info->image->comps[0].w;
+    grk_img.decompress_height = info->image->comps[0].h;
+    grk_img.decompress_prec = info->image->comps[0].prec;
+    grk_img.decompress_colour_space = (GRK_COLOR_SPACE)info->image->color_space;
+    // the plugin image has no metadata
+    auto headerImage = info->codec ? grk_decompress_get_image((grk_object*)info->codec) : nullptr;
+    if(headerImage)
+    {
+      grk_img.meta = headerImage->meta;
+      grk_img.has_capture_resolution = headerImage->has_capture_resolution;
+      grk_img.has_display_resolution = headerImage->has_display_resolution;
+      for(int i = 0; i < 2; ++i)
+      {
+        grk_img.capture_resolution[i] = headerImage->capture_resolution[i];
+        grk_img.display_resolution[i] = headerImage->display_resolution[i];
+      }
+    }
+    grokInfo.image = &grk_img;
+    // the plugin's samples have not been through palette, colour or precision conversion
+    bool needsPostProcess = (info->decompress_flags & GPUP_DECODE_POST_T1) && headerImage &&
+                            !static_cast<GrkImage*>(headerImage)->isPostProcessNoOp();
+    if(needsPostProcess)
+    {
+      auto decompressor = Codec::getImpl((grk_object*)info->codec)->decompressor_;
+      postProcessFailed = !decompressor->postProcessPluginImage(&grk_img);
+      if(postProcessFailed)
+        Logger::logger_.error("[plugin] Failed to post-process the decoded image");
+      postProcessedImage = headerImage;
+      grokInfo.image = headerImage;
+    }
+  }
+
+  if(decodeCallback && !postProcessFailed)
     rc = decodeCallback(&grokInfo);
-  // synch
-  info->image = grokInfo.image;
-  info->codec = grokInfo.codec;
-  info->header_info = grokInfo.header_info;
+
+  // synch back: host callback may have created/modified image, codec, header_info
+  // the post-processed image belongs to the codec, which the host may already have released
+  if(grokInfo.image && grokInfo.image != &grk_img && grokInfo.image != postProcessedImage)
+  {
+    // Host created a new image (e.g. via grk_decompress_get_image during HEADER)
+    gpup_image* gpupImg = grk_to_gpup_image(grokInfo.image);
+    if(info->image)
+      gpup_image_free_shell(info->image);
+    info->image = gpupImg;
+  }
+  else if(!grokInfo.image && info->image)
+  {
+    gpup_image_free_shell(info->image);
+    info->image = nullptr;
+  }
+
+  info->codec = (gpup_codec*)grokInfo.codec;
+  grk_to_gpup_header_info(&grokInfo.header_info, &info->header_info);
+  info->format_private = grokInfo.format_private;
+
+  // After T2 callback: sync codeblock metadata from wrapper back to original gpup_tile
+  // so that transferDecodeInfo() sees the updated num_passes, num_bit_planes, etc.
+  if((info->decompress_flags & GPUP_DECODE_T2) && s_cachedTileWrapper && info->tile)
+    grk_tile_sync_metadata_to_gpup(s_cachedTileWrapper, info->tile);
+
+  // Free cached tile wrapper on CLEAN (final callback for this tile)
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+  {
+    grk_plugin_tile_free_wrapper(s_cachedTileWrapper);
+    s_cachedTileWrapper = nullptr;
+    s_cachedTileSrc = nullptr;
+  }
+
   return rc;
+}
+
+/*******************
+ In-memory batch decompress
+ ********************/
+
+// the suffix changes with the layout of gpup_batch_decompress_memory_info and what it points at
+static const char* plugin_batch_decode_memory_begin_method_name =
+    "plugin_batch_decompress_memory_begin_v2";
+static const char* plugin_batch_decode_memory_end_method_name =
+    "plugin_batch_decompress_memory_end";
+
+namespace
+{
+struct BatchDecompressMemoryState
+{
+  std::atomic_bool running{false};
+  std::atomic_bool pulling{false};
+  // T2 runs on a codec per frame, each on its own inline executor
+  grk_decompress_parameters parameters = {};
+  GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK pull = nullptr;
+  GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK callback = nullptr;
+  void* user = nullptr;
+};
+BatchDecompressMemoryState batchDecompress;
+
+const size_t displayChannels = 3;
+const size_t outputThresholdsPerChannel = 256;
+
+// NaN fails the comparison too
+bool outputThresholdsNeverDecrease(const float* thresholds)
+{
+  for(size_t channel = 0; channel < displayChannels; ++channel)
+  {
+    auto channelThresholds = thresholds + channel * outputThresholdsPerChannel;
+    for(size_t code = 1; code < outputThresholdsPerChannel; ++code)
+      if(!(channelThresholds[code] >= channelThresholds[code - 1]))
+        return false;
+  }
+  return true;
+}
+
+// the plugin's workers ask here, the caller answers
+bool batchDecompressMemoryPull(void*, const uint8_t** codestream, size_t* length, void** frameUser)
+{
+  if(!batchDecompress.pulling || !batchDecompress.pull)
+    return false;
+  return batchDecompress.pull(batchDecompress.user, codestream, length, frameUser);
+}
+
+// runs on the plugin's threads, concurrently with itself, one codec per frame
+int32_t batchDecompressMemoryCallback(grk_plugin_decompress_callback_info* info)
+{
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+  {
+    grk_object_unref(info->codec);
+    info->codec = nullptr;
+    info->image = nullptr;
+    return 0;
+  }
+  if(info->decompress_flags & GRK_DECODE_HEADER)
+  {
+    if(!info->codestream || !info->codestream_length || !info->init_decompressors_func)
+      return -1;
+    grk_stream_params stream = {};
+    stream.buf = const_cast<uint8_t*>(info->codestream);
+    stream.buf_len = info->codestream_length;
+    info->codec = grk_decompress_init(&stream, &batchDecompress.parameters);
+    if(!info->codec || !grk_decompress_read_header(info->codec, &info->header_info))
+      return -1;
+    info->image = grk_decompress_get_image(info->codec);
+    return info->init_decompressors_func(&info->header_info, info->image);
+  }
+  if(info->decompress_flags & GRK_DECODE_T2)
+  {
+    if(!info->codec || !info->tile)
+      return -1;
+    info->tile->decompress_flags = info->decompress_flags;
+    bool parsed = grk_decompress(info->codec, info->tile);
+    // the packets are in the plugin's buffer, nothing reads the code stream again
+    grk_object_unref(info->codec);
+    info->codec = nullptr;
+    return parsed ? 0 : -1;
+  }
+  if(info->decompress_flags & GRK_DECODE_POST_T1)
+  {
+    if(batchDecompress.callback)
+      batchDecompress.callback(batchDecompress.user, info->frame_user, info->image);
+    info->image = nullptr;
+    return 0;
+  }
+  return -1;
+}
+} // namespace
+
+GRK_API int32_t GRK_CALLCONV
+    grk_plugin_batch_decompress_memory_begin(grk_plugin_batch_decompress_memory_info info)
+{
+  if(batchDecompress.running || batchMemory.running)
+    return -1;
+  if(!info.codestream || !info.codestream_length || !info.callback || !info.pull)
+    return -1;
+  if(info.srgb8_output && info.display_transform)
+    return -1;
+  if(info.display_transform && !info.display_transform->transfer)
+    return -1;
+  if(info.display_transform && info.display_transform->output_thresholds &&
+     !outputThresholdsNeverDecrease(info.display_transform->output_thresholds))
+    return -1;
+  if(!pluginAccelerates())
+    return 1;
+  auto begin = (PLUGIN_BATCH_DECODE_MEMORY_BEGIN)batchMemorySymbol(
+      plugin_batch_decode_memory_begin_method_name);
+  if(!begin || !batchMemorySymbol(plugin_batch_decode_memory_end_method_name))
+    return 1;
+
+  batchDecompress.parameters = {};
+  batchDecompress.parameters.num_threads = 1;
+  grk_stream_params stream = {};
+  stream.buf = const_cast<uint8_t*>(info.codestream);
+  stream.buf_len = info.codestream_length;
+  auto codec = grk_decompress_init(&stream, &batchDecompress.parameters);
+  grk_header_info header = {};
+  if(!codec || !grk_decompress_read_header(codec, &header))
+  {
+    grk_object_unref(codec);
+    return -1;
+  }
+  auto image = grk_decompress_get_image(codec);
+  // the plugin decodes one tile at full resolution, the same rule the per call path applies
+  if(!image || header.t_grid_width != 1 || header.t_grid_height != 1)
+  {
+    grk_object_unref(codec);
+    return 1;
+  }
+
+  gpup_decompress_params gpupParameters;
+  grk_to_gpup_decompress_params(&batchDecompress.parameters, &gpupParameters);
+  gpup_batch_decompress_memory_info gpupInfo = {};
+  gpupInfo.decompress_parameters = &gpupParameters;
+  grk_to_gpup_header_info(&header, &gpupInfo.header_info);
+  gpupInfo.image = grk_to_gpup_image(image);
+  gpupInfo.pull = batchDecompressMemoryPull;
+  gpupInfo.pull_user = nullptr;
+  gpupInfo.srgb8_output = info.srgb8_output;
+  gpup_display_transform displayTransform = {};
+  if(info.display_transform)
+  {
+    displayTransform.transfer = info.display_transform->transfer;
+    displayTransform.matrix = info.display_transform->matrix;
+    displayTransform.output_thresholds = info.display_transform->output_thresholds;
+    gpupInfo.display_transform = &displayTransform;
+  }
+  gpupInfo.rgb8_on_device = false;
+  batchDecompress.pull = info.pull;
+  batchDecompress.callback = info.callback;
+  batchDecompress.user = info.user;
+  decodeCallback = batchDecompressMemoryCallback;
+  s_originalDecompressParams = &batchDecompress.parameters;
+  // the plugin's workers start pulling inside begin
+  batchDecompress.running = true;
+  batchDecompress.pulling = true;
+  int32_t rc = begin(&gpupInfo, grk_plugin_internal_decode_callback);
+  gpup_image_free_shell(gpupInfo.image);
+  grk_object_unref(codec);
+  if(info.rgb8_on_device)
+    *info.rgb8_on_device = rc == 0 && gpupInfo.rgb8_on_device;
+  if(rc != 0)
+  {
+    batchDecompress.pulling = false;
+    batchDecompress.running = false;
+    decodeCallback = nullptr;
+    s_originalDecompressParams = nullptr;
+    batchDecompress.pull = nullptr;
+    batchDecompress.callback = nullptr;
+  }
+
+  return rc;
+}
+
+GRK_API bool GRK_CALLCONV grk_plugin_batch_decompress_memory_end(void)
+{
+  if(!batchDecompress.running)
+    return false;
+  auto end =
+      (PLUGIN_BATCH_DECODE_MEMORY_END)batchMemorySymbol(plugin_batch_decode_memory_end_method_name);
+  // the workers' pulls return false from here on
+  batchDecompress.pulling = false;
+  // the plugin hands frames back through decodeCallback until end returns
+  bool drained = end && end();
+  decodeCallback = nullptr;
+  s_originalDecompressParams = nullptr;
+  batchDecompress.pull = nullptr;
+  batchDecompress.callback = nullptr;
+  batchDecompress.running = false;
+
+  return drained;
 }
 
 int32_t grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
@@ -1236,15 +2307,25 @@ int32_t grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
 {
   if(!pluginLoaded)
     return -1;
+  // the batch owns the callback state, this frame decompresses on the CPU
+  if(batchDecompress.running)
+    return 1;
+  // the plugin decodes the whole image, never one tile of it
+  if(decompress_parameters->single_tile_decompress)
+    return 1;
   decodeCallback = callback;
+  s_originalDecompressParams = decompress_parameters;
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {
     auto func =
         (PLUGIN_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_decode_method_name);
     if(func)
-      return func((grk_decompress_parameters*)decompress_parameters,
-                  grk_plugin_internal_decode_callback);
+    {
+      gpup_decompress_params gpup_params;
+      grk_to_gpup_decompress_params(decompress_parameters, &gpup_params);
+      return func(&gpup_params, grk_plugin_internal_decode_callback);
+    }
   }
   return -1;
 }
@@ -1252,17 +2333,21 @@ int32_t grk_plugin_init_batch_decompress(const char* input_dir, const char* outp
                                          grk_decompress_parameters* decompress_parameters,
                                          grk_plugin_decompress_callback callback)
 {
-  if(!pluginLoaded)
+  if(!pluginLoaded || batchDecompress.running)
     return -1;
   decodeCallback = callback;
+  s_originalDecompressParams = decompress_parameters;
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {
     auto func = (PLUGIN_INIT_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0],
                                                            plugin_init_batch_decode_method_name);
     if(func)
-      return func(input_dir, output_dir, (grk_decompress_parameters*)decompress_parameters,
-                  grk_plugin_internal_decode_callback);
+    {
+      gpup_decompress_params gpup_params;
+      grk_to_gpup_decompress_params(decompress_parameters, &gpup_params);
+      return func(input_dir, output_dir, &gpup_params, grk_plugin_internal_decode_callback);
+    }
   }
   return -1;
 }

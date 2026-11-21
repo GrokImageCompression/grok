@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include <CLI/CLI.hpp>
 
 #include "grk_apps_config.h"
@@ -27,7 +28,6 @@
 #include "BMPFormat.h"
 #include "PGXFormat.h"
 #include "PNMFormat.h"
-#include "YUVFormat.h"
 #include "common.h"
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
@@ -153,7 +153,7 @@ GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
     PGXFormat<int32_t> pgx;
-    GrkImagePtr src(pgx.decode(file.c_str(), &parameters));
+    GrkImagePtr src(pgx.readImage(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load pgx file: {}", file);
@@ -189,7 +189,7 @@ GrkImagePtr readImageFromFileBMP(const std::string& filename)
   parameters.decod_format = GRK_FMT_BMP;
 
   BMPFormat<int32_t> bmp;
-  GrkImagePtr img(bmp.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(bmp.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load BMP file: {}", filename);
@@ -205,7 +205,7 @@ GrkImagePtr readImageFromFilePNG(const std::string& filename)
   parameters.decod_format = GRK_FMT_PNG;
 
   PNGFormat<int32_t> png;
-  GrkImagePtr img(png.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(png.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load PNG file: {}", filename);
@@ -231,7 +231,7 @@ GrkImagePtr readImageFromFileTIF(const std::string& filename, const std::string&
   parameters.decod_format = GRK_FMT_TIF;
 
   TIFFFormat<int32_t> tif;
-  GrkImagePtr img(tif.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(tif.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load TIF file: {}", filename);
@@ -269,7 +269,7 @@ GrkImagePtr readImageFromFilePPM(const std::string& filename, uint16_t numFiles,
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
     PNMFormat<int32_t> pnm(false);
-    GrkImagePtr src(pnm.decode(file.c_str(), &parameters));
+    GrkImagePtr src(pnm.readImage(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load ppm file: {}", file);
@@ -442,6 +442,46 @@ GrkImagePtr loadImage(const std::string& filename, uint16_t numComponents,
   }
 }
 
+struct ComponentDifference
+{
+  double meanSquaredError{0.0};
+  double peakAbsoluteError{0.0};
+  uint64_t differingSamples{0};
+};
+
+ComponentDifference compareComponent(const grk_image_comp& baseComp, const grk_image_comp& testComp,
+                                     uint32_t baseOffsetX, uint32_t baseOffsetY)
+{
+  ComponentDifference difference;
+  auto baseData = (const int32_t*)baseComp.data;
+  auto testData = (const int32_t*)testComp.data;
+  double squaredErrorSum = 0.0;
+
+  for(uint32_t y = 0; y < testComp.h; ++y)
+  {
+    auto baseRow = baseData + (size_t)(y + baseOffsetY) * baseComp.stride + baseOffsetX;
+    auto testRow = testData + (size_t)y * testComp.stride;
+    for(uint32_t x = 0; x < testComp.w; ++x)
+    {
+      double error = (double)baseRow[x] - (double)testRow[x];
+      squaredErrorSum += error * error;
+      if(error != 0.0)
+      {
+        ++difference.differingSamples;
+        difference.peakAbsoluteError = std::max(difference.peakAbsoluteError, std::fabs(error));
+      }
+    }
+  }
+
+  auto sampleCount = (double)testComp.w * (double)testComp.h;
+  if(sampleCount > 0.0)
+  {
+    difference.meanSquaredError = squaredErrorSum / sampleCount;
+  }
+
+  return difference;
+}
+
 int GrkCompareImages::main(int argc, const char* argv[])
 {
   TestCmpParameters params;
@@ -506,6 +546,16 @@ int GrkCompareImages::main(int argc, const char* argv[])
     return EXIT_FAILURE;
   }
 
+  bool toleranceGiven = !params.mse_values.empty() && !params.peak_values.empty();
+  if(toleranceGiven && (params.mse_values.size() != imageBase->numcomps ||
+                        params.peak_values.size() != imageBase->numcomps))
+  {
+    spdlog::error("Got {} MSE and {} PEAK tolerances for {} components", params.mse_values.size(),
+                  params.peak_values.size(), imageBase->numcomps);
+    return EXIT_FAILURE;
+  }
+  bool comparisonFailed = false;
+
   for(uint16_t i = 0; i < imageBase->numcomps; ++i)
   {
     const auto& baseComp = imageBase->comps[i];
@@ -524,6 +574,9 @@ int GrkCompareImages::main(int argc, const char* argv[])
       return EXIT_FAILURE;
     }
 
+    uint32_t baseOffsetX = 0;
+    uint32_t baseOffsetY = 0;
+
     if(params.region_set)
     {
       uint32_t regionWidth = static_cast<uint32_t>(params.region[2] - params.region[0]);
@@ -535,6 +588,16 @@ int GrkCompareImages::main(int argc, const char* argv[])
                       testComp.h, regionWidth, regionHeight);
         return EXIT_FAILURE;
       }
+
+      baseOffsetX = static_cast<uint32_t>(params.region[0]);
+      baseOffsetY = static_cast<uint32_t>(params.region[1]);
+      if(baseOffsetX + regionWidth > baseComp.w || baseOffsetY + regionHeight > baseComp.h)
+      {
+        spdlog::error("Region {}x{}+{}+{} lies outside base component {} of size {}x{}",
+                      regionWidth, regionHeight, baseOffsetX, baseOffsetY, i, baseComp.w,
+                      baseComp.h);
+        return EXIT_FAILURE;
+      }
     }
     else if(baseComp.w != testComp.w || baseComp.h != testComp.h)
     {
@@ -542,6 +605,38 @@ int GrkCompareImages::main(int argc, const char* argv[])
                     baseComp.h, testComp.w, testComp.h);
       return EXIT_FAILURE;
     }
+
+    if(!baseComp.data || !testComp.data)
+    {
+      spdlog::error("Missing sample data for component {}", i);
+      return EXIT_FAILURE;
+    }
+
+    auto difference = compareComponent(baseComp, testComp, baseOffsetX, baseOffsetY);
+
+    if(toleranceGiven)
+    {
+      if(difference.meanSquaredError > params.mse_values[i] ||
+         difference.peakAbsoluteError > params.peak_values[i])
+      {
+        spdlog::error("Component {} outside tolerance: MSE {} (max {}), PEAK {} (max {})", i,
+                      difference.meanSquaredError, params.mse_values[i],
+                      difference.peakAbsoluteError, params.peak_values[i]);
+        comparisonFailed = true;
+      }
+    }
+    else if(difference.differingSamples != 0)
+    {
+      spdlog::error("Component {} differs in {} of {} samples: MSE {}, max absolute error {}", i,
+                    difference.differingSamples, (uint64_t)testComp.w * testComp.h,
+                    difference.meanSquaredError, difference.peakAbsoluteError);
+      comparisonFailed = true;
+    }
+  }
+
+  if(comparisonFailed)
+  {
+    return EXIT_FAILURE;
   }
 
   spdlog::info("---- TEST SUCCEEDED ----");

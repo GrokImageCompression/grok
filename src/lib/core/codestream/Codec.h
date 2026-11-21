@@ -53,11 +53,6 @@ public:
     return ((GrkObjectWrapperImpl<Codec>*)codec->wrapper)->getWrappee();
   }
 
-  grk_object* getWrapper()
-  {
-    return &obj;
-  }
-
   std::future<bool> queueDecompressTile(uint16_t tile_index)
   {
     startWorkerThreadIfNeeded();

@@ -27,6 +27,8 @@
 #include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
+#include <set>
+#include <tuple>
 #include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "MarkerParser.h"
@@ -64,32 +66,116 @@ namespace grk
 {
 T2Decompress::T2Decompress(ITileProcessor* tileProc) : tileProcessor(tileProc) {}
 
+static void setPacketPosition(ITileProcessor* tileProcessor, CodingParams::RecordedPacketInfo& info)
+{
+  auto tile = tileProcessor->getTile();
+  auto tccp = tileProcessor->getTCP()->tccps_ + info.compno;
+  auto imageComp = tileProcessor->getHeaderImage()->comps + info.compno;
+  auto res = tile->comps_[info.compno].resolutions_ + info.resno;
+  const uint32_t levelsDone = tccp->numresolutions_ - 1U - info.resno;
+  const uint32_t levelsX = tccp->horizontalDepth_[levelsDone];
+  const uint32_t levelsY = tccp->verticalDepth_[levelsDone];
+  const uint32_t widthExp = tccp->precWidthExp_[info.resno];
+  const uint32_t heightExp = tccp->precHeightExp_[info.resno];
+  const uint64_t gridWidth = ceildivpow2<uint32_t>(res->x1, widthExp) - (res->x0 >> widthExp);
+  const uint64_t column = (uint64_t)(res->x0 >> widthExp) + info.precinctIndex % gridWidth;
+  const uint64_t row = (uint64_t)(res->y0 >> heightExp) + info.precinctIndex / gridWidth;
+  info.numResolutions = tccp->numresolutions_;
+  info.positionX = std::max<uint64_t>(tile->x0, (column << (widthExp + levelsX)) * imageComp->dx);
+  info.positionY = std::max<uint64_t>(tile->y0, (row << (heightExp + levelsY)) * imageComp->dy);
+}
+
+void T2Decompress::recordMissingPackets(uint16_t tile_no)
+{
+  auto cp = tileProcessor->getCodingParams();
+  auto tcp = tileProcessor->getTCP();
+  auto tile = tileProcessor->getTile();
+  auto& packets = cp->recordedPacketInfo_[tile_no];
+  std::set<std::tuple<uint16_t, uint8_t, uint64_t, uint16_t>> recorded;
+  for(const auto& packet : packets)
+    recorded.emplace(packet.compno, packet.resno, packet.precinctIndex, packet.layno);
+  for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
+  {
+    auto tccp = tcp->tccps_ + compno;
+    for(uint8_t resno = 0; resno < tccp->numresolutions_; ++resno)
+    {
+      auto res = tile->comps_[compno].resolutions_ + resno;
+      if(res->x0 == res->x1 || res->y0 == res->y1)
+        continue;
+      const uint32_t widthExp = tccp->precWidthExp_[resno];
+      const uint32_t heightExp = tccp->precHeightExp_[resno];
+      const uint64_t numPrecincts =
+          (uint64_t)(ceildivpow2<uint32_t>(res->x1, widthExp) - (res->x0 >> widthExp)) *
+          (ceildivpow2<uint32_t>(res->y1, heightExp) - (res->y0 >> heightExp));
+      for(uint64_t precinctIndex = 0; precinctIndex < numPrecincts; ++precinctIndex)
+        for(uint16_t layno = 0; layno < tcp->numLayers_; ++layno)
+        {
+          if(recorded.count({compno, resno, precinctIndex, layno}))
+            continue;
+          CodingParams::RecordedPacketInfo info{};
+          info.compno = compno;
+          info.resno = resno;
+          info.layno = layno;
+          info.precinctIndex = precinctIndex;
+          info.missingFromStream = true;
+          info.packedHeader.push_back(0);
+          setPacketPosition(tileProcessor, info);
+          packets.push_back(std::move(info));
+        }
+    }
+  }
+}
+
 bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets)
+{
+  const bool truncated = parseTilePackets(tile_no, compressedPackets);
+  if(tileProcessor->getCodingParams()->recordMissingPackets_)
+    recordMissingPackets(tile_no);
+  return truncated;
+}
+
+bool T2Decompress::parseTilePackets(uint16_t tile_no, PacketCache* compressedPackets)
 {
   auto cp = tileProcessor->getCodingParams();
   auto tcp = tileProcessor->getTCP();
   PacketManager packetManager(false, tileProcessor->getHeaderImage(), cp, tile_no, FINAL_PASS,
                               tileProcessor);
-  auto pltMarkers = tileProcessor->getPacketLengthCache()->getMarkers();
-  if(pltMarkers && !pltMarkers->isEnabled())
-    pltMarkers = nullptr;
+  auto packetLengthCache = tileProcessor->getPacketLengthCache();
+  auto usePacketLengths = packetLengthCache->usesPacketLengths();
+  // Bound the PLT skip-corrupt-packet path: the smallest legal packet with no
+  // SOP/EPH is a 1-byte header, so a tile cannot hold more packets than it has
+  // compressed bytes. A malformed precinct grid can declare far more packets
+  // than that, and skipping each corrupt one would iterate the whole bogus
+  // grid. Once skips exceed the byte budget the grid is provably lying.
+  const size_t maxPackets = compressedPackets->length();
+  size_t corruptSkips = 0;
   for(auto prog_iter_num = 0U; prog_iter_num < tcp->getNumProgressions(); ++prog_iter_num)
   {
     auto currPi = packetManager.getPacketIter(prog_iter_num);
-    while(currPi->next(pltMarkers ? compressedPackets : nullptr))
+    while(currPi->next(usePacketLengths ? compressedPackets : nullptr))
     {
-      // code below is written this way as chunkLength() can throw, also indicating truncated tile
-      try
-      {
-        if(compressedPackets->chunkLength() == 0)
-        {
-          throw SparseBufferIncompleteException();
-        }
-      }
-      catch(SparseBufferIncompleteException& sbie)
+      if(tileProcessor->getNumProcessedPackets() >= maxPackets)
       {
         grklog.warn("Tile %u is truncated.", tile_no);
         return true;
+      }
+      // code below is written this way as chunkLength() can throw, also indicating truncated tile
+      // With selective fetch, the buffer may be exhausted for skipped (unfetched) packets,
+      // so we only check for truncation when not in selective fetch mode.
+      if(!compressedPackets->isSelectiveFetch())
+      {
+        try
+        {
+          if(compressedPackets->chunkLength() == 0)
+          {
+            throw SparseBufferIncompleteException();
+          }
+        }
+        catch(SparseBufferIncompleteException& sbie)
+        {
+          grklog.warn("Tile %u is truncated.", tile_no);
+          return true;
+        }
       }
 
       try
@@ -125,10 +211,18 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
                       "layer=%02d",
                       tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
                       currPi->getLayno());
+          if(++corruptSkips > maxPackets)
+          {
+            grklog.warn("Tile %u is truncated.", tile_no);
+            return true;
+          }
         }
         // ToDo: skip corrupt packet if SOP marker is present
       }
     }
+    // skipPackets failure also ends next()
+    if(packetLengthCache->hasPacketLengthError())
+      return true;
   }
 
   return false;
@@ -155,13 +249,12 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   if(!skip && !tilec->isWholeTileDecoding())
   {
     skip = true;
-    auto tilecBuffer = tilec->getWindow();
     for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
     {
       auto band = res->band + bandIndex;
       if(band->empty())
         continue;
-      auto paddedBandWindow = tilecBuffer->getBandWindowPadded(resno, band->orientation_);
+      auto paddedBandWindow = tilec->getBandWindowPadded(resno, band->orientation_);
       auto prec =
           band->generateBandPrecinctBounds(precinctIndex, res->bandPrecinctPartition_,
                                            res->bandPrecinctExpn_, res->precinctGrid_.width());
@@ -174,7 +267,13 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   }
 
   // read from PL cache or PLM or PLT marker, if available
-  auto packetLength = tileProcessor->getPacketLengthCache()->next();
+  uint32_t packetLength;
+  if(!tileProcessor->getPacketLengthCache()->readNextPacketLength(packetLength))
+    return false;
+  auto cpRec = tileProcessor->getCodingParams();
+  // PL markers give the packet length but not the header length that transcode needs
+  if(cpRec->recordPacketLengths_)
+    packetLength = 0;
 
   // 3. packetLength is non-zero only if there is a PLT marker or previously cached
   // parser. Otherwise, we need to create the precinct and at least read the packet header
@@ -185,9 +284,12 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
       auto band = res->band + bandIndex;
       if(band->empty())
         continue;
+      if(tilec->isWholeTileDecoding())
+        band->precincts_.reserve(res->precinctGrid_.area());
       if(!band->createPrecinct(tileProcessor->isCompressor(), tileProcessor->getTCP()->numLayers_,
                                precinctIndex, res->bandPrecinctPartition_, res->bandPrecinctExpn_,
-                               res->precinctGrid_.width(), res->cblkExpn_))
+                               res->precinctGrid_.width(), res->cblkExpn_,
+                               &tileProcessor->getTile()->arena_))
         return false;
     }
   }
@@ -201,6 +303,14 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
     parser = packetCache->gen(tileProcessor, tileProcessor->getNumProcessedPackets() & 0xFFFF,
                               compno, resno, precinctIndex, layno, plMarkerLength);
   }
+
+  auto packedHeaderCursor = [&]() -> const uint8_t* {
+    auto tileIndex = tileProcessor->getIndex();
+    if(cpRec->ppmMarkers_ && tileIndex < cpRec->ppmMarkers_->packetHeaders.size())
+      return *cpRec->ppmMarkers_->packetHeaders[tileIndex].ptr_to_buf();
+    return tcp->ppt_ ? tcp->pptData_ : nullptr;
+  };
+  const uint8_t* packedHeaderStart = cpRec->recordPacketLengths_ ? packedHeaderCursor() : nullptr;
 
   // 6. we must read the header if no PL marker
   if(!plMarkerLength)
@@ -216,12 +326,9 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   }
 
   // 6.5. Record packet info for transcode (PLT, SOP/EPH, filtering, reorder)
-  auto cpRec = tileProcessor->getCodingParams();
-  if(cpRec->recordPacketLengths_ && packetLength)
+  if(cpRec->recordPacketLengths_)
   {
     auto tileIdx = tileProcessor->getIndex();
-    if(tileIdx >= cpRec->recordedPacketInfo_.size())
-      cpRec->recordedPacketInfo_.resize(tileIdx + 1);
     CodingParams::RecordedPacketInfo info{};
     info.compno = compno;
     info.resno = resno;
@@ -229,13 +336,17 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
     info.precinctIndex = precinctIndex;
     info.totalLength = packetLength;
     info.headerLength = parser ? parser->getHeaderLength() : 0;
+    if(packedHeaderStart)
+      info.packedHeader.assign(packedHeaderStart, packedHeaderCursor());
+    setPacketPosition(tileProcessor, info);
     cpRec->recordedPacketInfo_[tileIdx].push_back(info);
   }
 
   // 7. compressedPackets can now increment to next packet
   try
   {
-    packetCache->next(packetLength);
+    bool dataPresent = !skip || !packetCache->isSelectiveFetch();
+    packetCache->next(packetLength, dataPresent);
   }
   catch([[maybe_unused]] const SparseBufferOverrunException& sboe)
   {

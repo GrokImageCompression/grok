@@ -56,12 +56,20 @@ struct ITileProcessor;
 #include "CompressScheduler.h"
 #include "RateControl.h"
 
+#include <algorithm>
+#include <random>
+
 namespace grk
 {
+// fixed so a given tile always dispatches in the same order
+static constexpr uint32_t kBlockOrderSeed = 0x9e3779b9u;
+
 CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                                     const double* mct_norms, uint16_t mct_numcomps)
+                                     const double* mct_norms, uint16_t mct_numcomps,
+                                     bool progressiveRateControl)
     : SchedulerStandard(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
-      blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
+      progressiveRateControl_(progressiveRateControl), blockCount_(-1), tcp_(tcp),
+      mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {
   rateControlStats_.init(tile->numcomps_);
 }
@@ -86,25 +94,30 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
         auto band = &res->band[bandIndex];
         for(auto prc : band->precincts_)
         {
-          auto nominalBlockSize = prc->getNominalBlockSize();
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
           {
             auto cblk = prc->getCompressBlock(cblkno);
             if(cblk->empty())
               continue;
-            if(!cblk->allocData(nominalBlockSize))
-              continue;
             auto block = new t1::CompressBlockExec();
-            block->tile_width =
-                (tile_->comps_ + compno)->getWindow()->getResWindowBufferHighestStride();
+            block->tile_width = tilec->highestResStride();
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
             block->y = cblk->y0();
-            tilec->getWindow()->toRelativeCoordinates(resno, band->orientation_, block->x,
-                                                      block->y);
-            auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
-            block->tiledp =
-                highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            tilec->toRelativeCoordinates(resno, band->orientation_, block->x, block->y);
+            block->uses16BitBuffer = tilec->uses16BitWindow();
+            if(block->uses16BitBuffer)
+            {
+              auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
+            else
+            {
+              auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
             maxCblkW = std::max<uint16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw_expn_));
             maxCblkH = std::max<uint16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh_expn_));
             block->compno = compno;
@@ -131,12 +144,16 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
   for(auto i = 0U; i < TFSingleton::num_threads(); ++i)
     coders_.push_back(t1::CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
 
-  size_t num_threads = TFSingleton::num_threads();
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
 
+  // Initialize progressive slope estimator when rate control is active.
+  // The estimator needs: total samples (sum of all block areas) and target rate (bytes/sample).
+  // This enables early termination of coding passes predicted to be discarded by PCRD.
+  initSlopeEstimator(blocks);
+
   tf::Taskflow taskflow;
-  num_threads = TFSingleton::num_threads();
+  size_t num_threads = TFSingleton::num_threads();
   auto node = new tf::Task[num_threads];
   for(auto i = 0U; i < num_threads; i++)
     node[i] = taskflow.placeholder();
@@ -174,25 +191,30 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
         auto band = &res->band[bandIndex];
         for(auto prc : band->precincts_)
         {
-          auto nominalBlockSize = prc->getNominalBlockSize();
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
           {
             auto cblk = prc->getCompressBlock(cblkno);
             if(cblk->empty())
               continue;
-            if(!cblk->allocData(nominalBlockSize))
-              continue;
             auto block = new t1::CompressBlockExec();
-            block->tile_width =
-                (tile_->comps_ + compno)->getWindow()->getResWindowBufferHighestStride();
+            block->tile_width = tilec->highestResStride();
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
             block->y = cblk->y0();
-            tilec->getWindow()->toRelativeCoordinates(resno, band->orientation_, block->x,
-                                                      block->y);
-            auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
-            block->tiledp =
-                highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            tilec->toRelativeCoordinates(resno, band->orientation_, block->x, block->y);
+            block->uses16BitBuffer = tilec->uses16BitWindow();
+            if(block->uses16BitBuffer)
+            {
+              auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
+            else
+            {
+              auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+              block->tileData =
+                  highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
+            }
             maxCblkW = std::max<uint16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw_expn_));
             maxCblkH = std::max<uint16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh_expn_));
             block->compno = compno;
@@ -222,6 +244,9 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
 
+  // Initialize progressive slope estimator (same as scheduleT1 path)
+  initSlopeEstimator(blocks);
+
   size_t num_threads = TFSingleton::num_threads();
   for(auto i = 0U; i < num_threads; i++)
   {
@@ -243,6 +268,12 @@ bool CompressScheduler::compress(size_t workerId, uint64_t maxBlocks)
   if(index >= maxBlocks)
     return false;
   auto block = encodeBlocks_[index];
+
+  // Set the early-stop threshold from the progressive estimator.
+  // This is a lock-free atomic read — the estimator updates it as blocks complete.
+  if(slopeEstimator_)
+    block->earlyStopSlope = slopeEstimator_->getEarlyStopSlope();
+
   compress(coder, block);
   delete block;
 
@@ -268,6 +299,23 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
     // Compute convex hull for feasible truncation points
     if(cblk->getNumPasses() > 0)
       RateControl::convexHull(cblk->getPass(0), cblk->getNumPasses());
+
+    // Feed completed block data to the progressive slope estimator.
+    // This builds the slope-rate histogram used to predict the PCRD threshold.
+    if(slopeEstimator_)
+    {
+      // Extract slopes and rates into stack arrays for the estimator.
+      uint8_t numPasses = cblk->getNumPasses();
+      uint16_t slopes[maxPassesPerSegmentJ2K];
+      uint16_t rates[maxPassesPerSegmentJ2K];
+      for(uint8_t p = 0; p < numPasses; p++)
+      {
+        auto pass = cblk->getPass(p);
+        slopes[p] = pass->slope_;
+        rates[p] = pass->rate_;
+      }
+      slopeEstimator_->updateStats(slopes, rates, numPasses, num_pix);
+    }
 
     // Collect slope stats for both bisect algorithms
     for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
@@ -302,6 +350,50 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
       }
     }
   }
+}
+
+void CompressScheduler::initSlopeEstimator(const std::vector<t1::CompressBlockExec*>& blocks)
+{
+  // The progressive slope estimator requires:
+  //   1. A target rate is specified (rate-distortion mode)
+  //   2. Rate control is needed (not lossless, not zero-rate)
+  //
+  // For multi-layer encoding, we must use the HIGHEST quality layer's target
+  // (the largest byte budget). This is the most permissive threshold — it
+  // determines the minimum slope below which passes are DEFINITELY discarded
+  // by ALL layers. Using a smaller layer's target would over-estimate the
+  // threshold and incorrectly terminate passes needed by higher-quality layers.
+  //
+  // tcp_->rates_[k] contains target byte counts after conversion from
+  // compression ratios. Higher indices = higher quality = more bytes.
+  if(!needsRateControl_)
+    return;
+  if(!progressiveRateControl_)
+    return;
+
+  // Find the maximum target rate across all layers
+  double maxTargetBytes = 0.0;
+  for(uint16_t k = 0; k < tcp_->numLayers_; ++k)
+  {
+    if(tcp_->rates_[k] > maxTargetBytes)
+      maxTargetBytes = tcp_->rates_[k];
+  }
+  if(maxTargetBytes <= 0.0)
+    return;
+
+  uint64_t totalSamples = 0;
+  for(const auto* blk : blocks)
+    totalSamples += static_cast<uint64_t>(blk->cblk->width()) * blk->cblk->height();
+
+  if(totalSamples == 0)
+    return;
+
+  double targetRate = maxTargetBytes / static_cast<double>(totalSamples);
+  slopeEstimator_ = std::make_unique<ProgressiveSlopeEstimator>(totalSamples, targetRate);
+
+  // block list is resolution 0 first, so the estimator's first sample would be all low resolution
+  std::mt19937 blockOrder(kBlockOrderSeed);
+  std::shuffle(encodeBlocks_.begin(), encodeBlocks_.end(), blockOrder);
 }
 
 } // namespace grk

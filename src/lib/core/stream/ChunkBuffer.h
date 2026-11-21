@@ -46,6 +46,7 @@ template<typename T = uint16_t>
 class ChunkBuffer
 {
 public:
+  using index_type = T;
   ChunkBuffer(size_t chunkSize, size_t offset, size_t length)
       : chunkSize_(chunkSize > length ? length : chunkSize),
         offset_(offset > length ? length : offset), length_(length), initialOffset_(offset_),

@@ -58,9 +58,14 @@ struct ITileProcessor;
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 
-std::unique_ptr<tf::Executor> TFSingleton::instance_ = nullptr;
+std::shared_ptr<tf::Executor> TFSingleton::instance_ = nullptr;
 std::mutex TFSingleton::mutex_;
 size_t TFSingleton::numThreads_;
+thread_local tf::Executor* TFSingleton::tlsExec_ = nullptr;
+thread_local std::atomic<tf::Executor*>* TFSingleton::tlsOwnerExec_ = nullptr;
+thread_local size_t TFSingleton::tlsNumThreads_ = 0;
+thread_local uint32_t TFSingleton::tlsWorkerId_ = 0;
+thread_local bool TFSingleton::tlsActive_ = false;
 
 namespace grk
 {

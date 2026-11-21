@@ -20,6 +20,11 @@
 #include "ConcurrentQueue.h"
 #include "TFSingleton.h"
 #include "CompressedChunkCache.h"
+#include "SelectiveFetchRanges.h"
+#include "WaveletPoolData.h"
+#include "mercury_async.h"
+#include <map>
+#include <atomic>
 
 namespace grk
 {
@@ -27,31 +32,78 @@ namespace grk
 /**
  * @class CodeStreamDecompress
  * @brief Manages decompression
+ *
+ * @see doc/IncrementalStripeCompositing.md for the incremental band-write pipeline.
+ * @see doc/TileCache.md for tile caching and LRU eviction.
  */
 class CodeStreamDecompress final : public CodeStream, public IDecompressor
 {
+  // LOCAL-ONLY: mercury full-image fast path (mercury_fastpath.cpp)
+  friend bool mercuryFastPath(CodeStreamDecompress& cs);
+
 public:
   /**
    * @brief Constructs a CodeStreamDecompress
    * @param stream @ref CodeStreamDecompress
    */
-  CodeStreamDecompress(IStream* stream);
+  explicit CodeStreamDecompress(IStream* stream);
+
+  CodingParams* getCodingParams(void) override
+  {
+    return CodeStream::getCodingParams();
+  }
 
   /**
    * @brief Destroys a CodeStreamDecompress
    */
   ~CodeStreamDecompress()
   {
+    // the mercury tiles complete through tileCompletion_
+    mercuryAsync_.reset();
     if(decompressQueue_)
       decompressQueue_->close();
     if(decompressConsumer_.joinable())
       decompressConsumer_.join();
+    // the worker thread can be blocked until the caller drains tile rows
+    {
+      std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+      success_ = false;
+    }
+    batchTileQueueCondition_.notify_all();
     if(decompressWorker_.joinable())
       decompressWorker_.join();
-    TFSingleton::get().wait_for_all();
+    // Wait on this codec's own executor when it owns one (single-threaded mode);
+    // the decode scope has already exited so the thread-local override is gone.
+    if(localExecutor_)
+      localExecutor_->wait_for_all();
+    else
+      TFSingleton::get().wait_for_all();
   }
 
   void init(grk_decompress_parameters* param) override;
+  void setInputFilePath(const char* path) override
+  {
+    inputFilePath_ = path ? path : "";
+  }
+  void setCodestreamExtent(uint64_t offset, uint64_t length)
+  {
+    codestreamOffset_ = offset;
+    codestreamLength_ = length;
+  }
+
+  void setBandCallback(grk_io_band_callback callback, void* user_data) override;
+  grk_io_band_callback getBandCallback() const override
+  {
+    return ioBandCallback_;
+  }
+  void* getBandUserData() const override
+  {
+    return ioBandUserData_;
+  }
+  WaveletPoolData* getWaveletPoolData() override
+  {
+    return &waveletPoolData_;
+  }
 
   grk_progression_state getProgressionState(uint16_t tile_index) override;
 
@@ -63,6 +115,12 @@ public:
    * @return @ref ITileProcessor
    */
   ITileProcessor* getTileProcessor(uint16_t tile_index);
+  bool sotWalkBuildsTLM(void);
+  void recordWalkedTilePart(uint16_t tileIndex, uint64_t offset, uint32_t tilePartLength,
+                            uint8_t tilePart, uint8_t numTileParts);
+  bool extendWalkedTLM(const std::set<uint16_t>& tiles);
+  void activateWalkedTLM(const std::set<uint16_t>& tiles);
+  void endSequentialWalk(bool walkFailed);
 
   /**
    * @brief Initializes tile completeness set
@@ -80,6 +138,12 @@ public:
 
   bool readHeader(grk_header_info* header_info) override;
 
+  // the device runs T1, the host still reads the header and parses the packets
+  bool pluginDecompressEligible(void);
+  int32_t pluginDecompress(void);
+  static int32_t pluginDecompressCallback(grk_plugin_decompress_callback_info* info);
+  void discardPluginTileParse(void);
+
   /**
    * @brief Checks if header needs to be read
    * @return true if header needs to be read
@@ -90,6 +154,8 @@ public:
 
   GrkImage* getImage(void) override;
 
+  GrkImage* getCompositeNoWait(void);
+
   /**
    * @brief Gets header @ref GrkImage
    * (where main and tile header information is stored)
@@ -98,6 +164,7 @@ public:
   GrkImage* getHeaderImage(void);
 
   bool decompress(grk_plugin_tile* tile) override;
+  bool postProcessPluginImage(const grk_image* decoded) override;
 
   bool decompressTile(uint16_t tile_index) override;
 
@@ -138,7 +205,7 @@ protected:
    *
    * @return true if successful
    */
-  bool decompressImpl(std::set<uint16_t> slated);
+  bool decompressImpl(std::set<uint16_t> pendingTiles);
 
   bool decompressTileImpl(uint16_t tile_index);
 
@@ -178,7 +245,16 @@ protected:
 private:
   void postReadHeader(void);
 
-  void onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd);
+  /**
+   * @brief Bounds of the whole tile grid, in unreduced canvas coordinates.
+   *
+   * TileCompletion divides these bounds by the tile size to derive its tile grid, so they
+   * have to span every tile. The image area is not enough: a tile grid anchored left of or
+   * above the image origin has more tile columns or rows than the image area covers.
+   */
+  Rect32 tileGridBounds(void) const;
+
+  void onRowCompleted(uint16_t tileIndexBegin);
   void scheduleTileBatch();
   static constexpr int32_t maxRowsAhead_ = 2;
 
@@ -189,7 +265,7 @@ private:
    */
   void decompressSequentialPrepare(void);
 
-  bool schedule(ITileProcessor* tileProcessor, bool multiTile);
+  void schedule(ITileProcessor* tileProcessor, bool multiTile);
 
   /**
    * @brief Parses next slated tile
@@ -302,6 +378,13 @@ private:
   bool activateScratch(bool singleTile, GrkImage* scratch);
 
   /**
+   * @brief Allocates the scratch composite/strip buffer on first use
+   *
+   * @return true on success, or when this configuration needs no buffer
+   */
+  bool ensureScratchData(void);
+
+  /**
    * @brief Creates a Post Task object
    *
    * @param tileProcessor
@@ -318,8 +401,11 @@ private:
                                Rect32 unreducedImageBounds,
                                std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
-  void decompressSequential(void);
-  void decompressTLM(const std::set<uint16_t>& slated);
+  void decompressSequential(const std::set<uint16_t>& pendingTiles);
+  void decompressTLM(const std::set<uint16_t>& pendingTiles);
+
+  bool startTLMDecompress(std::set<uint16_t>& pendingTiles);
+  bool startSequentialDecompress(std::set<uint16_t>& pendingTiles);
 
   bool doTileBatching(void);
 
@@ -339,6 +425,19 @@ private:
   std::unique_ptr<MarkerCache> markerCache_;
 
   /**
+   * @brief Input file path when the stream is file-backed, read by the
+   * mercury fast path. Per codec so concurrent decodes cannot cross files.
+   */
+  std::string inputFilePath_;
+
+  /**
+   * @brief Contiguous code stream box extent, read by the mercury fast path.
+   * A zero length means the code stream runs to the end of the file.
+   */
+  uint64_t codestreamOffset_ = 0;
+  uint64_t codestreamLength_ = 0;
+
+  /**
    * @brief Tile processor currently being parsed
    *
    */
@@ -346,6 +445,8 @@ private:
 
   TilePartInfo currTilePartInfo_;
   int32_t currTileIndex_ = -1;
+  bool numTilePartsChecked_ = false;
+  void detectShortNumTileParts(void);
 
   /**
    * @brief Default @ref TileCodingParams
@@ -354,6 +455,9 @@ private:
    * like COD, COC and RGN in main header)
    */
   std::unique_ptr<TileCodingParams> defaultTcp_;
+
+  /** @brief Selective fetch tile-parts (kept alive for async Phase 2 fetch) */
+  TPSEQ_VEC selectiveTileParts_;
 
   /**
    * @brief true if there was an error reading the main header
@@ -370,12 +474,21 @@ private:
    *
    */
   std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> multiTileComposite_;
+  bool compositeBoundsReduced_ = false;
 
   /**
    * @brief Holds unreduced unsubsampled decompress region , if set
    *
    */
   Rect32 region_;
+
+  /**
+   * @brief True once a synchronous decompress has filled @ref multiTileComposite_,
+   * so a repeat call hands the same image back instead of decoding again
+   */
+  bool compositeDecompressed_ = false;
+
+  bool cpuOnly_ = false;
 
   std::function<void()> postMulti_;
 
@@ -395,6 +508,43 @@ private:
    *
    */
   void* ioUserData_ = nullptr;
+
+  /**
+   * @brief callback invoked when a tile-row band is ready for incremental writing
+   */
+  grk_io_band_callback ioBandCallback_ = nullptr;
+  void* ioBandUserData_ = nullptr;
+
+  // deferred allocation of the scratch composite/strip buffer, set up by
+  // activateScratch and carried out by ensureScratchData
+  std::mutex scratchDataMutex_;
+  bool scratchDataPending_ = false;
+  // read outside scratchDataMutex_ by the band writer, which needs to know
+  // whether the strip buffer exists yet
+  std::atomic<bool> scratchDataAllocated_{false};
+  // per-component height of the first tile row, applied once the strip buffer
+  // exists, since the buffer itself is sized for the tallest row
+  std::vector<uint32_t> scratchBandRowHeights_;
+
+  // band ordering for incremental writes
+  std::mutex bandOrderMutex_;
+  std::condition_variable bandDrainCV_;
+  uint16_t nextBandTileY_ = 0;
+  struct PendingBand_
+  {
+    uint32_t yBegin, yEnd;
+    uint16_t tileX0, numCols;
+  };
+  std::map<uint16_t, PendingBand_> pendingBands_;
+  // tiles handed to the scheduler per tile row, so the parser and the batch throttle can
+  // tell whether the row they would block on is still missing tile parts
+  std::vector<uint16_t> bandRowScheduledTiles_;
+  bool bandRowFullyScheduled(uint16_t tileY);
+  bool swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1);
+  bool waitedRowsFullyScheduled(void);
+  void scheduleQueuedForWaitedRows(void);
+  void scheduleQueuedSequentialForWaitedRows(void);
+  void scheduleRemainingTiles(void);
 
   /**
    * @brief callback to reclaim io buffers
@@ -428,6 +578,100 @@ private:
                    std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
   /**
+   * @brief Two-phase PLT-based selective tile fetch for reduced resolution decompression.
+   *
+   * Phase 1 (header probe): Fetches a small prefix (4 KB) of each tile-part to extract
+   * the PLT marker (packet lengths) and SOD offset without downloading full tile data.
+   *
+   * Range computation: Uses PLT packet lengths and the tile's progression order to compute
+   * the minimal byte ranges needed for the target resolution level (reduce > 0).
+   * For resolution-first progressions (RLCP, RPCL) this produces a single contiguous range;
+   * for layer-first (LRCP, CPRL, PCRL) it may produce disjoint ranges.
+   *
+   * Phase 1 data reuse: When the computed ranges fit entirely within the 4 KB already
+   * fetched in Phase 1, the data is reused directly — no Phase 2 HTTP request is issued.
+   * This is common for small tiles or low-resolution decompressions where all needed
+   * packets are contained in the initial header fetch.
+   *
+   * Phase 2 (selective fetch): For tiles whose needed data exceeds the Phase 1 buffer,
+   * truncated or disjoint HTTP range requests are issued to fetch only the required
+   * packet data.
+   *
+   * @param slated           set of tile indices to decompress
+   * @param unreducedImageBounds  unreduced image bounds for decompress tasks
+   * @param postGenerator    factory for post-decompress callbacks
+   * @return true if tiles were scheduled for decompression
+   */
+  bool fetchByTileSelective(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
+                            std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+
+  /**
+   * @brief Enqueue a tile for decompression via the decompress pipeline.
+   *
+   * Updates the compressed chunk cache, advances the max-fetched tile row,
+   * and pushes a decompress task onto the decompress queue.
+   *
+   * @param tileIndex         tile index
+   * @param decompressSeq     tile-part fetch sequence with data and MemStreams
+   * @param numTileCols       number of tile columns in the grid
+   * @param unreducedImageBounds  unreduced image bounds for decompress tasks
+   * @param postGenerator     factory for post-decompress callbacks
+   */
+  void
+      enqueueTileForDecompress(uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq,
+                               uint16_t numTileCols, Rect32 unreducedImageBounds,
+                               std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+
+  /**
+   * @brief Build selective tile-part entries for a single tile.
+   *
+   * Uses PLT packet lengths from the Phase 1 header result and the tile's
+   * progression order to compute the minimal fetch ranges for the target
+   * resolution. Populates selectiveTileParts_[tileIndex] with either:
+   *  - Truncated entries (contiguous case) — one per tile-part, trimmed to
+   *    the needed prefix of packet data.
+   *  - Synthetic entries (disjoint case) — header entry + one entry per
+   *    disjoint data range within the tile-part.
+   *  - Full tile-part entries (fallback) — when PLT is invalid or no savings
+   *    are possible.
+   *
+   * @param tileIndex       tile index
+   * @param hdr             Phase 1 header result for this tile
+   * @param allTileParts    full tile-part offset/length info from TLM
+   * @param reduce          resolution reduction level
+   */
+  void buildSelectiveTileParts(uint16_t tileIndex, const TileHeaderResult& hdr,
+                               const TPSEQ_VEC& allTileParts, uint8_t reduce);
+
+  /**
+   * @brief Try to reuse Phase 1 data for tiles whose needed bytes fit in the header fetch.
+   *
+   * For each tile in selectiveFetchTiles, checks whether all selective entries
+   * fit within the already-fetched Phase 1 buffers. If so, builds a decompression
+   * sequence directly from Phase 1 data and removes the tile from the fetch set.
+   *
+   * Handles both contiguous and disjoint layouts.
+   *
+   * @param selectiveFetchTiles  tiles scheduled for Phase 2 fetch (modified in-place)
+   * @param headerResults        Phase 1 header data per tile
+   * @param allTileParts         full tile-part info from TLM
+   * @return vector of tiles with pre-built decompression sequences
+   */
+  std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>>
+      reusePhase1Data(std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
+                      const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
+                      const TPSEQ_VEC& allTileParts);
+
+  /**
+   * @brief Install fetch throttle on the given fetcher.
+   *
+   * Back pressure: prevent the fetcher from scheduling more HTTP requests
+   * when either (a) the fetcher is too far ahead of the consumer (swath-based
+   * release), or (b) too many tiles are in-flight for decompression.
+   */
+  void installFetchThrottle(IFetcher* fetcher);
+
+  /**
    * @brief Scratch @ref GrkImage for decompressor
    * This image may composite multiple tiles, if needed.
    */
@@ -453,7 +697,24 @@ private:
    */
   CoderPool coderPool_;
 
+  WaveletPoolData waveletPoolData_;
+
   std::vector<std::unique_ptr<MarkerParser>> tileMarkerParsers_;
+
+  /**
+   * @brief Per-codec inline executor, owned only in single-threaded mode.
+   *
+   * When set, the decode runs on this executor (activated via
+   * TFSingleton::ScopedExecutor for the duration of decompress/decompressTile)
+   * instead of the process-global singleton, so concurrent single-threaded
+   * decodes are independent and lock-free.  Null in multi-threaded mode.
+   */
+  std::unique_ptr<tf::Executor> localExecutor_;
+
+  /**
+   * @brief Worker count of localExecutor_, reported to TFSingleton while it is active.
+   */
+  size_t localNumThreads_ = 1;
 
   /**
    * @brief global HT flag
@@ -462,6 +723,8 @@ private:
   bool isHT_ = false;
 
   std::unique_ptr<TileCompletion> tileCompletion_;
+  std::unique_ptr<MercuryAsyncDecode> mercuryAsync_;
+  bool differentialDecodeAllowed_ = false;
 
   std::thread decompressWorker_;
 
@@ -494,11 +757,15 @@ private:
   std::atomic<int32_t> maxFetchedTileRow_{-1};
 
   // batch sequential
-  bool batchDequeueSequential(void);
+  void batchDequeueSequential(void);
   std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
-  int32_t batchTileScheduledRows_ = 0; // Highest row index we've scheduled up to
+  // highest row index we've scheduled up to. atomic: several threads read and write it
+  std::atomic<int32_t> batchTileScheduledRows_ = 0;
 };
+
+bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
+                            bool irreversibleInt16);
 
 } // namespace grk

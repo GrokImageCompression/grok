@@ -40,11 +40,17 @@ class PNGFormat : public ImageFormat
 {
 public:
   PNGFormat();
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  ~PNGFormat() override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    return true;
+  }
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   grk_image* do_decode(grk_cparameters* params);
@@ -57,6 +63,8 @@ private:
   GRK_COLOR_SPACE colorSpace_;
   uint8_t prec_;
   uint16_t nr_comp_;
+  grk::PlanarToInterleaved<int32_t>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
 };
 
 static bool pngWarningHandlerVerbose = true;
@@ -86,13 +94,21 @@ static inline void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const
 template<typename T>
 PNGFormat<T>::PNGFormat()
     : info_(nullptr), png_(nullptr), row_buf_(nullptr), row_buf_array_(nullptr), row32s_(nullptr),
-      colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0)
+      colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0), interleaver_(nullptr),
+      interleaver16_(nullptr)
 {}
 
 template<typename T>
-bool PNGFormat<T>::encodeHeader(void)
+PNGFormat<T>::~PNGFormat()
 {
-  if(isHeaderEncoded())
+  delete interleaver_;
+  delete interleaver16_;
+}
+
+template<typename T>
+bool PNGFormat<T>::writeHeader(void)
+{
+  if(isHeaderWritten())
     return true;
 
   uint32_t color_type;
@@ -128,11 +144,6 @@ bool PNGFormat<T>::encodeHeader(void)
       break;
     if(image_->comps[0].sgnd != image_->comps[i].sgnd)
       break;
-    if(!image_->comps[i].data)
-    {
-      spdlog::error("imagetopng: component {} is null.", i);
-      return false;
-    }
   }
   if(i != nr_comp_)
   {
@@ -300,7 +311,7 @@ bool PNGFormat<T>::encodeHeader(void)
       spdlog::error("Can't allocate memory for PNG row");
       goto beach;
     }
-    row32s_ = (T*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(int32_t));
+    row32s_ = (T*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(T));
     if(row32s_ == nullptr)
     {
       spdlog::error("Can't allocate memory for interleaved 32s row");
@@ -309,40 +320,71 @@ bool PNGFormat<T>::encodeHeader(void)
   }
 
   fails = false;
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
 beach:
   return !fails;
 }
 
 template<typename T>
-bool PNGFormat<T>::encodePixels(void)
+bool PNGFormat<T>::writeImage(void)
 {
-  int32_t const* planes[4];
-  for(uint16_t compno = 0; compno < nr_comp_; ++compno)
-    planes[compno] = (T*)image_->comps[compno].data;
+  return writeImageBand(0, maxY(image_->comps->h));
+}
 
+template<typename T>
+bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  auto stride = image_->comps[0].stride;
   png_bytep row_buf_cpy = row_buf_;
-  int32_t adjust = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
-  uint32_t max = maxY(image_->comps->h);
-  auto iter =
-      grk::InterleaverFactory<int32_t>::makeInterleaver(prec_ == 16 ? grk::packer16BitBE : prec_);
-  if(!iter)
-    return false;
-  for(uint32_t y = 0; y < max; ++y)
+  uint32_t max = std::min<uint32_t>(yEnd, maxY(image_->comps->h));
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
   {
-    iter->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, image_->comps[0].stride,
-                     image_->comps[0].w, 1, adjust);
-
-    png_write_row(png_, row_buf_cpy);
+    int16_t const* planes16[4];
+    for(uint16_t compno = 0; compno < nr_comp_; ++compno)
+      planes16[compno] = (int16_t*)image_->comps[compno].data + (uint64_t)yBegin * stride;
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0);
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(
+          prec_ == 16 ? grk::packer16BitBE : prec_);
+      if(!interleaver16_)
+        return false;
+    }
+    for(uint32_t y = yBegin; y < max; ++y)
+    {
+      interleaver16_->interleave((int16_t**)planes16, nr_comp_, row_buf_, image_->comps[0].w,
+                                 stride, image_->comps[0].w, 1, adjust16);
+      png_write_row(png_, row_buf_cpy);
+    }
   }
-  delete iter;
+  else
+  {
+    int32_t const* planes[4];
+    for(uint16_t compno = 0; compno < nr_comp_; ++compno)
+      planes[compno] = (T*)image_->comps[compno].data + (uint64_t)yBegin * stride;
+    int32_t adjust = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(
+          prec_ == 16 ? grk::packer16BitBE : prec_);
+      if(!interleaver_)
+        return false;
+    }
+    for(uint32_t y = yBegin; y < max; ++y)
+    {
+      interleaver_->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
+                               image_->comps[0].w, 1, adjust);
+      png_write_row(png_, row_buf_cpy);
+    }
+  }
 
   return true;
 }
 
 template<typename T>
-bool PNGFormat<T>::encodeFinish(void)
+bool PNGFormat<T>::writeFinish(void)
 {
   if(setjmp(png_jmpbuf(png_)))
     return false;
@@ -354,13 +396,13 @@ bool PNGFormat<T>::encodeFinish(void)
   }
   free(row_buf_);
   free(row32s_);
-  bool rc = ImageFormat::encodeFinish();
+  bool rc = ImageFormat::writeFinish();
 
   return rc;
 }
 
 template<typename T>
-grk_image* PNGFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PNGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   fileName_ = filename;
   return do_decode(parameters);
@@ -375,7 +417,6 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
   int color_type;
   grk_image_comp cmptparm[4];
   uint8_t sigbuf[8];
-  T* planes_[4];
   int srgbIntent = -1;
   png_textp text_ptr;
   int num_comments = 0;
@@ -524,6 +565,8 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     auto img_comp = cmptparm + i;
     img_comp->prec = (uint8_t)bit_depth;
     img_comp->sgnd = false;
+    if constexpr(sizeof(T) == 2)
+      img_comp->data_type = GRK_INT_16;
     img_comp->dx = params->subsampling_dx;
     img_comp->dy = params->subsampling_dy;
     img_comp->w = grk::ceildiv<uint32_t>(width, img_comp->dx);
@@ -544,8 +587,6 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     image_->comps[nr_comp_ - 1U].type = GRK_CHANNEL_TYPE_OPACITY;
     image_->comps[nr_comp_ - 1U].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
   }
-  for(uint32_t i = 0; i < nr_comp_; i++)
-    planes_[i] = (T*)image_->comps[i].data;
 
   // See if iCCP chunk is present
   if(png_get_valid(png_, info_, PNG_INFO_iCCP))

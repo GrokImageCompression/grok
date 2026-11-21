@@ -1,0 +1,348 @@
+/* C API for embedding the mercury JPEG 2000 decoder. src/capi.rs is the
+ * source of truth for these signatures and semantics.
+ *
+ * Flow: mercury_warp_loom{,_fd} -> (info queries) -> mercury_weave.
+ * warp_loom returns NULL when the plan stage can't handle the stream (host
+ * falls back to its own pipeline). mercury_weave consumes and frees the
+ * plan; mercury_unwarp_loom is only for plans never decoded.
+ */
+#pragma once
+
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct MercuryPlan MercuryPlan;
+
+enum
+{
+  MERCURY_OK = 0,
+  MERCURY_EBADARG = -1,
+  MERCURY_EDECODE = -2,
+  MERCURY_EPANIC = -3,
+};
+
+/* Positioned read: fill buf[0..len) from absolute offset off; nonzero on
+ * success. Called concurrently from many threads. */
+typedef int32_t (*mercury_read_at_fn)(void* ctx, uint8_t* buf, uint64_t off, uint64_t len);
+
+/* Substitute tier-1 block decoder (BlockCoder contract, see mercury
+ * src/decode/stripe_decoder.rs): returns the decoder's row-major i32 samples,
+ * num_cols per row, two's complement at twice the sample scale, valid until
+ * the next call on the same thread. NULL on failure. */
+typedef const int32_t* (*mercury_t1_fn)(const uint8_t* coded_data, int32_t coded_length,
+                                        int32_t num_passes, int32_t missing_msbs,
+                                        int32_t k_max_prime, int32_t orientation, int32_t modes,
+                                        int32_t num_cols, int32_t num_rows,
+                                        const int32_t* segment_lengths, int32_t num_segments);
+
+/* Row delivery: comps[c] points at width i32 samples of component c, valid
+ * only during the call. Rows arrive in order, one call at a time, on a decode
+ * worker thread; must not throw. Unsigned components are DC-shifted to
+ * [0, 2^prec) and clamped; signed are raw; the 9/7 float path follows the
+ * sample-conversion spec. */
+typedef void (*mercury_row_fn)(void* ctx, uint32_t row, const int32_t* const* comps,
+                               uint32_t num_comps, uint64_t width);
+
+/* i16 row delivery for output where unsigned precision <= 15 and signed
+ * precision <= 16. The pointer lifetime and ordering match mercury_row_fn. */
+typedef void (*mercury_row_i16_fn)(void* ctx, uint32_t row, const int16_t* const* comps,
+                                   uint32_t num_comps, uint64_t width);
+
+/* One component row. samples points at width samples of component comp, valid
+ * only during the call. Rows of one component arrive in order; components
+ * interleave in no fixed order. Same value conventions as mercury_row_fn. */
+typedef void (*mercury_comp_row_fn)(void* ctx, uint32_t comp, uint32_t row, const int32_t* samples,
+                                    uint64_t width);
+typedef void (*mercury_comp_row_i16_fn)(void* ctx, uint32_t comp, uint32_t row,
+                                        const int16_t* samples, uint64_t width);
+typedef void (*mercury_row_u16_fn)(void* ctx, uint32_t row, const uint16_t* const* comps,
+                                   uint32_t num_comps, uint64_t width);
+typedef void (*mercury_comp_row_u16_fn)(void* ctx, uint32_t comp, uint32_t row,
+                                        const uint16_t* samples, uint64_t width);
+
+/* Main header, parsed by the host codec and handed in; mercury does not parse
+ * it. Every pointer is borrowed for the mercury_warp_loom{,_fd} call only;
+ * mercury copies what it keeps. */
+
+typedef struct MercurySizComp
+{
+  uint8_t precision;
+  bool is_signed;
+  uint8_t xr_siz;
+  uint8_t yr_siz;
+} MercurySizComp;
+
+typedef struct MercuryPrecinct
+{
+  uint32_t width;
+  uint32_t height;
+} MercuryPrecinct;
+
+typedef struct MercuryQuant
+{
+  uint8_t guard_bits;
+  uint8_t style; /* 0 = reversible, 2 = expounded, host expands derived (1) per band */
+  const uint8_t* ranges; /* reversible: one ranging exponent per band, otherwise nullptr */
+  uint32_t num_ranges;
+  const float* steps; /* irreversible: one step size per band, otherwise nullptr */
+  uint32_t num_steps;
+} MercuryQuant;
+
+typedef struct MercuryQccOverride
+{
+  uint32_t comp;
+  MercuryQuant quant;
+} MercuryQccOverride;
+
+/* One component's coding style (COC), replacing the COD fields below for that
+ * component: everything T.800 A.6.2 lets a component carry of its own.
+ * mercury_draft_loom rejects a header whose coding style the marker syntax
+ * cannot express: num_levels above 32; a block side not a power of two in
+ * [4, 1024] or a block above 4096 samples; a precinct list shorter or longer
+ * than num_levels + 1; a precinct side not a power of two in [1, 2^15], or
+ * equal to 1 above resolution 0. */
+typedef struct MercuryCocOverride
+{
+  uint32_t comp;
+  uint8_t num_levels;
+  uint32_t block_width, block_height;
+  uint32_t modes;
+  bool reversible;
+  const MercuryPrecinct* precincts; /* nullptr => default 2^15 x 2^15 */
+  uint32_t num_precincts; /* 0 or num_levels + 1, one per resolution */
+} MercuryCocOverride;
+
+/* One POC progression volume (T.800 A.6.6): layers [0, lay_e), resolutions
+ * [res_s, res_e), components [comp_s, comp_e), every precinct, walked in
+ * order. Volumes are concatenated; a packet an earlier volume already emitted
+ * is skipped. */
+typedef struct MercuryProgressionVolume
+{
+  uint8_t res_s;
+  uint16_t comp_s;
+  uint16_t lay_e;
+  uint8_t res_e;
+  uint16_t comp_e;
+  uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
+} MercuryProgressionVolume;
+
+/* One tile-part's position, from the host's parsed TLM markers. */
+typedef struct MercuryTlmEntry
+{
+  uint64_t offset; /* absolute file offset of the tile-part's SOT marker */
+  uint64_t length; /* tile-part length (Psot) */
+  uint16_t tile;
+} MercuryTlmEntry;
+
+typedef struct MercuryMainHeader
+{
+  uint32_t x_siz, y_siz, x_o_siz, y_o_siz;
+  uint32_t xt_siz, yt_siz, xt_o_siz, yt_o_siz;
+  const MercurySizComp* comps;
+  uint32_t num_comps;
+  uint8_t order; /* 0=LRCP 1=RLCP 2=RPCL 3=PCRL 4=CPRL */
+  uint16_t num_layers;
+  bool use_ycc;
+  /* Coding style limits: see MercuryCocOverride. */
+  uint8_t num_levels;
+  uint32_t block_width, block_height;
+  uint32_t modes;
+  bool reversible;
+  bool use_sop, use_eph;
+  const MercuryPrecinct* precincts; /* nullptr => default 2^15 x 2^15 */
+  uint32_t num_precincts; /* 0 or num_levels + 1, one per resolution */
+  MercuryQuant qcd;
+  const MercuryQccOverride* qcc;
+  uint32_t num_qcc;
+  /* Per-component coding style overrides; the COD fields above are the default
+   * for every component no COC names. */
+  const MercuryCocOverride* coc;
+  uint32_t num_coc;
+  /* Main-header POC volume list, in order; NULL/0 means the COD order covers
+   * the whole tile. */
+  const MercuryProgressionVolume* poc;
+  uint32_t num_poc;
+  /* Codestream layout in the file the read_at/fd addresses. */
+  uint64_t codestream_off; /* absolute file offset of the SOC marker */
+  /* Codestream length from codestream_off; 0 means it runs to the end of the
+   * file. A tile-part with Psot=0 ends here, minus a trailing EOC. */
+  uint64_t codestream_len;
+  uint64_t first_sot_off; /* absolute file offset of the first SOT marker */
+  /* Tile-part table from the host's parsed TLM markers, per tile in tile-part
+   * order; NULL/0 when the stream has no trusted TLM. Lets the plan read only
+   * the tiles it decodes instead of scanning the SOT chain. */
+  const MercuryTlmEntry* tlm;
+  uint32_t num_tlm;
+} MercuryMainHeader;
+
+/* Per-decode options. NULL selects the defaults (every field zero). */
+typedef struct MercuryDecodeParams
+{
+  /* Resolutions to skip from the top; 0 decodes full resolution. At least one
+   * decomposition level must remain, so reduce <= num_levels - 1. */
+  uint8_t reduce;
+  /* Decode only the first max_layers quality layers; 0 decodes all of them.
+   * A value at or above num_layers is also a full decode. */
+  uint16_t max_layers;
+  /* Nonzero ignores PLT markers (host saw a PLM, or the app opted out). */
+  bool disable_plt;
+  /* Decode window in canvas coordinates (unreduced, clipped to the image);
+   * all-zero (or empty) decodes the whole image. Tiles, precincts, and
+   * synthesis rows the window never needs are skipped. */
+  uint32_t win_x0, win_y0, win_x1, win_y1;
+  uint32_t slice_blocks; /* code blocks per subband column slice, 0 means 16 */
+  bool int16_dwt; /* nonzero runs the reversible 5/3 on int16 samples */
+  bool int16_irreversible; /* nonzero runs the 9/7 on int16 fixed point above 8 bits */
+  uint32_t max_strips; /* most column strips one tile component's synthesis splits into, 0 means 1 */
+  bool fetch_window;
+  /* threads that parse packet headers when PLT markers give every packet's start,
+   * 0 and 1 parse on the calling thread */
+  uint32_t plan_threads;
+  /* threads that read the merged runs of a fetch_window decode, 0 and 1 read
+   * them on the calling thread, more than one needs a concurrent read_at */
+  uint32_t fetch_threads;
+  bool stream_packets;
+  /* host runs the returned feed with mercury_feed_run */
+  bool fetch_in_feed;
+} MercuryDecodeParams;
+
+/* hdr describes the (host-parsed) main header; mercury copies what it keeps.
+ * params (optional) selects reduced-resolution and layer-limited decoding.
+ * err_buf (optional): NUL-terminated rejection reason on nullptr return. */
+MercuryPlan* mercury_warp_loom(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
+                               mercury_read_at_fn read_at, void* ctx, uint64_t len,
+                               uint8_t* err_buf, size_t err_cap);
+
+/* fd is duplicated internally (caller keeps ownership); reads use pread.
+ * Unix only (POSIX fd); on Windows use mercury_warp_loom with a callback. */
+#if !defined(_WIN32)
+MercuryPlan* mercury_warp_loom_fd(const MercuryMainHeader* hdr, const MercuryDecodeParams* params,
+                                  int32_t fd, uint8_t* err_buf, size_t err_cap);
+#endif
+
+/* completes_tile is only ever set when the first tile-part's TNsot is 1, for any tile of the grid
+ */
+typedef struct MercurySotChain MercurySotChain;
+typedef struct MercuryChartedPart
+{
+  MercuryTlmEntry part;
+  uint8_t tile_part; /* TPsot */
+  uint8_t num_tile_parts; /* TNsot */
+  bool completes_tile;
+} MercuryChartedPart;
+/* where a walk stopped: next_sot is the SOT it reads next, reached_end means no tile-part follows
+ */
+typedef struct MercurySotWalk
+{
+  uint64_t next_sot;
+  bool trust_tnsot;
+  bool reached_end;
+} MercurySotWalk;
+/* needed has one flag per tile of the grid, the walk ends once every needed tile is complete.
+ * resume (optional) continues a walk at its next_sot, parts_seen then counts each tile's parts so
+ * far. */
+typedef struct MercurySotChainTiles
+{
+  const uint8_t* needed;
+  uint32_t num_tiles;
+  const MercurySotWalk* resume;
+  const uint8_t* parts_seen;
+} MercurySotChainTiles;
+MercurySotChain* mercury_sot_chain_open(const MercuryMainHeader* hdr, mercury_read_at_fn read_at,
+                                        void* ctx, uint64_t len, const MercurySotChainTiles* tiles,
+                                        uint8_t* err_buf, size_t err_cap);
+#if !defined(_WIN32)
+MercurySotChain* mercury_sot_chain_open_fd(const MercuryMainHeader* hdr, int32_t fd,
+                                           const MercurySotChainTiles* tiles, uint8_t* err_buf,
+                                           size_t err_cap);
+#endif
+int32_t mercury_sot_chain_next(MercurySotChain* chain, MercuryChartedPart* charted, bool* ended,
+                               uint8_t* err_buf, size_t err_cap);
+int32_t mercury_sot_chain_walk(const MercurySotChain* chain, MercurySotWalk* walk);
+void mercury_sot_chain_close(MercurySotChain* chain);
+
+/* width/height are the decoded output dims on the canvas plane, i.e. already
+ * reduced. Per-component dims come from mercury_loom_comp_info. */
+typedef struct MercuryImageInfo
+{
+  uint32_t width;
+  uint32_t height;
+  uint32_t num_comps;
+  bool reversible;
+} MercuryImageInfo;
+
+int32_t mercury_loom_info(const MercuryPlan* plan, MercuryImageInfo* out);
+/* width/height are that component's own reduced output dims: a subsampled
+ * component is smaller than MercuryImageInfo. Any out pointer may be NULL. */
+int32_t mercury_loom_comp_info(const MercuryPlan* plan, uint32_t comp, uint32_t* prec,
+                               int32_t* is_signed, uint32_t* width, uint32_t* height);
+void mercury_unwarp_loom(MercuryPlan* plan);
+
+typedef struct MercuryFeed MercuryFeed;
+MercuryFeed* mercury_loom_take_feed(MercuryPlan* plan);
+void mercury_feed_run(MercuryFeed* feed);
+
+/* t1 NULL = built-in coder in the standalone build; the extern-kernels
+ * (embedding) build has no built-in T1, so NULL returns MERCURY_EBADARG and a
+ * substitute MUST be supplied. A non-NULL substitute is process-global (last
+ * mercury_weave wins). threads 0 = one per core. */
+int32_t mercury_weave(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_fn row_fn, void* row_ctx,
+                      uint32_t threads);
+int32_t mercury_weave_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_i16_fn row_fn,
+                          void* row_ctx, uint32_t threads);
+int32_t mercury_weave_u16(MercuryPlan* plan, mercury_t1_fn t1, mercury_row_u16_fn row_fn,
+                          void* row_ctx, uint32_t threads);
+
+/* Per-component row delivery. mercury_weave{,_i16} return MERCURY_EBADARG on a
+ * plan whose components differ in subsampling, because one joint row cannot
+ * carry components of different sizes; these entries take that plan. They also
+ * take a plan whose components share a rectangle, unless the codestream
+ * signals a color transform over components 0-2 (only the joint entry carries
+ * that, and mercury_weave_comps* then return MERCURY_EDECODE). */
+int32_t mercury_weave_comps(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_fn row_fn,
+                            void* row_ctx, uint32_t threads);
+int32_t mercury_weave_comps_i16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_i16_fn row_fn,
+                                void* row_ctx, uint32_t threads);
+int32_t mercury_weave_comps_u16(MercuryPlan* plan, mercury_t1_fn t1, mercury_comp_row_u16_fn row_fn,
+                                void* row_ctx, uint32_t threads);
+
+#define MERCURY_ROWS_I32 0u
+#define MERCURY_ROWS_I16 1u
+#define MERCURY_ROWS_U16 2u
+
+typedef void (*mercury_host_run_fn)(void* pass);
+typedef void (*mercury_host_submit_fn)(void* ctx, mercury_host_run_fn run, void* pass);
+typedef void (*mercury_weave_done_fn)(void* ctx, int32_t rc);
+
+typedef struct MercuryHostedWeave
+{
+  mercury_t1_fn t1;
+  uint32_t samples;
+  bool per_component;
+  const void* row_fn;
+  void* row_ctx;
+  mercury_host_submit_fn submit;
+  void* submit_ctx;
+  mercury_weave_done_fn done;
+  void* done_ctx;
+} MercuryHostedWeave;
+
+int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave);
+
+/* layer_rate 0 derives the rate from max_cs_size */
+int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
+                           uint32_t height, bool four_k, uint32_t source_precision,
+                           uint64_t max_cs_size, double layer_rate, uint64_t max_comp_size,
+                           uint16_t slope_hint, double rate_tolerance, bool apply_xyz,
+                           bool write_tlm, uint32_t threads, const uint8_t* comment,
+                           uint32_t comment_len, uint8_t* out, uint64_t out_capacity,
+                           uint64_t* out_len, uint16_t* slope_threshold);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,5 +1,6 @@
  
 build
+build-gpu
 obj-x86_64-linux-gnu
 debian/tmp
 nohup.out
@@ -45,3 +46,4 @@ _ReSharper*/
 packages/
 *.bmp
 *.pyc
+.vscode/*workspace

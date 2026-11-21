@@ -19,7 +19,6 @@
 
 #include "geometry.h"
 #include "PacketProgressionState.h"
-#include "PostDecodeFilters.h"
 #include "htconfig.h"
 #include "SparseCanvas.h"
 #include "TileComponentWindow.h"
@@ -52,146 +51,88 @@ struct TileComponent : public Rect32
 
   ~TileComponent()
   {
-    if(resolutions_)
-    {
-      for(auto resno = 0U; resno < num_resolutions_; ++resno)
-      {
-        const auto res = resolutions_ + resno;
-        for(auto bandIndex = 0U; bandIndex < 3; ++bandIndex)
-        {
-          auto band = res->band + bandIndex;
-          for(auto prc : band->precincts_)
-            delete prc;
-          band->precincts_.clear();
-        }
-      }
-      delete[] resolutions_;
-    }
+    deleteResolutions();
     dealloc();
+  }
+
+  void deleteResolutions()
+  {
+    if(!resolutions_)
+      return;
+    for(auto resno = 0U; resno < num_resolutions_; ++resno)
+    {
+      const auto res = resolutions_ + resno;
+      for(auto bandIndex = 0U; bandIndex < 3; ++bandIndex)
+      {
+        auto band = res->band + bandIndex;
+        for(auto prc : band->precincts_)
+          delete prc;
+        band->precincts_.clear();
+      }
+    }
+    delete[] resolutions_;
+    resolutions_ = nullptr;
   }
 
   /**
    * @brief Allocates a region window
    *
    * @param numres number of resolutions
-   * @param truncatedTile true if tile was truncated
    * @return true if successful
    */
-  bool allocRegionWindow(uint32_t numres, bool truncatedTile)
+  bool allocRegionWindow(uint32_t numres)
   {
-    Rect32 temp(0, 0, 0, 0);
-    bool first = true;
+    return use16BitDwt_ ? allocRegionWindowTyped<int16_t>(numres)
+                        : allocRegionWindowTyped<int32_t>(numres);
+  }
 
-    // 1. find outside bounds of all relevant code blocks, in relative coordinates
+  template<typename T>
+  bool allocRegionWindowTyped(uint32_t numres)
+  {
+    // 1. use band geometry, a truncated stream has no precincts past the cut
+    std::vector<Rect32> cblkCovers;
+    Rect32 temp(0, 0, 0, 0);
     for(uint8_t resno = 0U; resno < numres; ++resno)
     {
       const auto res = &resolutions_[resno];
+      auto cblkExpn = res->cblkExpn_;
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
+        if(band->empty())
+          continue;
         auto roi = window_->getBandWindowPadded(resno, band->orientation_);
-        for(auto precinct : band->precincts_)
-        {
-          if(precinct->empty())
-            continue;
-          auto cblk_grid = precinct->getCblkGrid();
-          auto cblk_expn = precinct->getCblkExpn();
-          auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
-          auto w = cblk_grid.width();
-          for(auto j = roi_grid.y0; j < roi_grid.y1; ++j)
-          {
-            uint32_t cblkno =
-                (uint32_t)((roi_grid.x0 - cblk_grid.x0()) + (uint64_t)(j - cblk_grid.y0()) * w);
-            for(auto i = roi_grid.x0; i < roi_grid.x1; ++i)
-            {
-              auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-
-              // transform from canvas coordinates
-              // to buffer coordinates (relative to associated resolution origin)
-              uint32_t x = cblkBounds.x0() - band->x0;
-              uint32_t y = cblkBounds.y0() - band->y0;
-              if(band->orientation_ & 1)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                x += prev_res->width();
-              }
-              if(band->orientation_ & 2)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                y += prev_res->height();
-              }
-              // add to union of code block bounds
-              if(first)
-              {
-                temp = Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
-                first = false;
-              }
-              else
-              {
-                temp =
-                    temp.rectUnion(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
-              }
-              cblkno++;
-            }
-          }
-        }
+        auto cblkGrid = roi->scaleDownPow2(cblkExpn);
+        auto cover = Rect32(cblkGrid.x0 << cblkExpn.x, cblkGrid.y0 << cblkExpn.y,
+                            cblkGrid.x1 << cblkExpn.x, cblkGrid.y1 << cblkExpn.y)
+                         .intersection(band);
+        if(cover.empty())
+          continue;
+        uint32_t x = cover.x0 - band->x0;
+        uint32_t y = cover.y0 - band->y0;
+        if(band->orientation_ & 1)
+          x += resolutions_[resno - 1].width();
+        if(band->orientation_ & 2)
+          y += resolutions_[resno - 1].height();
+        auto bufferCover = Rect32(x, y, x + cover.width(), y + cover.height());
+        temp = cblkCovers.empty() ? bufferCover : temp.rectUnion(bufferCover);
+        cblkCovers.push_back(bufferCover);
       }
     }
 
     // 2. create (padded) sparse canvas, in buffer space,
     const uint32_t blockSizeExp = 6;
     temp.grow_IN_PLACE(8);
-    auto regionWindow = new SparseCanvas<int32_t, blockSizeExp, blockSizeExp>(temp);
+    auto regionWindow = new SparseCanvas<T, blockSizeExp, blockSizeExp>(temp);
 
     // 3. allocate sparse blocks
-    for(uint8_t resno = 0; resno < numres; ++resno)
+    for(auto& cover : cblkCovers)
     {
-      const auto res = resolutions_ + resno;
-      for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
+      // the wavelet reads windows of code blocks whose decode failed
+      if(!regionWindow->alloc(cover, true))
       {
-        auto band = res->band + bandIndex;
-        auto roi = window_->getBandWindowPadded(resno, band->orientation_);
-        for(auto precinct : band->precincts_)
-        {
-          if(precinct->empty())
-            continue;
-          auto cblk_grid = precinct->getCblkGrid();
-          auto cblk_expn = precinct->getCblkExpn();
-          auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
-          auto w = cblk_grid.width();
-          for(auto gridY = roi_grid.y0; gridY < roi_grid.y1; ++gridY)
-          {
-            uint32_t cblkno =
-                (uint32_t)((roi_grid.x0 - cblk_grid.x0()) + (uint64_t)(gridY - cblk_grid.y0()) * w);
-            for(auto gridX = roi_grid.x0; gridX < roi_grid.x1; ++gridX)
-            {
-              auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-
-              // transform from canvas coordinates
-              // to buffer coordinates (relative to associated resolution origin)
-              uint32_t x = cblkBounds.x0() - band->x0;
-              uint32_t y = cblkBounds.y0() - band->y0;
-              if(band->orientation_ & 1)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                x += prev_res->width();
-              }
-              if(band->orientation_ & 2)
-              {
-                auto prev_res = resolutions_ + resno - 1;
-                y += prev_res->height();
-              }
-
-              if(!regionWindow->alloc(Rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
-                                      truncatedTile))
-              {
-                delete regionWindow;
-                throw std::runtime_error("unable to allocate sparse array");
-              }
-              cblkno++;
-            }
-          }
-        }
+        delete regionWindow;
+        throw std::runtime_error("unable to allocate sparse array");
       }
     }
 
@@ -219,6 +160,24 @@ struct TileComponent : public Rect32
       return false;
     }
 
+    // Defense-in-depth: window construction relies on Rect::toRelative(), whose
+    // precondition is that coordinates lie at or beyond their origin.  A malformed
+    // stream can produce a resolution rect that violates this (or is otherwise
+    // ill-formed); reject it up front rather than risk undefined behaviour once
+    // asserts are compiled out.  (Empty/degenerate-but-consistent resolutions are
+    // legal and intentionally NOT rejected here.)
+    for(uint8_t r = 0; r < num_resolutions_; ++r)
+    {
+      auto& res = resolutions_[r];
+      if(!res.valid() || res.x0 < res.origin_x0 || res.y0 < res.origin_y0)
+      {
+        grklog.error("Invalid tile-component geometry at resolution %u "
+                     "(%u,%u,%u,%u) origin (%u,%u)",
+                     r, res.x0, res.y0, res.x1, res.y1, res.origin_x0, res.origin_y0);
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -230,14 +189,33 @@ struct TileComponent : public Rect32
    *
    * @param unreducedTileCompOrImageCompWindow window bounds
    */
-  void createWindow(Rect32 unreducedTileCompOrImageCompWindow)
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, bool use16BitWindow,
+                    std::pmr::memory_resource* arena)
   {
     dealloc();
-    window_ = new TileComponentWindow<int32_t>(
-        isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
-        Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
-        Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
-        isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+    uses16BitWindow_ = use16BitWindow;
+    if(uses16BitWindow_)
+    {
+      window_ = new TileComponentWindow<int16_t>(
+          isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
+          Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
+          Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
+          tccp_->horizontalDepth_, tccp_->verticalDepth_, arena);
+    }
+    else
+    {
+      window_ = new TileComponentWindow<int32_t>(
+          isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
+          Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
+          Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_, tccp_->splits_,
+          tccp_->horizontalDepth_, tccp_->verticalDepth_, arena);
+    }
+  }
+  void createWindow(Rect32 unreducedTileCompOrImageCompWindow, std::pmr::memory_resource* arena)
+  {
+    createWindow(unreducedTileCompOrImageCompWindow, use16BitDwt_, arena);
   }
 
   /**
@@ -268,7 +246,7 @@ struct TileComponent : public Rect32
   void init(Resolution* resolutions, bool isCompressor, bool wholeTileDecompress, uint8_t reduce,
             TileComponentCodingParams* tccp)
   {
-    delete[] resolutions_;
+    deleteResolutions();
     resolutions_ = resolutions;
     num_resolutions_ = tccp->numresolutions_;
     currentPacketProgressionState_ = PacketProgressionState(num_resolutions_);
@@ -297,13 +275,82 @@ struct TileComponent : public Rect32
   }
 
   /**
-   * @brief Gets window
-   *
-   * @return TileComponentWindow<int32_t>*
+   * @brief Gets typed window (static_cast from type-erased pointer)
    */
+  template<typename T>
+  TileComponentWindow<T>* typedWindow() const
+  {
+    return static_cast<TileComponentWindow<T>*>(window_);
+  }
   TileComponentWindow<int32_t>* getWindow() const
   {
-    return window_;
+    return typedWindow<int32_t>();
+  }
+  TileComponentWindow<int16_t>* getWindow16() const
+  {
+    return typedWindow<int16_t>();
+  }
+  bool is16BitDwt() const
+  {
+    return use16BitDwt_;
+  }
+  bool uses16BitWindow() const
+  {
+    return uses16BitWindow_;
+  }
+  void setUse16BitDwt(bool use16Bit)
+  {
+    use16BitDwt_ = use16Bit;
+  }
+  // Fractional bits carried in the int16 fixed-point (Q-format) 9/7 DWT path:
+  // coefficients are dequantized left-shifted by qShift, kept upshifted across all
+  // levels, and shifted back down at the synthesis output.  0 for int32/float and
+  // for reversible 5/3 (which is exact integer). See WaveletReverse97_16.cpp.
+  uint8_t qShift() const
+  {
+    return qShift_;
+  }
+  void setQShift(uint8_t q)
+  {
+    qShift_ = q;
+  }
+  // Type-independent operations through ITileComponentWindow interface
+  bool allocWindow()
+  {
+    return window_->alloc();
+  }
+  Rect32 windowBounds() const
+  {
+    return window_->bounds();
+  }
+  Rect32 windowUnreducedBounds() const
+  {
+    return window_->unreducedBounds();
+  }
+  const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const
+  {
+    return window_->getBandWindowPadded(resno, orientation);
+  }
+  void toRelativeCoordinates(uint8_t resno, t1::eBandOrientation orientation, uint32_t& offsetX,
+                             uint32_t& offsetY) const
+  {
+    window_->toRelativeCoordinates(resno, orientation, offsetX, offsetY);
+  }
+  void transferWindowData(void** data, uint32_t* stride)
+  {
+    window_->transferData(data, stride);
+  }
+  void attachWindowData(void* data, uint32_t stride)
+  {
+    window_->attachData(data, stride);
+  }
+  uint32_t highestResStride() const
+  {
+    return window_->highestResStride();
+  }
+  uint64_t windowStridedArea() const
+  {
+    return window_->stridedArea();
   }
   /**
    * @brief Checks if whole tile will be decoded
@@ -315,65 +362,42 @@ struct TileComponent : public Rect32
     return wholeTileDecompress_;
   }
   /**
-   * @brief Gets return window
-   *
-   * @return ISparseCanvas*
-   */
-  ISparseCanvas<int32_t>* getRegionWindow()
-  {
-    return regionWindow_;
-  }
-  /**
-   * @brief Post processes code block
-   *
-   * @param srcData source data
-   * @param block @ref DecompressBlockExec
+   * @brief Gets typed region window (static_cast from type-erased pointer)
    */
   template<typename T>
-  void postProcess(T* srcData, t1::DecompressBlockExec* block)
+  ISparseCanvas<T>* typedRegionWindow() const
   {
-    if(block->roishift)
-    {
-      if(block->qmfbid == 1)
-        postDecompressImpl<T, t1::RoiShiftFilter<T>>(srcData, block,
-                                                     (uint16_t)block->cblk->width());
-      else
-        postDecompressImpl<T, t1::RoiScaleFilter<T>>(srcData, block,
-                                                     (uint16_t)block->cblk->width());
-    }
-    else
-    {
-      if(block->qmfbid == 1)
-        postDecompressImpl<T, t1::ShiftFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
-      else
-        postDecompressImpl<T, t1::ScaleFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
-    }
+    return static_cast<ISparseCanvas<T>*>(regionWindow_);
+  }
+  ISparseCanvas<int32_t>* getRegionWindow() const
+  {
+    return typedRegionWindow<int32_t>();
+  }
+  ISparseCanvas<int16_t>* getRegionWindow16() const
+  {
+    return typedRegionWindow<int16_t>();
+  }
+  /**
+   * @brief Post processes code block via virtual dispatch on window
+   *
+   * @param srcData source data (always int32_t from T1 decoder)
+   * @param block @ref DecompressBlockExec
+   */
+  void postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block)
+  {
+    window_->postProcessBlock(srcData, block, regionWindow_);
   }
 
   /**
-   * @brief Post processes HTJ2K code block
+   * @brief Post processes HTJ2K code block via virtual dispatch on window
    *
-   * @param srcData source data
+   * @param srcData source data (always int32_t from T1 decoder)
    * @param block @ref DecompressBlockExec
    * @param stride source data stride
    */
-  template<typename T>
-  void postProcessHT(T* srcData, t1::DecompressBlockExec* block, uint16_t stride)
+  void postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride)
   {
-    if(block->roishift)
-    {
-      if(block->qmfbid == 1)
-        postDecompressImpl<T, t1::ojph::RoiShiftOJPHFilter<T>>(srcData, block, stride);
-      else
-        postDecompressImpl<T, t1::ojph::RoiScaleOJPHFilter<T>>(srcData, block, stride);
-    }
-    else
-    {
-      if(block->qmfbid == 1)
-        postDecompressImpl<T, t1::ojph::ShiftOJPHFilter<T>>(srcData, block, stride);
-      else
-        postDecompressImpl<T, t1::ojph::ScaleOJPHFilter<T>>(srcData, block, stride);
-    }
+    window_->postProcessBlockHT(srcData, block, stride, regionWindow_);
   }
 
   /**
@@ -404,45 +428,10 @@ struct TileComponent : public Rect32
 
 private:
   /**
-   * @brief Implements post decompress filter
-   *
-   * @tparam F filter
-   * @param srcData source data
-   * @param block @DecompressBlockExec
-   * @param stride source data stride
-   */
-  template<typename T, typename F>
-  void postDecompressImpl(T* srcData, t1::DecompressBlockExec* block, uint16_t stride)
-  {
-    auto cblk = block->cblk;
-    bool empty = cblk->dataChunksEmpty();
-
-    uint32_t x = block->x;
-    uint32_t y = block->y;
-    window_->toRelativeCoordinates(block->resno, block->bandOrientation, x, y);
-    auto src = Buffer2d<T, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
-    auto blockBounds = Rect32(x, y, x + cblk->width(), y + cblk->height());
-    if(!empty)
-    {
-      if(regionWindow_)
-      {
-        src.template copyFrom<F>(src, F{block}); // Create functor with block
-      }
-      else
-      {
-        src.setRect(blockBounds);
-        window_->postProcess<F>(src, block->resno, block->bandOrientation, block);
-      }
-    }
-    if(regionWindow_)
-      regionWindow_->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
-                           blockBounds.width());
-  }
-  /**
-   * @brief @ISparseCanvas for region window
+   * @brief @ISparseCanvas for region window (type-erased, sample type matches window_)
    *
    */
-  ISparseCanvas<int32_t>* regionWindow_;
+  ISparseCanvasBase* regionWindow_;
   /**
    * @brief true if whole tile will be decompressed
    *
@@ -454,10 +443,14 @@ private:
    */
   bool isCompressor_;
   /**
-   * @brief @ref TileComponentWindow
+   * @brief @ref ITileComponentWindow (type-erased, points to TileComponentWindow<int32_t> or
+   * <int16_t>)
    *
    */
-  TileComponentWindow<int32_t>* window_;
+  ITileComponentWindow* window_;
+  bool use16BitDwt_ = false;
+  bool uses16BitWindow_ = false;
+  uint8_t qShift_ = 0;
   /**
    * @brief @ref TileComponentCodingParams
    *

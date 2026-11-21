@@ -15,6 +15,7 @@
  *
  */
 
+#include <bit>
 #include <cinttypes>
 
 #include "CodeStreamLimits.h"
@@ -50,7 +51,8 @@ FileFormatJP2Family::FileFormatJP2Family(IStream* stream)
       cl(nullptr), w(0), h(0), numcomps(0), bpc(0), C(0), UnkC(0), IPR(0), meth(0), approx(0),
       enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), comps(nullptr), has_capture_resolution(false),
       has_display_resolution(false), numXmlBoxes(0), io_xml_(false), numUuids(0), jp2_state(0),
-      headerError_(false), headerRead_(false), stream_(stream)
+      headerError_(false), headerRead_(false), codestreamOffset_(0), codestreamLength_(0),
+      stream_(stream)
 {
   for(uint32_t i = 0; i < 2; ++i)
   {
@@ -234,12 +236,10 @@ bool FileFormatJP2Family::readHeader(grk_header_info* header_info, GrkImage* hea
 
 static uint32_t toBigEndian(uint32_t value)
 {
-#ifdef GROK_BIG_ENDIAN
-  return value; // Already in big-endian
-#else
-  return ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) | ((value & 0x0000FF00) << 8) |
-         ((value & 0x000000FF) << 24);
-#endif
+  if constexpr(std::endian::native == std::endian::big)
+    return value;
+  else
+    return std::byteswap(value);
 }
 
 void FileFormatJP2Family::updateSuperBoxes(uint64_t boxBytes)
@@ -290,6 +290,8 @@ bool FileFormatJP2Family::readHeaderProcedure(void)
           if(jp2_state & JP2_STATE_HEADER)
           {
             jp2_state |= JP2_STATE_CODESTREAM;
+            codestreamOffset_ = stream_->tell();
+            codestreamLength_ = box.length - boxHeaderBytesRead;
             rc = true;
             goto cleanup;
           }
@@ -592,7 +594,7 @@ bool FileFormatJP2Family::read_ftyp(uint8_t* headerData, uint32_t headerSize)
   return true;
 }
 
-std::string FileFormatJP2Family::getBoxName(Box box)
+std::string FileFormatJP2Family::getBoxName(const Box& box)
 {
   char boxTypeChars[5]; // Extra byte for null terminator
   auto be_boxType = toBigEndian(box.type);
@@ -743,7 +745,7 @@ bool FileFormatJP2Family::read_res_box(uint32_t* id, uint32_t* num, uint32_t* de
     grklog.warn("Bad resolution box : signalled single res box size %d should equal "
                 "required single res box size %d. Ignoring.",
                 size, box_size);
-    return true;
+    return false;
   }
   grk_read(p_resolution_data, id);
   grk_read(*p_resolution_data, num + 1, 2);
@@ -778,7 +780,7 @@ bool FileFormatJP2Family::read_res(uint8_t* p_resolution_data, uint32_t resoluti
     uint32_t exponent[2];
 
     if(!read_res_box(&id, num, den, exponent, &p_resolution_data))
-      return false;
+      return true;
     double* res;
     switch(id)
     {
@@ -868,10 +870,11 @@ bool FileFormatJP2Family::read_channel_definition([[maybe_unused]] uint8_t* p_cd
       goto cleanup;
     }
     grk_read(&p_cdef_header_data, &cdef_info[i].asoc); /* Asoc^i */
-    if(cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED)
+    if(cdef_info[i].asoc > num_channel_descriptions &&
+       cdef_info[i].asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED)
     {
-      grklog.error("CDEF box : Illegal channel association %u", cdef_info[i].asoc);
-      goto cleanup;
+      grklog.warn("CDEF box : channel association %u exceeds number of channel descriptions %u",
+                  cdef_info[i].asoc, num_channel_descriptions);
     }
   }
 
@@ -1081,7 +1084,7 @@ bool FileFormatJP2Family::read_component_mapping(uint8_t* component_mapping_head
 }
 bool FileFormatJP2Family::read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size)
 {
-  auto orig_header_data = p_pclr_header_data;
+  const auto orig_header_data = p_pclr_header_data;
   assert(p_pclr_header_data != nullptr);
   if(getColour()->palette)
     return false;
@@ -1278,10 +1281,20 @@ bool FileFormatJP2Family::read_asoc(uint8_t* header_data, uint32_t header_data_s
 
   return true;
 }
+// maximum JP2/JPX asoc superbox nesting depth (stack-exhaustion guard)
+static constexpr uint32_t maxAsocDepth = 64;
 uint32_t FileFormatJP2Family::read_asoc(AsocBox* parent, uint8_t** header_data,
-                                        uint32_t* header_data_size, uint32_t asocSize)
+                                        uint32_t* header_data_size, uint32_t asocSize,
+                                        uint32_t depth)
 {
   assert(*header_data);
+  // cap nesting: each level consumes only the 8-byte child header, so a few-MB
+  // payload of nested asoc boxes would otherwise exhaust the stack.
+  if(depth > maxAsocDepth)
+  {
+    grklog.error("ASOC box nesting exceeds maximum depth %u", maxAsocDepth);
+    throw BadAsocException();
+  }
   if(asocSize < 8)
   {
     grklog.error("ASOC box must be at least 8 bytes in size");
@@ -1328,7 +1341,7 @@ uint32_t FileFormatJP2Family::read_asoc(AsocBox* parent, uint8_t** header_data,
         asocBytesUsed += childSize;
         break;
       case JP2_ASOC:
-        asocBytesUsed += read_asoc(childAsoc, header_data, header_data_size, childSize);
+        asocBytesUsed += read_asoc(childAsoc, header_data, header_data_size, childSize, depth + 1);
         break;
       case JP2_XML:
         childAsoc->alloc(childSize);

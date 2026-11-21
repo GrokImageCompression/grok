@@ -68,21 +68,20 @@ public:
   /**
    * @brief Conditionally schedule successor based on condition_lambda.
    *
-   * When condition returns 0, successor runs. When 1, a noop dead-end runs instead,
-   * effectively skipping the rest of the chain. This is required (not just an
+   * When condition returns 0, successor runs. When 1, onError runs instead,
+   * skipping the rest of the chain. This is required (not just an
    * optimization) because module tasks like CodecScheduler cannot safely execute
    * when prior stages have errored — their internal taskflow may contain stale tasks
    * referencing freed state. Replacing this with a simple linear chain + early-return
    * guards in lambdas was tried and caused segfaults.
    */
-  void conditional_precede(FlowComponent* root, FlowComponent* successor,
+  void conditional_precede(FlowComponent* root, FlowComponent* successor, FlowComponent* onError,
                            std::function<int()> condition_lambda)
   {
     auto condition = root->emplace(condition_lambda).name("condition");
-    auto noop = root->emplace([]() {}).name("noop");
 
     precede(condition);
-    condition.precede(successor->getCompositionTask(), noop);
+    condition.precede(successor->getCompositionTask(), onError->getCompositionTask());
   }
 
   /**

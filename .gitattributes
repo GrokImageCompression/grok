@@ -1,5 +1,4 @@
-/scripts export-ignore  
-/tests export-ignore
+/scripts export-ignore
 /tools export-ignore
 .gitattributes export-ignore  
 .gitignore export-ignore

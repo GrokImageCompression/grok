@@ -27,11 +27,20 @@ Benchmark results (16 threads, GDAL release build, Fedora 42):
 ### Features
 - High Throughput JPEG 2000 (HTJ2K) support
 - Random-access sub-image decoding (TLM + PLT markers)
+- [Multi-level tile cache](doc/TileCache.md) with LRU eviction and compressed chunk caching
+- [S3 / cloud storage](doc/S3.md) with network fetch caching and disk spillover
 - ICC color profiles, XML/IPTC/XMP/EXIF metadata
 - Monochrome, sRGB, palette, YCC, extended YCC, CIELab, CMYK
 - 1–16 bit precision
+- Compression accepts `GRK_INT_32` and `GRK_INT_16` input. `GRK_INT_16` supports signed precision up to 16 bits and unsigned precision up to 15 bits. Use `grk_compress_get_recommended_data_type()` to detect the direct 16-bit compression path.
 - JPEG/PNG/BMP/TIFF/RAW/PNM/PAM I/O
 - Linux (x86-64/AArch64), Windows, macOS, WebAssembly
+
+For direct API compression, call `grk_compress_get_recommended_data_type()` after configuring compression and plugin state, then use its result when allocating component data. It returns `GRK_INT_16` only when compression retains a 16-bit tile buffer.
+
+For standard MCT, query all three components and use `GRK_INT_32` for all three if any query returns it. `GRK_INT_32` remains valid when the function recommends `GRK_INT_16`.
+
+Multi-tile callers may still choose accepted `GRK_INT_16` input outside the direct path to reduce source-buffer memory, at the cost of widening each tile.
 
 ### Transcoding (`grk_transcode`)
 
@@ -58,6 +67,9 @@ grk_transcode -i input.jp2 -o output.jp2 -X -L
 
 ### Links
 - [Installation](INSTALL.md)
+- [Testing](TESTING.md)
+- [Tile Cache Architecture](doc/TileCache.md)
+- [S3 / Cloud Storage](doc/S3.md)
 - [Language Bindings](bindings/swig/README.md)
 - [Wiki & Docs](https://github.com/GrokImageCompression/grok/wiki)
 - [GitHub](https://github.com/GrokImageCompression/grok)

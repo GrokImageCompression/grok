@@ -112,6 +112,16 @@ struct BufferedStream : public IStream
     return fetcher_;
   }
 
+  void setFromNetwork(bool fromNetwork)
+  {
+    fromNetwork_ = fromNetwork;
+  }
+
+  bool isFromNetwork(void) override
+  {
+    return fromNetwork_;
+  }
+
   void setMemAdvisor(MemAdvisor* advisor)
   {
     memAdvisor_ = advisor;
@@ -123,11 +133,25 @@ struct BufferedStream : public IStream
       memAdvisor_->advise(virtual_offset, length, pattern);
   }
 
+  void clearEndOfStream(void) override
+  {
+    if(!(status_ & GROK_STREAM_STATUS_END))
+      return;
+    status_ &= ~GROK_STREAM_STATUS_END;
+    if(!isMemStream())
+      return;
+    auto memStream = static_cast<MemStream*>(userData_);
+    memStream->off_ = memStream->len_;
+    readBytesSeekable_ = memStream->len_;
+    bufferedBytes_ = memStream->len_ - streamOffset_;
+    buf_->set_offset(streamOffset_);
+  }
+
   void setChunkBuffer(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override
   {
     chunk_buf_ = chunkBuffer;
     streamOffset_ = chunkBuffer->offset();
-    bufferedBytes_ = chunk_buf_->size();
+    bufferedBytes_ = chunk_buf_->size() - streamOffset_;
     readBytesSeekable_ = bufferedBytes_;
   }
 
@@ -161,6 +185,30 @@ struct BufferedStream : public IStream
 
     return read(nullptr, len);
   }
+  bool readAt(uint64_t offset, uint8_t* buffer, size_t len) override
+  {
+    if(callbacks_.readAtCallback_)
+      return callbacks_.readAtCallback_(buffer, len, offset, userData_);
+    if(!callbacks_.seekCallback_(offset, userData_))
+      return false;
+    size_t done = 0;
+    while(done < len)
+    {
+      size_t got = callbacks_.readCallback_(buffer + done, len - done, userData_);
+      if(got == 0)
+        break;
+      done += got;
+    }
+    // buffered reads continue from the media cursor
+    bool restored = callbacks_.seekCallback_(streamOffset_ + bufferedBytes_, userData_);
+    return restored && done == len;
+  }
+
+  bool readAtIsConcurrent() override
+  {
+    return callbacks_.readAtCallback_ != nullptr;
+  }
+
   bool write24u(uint32_t value) override
   {
     return write_non_template((const uint8_t*)&value, sizeof(uint32_t), 3);
@@ -343,6 +391,21 @@ private:
       assert(streamOffset_ <= userDataLength_);
       return read_nb_bytes;
     }
+    // 2b. ChunkBuffer exhausted: read remaining and signal end
+    if(chunk_buf_)
+    {
+      if(bufferedBytes_)
+      {
+        read_nb_bytes += bufferedBytes_;
+        if(buffer)
+          memcpy(buffer, chunk_buf_->currPtr(bufferedBytes_), bufferedBytes_);
+        chunk_buf_->increment_offset((ptrdiff_t)bufferedBytes_);
+        streamOffset_ += bufferedBytes_;
+        bufferedBytes_ = 0;
+      }
+      status_ |= GROK_STREAM_STATUS_END;
+      return read_nb_bytes;
+    }
     // 3. if stream is at end, then read remaining bytes in buffer and return
     if(status_ & GROK_STREAM_STATUS_END)
     {
@@ -509,7 +572,11 @@ private:
     {
       bool rc = chunk_buf_->set_offset(offset);
       if(rc)
+      {
         streamOffset_ = chunk_buf_->offset();
+        bufferedBytes_ = chunk_buf_->size() - streamOffset_;
+        readBytesSeekable_ = bufferedBytes_;
+      }
       return rc;
     }
 
@@ -664,6 +731,7 @@ private:
   // read in the last media read.
   // We always have buffered_bytes_ <= read_bytes_seekable_
   size_t readBytesSeekable_ = 0;
+  bool fromNetwork_ = false;
 
   // number of bytes read/written from the beginning of the stream
   uint64_t streamOffset_ = 0;

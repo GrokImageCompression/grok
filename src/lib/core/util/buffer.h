@@ -19,7 +19,6 @@
 
 #include "geometry.h"
 #include "MemManager.h"
-#include "lanes.h"
 
 namespace grk
 {
@@ -48,6 +47,21 @@ struct AllocatorAligned
     grk_aligned_free(buf);
   }
 };
+template<typename F, typename D, typename S>
+void copyRowsFiltered(F& filter, D* dest, size_t destStride, const S* src, size_t srcStride,
+                      uint32_t width, uint32_t height)
+{
+  if constexpr(requires { filter.copyBlock(dest, destStride, src, srcStride, width, height); })
+  {
+    filter.copyBlock(dest, destStride, src, srcStride, width, height);
+  }
+  else
+  {
+    for(uint32_t row = 0; row < height; ++row, dest += destStride, src += srcStride)
+      filter.copy(dest, src, width);
+  }
+}
+
 template<typename T, template<typename TT> typename A>
 struct Buffer : A<T>
 {
@@ -220,7 +234,7 @@ struct Buffer : A<T>
   }
   void set_num_elts(size_t elts)
   {
-    assert(elts <= num_elts_);
+    assert(!owns_data_ || elts <= num_elts_);
     num_elts_ = elts;
   }
 
@@ -401,8 +415,8 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
   }
   uint32_t alignedBufferWidth(uint32_t width)
   {
-    static uint32_t align = grok::NumLanes();
-    return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
+    // whole vectors per row at the widest lane count, kernels walk stride * height by Lanes(T)
+    return grk_make_aligned_width<T>(width);
   }
   bool alloc2d(bool clear)
   {
@@ -491,13 +505,23 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
 
     T* ptr = this->buf_ + (inter.y0 * stride + inter.x0);
     T* srcPtr = src->buf_ + ((inter.y0 - src->y0) * src->stride + inter.x0 - src->x0);
-    uint32_t len = inter.width();
-    for(uint32_t j = inter.y0; j < inter.y1; ++j)
-    {
-      filter.copy(ptr, srcPtr, len);
-      ptr += stride;
-      srcPtr += src->stride;
-    }
+    copyRowsFiltered(filter, ptr, stride, srcPtr, src->stride, inter.width(), inter.height());
+  }
+  // Cross-type copy from a wider source type (e.g., int32_t → int16_t narrowing)
+  template<typename SrcT, template<class> class SrcA, typename F>
+  void copyFromNarrow(const Buffer2d<SrcT, SrcA>* src, F filter)
+  {
+    auto inter = intersection(src);
+    if(inter.empty())
+      return;
+
+    auto srcSimple = src->simple();
+    if(!srcSimple.buf_)
+      return;
+
+    T* ptr = this->buf_ + (inter.y0 * stride + inter.x0);
+    SrcT* srcPtr = srcSimple.buf_ + ((inter.y0 - src->y0) * srcSimple.stride_ + inter.x0 - src->x0);
+    copyRowsFiltered(filter, ptr, stride, srcPtr, srcSimple.stride_, inter.width(), inter.height());
   }
   struct memcpy_from
   {

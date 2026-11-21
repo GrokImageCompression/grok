@@ -43,14 +43,37 @@ public:
    * @brief Moves to next chunk / packet buffer and associated @ref PacketParser if present.
    * If no parser is available, then nullptr is pushed to list of parsers
    * @param offset remaining bytes in current chunk
+   * @param dataPresent if false, skip SparseBuffer advance (data not fetched)
    */
-  void next(size_t offset);
+  void next(size_t offset, bool dataPresent = true);
+
+  /**
+   * @brief Returns true if selective fetch mode is active
+   */
+  bool isSelectiveFetch(void) const;
+
+  /**
+   * @brief Sets selective fetch mode
+   * @param selective true if only partial packet data was fetched
+   */
+  void setSelectiveFetch(bool selective);
 
   /**
    * @brief Resets state to beginning of packet list, and beginning
    * of parser list
    */
   void rewind(void) override;
+
+  /**
+   * @brief Discards every cached parser.
+   *
+   * A parser holds the packet header it already read, a pointer into the packet buffer it
+   * read it from, and the code blocks that header filled in.  Once the tile is rebuilt those
+   * code blocks are gone, so the parsers have to go with them.
+   */
+  void discardParsers(void);
+
+  void discardPacketData(void);
 
   /**
    * @brief Generates a PacketParser if it doesn't exist
@@ -76,6 +99,7 @@ private:
 
   std::vector<PacketParser*> parsers_;
   std::vector<PacketParser*>::iterator iter_;
+  bool selectiveFetch_ = false;
 };
 
 } // namespace grk

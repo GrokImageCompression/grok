@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include <memory_resource>
+
+#include "TileArena.h"
+
 namespace grk
 {
 
@@ -34,10 +38,11 @@ struct Precinct : public Rect32_16
    * @brief Constructs a new Precinct object
    *
    * @param numLayers number of layers
+   * @param precinctIndex precinct index in the band's precinct grid
    * @param bounds precinct bounds
    * @param cblk_expn log2 of nominal code block dimensions
    */
-  Precinct(uint16_t numLayers, const Rect32_16& bounds, Point8 cblk_expn);
+  Precinct(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds, Point8 cblk_expn);
 
   /**
    * @brief Destroys the Precinct object
@@ -72,20 +77,6 @@ struct Precinct : public Rect32_16
    * @return TagTreeU8* @ref TagTreeU8
    */
   TagTreeU8* getImsbTree(void);
-
-  /**
-   * @brief Gets code block grid width
-   *
-   * @return uint16_t grid width
-   */
-  uint16_t getCblkGridwidth(void);
-
-  /**
-   * @brief Gets code block grid height
-   *
-   * @return uint16_t grid height
-   */
-  uint16_t getCblkGridHeight(void);
 
   /**
    * @brief Gets nominal size (area) of code block
@@ -144,6 +135,22 @@ struct Precinct : public Rect32_16
    */
   Rect32_16 getCblkGrid(void);
 
+  template<typename Visit>
+  void forEachCodeBlockIn(const Rect32* window, Visit visit)
+  {
+    auto grid = getCblkGrid();
+    auto windowGrid = window->scaleDownPow2(getCblkExpn()).clip(grid);
+    for(auto gridY = windowGrid.y0; gridY < windowGrid.y1; ++gridY)
+    {
+      auto cblkno =
+          (uint32_t)((windowGrid.x0 - grid.x0()) + (uint64_t)(gridY - grid.y0()) * grid.width());
+      for(auto gridX = windowGrid.x0; gridX < windowGrid.x1; ++gridX)
+        visit(cblkno++);
+    }
+  }
+
+  const uint64_t precinctIndex_;
+
 protected:
   uint16_t numLayers_;
 
@@ -156,18 +163,26 @@ private:
 
 struct PrecinctCompress : public Precinct
 {
-  using Precinct::Precinct;
+  PrecinctCompress(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                   Point8 cblk_expn, uint8_t maxPasses)
+      : Precinct(numLayers, precinctIndex, bounds, cblk_expn), maxPasses_(maxPasses)
+  {}
 
 private:
-  PrecinctImpl* makeImpl(void);
+  PrecinctImpl* makeImpl(void) override;
+  uint8_t maxPasses_;
 };
 
-struct PrecinctDecompress : public Precinct
+struct PrecinctDecompress : public Precinct, public TileArenaObject
 {
-  using Precinct::Precinct;
+  PrecinctDecompress(uint16_t numLayers, uint64_t precinctIndex, const Rect32_16& bounds,
+                     Point8 cblk_expn, std::pmr::memory_resource* arena)
+      : Precinct(numLayers, precinctIndex, bounds, cblk_expn), arena_(arena)
+  {}
 
 private:
-  PrecinctImpl* makeImpl(void);
+  PrecinctImpl* makeImpl(void) override;
+  std::pmr::memory_resource* arena_;
 };
 
 } // namespace grk

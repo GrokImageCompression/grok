@@ -19,6 +19,7 @@
 
 #include <mutex>
 #include <memory>
+#include <atomic>
 
 #include "PacketTracker.h"
 #include "ITileProcessor.h"
@@ -47,7 +48,7 @@ struct TileProcessor : virtual public ITileProcessor
   /**
    * @brief Destroys a TileProcessor
    */
-  virtual ~TileProcessor();
+  virtual ~TileProcessor() override;
 
   void setProcessors(MarkerParser* parser) override;
 
@@ -59,7 +60,7 @@ struct TileProcessor : virtual public ITileProcessor
   void setStream(IStream* stream, bool ownsStream) override;
 
   bool decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq, CoderPool* streamPool,
-                         Rect32 unreducedImageBounds, std::function<void()> post,
+                         Rect32 unreducedImageBounds, GrkImage* output, std::function<void()> post,
                          TileFutureManager& futures) override;
 
   bool decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq) override;
@@ -86,6 +87,8 @@ struct TileProcessor : virtual public ITileProcessor
   bool parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* parsers, IStream* bifurcatedStream,
                      uint16_t mainMarkerId, TilePartInfo tilePartInfo) override;
 
+  bool decompressFromCachedTileParts() override;
+
   /**
    * @brief Reads SOT marker
    *
@@ -106,8 +109,10 @@ struct TileProcessor : virtual public ITileProcessor
    * @param post
    * @param futures
    */
-  void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+  void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds, GrkImage* output,
                                 std::function<void()> post, TileFutureManager& futures) override;
+
+  bool transferDecompressedComponent(uint16_t componentNumber) override;
   /**
    * @brief Performs post T2+T1 processing
    *
@@ -184,7 +189,7 @@ struct TileProcessor : virtual public ITileProcessor
    *
    * @return Tile*
    */
-  Tile* getTile(void);
+  Tile* getTile(void) override;
 
   grk_progression_state getProgressionState() override;
 
@@ -309,6 +314,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @param strategy tile cache strategy
    */
   void release(uint32_t strategy) override;
+  void releaseForSwath() override;
 
   /**
    * @brief Reads a PLT marker (Packet length, tile-part header)
@@ -326,6 +332,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true if completely parsed, otherwise false
    */
   bool allSOTMarkersParsed() override;
+  bool hasUnparsedTileParts() override;
 
   /**
    * @brief Sets processor to truncated if not all tile parts have
@@ -340,8 +347,14 @@ struct TileProcessor : virtual public ITileProcessor
 
   bool isBestEffortDecompressed(void) override;
   void setBestEffortDecompressed(void) override;
+  bool scheduledForDecompression(void) override;
   void resetSOTParsing() override;
   bool reinitForReDecompress(void) override;
+
+  void setSelectiveFetch(bool selective)
+  {
+    selectiveFetch_ = selective;
+  }
 
 protected:
   /**
@@ -372,6 +385,7 @@ protected:
    * @brief @ref Tile
    *
    */
+  TileArenaChunkPool* tileArenaChunks_;
   Tile* tile_ = nullptr;
 
   /** index of tile being currently compressed/decompressed */
@@ -409,6 +423,8 @@ private:
   void prepareConcurrentParsing(void);
 
   std::atomic<bool> success_ = true;
+  GrkImage* decompressionOutput_ = nullptr;
+  bool componentsTransferred_ = false;
   bool concurrentFlowsStale_ = false;
 
   // Flow components for task graph scheduling.
@@ -438,13 +454,6 @@ private:
   bool createDecompressTileComponentWindows(void);
 
   /**
-   * @brief Get the Num Read Data Packets object
-   *
-   * @return number of read data packets
-   */
-  uint64_t getNumReadDataPackets(void);
-
-  /**
    * @brief @ref MarkerParser
    *
    */
@@ -465,20 +474,26 @@ private:
   TilePartInfo tilePartInfo_;
   uint64_t startPos_ = 0;
 
-  /** number of SOT markers parsed */
-  uint8_t numSOTsParsed_ = 0;
+  /** number of SOT markers parsed. atomic: other threads read it mid-parse */
+  std::atomic<uint8_t> numSOTsParsed_ = 0;
 
   /**
    * @brief true if one of this tile's tile parts is truncated
-   *
+   * atomic: written by T2 parse tasks while other threads read it
    */
-  bool truncated_ = false;
+  std::atomic<bool> truncated_ = false;
+
+  /**
+   * @brief true if selective fetch mode is active (partial tile-part data)
+   */
+  bool selectiveFetch_ = false;
 
   /**
    * @brief true if tile was decompressed on a best-effort basis
    * (may have been truncated or errored). Not re-decompressed on codec reuse.
    */
-  bool bestEffortDecompressed_ = false;
+  std::atomic<bool> bestEffortDecompressed_ = false;
+  bool scheduledForDecompression_ = false;
 
   /**
    * @brief @ref GrkImage for this tile
@@ -504,10 +519,20 @@ private:
    */
   uint32_t tileCacheStrategy_ = 0;
 
+  WaveletPoolData* waveletPoolData_ = nullptr;
+
   void decompress_synch_plugin_with_host(void);
 
   std::shared_ptr<TPFetchSeq> tilePartFetchSeq_;
   TPSeq tilePartSeq_;
+  struct PacketDataRange
+  {
+    uint64_t offset = 0;
+    uint64_t length = 0;
+    bool read = false;
+  };
+  std::vector<std::unique_ptr<PacketDataRange>> packetDataRanges_;
+  bool readPacketData(IStream* stream, uint8_t tilePart, uint64_t length);
 
   std::vector<uint8_t> threadTilePart_;
   std::mutex pltMutex_;

@@ -65,6 +65,7 @@ public:
     streamParams_.read_fn = src->read_fn;
     streamParams_.write_fn = src->write_fn;
     streamParams_.seek_fn = src->seek_fn;
+    streamParams_.read_at_fn = src->read_at_fn;
     streamParams_.free_user_data_fn = src->free_user_data_fn;
     streamParams_.user_data = src->user_data; // Shallow copy
     streamParams_.stream_len = src->stream_len;
@@ -72,7 +73,9 @@ public:
     safe_strcpy(streamParams_.username, src->username);
     safe_strcpy(streamParams_.password, src->password);
     safe_strcpy(streamParams_.bearer_token, src->bearer_token);
-    safe_strcpy(streamParams_.custom_header, src->custom_header);
+    streamParams_.num_custom_headers = src->num_custom_headers;
+    for(uint8_t i = 0; i < src->num_custom_headers; ++i)
+      safe_strcpy(streamParams_.custom_headers[i], src->custom_headers[i]);
     safe_strcpy(streamParams_.region, src->region);
 
     safe_strcpy(streamParams_.s3_endpoint, src->s3_endpoint);
@@ -99,7 +102,9 @@ public:
       {
         std::string_view file{streamParams_.file};
         bool isNetwork = file.starts_with("http://") || file.starts_with("https://") ||
-                         file.starts_with("/vsis3/");
+                         file.starts_with("/vsis3/") || file.starts_with("/vsicurl/") ||
+                         file.starts_with("/vsiaz/") || file.starts_with("/vsiadls/") ||
+                         file.starts_with("/vsigs/");
         if(isNetwork && !streamParams_.read_fn)
           return createCurlFetchStream();
       }
@@ -134,7 +139,7 @@ private:
 
   IStream* createBufferStream(bool isReadStream)
   {
-    auto stream = memStreamCreate(streamParams_.buf, streamParams_.buf_len, false, nullptr,
+    auto stream = memStreamCreate(streamParams_.buf, streamParams_.buf_len,
                                   GRK_CODEC_FORMAT::GRK_CODEC_UNK, isReadStream);
     if(!stream)
     {

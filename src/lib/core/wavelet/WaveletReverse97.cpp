@@ -22,7 +22,10 @@
  ***********************************/
 
 #include <algorithm>
+#include <chrono>
+#include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 
 #include "hwy_arm_disable_targets.h"
@@ -98,29 +101,6 @@ namespace HWY_NAMESPACE
   static const float hwy_dwt_beta = 0.052980118f;
   static const float hwy_dwt_gamma = -0.882911075f;
   static const float hwy_dwt_delta = -0.443506852f;
-
-  /* step1: multiply each element in a band by constant c.
-   * data points to first element; stride between same-band elements = 2*L floats
-   * (interleaved L/H layout, each element is L floats wide). */
-  static void hwy_step1_97(float* data, uint32_t len, float c)
-  {
-    const HWY_FULL(float) df;
-    const size_t L = Lanes(df);
-    const size_t stride = 2 * L;
-    auto cv = Set(df, c);
-
-    /* process 4 elements at a time */
-    uint32_t i;
-    for(i = 0; i + 3 < len; i += 4, data += stride * 4)
-    {
-      Store(Mul(Load(df, data), cv), df, data);
-      Store(Mul(Load(df, data + stride), cv), df, data + stride);
-      Store(Mul(Load(df, data + stride * 2), cv), df, data + stride * 2);
-      Store(Mul(Load(df, data + stride * 3), cv), df, data + stride * 3);
-    }
-    for(; i < len; ++i, data += stride)
-      Store(Mul(Load(df, data), cv), df, data);
-  }
 
   /* step2: lifting step.
    * data points to first source element; targets are at data[-L].
@@ -240,67 +220,6 @@ namespace HWY_NAMESPACE
     }
   }
 
-  /* Full 9/7 inverse lifting step on interleaved scratch buffer.
-   * Each element is Lanes(float) wide. */
-  static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
-                               Line32 win_h)
-  {
-    const HWY_FULL(float) df;
-    const size_t L = Lanes(df);
-
-    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
-      return;
-
-    auto make_step1 = [&](bool isBandL) -> std::pair<float*, uint32_t> {
-      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
-      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
-      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
-      return {d, (uint32_t)(band_1 - band_0)};
-    };
-
-    auto make_step2 = [&](bool isBandL) -> std::tuple<float*, float*, uint32_t, uint32_t> {
-      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
-      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
-      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
-      int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
-                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
-      if(lmax < 0)
-        lmax = 0;
-      assert(lmax >= band_0);
-      lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
-      d += L;
-      float* dPrev = parityOff ? d - 2 * L : d;
-      return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
-    };
-
-    {
-      auto [d, len] = make_step1(true);
-      hwy_step1_97(d, len, hwy_K);
-    }
-    {
-      auto [d, len] = make_step1(false);
-      hwy_step1_97(d, len, hwy_twice_invK);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(true);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_delta);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(false);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_gamma);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(true);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_beta);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(false);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_alpha);
-    }
-  }
-
   /* Lift-only for L-wide elements (no K/invK scaling, for fused-scale path). */
   static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
                                Line32 win_h)
@@ -321,7 +240,7 @@ namespace HWY_NAMESPACE
         lmax = 0;
       assert(lmax >= band_0);
       lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
+      float* d = mem + static_cast<size_t>(parityOff + band_0 - win_l.x0) * L;
       d += L;
       float* dPrev = parityOff ? d - 2 * L : d;
       return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
@@ -368,7 +287,7 @@ namespace HWY_NAMESPACE
         lmax = 0;
       assert(lmax >= band_0);
       lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * PLL;
+      float* d = mem + static_cast<size_t>(parityOff + band_0 - win_l.x0) * PLL;
       d += PLL;
       float* dPrev = parityOff ? d - 2 * PLL : d;
       return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
@@ -671,22 +590,20 @@ namespace HWY_NAMESPACE
     if(j < resWidth)
     {
       uint32_t remaining = resWidth - j;
-      const auto m = hn::FirstN(df, remaining);
-      const auto mi = hn::FirstN(di, remaining);
 
       {
         auto bi = scratchMem + parity * L;
         auto band = srcL + win_l.x0 * strideL;
         for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
         {
-          Store(Mul(hn::MaskedLoad(m, df, band), scaleL), df, bi);
+          Store(Mul(hn::LoadN(df, band, remaining), scaleL), df, bi);
           band += strideL;
         }
         bi = scratchMem + (1 - parity) * L;
         band = srcH + win_h.x0 * strideH;
         for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
         {
-          Store(Mul(hn::MaskedLoad(m, df, band), scaleH), df, bi);
+          Store(Mul(hn::LoadN(df, band, remaining), scaleH), df, bi);
           band += strideH;
         }
       }
@@ -700,7 +617,7 @@ namespace HWY_NAMESPACE
         for(uint32_t k = 0; k < resHeight; ++k)
         {
           auto v0 = NearestInt(Load(df, scratchMem + k * L));
-          hn::BlendedStore(Clamp(v0 + vShift, vmin, vmax), mi, di, destI);
+          hn::StoreN(Clamp(v0 + vShift, vmin, vmax), di, destI, remaining);
           destI += strideDest;
         }
       }
@@ -709,7 +626,7 @@ namespace HWY_NAMESPACE
         auto destPtr = dest;
         for(uint32_t k = 0; k < resHeight; ++k)
         {
-          hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destPtr);
+          hn::StoreN(Load(df, scratchMem + k * L), df, destPtr, remaining);
           destPtr += strideDest;
         }
       }
@@ -930,60 +847,7 @@ void WaveletReverse::step_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch)
   step2_97(makeParams97(scratch, true, false), dwt_beta);
   step2_97(makeParams97(scratch, false, false), dwt_alpha);
 }
-void WaveletReverse::interleave_h_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch,
-                                     Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
-                                     uint32_t remaining_height)
-{
-  float* GRK_RESTRICT scratchDataL = (float*)(scratch->mem + scratch->parity);
-  uint32_t x0 = scratch->win_l.x0;
-  uint32_t x1 = scratch->win_l.x1;
-  const size_t vec4f_elts = vec4f::NUM_ELTS;
-  for(uint32_t k = 0; k < 2; ++k)
-  {
-    auto src = (k == 0) ? winL.buf_ : winH.buf_;
-    uint32_t stride = (k == 0) ? winL.stride_ : winH.stride_;
-    if(remaining_height >= vec4f_elts && ((size_t)src & 0x0f) == 0 &&
-       ((size_t)scratchDataL & 0x0f) == 0 && (stride & 0x0f) == 0)
-    {
-      /* Fast code path */
-      for(uint32_t i = x0; i < x1; ++i, scratchDataL += vec4f_elts * 2)
-      {
-        uint32_t j = i;
-        scratchDataL[0] = src[j];
-        j += stride;
-        scratchDataL[1] = src[j];
-        j += stride;
-        scratchDataL[2] = src[j];
-        j += stride;
-        scratchDataL[3] = src[j];
-      }
-    }
-    else
-    {
-      /* Slow code path */
-      for(uint32_t i = x0; i < x1; ++i, scratchDataL += vec4f_elts * 2)
-      {
-        uint32_t j = i;
-        scratchDataL[0] = src[j];
-        j += stride;
-        if(remaining_height == 1)
-          continue;
-        scratchDataL[1] = src[j];
-        j += stride;
-        if(remaining_height == 2)
-          continue;
-        scratchDataL[2] = src[j];
-        j += stride;
-        if(remaining_height == 3)
-          continue;
-        scratchDataL[3] = src[j];
-      }
-    }
-    scratchDataL = (float*)(scratch->mem + 1 - scratch->parity);
-    x0 = scratch->win_h.x0;
-    x1 = scratch->win_h.x1;
-  }
-}
+
 void WaveletReverse::h_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const uint32_t resHeight,
                                 Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
                                 Buffer2dSimple<float> winDest)
@@ -1027,25 +891,7 @@ bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
   }
   return true;
 }
-void WaveletReverse::interleave_v_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch,
-                                     Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
-                                     uint32_t nb_elts_read)
-{
-  auto bi = scratch->mem + scratch->parity;
-  auto band = winL.buf_ + scratch->win_l.x0 * winL.stride_;
-  for(uint32_t i = scratch->win_l.x0; i < scratch->win_l.x1; ++i, bi += 2)
-  {
-    memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-    band += winL.stride_;
-  }
-  bi = scratch->mem + 1 - scratch->parity;
-  band = winH.buf_ + scratch->win_h.x0 * winH.stride_;
-  for(uint32_t i = scratch->win_h.x0; i < scratch->win_h.x1; ++i, bi += 2)
-  {
-    memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-    band += winH.stride_;
-  }
-}
+
 void WaveletReverse::v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const uint32_t resWidth,
                                 const uint32_t resHeight, Buffer2dSimple<float> winL,
                                 Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest,
@@ -1097,6 +943,7 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 
   return true;
 }
+
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
@@ -1121,37 +968,106 @@ bool WaveletReverse::tile_97(void)
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   for(uint8_t res = 1; res < numres_; ++res)
   {
-    horiz97.sn = resWidth;
-    vert97.sn = resHeight;
+    auto split = splitOf(res);
+    auto lowWidth = resWidth;
+    auto lowHeight = resHeight;
     ++tr;
     resWidth = tr->width();
     resHeight = tr->height();
     if(resWidth == 0 || resHeight == 0)
       continue;
+    // an axis the level does not split keeps every sample in the low half
+    horiz97.sn = splitsHorizontally(split) ? lowWidth : resWidth;
+    vert97.sn = splitsVertically(split) ? lowHeight : resHeight;
     horiz97.dn = resWidth - horiz97.sn;
     horiz97.parity = tr->x0 & 1;
     horiz97.win_l = Line32(0, horiz97.sn);
     horiz97.win_h = Line32(0, horiz97.dn);
     auto winSplitL = buf->getResWindowBufferSplitSimpleF(res, SPLIT_L);
     auto winSplitH = buf->getResWindowBufferSplitSimpleF(res, SPLIT_H);
-    if(!h_97(res, num_threads, dataLength, horiz97, vert97.sn,
-             buf->getResWindowBufferSimpleF((uint8_t)(res - 1U)),
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL), winSplitL))
-      return false;
-    if(!h_97(res, num_threads, dataLength, horiz97, resHeight - vert97.sn,
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH),
-             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH), winSplitH))
-      return false;
+    if(splitsHorizontally(split))
+    {
+      if(!h_97(res, num_threads, dataLength, horiz97, vert97.sn,
+               buf->getResWindowBufferSimpleF((uint8_t)(res - 1U)),
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL), winSplitL))
+        return false;
+      if(!h_97(res, num_threads, dataLength, horiz97, resHeight - vert97.sn,
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH),
+               buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH), winSplitH))
+        return false;
+    }
     vert97.dn = resHeight - vert97.sn;
     vert97.parity = tr->y0 & 1;
     vert97.win_l = Line32(0, vert97.sn);
     vert97.win_h = Line32(0, vert97.dn);
-    if(!v_97(res, num_threads, dataLength, vert97, resWidth, resHeight, winSplitL, winSplitH,
-             buf->getResWindowBufferSimpleF(res)))
-      return false;
+    if(splitsVertically(split))
+    {
+      if(!v_97(res, num_threads, dataLength, vert97, resWidth, resHeight, winSplitL, winSplitH,
+               buf->getResWindowBufferSimpleF(res)))
+        return false;
+    }
   }
 
   return true;
+}
+
+// bench hook: single-threaded multi-level inverse on the canonical in-place
+// quadrant layout, same kernels and aliasing as tile_97 minus the task graph
+extern "C" double grk_bench_dwt_97(uint32_t width, uint32_t height, uint8_t numres, uint32_t iters)
+{
+  if(numres < 2 || !width || !height || !iters)
+    return -1.0;
+  auto dim = [](uint32_t full, uint32_t shift) { return (full + (1u << shift) - 1) >> shift; };
+  auto window = (float*)grk_aligned_malloc((uint64_t)width * height * sizeof(float));
+  if(!window)
+    return -1.0;
+  size_t dataLength = std::max(width, height);
+  dwt_scratch<vec4f> horiz;
+  if(!horiz.alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
+  {
+    grk_aligned_free(window);
+    return -1.0;
+  }
+  double best = std::numeric_limits<double>::max();
+  for(uint32_t it = 0; it < iters; ++it)
+  {
+    for(size_t i = 0; i < (size_t)width * height; ++i)
+      window[i] = (float)((i * 2654435761u) & 1023u) - 512.0f;
+    auto start = std::chrono::steady_clock::now();
+    for(uint8_t res = 1; res < numres; ++res)
+    {
+      uint32_t pw = dim(width, (uint32_t)(numres - res));
+      uint32_t ph = dim(height, (uint32_t)(numres - res));
+      uint32_t rw = dim(width, (uint32_t)(numres - 1 - res));
+      uint32_t rh = dim(height, (uint32_t)(numres - 1 - res));
+      horiz.sn = pw;
+      horiz.dn = rw - pw;
+      horiz.parity = 0;
+      horiz.win_l = Line32(0, horiz.sn);
+      horiz.win_h = Line32(0, horiz.dn);
+      auto splitH = window + (size_t)ph * width;
+      HWY_DYNAMIC_DISPATCH(hwy_h_strip_97)
+      ((float*)horiz.mem, horiz.sn, horiz.dn, horiz.parity, horiz.win_l, horiz.win_h, ph, window,
+       width, window + pw, width, window, width);
+      HWY_DYNAMIC_DISPATCH(hwy_h_strip_97)
+      ((float*)horiz.mem, horiz.sn, horiz.dn, horiz.parity, horiz.win_l, horiz.win_h, rh - ph,
+       splitH, width, splitH + pw, width, splitH, width);
+      dwt_scratch<vec4f> vert;
+      vert.mem = horiz.mem;
+      vert.sn = ph;
+      vert.dn = rh - ph;
+      vert.parity = 0;
+      vert.win_l = Line32(0, vert.sn);
+      vert.win_h = Line32(0, vert.dn);
+      HWY_DYNAMIC_DISPATCH(hwy_v_strip_97)
+      ((float*)vert.mem, vert.sn, vert.dn, vert.parity, vert.win_l, vert.win_h, rw, rh, window,
+       width, splitH, width, window, width, 0, 0, 0);
+    }
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+    best = std::min(best, elapsed.count());
+  }
+  grk_aligned_free(window);
+  return best;
 }
 
 } // namespace grk

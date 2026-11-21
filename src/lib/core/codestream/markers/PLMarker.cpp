@@ -276,7 +276,7 @@ bool PLMarker::readPLT(uint8_t* headerData, uint16_t headerSize, int16_t tilePar
   if(!findMarker(Zpl, false))
     return false;
 
-  auto buf = addNewMarker(headerData, headerSize, tilePartIndex);
+  const auto buf = addNewMarker(headerData, headerSize, tilePartIndex);
   if(!buf)
     return false;
 #ifdef DEBUG_PLT
@@ -363,14 +363,6 @@ bool PLMarker::readNextByte(uint8_t Iplm, uint32_t* packetLength)
 
   return packetLen_ == 0;
 }
-uint64_t PLMarker::pop(uint64_t numPackets)
-{
-  uint64_t total = 0;
-  for(uint64_t i = 0; i < numPackets; ++i)
-    total += pop();
-
-  return total;
-}
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
 uint32_t PLMarker::pop(void)
@@ -404,7 +396,7 @@ uint32_t PLMarker::pop(void)
       }
       else
       {
-        currMarkerIter_++;
+        ++currMarkerIter_;
         if(currMarkerIter_ != rawMarkers_->end())
         {
           if(currMarkerIter_->second->empty())

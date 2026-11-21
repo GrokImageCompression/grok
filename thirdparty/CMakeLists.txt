@@ -35,31 +35,6 @@ if (GRK_BUILD_JPEG)
 	else()
 	    set(JPEG_LIBNAME libjpeg.a)
   endif()
-  if(CMAKE_GENERATOR STREQUAL "Ninja")
-    include(FetchContent)
-	FetchContent_Declare(
-	    libjpeg-turbo
-	    GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-	    GIT_TAG        3.1.2
-	)
-	# Set configuration variables before populating and adding the subdirectory
-	set(ENABLE_SHARED OFF CACHE BOOL "" FORCE)
-	set(ENABLE_STATIC ON CACHE BOOL "" FORCE)
-	set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
-	set(WITH_TURBOJPEG OFF CACHE BOOL "" FORCE)
-	FetchContent_GetProperties(libjpeg-turbo)
-	set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/../bin/${JPEG_LIBNAME} PARENT_SCOPE)
-	if(NOT libjpeg-turbo_POPULATED)
-	    FetchContent_Populate(libjpeg-turbo)
-	    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo" CACHE PATH "" FORCE) # Set install prefix after population but before add_subdirectory
-	    add_subdirectory(${libjpeg-turbo_SOURCE_DIR} ${libjpeg-turbo_BINARY_DIR} EXCLUDE_FROM_ALL)
-	endif()
-	# Set the JPEG library path and include directory to be used elsewhere in the project
-	set(JPEG_INCLUDE_DIRS
-	    ${CMAKE_CURRENT_BINARY_DIR}/../_deps/libjpeg-turbo-src
-	    ${CMAKE_CURRENT_BINARY_DIR}/../_deps/libjpeg-turbo-build
-	    PARENT_SCOPE)
-  else()
     ExternalProject_Add(libjpeg-turbo
                           CMAKE_ARGS
                             -DENABLE_SHARED=OFF
@@ -69,7 +44,9 @@ if (GRK_BUILD_JPEG)
                             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                             -DWITH_TURBOJPEG=0
                           GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-                          GIT_TAG        3.1.2)
+                          GIT_TAG        3.1.2
+                          # ninja has no rule to make the library unless it is listed as a byproduct
+                          BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME})
 
     # Create imported target for the static library
     add_library(jpeg-imported STATIC IMPORTED GLOBAL)
@@ -84,7 +61,6 @@ if (GRK_BUILD_JPEG)
     # Use the imported target instead of raw lib path
     set(JPEG_LIBNAME jpeg-imported PARENT_SCOPE)
     set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
-endif()
 else(GRK_BUILD_JPEG)
 	find_package(JPEG)
 	if(JPEG_FOUND)

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "CodingParams.h"
+
 #include "CodecScheduler.h"
 #include "WaveletCommon.h"
 #include "WaveletPoolData.h"
@@ -69,7 +71,7 @@ struct dwt_scratch
   {
     if(!allocatedMem)
       return;
-    memset(allocatedMem, 0, lenBytes_);
+    memset(static_cast<void*>(allocatedMem), 0, lenBytes_);
   }
   void release(void)
   {
@@ -103,19 +105,44 @@ struct DcShiftParam
   bool enabled = false;
 };
 
+// exported hooks for grk_dwt_bench: drive the TU-local SIMD kernels directly,
+// single-threaded, on synthetic data. Each returns best seconds per full
+// multi-level inverse transform, or a negative value on failure.
+#if defined(_WIN32)
+#define GRK_DWT_BENCH_API __declspec(dllexport)
+#else
+#define GRK_DWT_BENCH_API __attribute__((visibility("default")))
+#endif
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_97(uint32_t width, uint32_t height,
+                                                     uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_16_97(uint32_t width, uint32_t height,
+                                                        uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_53(uint32_t width, uint32_t height,
+                                                     uint8_t numres, uint32_t iters);
+extern "C" GRK_DWT_BENCH_API double grk_bench_dwt_16_53(uint32_t width, uint32_t height,
+                                                        uint8_t numres, uint32_t iters);
+
 class WaveletReverse
 {
+  // the 5/3 bench hooks call the private strip methods on a dummy instance
+  friend double grk_bench_dwt_53(uint32_t, uint32_t, uint8_t, uint32_t);
+  friend double grk_bench_dwt_16_53(uint32_t, uint32_t, uint8_t, uint32_t);
+
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
-                 WaveletPoolData* poolData, DcShiftParam dcShift = {});
+                 WaveletPoolData* poolData, DcShiftParam dcShift = {},
+                 const TileComponentCodingParams* tccp = nullptr,
+                 const TransformKernel* kernel = nullptr);
   ~WaveletReverse(void);
   bool decompress(void);
 
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
+  static void step_16_97(dwt_scratch<vec8s>* GRK_RESTRICT dwt);
 
 private:
   WaveletPoolData* poolData_ = nullptr;
+  const WaveletScratch* scratch_ = nullptr;
   CodecScheduler* scheduler_ = nullptr;
   TileComponent* tilec_ = nullptr;
   uint16_t compno_ = 0;
@@ -125,13 +152,29 @@ private:
   uint32_t maxDim_ = 0;
   bool wholeTileDecompress_ = true;
   DcShiftParam dcShift_;
+  // Part 2: per level splits and, for ATK streams, the lifting kernel
+  const TileComponentCodingParams* tccp_ = nullptr;
+  const TransformKernel* kernel_ = nullptr;
+  DecompositionSplit splitOf(uint8_t res) const;
+  // arbitrary kernel ////////////////////////////////////////////////////////////////////////
+  bool tile_kernel(void);
+  template<typename T>
+  void kernelLine(T* line, uint32_t length, uint32_t parity) const;
+  template<typename T>
+  void kernelRows(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH, Buffer2dSimple<T> winDest,
+                  uint32_t numLow, uint32_t width, uint32_t parity, uint32_t numRows);
+  template<typename T>
+  void kernelColumns(Buffer2dSimple<T> winL, Buffer2dSimple<T> winH, Buffer2dSimple<T> winDest,
+                     uint32_t numLow, uint32_t height, uint32_t parity, uint32_t numColumns);
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
-  void load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                    const int32_t* bandH, int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_p0_53(int32_t* scratch, const uint32_t width,
+                                             const int32_t* bandL, const int32_t* bandH,
+                                             int32_t* dest);
 
-  void load_h_p1_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
-                    const int32_t* bandH, int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_p1_53(int32_t* scratch, const uint32_t width,
+                                             const int32_t* bandL, const int32_t* bandH,
+                                             int32_t* dest);
 
   void h_53(uint8_t res, TileComponentWindow<int32_t>* scratch, uint32_t resHeight);
 
@@ -139,18 +182,23 @@ private:
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
                   Buffer2dSimple<int32_t> winDest);
 
-  void load_h_53(const dwt_scratch<int32_t>* scratch, int32_t* bandL, int32_t* bandH,
-                 int32_t* dest);
+  GRK_NO_SANITIZE_OVERFLOW void load_h_53(const dwt_scratch<int32_t>* scratch, int32_t* bandL,
+                                          int32_t* bandH, int32_t* dest);
 
-  void v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL, const uint32_t strideL,
-               int32_t* bandH, const uint32_t strideH, int32_t* dest, const uint32_t strideDest);
+  GRK_NO_SANITIZE_OVERFLOW void v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
+                                        const uint32_t strideL, int32_t* bandH,
+                                        const uint32_t strideH, int32_t* dest,
+                                        const uint32_t strideDest);
 
-  void v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL, const uint32_t strideL,
-               int32_t* bandH, const uint32_t strideH, int32_t* dest, const uint32_t strideDest);
+  GRK_NO_SANITIZE_OVERFLOW void v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
+                                        const uint32_t strideL, int32_t* bandH,
+                                        const uint32_t strideH, int32_t* dest,
+                                        const uint32_t strideDest);
 
-  void v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
-            Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
-            DcShiftParam dcShift);
+  GRK_NO_SANITIZE_OVERFLOW void v_53(const dwt_scratch<int32_t>* scratch,
+                                     Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
+                                     Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
+                                     DcShiftParam dcShift);
 
   void v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin, uint32_t wMax,
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
@@ -165,10 +213,63 @@ private:
   std::unique_ptr<dwt_scratch<int32_t>[]> horizPool_;
   std::unique_ptr<dwt_scratch<int32_t>[]> vertPool_;
 
+  // 16-bit 5/3 //////////////////////////////////////////////////////////////////////////////
+  void load_h_p1_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
+                       const int16_t* bandH, int16_t* dest);
+
+  void load_h_16_53(const dwt_scratch<int16_t>* scratch, int16_t* bandL, int16_t* bandH,
+                    int16_t* dest);
+
+  void h_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t hMin, uint32_t hMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest);
+
+  void h_16_53(uint8_t res, TileComponentWindow<int16_t>* scratch, uint32_t resHeight);
+
+  void v_p0_16_53(int16_t* scratch, const uint32_t height, int16_t* bandL, const uint32_t strideL,
+                  int16_t* bandH, const uint32_t strideH, int16_t* dest, const uint32_t strideDest);
+
+  void v_p1_16_53(int16_t* scratch, const uint32_t height, int16_t* bandL, const uint32_t strideL,
+                  int16_t* bandH, const uint32_t strideH, int16_t* dest, const uint32_t strideDest);
+
+  void v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple<int16_t> winL,
+               Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest, uint32_t nb_cols,
+               DcShiftParam dcShift);
+
+  void v_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift);
+
+  void v_16_53(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth);
+
+  bool tile_16_53(void);
+
+  // 16-bit fixed-point 9/7 //////////////////////////////////////////////////////////////////
+  void h_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t hMin, uint32_t hMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest);
+
+  void h_16_97(uint8_t res, TileComponentWindow<int16_t>* scratch, uint32_t resHeight);
+
+  void v_16_97(const dwt_scratch<int16_t>* scratch, Buffer2dSimple<int16_t> winL,
+               Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest, uint32_t nb_cols,
+               DcShiftParam dcShift);
+
+  void v_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift);
+
+  void v_16_97(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth);
+
+  bool tile_16_97(void);
+
+  dwt_scratch<int16_t> horiz16_;
+  dwt_scratch<int16_t> vert16_;
+  std::unique_ptr<dwt_scratch<int16_t>[]> horizPool16_;
+  std::unique_ptr<dwt_scratch<int16_t>[]> vertPool16_;
+
   ////////////////////////////////////////////////////////////////////////////////////////////
   // 9/7
-  void interleave_h_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt, Buffer2dSimple<float> winL,
-                       Buffer2dSimple<float> winH, uint32_t remaining_height);
 
   void h_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
                   Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
@@ -177,9 +278,6 @@ private:
   bool h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
             dwt_scratch<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
             Buffer2dSimple<float> winL, Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest);
-
-  void interleave_v_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt, Buffer2dSimple<float> winL,
-                       Buffer2dSimple<float> winH, uint32_t nb_elts_read);
 
   void v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
                   const uint32_t resHeight, Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
@@ -227,15 +325,21 @@ private:
     uint32_t indexMax_;
   };
 
-  template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
-  bool partial_tile(ISparseCanvas<int32_t>* sa,
+  template<typename ST, typename CT, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
+  bool partial_tile(ISparseCanvas<CT>* sa,
                     std::vector<PartialTaskInfo<ST, dwt_scratch<ST>>*>& tasks);
 
   // partial 5/3
   std::vector<PartialTaskInfo<int32_t, dwt_scratch<int32_t>>*> partialTasks53_;
 
+  // partial 16-bit 5/3
+  std::vector<PartialTaskInfo<int16_t, dwt_scratch<int16_t>>*> partialTasks16_53_;
+
   // partial 9/7
   std::vector<PartialTaskInfo<vec4f, dwt_scratch<vec4f>>*> partialTasks97_;
+
+  // partial 16-bit 9/7
+  std::vector<PartialTaskInfo<vec8s, dwt_scratch<vec8s>>*> partialTasks16_97_;
   ///////////////////////////////////////////////////////////////////////////////////////////////
 };
 

@@ -143,12 +143,14 @@ namespace HWY_NAMESPACE
     const HWY_FULL(int32_t) d;
     if(height <= 1)
     {
-      if(parity == 1 && height == 1)
+      // a lone row still carries the dc shift, and doubles only when it sits
+      // on an odd row and so is a high-pass coefficient
+      if(height == 1 && (parity == 1 || dcShift != 0))
       {
         auto v = Load(d, resolution);
         if(dcShift != 0)
           v = v - Set(d, dcShift);
-        auto res = ShiftLeft<1>(v);
+        auto res = parity == 1 ? ShiftLeft<1>(v) : v;
         StoreN(res, d, resolution, numcols);
       }
       return;
@@ -440,7 +442,16 @@ namespace HWY_NAMESPACE
                    const uint32_t stride, const uint32_t numrows, float dcShift)
   {
     if(width == 1)
+    {
+      // a lone column is passed through unlifted, doubled on an odd column
+      // where the decompressor's step size drops the high-pass gain
+      if(parity == 1)
+      {
+        for(uint32_t j = 0; j < numrows; ++j)
+          res[(size_t)j * stride] *= 2.0f;
+      }
       return;
+    }
 
     const HWY_FULL(float) d;
     const size_t lanes = Lanes(d);
@@ -551,7 +562,8 @@ namespace HWY_NAMESPACE
     const auto sf_d = Set(d, K);
 
     scratch_s = scratch + off_s * lanes;
-    s_s = Set(d, delta);
+    // the high pass neighbours were stored already scaled by K
+    s_s = Set(d, delta * invK);
     const auto sf_s = Set(d, invK);
 
     i_d = 0;
@@ -625,7 +637,21 @@ namespace HWY_NAMESPACE
     const uint32_t sn = (height + !parity) >> 1;
     const uint32_t dn = height - sn;
     if(height <= 1)
+    {
+      // a lone row still carries the dc shift and the int to float conversion,
+      // and doubles on an odd row where the step size drops the high-pass gain
+      if(height == 1)
+      {
+        const HWY_FULL(int32_t) di;
+        auto v = intInput ? ConvertTo(d, Load(di, (const int32_t*)res)) : Load(d, res);
+        if(dcShift != 0.0f)
+          v = v - Set(d, dcShift);
+        if(parity == 1)
+          v = v + v;
+        StoreN(v, d, res, numcols);
+      }
       return;
+    }
 
     auto temp = scratch;
     if(intInput)
@@ -758,7 +784,8 @@ namespace HWY_NAMESPACE
     const auto sf_d = Set(d, K);
 
     scratch_s = scratch + off_s * lanes;
-    s_s = Set(d, delta);
+    // the high pass neighbours were stored already scaled by K
+    s_s = Set(d, delta * invK);
     const auto sf_s = Set(d, invK);
     i_d = 0;
     if(samples_no_end_bdry_d > 0)
@@ -822,6 +849,458 @@ namespace HWY_NAMESPACE
     deinterleave_v(scratch, res, dn, sn, stride, parity, numcols);
   }
 
+  /**************************************************************************
+   *  16-bit 5/3 Forward DWT (Analysis)
+   *
+   *  Uses separated even/odd (E/O) layout in scratch for the lifting steps.
+   *  Performs lifting in int16_t and preserves the tile buffer type.
+   *
+   *  Eligible when bit-depth + DWT headroom <= 16 (same criteria as inverse).
+   *
+   *  ITU-T T.800 Annex F.3.4 defines the reversible 5/3 lifting steps:
+   *    D[n] -= floor((S[n] + S[n+1]) / 2)         (prediction)
+   *    S[n] += floor((D[n-1] + D[n] + 2) / 4)     (update)
+   *
+   *  The update step uses an overflow-safe unsigned averaging operator
+   *  rather than forming the full 17-bit sum D[n-1]+D[n].  The identity
+   *
+   *    floor((a + b + 2) / 4)  ==  floor(avg_round(a, b') / 2)
+   *
+   *  where avg_round(x, y) = floor((x + y + 1) / 2) uses the unsigned
+   *  averaging instruction (PAVGW/URHADD) that never overflows.  The signed
+   *  operands are mapped to unsigned via XOR 0x8000 and ADD 0x7FFF
+   *  respectively, then the unsigned average is taken, and the result
+   *  converted back to signed.  This technique is well-known in JPEG 2000
+   *  implementations and used in OpenJPH's lifting engine for the same
+   *  purpose.
+   **************************************************************************/
+
+  template<typename T>
+  HWY_ATTR static void copy_to_int16(const T* src, int16_t* dst, uint32_t numcols)
+  {
+    for(uint32_t j = 0; j < numcols; ++j)
+      dst[j] = (int16_t)src[j];
+  }
+
+  template<typename T>
+  HWY_ATTR static void copy_from_int16(const int16_t* src, T* dst, uint32_t numcols)
+  {
+    for(uint32_t j = 0; j < numcols; ++j)
+      dst[j] = (T)src[j];
+  }
+
+  template<typename T>
+  HWY_ATTR void encode_53_16_v(T* resolution, int16_t* scratch, const uint32_t height,
+                               const uint8_t parity, const uint32_t stride, const uint32_t numcols,
+                               int32_t dcShift)
+  {
+    const HWY_FULL(int16_t) d16;
+    const size_t lanes16 = Lanes(d16);
+
+    if(height <= 1)
+    {
+      // a lone row still carries the dc shift, and doubles only when it sits
+      // on an odd row and so is a high-pass coefficient
+      if(height == 1 && (parity == 1 || dcShift != 0))
+      {
+        for(uint32_t j = 0; j < numcols; ++j)
+        {
+          int16_t v = (int16_t)resolution[j];
+          if(dcShift != 0)
+            v = (int16_t)(v - (int16_t)dcShift);
+          resolution[j] = (T)(int16_t)(parity == 1 ? (int16_t)(v << 1) : v);
+        }
+      }
+      return;
+    }
+
+    const uint32_t sn = (height + !parity) >> 1;
+    const uint32_t dn = height - sn;
+
+    int16_t* E = scratch;
+    int16_t* O = scratch + sn * lanes16;
+
+    for(uint32_t k = 0; k < sn; ++k)
+      copy_to_int16(resolution + size_t(2 * k + parity) * stride, E + k * lanes16, numcols);
+    for(uint32_t k = 0; k < dn; ++k)
+      copy_to_int16(resolution + size_t(2 * k + !parity) * stride, O + k * lanes16, numcols);
+
+    // Type tags for the signed↔unsigned averaging trick
+    const HWY_FULL(uint16_t) du16;
+    const auto i16_min = Set(d16, (int16_t)0x8000);
+    const auto u16_max = Set(du16, (uint16_t)0x7FFF);
+
+    // Prediction: O[k] -= (E_left + E_right) >> 1
+    for(uint32_t k = 0; k < dn; ++k)
+    {
+      uint32_t el_idx, er_idx;
+      if(parity == 0)
+      {
+        el_idx = k;
+        er_idx = (k + 1 < sn) ? (k + 1) : k;
+      }
+      else
+      {
+        el_idx = (k > 0) ? (k - 1) : 0;
+        er_idx = (k < sn) ? k : (sn > 0 ? sn - 1 : 0);
+      }
+      auto el = Load(d16, E + el_idx * lanes16);
+      auto er = Load(d16, E + er_idx * lanes16);
+      auto ok = Load(d16, O + k * lanes16);
+      if(el_idx == er_idx)
+        Store(ok - el, d16, O + k * lanes16);
+      else
+        Store(ok - ShiftRight<1>(el + er), d16, O + k * lanes16);
+    }
+
+    // Update: E[k] += (O_left + O_right + 2) >> 2
+    // Uses overflow-safe unsigned averaging: computes floor((a+b+2)/4) as
+    // floor(signed_avg_round(a,b) / 2), where signed_avg_round uses the
+    // unsigned PAVGW/URHADD instruction on sign-flipped operands.
+    //
+    // Math: Let A = a XOR 0x8000 (unsigned), B = b + 0x7FFF (unsigned).
+    //   avg_u = floor((A + B + 1) / 2)
+    //         = floor((a + b + 0x10000) / 2)       (since A+B = a+b+0xFFFF)
+    //         = floor((a + b) / 2) + 0x8000         (even a+b)
+    //       or  floor((a + b + 1) / 2) + 0x8000     (odd a+b)
+    //   result = (int16_t)(avg_u - 0x7FFF)          → (a+b+2)/2 with rounding
+    //   result >> 1                                  → (a+b+2)/4  = (a+b+2)>>2
+    for(uint32_t k = 0; k < sn; ++k)
+    {
+      uint32_t ol_idx, or_idx;
+      if(parity == 0)
+      {
+        ol_idx = (k > 0) ? (k - 1) : 0;
+        or_idx = (k < dn) ? k : (dn > 0 ? dn - 1 : 0);
+      }
+      else
+      {
+        ol_idx = k;
+        or_idx = (k + 1 < dn) ? (k + 1) : k;
+      }
+      auto ol = Load(d16, O + ol_idx * lanes16);
+      auto or_ = Load(d16, O + or_idx * lanes16);
+      auto ek = Load(d16, E + k * lanes16);
+      if(ol_idx == or_idx)
+      {
+        // Same neighbor: (2*ol + 2) >> 2 = (ol + 1) >> 1
+        // = (ol >> 1) + (ol & 1) when ol >= 0, equivalently use avg trick
+        auto a_u = BitCast(du16, Xor(ol, i16_min));
+        auto avg = AverageRound(a_u, Add(BitCast(du16, ol), u16_max));
+        auto update = ShiftRight<1>(BitCast(d16, Sub(avg, u16_max)));
+        Store(ek + update, d16, E + k * lanes16);
+      }
+      else
+      {
+        // General case: (ol + or_ + 2) >> 2 via unsigned averaging
+        auto a_u = BitCast(du16, Xor(ol, i16_min));
+        auto b_u = Add(BitCast(du16, or_), u16_max);
+        auto avg = AverageRound(a_u, b_u);
+        auto update = ShiftRight<1>(BitCast(d16, Sub(avg, u16_max)));
+        Store(ek + update, d16, E + k * lanes16);
+      }
+    }
+
+    // Apply DC shift to low-pass (E) band
+    if(dcShift != 0)
+    {
+      const auto vshift = Set(d16, (int16_t)dcShift);
+      for(uint32_t k = 0; k < sn; ++k)
+        Store(Load(d16, E + k * lanes16) - vshift, d16, E + k * lanes16);
+    }
+
+    // Deinterleave: write E[] → first sn rows, O[] → next dn rows (widening to int32)
+    for(uint32_t k = 0; k < sn; ++k)
+      copy_from_int16(E + k * lanes16, resolution + k * stride, numcols);
+    for(uint32_t k = 0; k < dn; ++k)
+      copy_from_int16(O + k * lanes16, resolution + (sn + k) * stride, numcols);
+  }
+
+  template<typename T>
+  HWY_ATTR void encode_53_16_h(T* resolution, int16_t* scratch, const uint32_t width,
+                               const uint8_t parity, const uint32_t stride, const uint32_t numrows)
+  {
+    if(width <= 1)
+    {
+      if(parity == 1 && width == 1)
+      {
+        for(uint32_t r = 0; r < numrows; ++r)
+          resolution[r * stride] <<= 1;
+      }
+      return;
+    }
+
+    const HWY_FULL(int16_t) d16;
+    const size_t lanes16 = Lanes(d16);
+    const uint32_t sn = (width + !parity) >> 1;
+    const uint32_t dn = width - sn;
+
+    for(uint32_t r = 0; r < numrows; ++r)
+    {
+      T* row = resolution + r * stride;
+
+      // Load row and narrow to int16
+      int16_t* buf = scratch;
+      copy_to_int16(row, buf, width);
+
+      // Separate into E[0..sn-1] and O[0..dn-1]
+      int16_t* E = buf + width;
+      int16_t* O = E + sn;
+      for(uint32_t k = 0; k < sn; ++k)
+        E[k] = buf[2 * k + parity];
+      for(uint32_t k = 0; k < dn; ++k)
+        O[k] = buf[2 * k + !parity];
+
+      // Prediction: O[k] -= (E_left + E_right) >> 1
+      // SIMD bulk (all neighbors valid)
+      {
+        uint32_t no_bdry;
+        if(parity == 0)
+          no_bdry = std::min(dn, sn > 0 ? sn - 1 : 0u);
+        else
+          no_bdry = (sn > 0 && dn > 1) ? std::min(dn - 1, sn) : 0;
+
+        if(parity == 0)
+        {
+          uint32_t k = 0;
+          for(; k + lanes16 <= no_bdry; k += (uint32_t)lanes16)
+          {
+            auto ek = LoadU(d16, E + k);
+            auto ek1 = LoadU(d16, E + k + 1);
+            auto ok = LoadU(d16, O + k);
+            StoreU(ok - ShiftRight<1>(ek + ek1), d16, O + k);
+          }
+          for(; k < dn; ++k)
+          {
+            int16_t el = E[k];
+            int16_t er = (k + 1 < sn) ? E[k + 1] : E[k];
+            O[k] = (int16_t)(O[k] - ((el == er) ? el : (int16_t)((el + er) >> 1)));
+          }
+        }
+        else
+        {
+          // O[0] boundary
+          if(dn > 0)
+            O[0] = (int16_t)(O[0] - E[0]);
+          uint32_t k = 1;
+          for(; k + lanes16 <= no_bdry + 1; k += (uint32_t)lanes16)
+          {
+            auto ekm1 = LoadU(d16, E + k - 1);
+            auto ek = LoadU(d16, E + k);
+            auto ok = LoadU(d16, O + k);
+            StoreU(ok - ShiftRight<1>(ekm1 + ek), d16, O + k);
+          }
+          for(; k < dn; ++k)
+          {
+            int16_t el = E[k - 1];
+            int16_t er = (k < sn) ? E[k] : E[sn > 0 ? sn - 1 : 0];
+            O[k] = (int16_t)(O[k] - ((el == er) ? el : (int16_t)((el + er) >> 1)));
+          }
+        }
+      }
+
+      // Update: E[k] += (O_left + O_right + 2) >> 2
+      // Uses the same overflow-safe unsigned averaging as the vertical path.
+      {
+        const HWY_FULL(uint16_t) du16;
+        const auto i16_min = Set(d16, (int16_t)0x8000);
+        const auto u16_max = Set(du16, (uint16_t)0x7FFF);
+
+        if(parity == 0)
+        {
+          // E[0] boundary: same neighbor → (2*O[0] + 2) >> 2
+          if(sn > 0 && dn > 0)
+          {
+            auto a_u = BitCast(du16, Xor(Set(d16, O[0]), i16_min));
+            auto avg_u = AverageRound(a_u, Add(BitCast(du16, Set(d16, O[0])), u16_max));
+            int16_t upd = GetLane(ShiftRight<1>(BitCast(d16, Sub(avg_u, u16_max))));
+            E[0] = (int16_t)(E[0] + upd);
+          }
+          uint32_t k = 1;
+          uint32_t no_bdry = std::min(sn, dn);
+          for(; k + lanes16 <= no_bdry; k += (uint32_t)lanes16)
+          {
+            auto okm1 = LoadU(d16, O + k - 1);
+            auto ok = LoadU(d16, O + k);
+            auto ek = LoadU(d16, E + k);
+            auto a_u = BitCast(du16, Xor(okm1, i16_min));
+            auto b_u = Add(BitCast(du16, ok), u16_max);
+            auto avg = AverageRound(a_u, b_u);
+            auto update = ShiftRight<1>(BitCast(d16, Sub(avg, u16_max)));
+            StoreU(ek + update, d16, E + k);
+          }
+          for(; k < sn; ++k)
+          {
+            int16_t ol = O[k - 1];
+            int16_t or_ = (k < dn) ? O[k] : O[dn > 0 ? dn - 1 : 0];
+            E[k] = (int16_t)(E[k] + ((ol + or_ + 2) >> 2));
+          }
+        }
+        else
+        {
+          uint32_t no_bdry = (sn > 0 && dn > 1) ? std::min(sn - 1, dn - 1) : 0;
+          uint32_t k = 0;
+          for(; k + lanes16 <= no_bdry; k += (uint32_t)lanes16)
+          {
+            auto ok = LoadU(d16, O + k);
+            auto ok1 = LoadU(d16, O + k + 1);
+            auto ek = LoadU(d16, E + k);
+            auto a_u = BitCast(du16, Xor(ok, i16_min));
+            auto b_u = Add(BitCast(du16, ok1), u16_max);
+            auto avg = AverageRound(a_u, b_u);
+            auto update = ShiftRight<1>(BitCast(d16, Sub(avg, u16_max)));
+            StoreU(ek + update, d16, E + k);
+          }
+          for(; k < sn; ++k)
+          {
+            int16_t ol = O[k];
+            int16_t or_ = (k + 1 < dn) ? O[k + 1] : O[k];
+            E[k] = (int16_t)(E[k] + ((ol + or_ + 2) >> 2));
+          }
+        }
+      }
+
+      for(uint32_t k = 0; k < sn; ++k)
+        row[k] = (T)E[k];
+      for(uint32_t k = 0; k < dn; ++k)
+        row[sn + k] = (T)O[k];
+    }
+  }
+
+  void encode_53_16_v_in_place(int16_t* resolution, int16_t* scratch, uint32_t height,
+                               uint8_t parity, uint32_t stride, uint32_t numcols, int16_t dcShift,
+                               bool)
+  {
+    encode_53_16_v(resolution, scratch, height, parity, stride, numcols, dcShift);
+  }
+
+  void encode_53_16_h_in_place(int16_t* resolution, int16_t* scratch, uint32_t width,
+                               uint8_t parity, uint32_t stride, uint32_t numrows, int16_t dcShift)
+  {
+    encode_53_16_h(resolution, scratch, width, parity, stride, numrows);
+    (void)dcShift;
+  }
+
+  bool encode_53_16(TileComponent* tilec, int32_t dcShift)
+  {
+    if(tilec->num_resolutions_ == 1U)
+      return true;
+
+    const HWY_FULL(int16_t) d16;
+    const uint32_t lanes16 = uint32_t(Lanes(d16));
+
+    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
+    int32_t* tiledp = tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+
+    const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
+    auto currentRes = tilec->resolutions_ + maxNumResolutions;
+    auto lastRes = currentRes - 1;
+
+    // Scratch: vertical needs height * lanes16 int16_t, horizontal needs (width + width) int16_t
+    // Use the larger of the two
+    size_t maxDim = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
+    size_t scratchElems = maxDim * lanes16; // vertical scratch
+    size_t hScratch = maxDim * 3; // horizontal: buf + E + O
+    if(hScratch > scratchElems)
+      scratchElems = hScratch;
+
+    const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
+    int16_t* scratch_pool = nullptr;
+    if(scratchElems)
+    {
+      scratch_pool = (int16_t*)grk_aligned_malloc(num_threads * scratchElems * sizeof(int16_t));
+      if(!scratch_pool)
+        return false;
+    }
+
+    int32_t i = maxNumResolutions;
+    while(i--)
+    {
+      bool isFirstLevel = (i == maxNumResolutions - 1);
+      int32_t currentDcShift = isFirstLevel ? dcShift : 0;
+
+      const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
+      const uint32_t rh = (uint32_t)(currentRes->y1 - currentRes->y0);
+
+      const uint8_t parity_row = currentRes->x0 & 1;
+      const uint8_t parity_col = currentRes->y0 & 1;
+
+      // Vertical pass: process lanes16 columns at a time
+      if(num_threads <= 1 || rw < (lanes16 << 1))
+      {
+        uint32_t j;
+        for(j = 0; j + lanes16 - 1 < rw; j += lanes16)
+          encode_53_16_v(tiledp + j, scratch_pool, rh, parity_col, stride, lanes16, currentDcShift);
+        if(j < rw)
+          encode_53_16_v(tiledp + j, scratch_pool, rh, parity_col, stride, rw - j, currentDcShift);
+      }
+      else
+      {
+        uint32_t cols_per_thread = (rw + num_threads - 1) / num_threads;
+        uint32_t step_j = ((cols_per_thread + lanes16 - 1) / lanes16) * lanes16;
+        uint32_t num_tasks = std::min((rw + step_j - 1) / step_j, num_threads);
+
+        tf::Taskflow taskflow;
+        auto nodes = std::make_unique<tf::Task[]>(num_tasks);
+        for(uint32_t t = 0; t < num_tasks; t++)
+          nodes[t] = taskflow.placeholder();
+
+        for(uint32_t t = 0; t < num_tasks; t++)
+        {
+          uint32_t min_j = t * step_j;
+          uint32_t max_j = (t + 1 == num_tasks) ? rw : (t + 1) * step_j;
+          int16_t* scratch = scratch_pool + t * scratchElems;
+          int32_t* td = tiledp;
+          // Lanes() is a runtime value on SVE and RVV
+          nodes[t].work([td, scratch, rh, parity_col, stride, lanes16 = lanes16, currentDcShift,
+                         min_j, max_j] {
+            uint32_t j;
+            for(j = min_j; j + lanes16 - 1 < max_j; j += lanes16)
+              encode_53_16_v(td + j, scratch, rh, parity_col, stride, lanes16, currentDcShift);
+            if(j < max_j)
+              encode_53_16_v(td + j, scratch, rh, parity_col, stride, max_j - j, currentDcShift);
+          });
+        }
+        TFSingleton::get().run(taskflow).wait();
+      }
+
+      // Horizontal pass: process one row at a time (row-by-row)
+      if(num_threads <= 1 || rh < 2)
+      {
+        for(uint32_t j = 0; j < rh; ++j)
+          encode_53_16_h(tiledp + size_t(j) * stride, scratch_pool, rw, parity_row, stride, 1);
+      }
+      else
+      {
+        uint32_t num_tasks = std::min(num_threads, rh);
+        uint32_t step_j = rh / num_tasks;
+        tf::Taskflow taskflow;
+        auto nodes = std::make_unique<tf::Task[]>(num_tasks);
+        for(uint32_t t = 0; t < num_tasks; t++)
+          nodes[t] = taskflow.placeholder();
+
+        for(uint32_t t = 0; t < num_tasks; t++)
+        {
+          uint32_t min_j = t * step_j;
+          uint32_t max_j = (t + 1 == num_tasks) ? rh : (t + 1) * step_j;
+          int16_t* scratch = scratch_pool + t * scratchElems;
+          int32_t* td = tiledp;
+          nodes[t].work([td, scratch, rw, parity_row, stride, min_j, max_j] {
+            for(uint32_t j = min_j; j < max_j; ++j)
+              encode_53_16_h(td + size_t(j) * stride, scratch, rw, parity_row, stride, 1);
+          });
+        }
+        TFSingleton::get().run(taskflow).wait();
+      }
+
+      currentRes = lastRes;
+      --lastRes;
+    }
+
+    grk_aligned_free(scratch_pool);
+    return true;
+  }
+
   template<typename T, typename DWT>
   void encode_h(encode_info<T, DWT>* task)
   {
@@ -859,11 +1338,23 @@ namespace HWY_NAMESPACE
   {
     if(tilec->num_resolutions_ == 1U)
       return true;
-    const HWY_FULL(float) d;
+    const HWY_FULL(T) d;
     const uint32_t lanes = uint32_t(Lanes(d));
 
-    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
-    T* tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+    uint32_t stride;
+    T* tiledp;
+    if constexpr(std::is_same_v<T, int16_t>)
+    {
+      auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = highest.buf_;
+    }
+    else
+    {
+      auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = (T*)highest.buf_;
+    }
 
     const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
     auto currentRes = tilec->resolutions_ + maxNumResolutions;
@@ -871,7 +1362,7 @@ namespace HWY_NAMESPACE
 
     size_t dataSize = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
     const size_t thick = lanes;
-    dataSize *= thick * sizeof(int32_t);
+    dataSize *= thick * sizeof(T);
     int32_t i = maxNumResolutions;
     const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     T* scratch_pool = nullptr;
@@ -897,7 +1388,11 @@ namespace HWY_NAMESPACE
       // DC shift only on first (finest) resolution level
       bool isFirstLevel = (i == maxNumResolutions - 1);
       T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      bool currentIntInput = isFirstLevel && intInput;
+      bool currentIntInput;
+      if constexpr(std::is_floating_point_v<T>)
+        currentIntInput = isFirstLevel && intInput;
+      else
+        currentIntInput = isFirstLevel ? intInput : true;
 
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
@@ -1022,6 +1517,10 @@ namespace HWY_NAMESPACE
   {
     return encode<int32_t, dwt53>(tilec, dcShift, false);
   }
+  bool encode_53_16_in_place(TileComponent* tilec, int16_t dcShift)
+  {
+    return encode<int16_t, dwt53_16>(tilec, dcShift, false);
+  }
   bool encode_97(TileComponent* tilec, float dcShift, bool intInput)
   {
     return encode<float, dwt97>(tilec, dcShift, intInput);
@@ -1055,11 +1554,23 @@ namespace HWY_NAMESPACE
   {
     if(tilec->num_resolutions_ == 1U)
       return nullptr;
-    const HWY_FULL(float) d;
+    const HWY_FULL(T) d;
     const uint32_t lanes = uint32_t(Lanes(d));
 
-    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
-    T* tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+    uint32_t stride;
+    T* tiledp;
+    if constexpr(std::is_same_v<T, int16_t>)
+    {
+      auto highest = tilec->getWindow16()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = highest.buf_;
+    }
+    else
+    {
+      auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+      stride = highest.stride_;
+      tiledp = (T*)highest.buf_;
+    }
 
     const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
     auto currentRes = tilec->resolutions_ + maxNumResolutions;
@@ -1067,7 +1578,7 @@ namespace HWY_NAMESPACE
 
     size_t dataSize = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
     const size_t thick = lanes;
-    dataSize *= thick * sizeof(int32_t);
+    dataSize *= thick * sizeof(T);
     int32_t i = maxNumResolutions;
     const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
 
@@ -1086,7 +1597,11 @@ namespace HWY_NAMESPACE
       // DC shift only on first (finest) resolution level
       bool isFirstLevel = (i == maxNumResolutions - 1);
       T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      bool currentIntInput = isFirstLevel && intInput;
+      bool currentIntInput;
+      if constexpr(std::is_floating_point_v<T>)
+        currentIntInput = isFirstLevel && intInput;
+      else
+        currentIntInput = isFirstLevel ? intInput : true;
 
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
@@ -1110,8 +1625,9 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rw < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, lanes,
-                                     currentDcShift, currentIntInput] {
+          // Lanes() is a runtime value on SVE and RVV
+          vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, currentDcShift,
+                                     currentIntInput, lanes = lanes] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rw; j += lanes)
@@ -1160,7 +1676,8 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rh < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes] {
+          // Lanes() is a runtime value on SVE and RVV
+          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes = lanes] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rh; j += lanes)
@@ -1212,6 +1729,12 @@ namespace HWY_NAMESPACE
   {
     return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows, false);
   }
+  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_53_16_in_place(
+      TileComponent* tilec, int16_t dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    return schedule_encode<int16_t, dwt53_16>(tilec, dcShift, levelFlows, false);
+  }
   std::unique_ptr<WaveletFwdScheduleData>
       schedule_encode_97(TileComponent* tilec, float dcShift,
                          std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
@@ -1232,11 +1755,16 @@ namespace grk
 {
 HWY_EXPORT(encode_53_v);
 HWY_EXPORT(encode_53_h);
+HWY_EXPORT(encode_53_16_v_in_place);
+HWY_EXPORT(encode_53_16_h_in_place);
 HWY_EXPORT(encode_97_v);
 HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
+HWY_EXPORT(encode_53_16);
+HWY_EXPORT(encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_53);
+HWY_EXPORT(schedule_encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_97);
 
 template<typename T>
@@ -1262,22 +1790,38 @@ struct encode_info
   DWT dwt;
 };
 
-bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
-                              DcShiftParam dcShift, bool intInput)
+bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
+                              bool intInput)
 {
   if(qmfbid == 1)
+  {
+    if(tile_comp->is16BitDwt())
+    {
+      if(tile_comp->uses16BitWindow())
+        return HWY_DYNAMIC_DISPATCH(encode_53_16_in_place)(
+            tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0));
+      return HWY_DYNAMIC_DISPATCH(encode_53_16)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
+    }
     return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
+  }
   else
+  {
     return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f,
                                            intInput);
+  }
 }
 std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
-    TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
+    TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
     std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput)
 {
   if(qmfbid == 1)
+  {
+    if(tile_comp->uses16BitWindow())
+      return HWY_DYNAMIC_DISPATCH(schedule_encode_53_16_in_place)(
+          tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0), levelFlows);
     return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0,
                                                     levelFlows);
+  }
   else
     return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
         tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows, intInput);
@@ -1303,6 +1847,18 @@ void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uin
                      const uint32_t stride, const uint32_t numrows, float dcShift)
 {
   HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows, dcShift);
+}
+void dwt53_16::encode_v(int16_t* resolution, int16_t* scratch, uint32_t height, uint8_t parity,
+                        uint32_t stride, uint32_t columns, int16_t dcShift, bool intInput)
+{
+  HWY_DYNAMIC_DISPATCH(encode_53_16_v_in_place)(resolution, scratch, height, parity, stride,
+                                                columns, dcShift, intInput);
+}
+void dwt53_16::encode_h(int16_t* resolution, int16_t* scratch, uint32_t width, uint8_t parity,
+                        uint32_t stride, uint32_t rows, int16_t dcShift)
+{
+  HWY_DYNAMIC_DISPATCH(encode_53_16_h_in_place)(resolution, scratch, width, parity, stride, rows,
+                                                dcShift);
 }
 
 } // namespace grk

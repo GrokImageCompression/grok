@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include "grk_exceptions.h"
+#include "Logger.h"
+
 namespace grk
 {
 
@@ -27,7 +30,20 @@ struct TilePartInfo
   uint64_t remainingTilePartBytes_ = 0;
 };
 
+// parallel tile-part parsing relies on TNsot being right, so every path that reads
+// an SOT has to reject TPsot >= TNsot, even one that only skips the tile part
+inline void validateTilePartIndex(uint16_t tileIndex, uint8_t tilePart, uint8_t numTileParts)
+{
+  if(numTileParts && tilePart >= numTileParts)
+  {
+    grklog.error("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
+                 tileIndex, tilePart, numTileParts);
+    throw CorruptSOTMarkerException();
+  }
+}
+
 class Mct;
+class CodecScheduler;
 
 /**
  * @struct ITileProcessor
@@ -70,7 +86,8 @@ struct ITileProcessor
    */
   virtual bool decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
                                  CoderPool* streamPool, Rect32 unreducedImageBounds,
-                                 std::function<void()> post, TileFutureManager& futures) = 0;
+                                 GrkImage* output, std::function<void()> post,
+                                 TileFutureManager& futures) = 0;
 
   /**
    * @brief Prepares for decompression using Tile Length Markers (TLM)
@@ -102,6 +119,8 @@ struct ITileProcessor
                              IStream* bifurcatedStream, uint16_t mainMarkerId,
                              TilePartInfo tilePartInfo) = 0;
 
+  virtual bool decompressFromCachedTileParts() = 0;
+
   /**
    * @brief Reads the Start of Tile (SOT) marker
    * @param stream Input stream
@@ -122,7 +141,10 @@ struct ITileProcessor
    * @param futures Manager for tile futures
    */
   virtual void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                        std::function<void()> post, TileFutureManager& futures) = 0;
+                                        GrkImage* output, std::function<void()> post,
+                                        TileFutureManager& futures) = 0;
+
+  virtual bool transferDecompressedComponent(uint16_t componentNumber) = 0;
 
   /**
    * @brief Performs post-T2+T1 decompression processing
@@ -305,6 +327,11 @@ struct ITileProcessor
   virtual void release(uint32_t strategy) = 0;
 
   /**
+   * @brief Unconditionally releases both image and tile data (swath consumer path).
+   */
+  virtual void releaseForSwath() = 0;
+
+  /**
    * @brief Reads a PLT marker (Packet length, tile-part header)
    * @param headerData Header data buffer
    * @param headerSize Size of the header data
@@ -317,6 +344,16 @@ struct ITileProcessor
    * @return true if all parsed (or tile is truncated), false otherwise
    */
   virtual bool allSOTMarkersParsed() = 0;
+
+  /**
+   * @brief True when we know for certain that tile parts are missing.
+   *
+   * Returns true only when the SOT marker explicitly signalled a tile-part
+   * count (TNsot > 0) and fewer parts have been parsed so far. When TNsot
+   * is 0 (unspecified), we cannot tell whether parts are missing, so this
+   * returns false— callers should not assume the tile is incomplete.
+   */
+  virtual bool hasUnparsedTileParts() = 0;
 
   /**
    * @brief Reset SOT parsing state so the tile can be re-parsed from the codestream.
@@ -346,6 +383,8 @@ struct ITileProcessor
    */
   virtual bool isBestEffortDecompressed(void) = 0;
   virtual void setBestEffortDecompressed(void) = 0;
+
+  virtual bool scheduledForDecompression(void) = 0;
 
   /**
    * @brief Reinitialize for re-decompression after LRU eviction.

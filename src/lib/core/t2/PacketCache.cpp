@@ -38,16 +38,42 @@ PacketCache::~PacketCache()
     delete p;
 }
 
-void PacketCache::next(size_t offset)
+void PacketCache::next(size_t offset, bool dataPresent)
 {
-  SparseBuffer::chunkSkip(offset);
+  if(dataPresent)
+    SparseBuffer::chunkSkip(offset);
   next();
+}
+
+bool PacketCache::isSelectiveFetch(void) const
+{
+  return selectiveFetch_;
+}
+
+void PacketCache::setSelectiveFetch(bool selective)
+{
+  selectiveFetch_ = selective;
 }
 
 void PacketCache::rewind(void)
 {
   SparseBuffer::rewind();
   iter_ = parsers_.begin();
+}
+
+void PacketCache::discardParsers(void)
+{
+  for(const auto& p : parsers_)
+    delete p;
+  parsers_.clear();
+  parsers_.push_back(nullptr);
+  iter_ = parsers_.begin();
+}
+
+void PacketCache::discardPacketData(void)
+{
+  discardParsers();
+  cleanup();
 }
 
 PacketParser* PacketCache::gen(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber,

@@ -251,8 +251,8 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
 
   // --- build standalone TIFF blob with IFD0 + EXIF sub-IFD ---
   // IFD0 entries: metadata tags + ExifIFD pointer (tag 0x8769)
-  uint16_t ifd0Count = (uint16_t)ifd0Tags.size() + (exifEntries.empty() ? 0 : 1);
-  uint16_t exifCount = (uint16_t)exifEntries.size();
+  uint16_t ifd0Count = static_cast<uint16_t>(ifd0Tags.size() + (exifEntries.empty() ? 0 : 1));
+  uint16_t exifCount = static_cast<uint16_t>(exifEntries.size());
 
   // layout:
   // [0..7]   TIFF header (byte order + magic 42 + IFD0 offset=8)
@@ -262,7 +262,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
   // [...]    EXIF out-of-line data blocks
 
   uint32_t ifd0Start = 8;
-  uint32_t ifd0DirSize = 2 + ifd0Count * 12 + 4;
+  uint32_t ifd0DirSize = static_cast<uint32_t>(2 + ifd0Count * 12 + 4);
   uint32_t ifd0DataStart = ifd0Start + ifd0DirSize;
 
   // compute IFD0 out-of-line data
@@ -276,7 +276,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
     bool outOfLine;
   };
   std::vector<Ifd0BlobEntry> ifd0BlobEntries;
-  for(auto& t : ifd0Tags)
+  for(const auto& t : ifd0Tags)
   {
     Ifd0BlobEntry e;
     e.tag = t.tag;
@@ -311,7 +311,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
   }
 
   uint32_t exifIfdStart = ifd0DataStart + ifd0DataSize;
-  uint32_t exifDirSize = exifEntries.empty() ? 0 : (2 + exifCount * 12 + 4);
+  uint32_t exifDirSize = exifEntries.empty() ? 0u : static_cast<uint32_t>(2 + exifCount * 12 + 4);
   uint32_t exifDataStart = exifIfdStart + exifDirSize;
 
   // compute EXIF out-of-line data layout
@@ -350,7 +350,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
 
   // We need to interleave the ExifIFD pointer tag (0x8769) in sorted order
   bool exifPtrWritten = false;
-  for(auto& e : ifd0BlobEntries)
+  for(const auto& e : ifd0BlobEntries)
   {
     // insert ExifIFD pointer before any tag > 0x8769
     if(!exifPtrWritten && !exifEntries.empty() && e.tag > 0x8769)
@@ -622,38 +622,65 @@ static inline bool writeExifToTiff(TIFF* tif, const uint8_t* exifBuf, uint32_t e
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
+/**
+ * @class TIFFFormat
+ * @brief TIFF format reader/writer with SIMD-accelerated pixel interleaving.
+ *
+ * @see doc/IncrementalStripeCompositing.md for the incremental band-write pipeline.
+ */
 template<typename T>
 class TIFFFormat : public ImageFormat
 {
 public:
   TIFFFormat();
   ~TIFFFormat() override;
-  void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                  void* user_data) override;
+  void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                               void* user_data) override;
 
-  bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
-                  uint32_t concurrency) override;
-  bool encodeHeader(void) override;
+  bool writeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
+                 uint32_t concurrency) override;
+  bool writeHeader(void) override;
   /***
    * application-orchestrated pixel encoding
    */
-  bool encodePixels() override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    // Subsampled YCbCr TIFF packs luma+chroma into strips; incremental band
+    // writes produce many small strips instead of one strip per rows_per_strip,
+    // changing the TIFF structure.
+    if(image_)
+    {
+      if(!image_->upsample && !image_->force_rgb)
+      {
+        for(uint32_t i = 0; i < image_->decompress_num_comps; ++i)
+        {
+          if(image_->comps[i].dx != 1 || image_->comps[i].dy != 1)
+            return false;
+        }
+      }
+    }
+    return true;
+  }
   /***
    * library-orchestrated pixel encoding
    */
-  virtual bool encodePixels(uint32_t workerId, grk_io_buf pixels) override;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  virtual bool writeStrip(uint32_t workerId, grk_io_buf pixels) override;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
+  bool readMetadata(const std::string& filename, grk_image* image, grk_cparameters* parameters);
 
 private:
+  void readMetadataTags(TIFF* tif, grk_image* image, grk_cparameters* parameters, bool isCIE);
 #ifdef GRK_CUSTOM_TIFF_IO
   TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-  bool encodeHeader(TIFF* tif);
+  bool writeHeader(TIFF* tif);
   /***
    * Common core pixel encoding write to disk
    */
-  bool encodePixelsCoreWrite(grk_io_buf pixels) override;
+  bool writeStripToDisk(grk_io_buf pixels) override;
 
   bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                       uint16_t tiPC, uint16_t tiPhoto, uint32_t chroma_subsample_x,
@@ -662,12 +689,23 @@ private:
   template<typename RT>
   bool readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                             uint16_t tiPC);
+  /***
+   * bands arrive on tile-row boundaries, so a partial strip carries over
+   * to the next band and only the final strip may be short
+   */
+  template<typename P>
+  bool writeBandStrips(grk::PlanarToInterleaved<P>* interleaver, P** planes, uint32_t rows);
   TIFF* tif_;
   uint32_t chroma_subsample_x;
   uint32_t chroma_subsample_y;
   size_t units;
   grk_io_callback grkReclaimCallback_;
   void* grkReclaimUserData_;
+  grk::PlanarToInterleaved<T>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
+  GrkIOBuf stripCarryBuf_;
+  uint32_t stripCarryRows_ = 0;
+  uint32_t stripRowsWritten_ = 0;
 };
 
 #ifdef GRK_CUSTOM_TIFF_IO
@@ -737,20 +775,23 @@ TIFF* TIFFFormat<T>::MyTIFFOpen(const char* name, const char* mode)
 template<typename T>
 TIFFFormat<T>::TIFFFormat()
     : tif_(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
-      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr)
+      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr), interleaver_(nullptr),
+      interleaver16_(nullptr)
 
 {}
 
 template<typename T>
 TIFFFormat<T>::~TIFFFormat()
 {
+  delete interleaver_;
+  delete interleaver16_;
   if(tif_)
     TIFFClose(tif_);
 }
 
 template<typename T>
-void TIFFFormat<T>::registerGrkReclaimCallback(grk_io_init io_init,
-                                               grk_io_callback reclaim_callback, void* user_data)
+void TIFFFormat<T>::registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                                            void* user_data)
 {
   grkReclaimCallback_ = reclaim_callback;
   grkReclaimUserData_ = user_data;
@@ -759,22 +800,22 @@ void TIFFFormat<T>::registerGrkReclaimCallback(grk_io_init io_init,
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeInit(grk_image* image, const std::string& filename,
-                               uint32_t compression_level, uint32_t concurrency)
+bool TIFFFormat<T>::writeInit(grk_image* image, const std::string& filename,
+                              uint32_t compression_level, uint32_t concurrency)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
   {
     assert(!tif_);
     return true;
   }
 
-  return ImageFormat::encodeInit(image, filename, compression_level, concurrency);
+  return ImageFormat::writeInit(image, filename, compression_level, concurrency);
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeHeader(void)
+bool TIFFFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   if(!image_)
@@ -792,7 +833,7 @@ bool TIFFFormat<T>::encodeHeader(void)
   if(file_size > UINT32_MAX)
   {
     spdlog::error(
-        "TIFFFormat<T>::encodeHeader:file size greater than UINT32_MAX and BigTIFF not supported.");
+        "TIFFFormat<T>::writeHeader:file size greater than UINT32_MAX and BigTIFF not supported.");
     return false;
   }
   const char* mode = "wb";
@@ -805,17 +846,17 @@ bool TIFFFormat<T>::encodeHeader(void)
 #endif
   if(!tif_)
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader:failed to open {} for writing", fileName_.c_str());
+    spdlog::error("TIFFFormat<T>::writeHeader:failed to open {} for writing", fileName_.c_str());
     return false;
   }
 
-  return encodeHeader(tif_);
+  return writeHeader(tif_);
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeHeader(TIFF* tif)
+bool TIFFFormat<T>::writeHeader(TIFF* tif)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   int tiPhoto = PHOTOMETRIC_MINISBLACK;
@@ -831,29 +872,41 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
   uint16_t numcomps = image_->decompress_num_comps;
   bool subsampled = isFinalOutputSubsampled(image_);
   auto colourSpace = image_->decompress_colour_space;
+  // Detect preserved-palette write: single-channel indexed image with a 3-channel RGB LUT.
+  // TIFF PHOTOMETRIC_PALETTE always emits a 3-array (R/G/B) ColorMap.  A mono palette
+  // (num_channels == 1) is handled by replicating the single channel into all three.
+  bool writePalette = image_->meta && image_->meta->color.palette &&
+                      image_->meta->color.palette->component_mapping && !image_->apply_palette &&
+                      (image_->meta->color.palette->num_channels == 3 ||
+                       image_->meta->color.palette->num_channels == 1) &&
+                      numcomps == 1;
   if(bps == 0)
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader: image_ precision is zero.");
+    spdlog::error("TIFFFormat<T>::writeHeader: image_ precision is zero.");
     goto cleanup;
   }
   if(!allComponentsSanityCheck(image_, true))
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader: Image sanity check failed.");
+    spdlog::error("TIFFFormat<T>::writeHeader: Image sanity check failed.");
     goto cleanup;
   }
-  if(colourSpace == GRK_CLRSPC_CMYK)
+  if(writePalette)
+  {
+    tiPhoto = PHOTOMETRIC_PALETTE;
+  }
+  else if(colourSpace == GRK_CLRSPC_CMYK)
   {
     if(numcomps < 4U)
     {
       spdlog::error(
-          "TIFFFormat<T>::encodeHeader: CMYK images shall be composed of at least 4 planes.");
+          "TIFFFormat<T>::writeHeader: CMYK images shall be composed of at least 4 planes.");
 
       return false;
     }
     tiPhoto = PHOTOMETRIC_SEPARATED;
     if(numcomps > 4U)
     {
-      spdlog::warn("TIFFFormat<T>::encodeHeader: number of components {} is "
+      spdlog::warn("TIFFFormat<T>::writeHeader: number of components {} is "
                    "greater than 4. Truncating to 4",
                    numcomps);
       numcomps = 4U;
@@ -864,10 +917,16 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     switch(colourSpace)
     {
       case GRK_CLRSPC_EYCC:
+        // tiff describes a ycbcr image with a luma matrix (tag 529) and a black/white range
+        // (tag 532), and grok's eYCC inverse is the rec.601 matrix over the same range as its
+        // sYCC inverse, so there are no tag values that would tell the two apart on read
+        spdlog::warn("TIFFFormat<T>::writeHeader: eYCC is recorded as rec.601 YCbCr, so the "
+                     "file reads back as sYCC. Sample values are unaffected.");
+        [[fallthrough]];
       case GRK_CLRSPC_SYCC:
         if(subsampled && numcomps != 3)
         {
-          spdlog::error("TIFFFormat<T>::encodeHeader: subsampled YCbCr image_ with alpha "
+          spdlog::error("TIFFFormat<T>::writeHeader: subsampled YCbCr image_ with alpha "
                         "not supported.");
           goto cleanup;
         }
@@ -893,7 +952,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     }
     if(!isChromaSubsampled(image_))
     {
-      spdlog::error("TIFFFormat<T>::encodeHeader: only chroma channels can be subsampled");
+      spdlog::error("TIFFFormat<T>::writeHeader: only chroma channels can be subsampled");
       goto cleanup;
     }
   }
@@ -916,7 +975,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
     if((uint32_t)firstExtraChannel < num_colour_channels)
     {
-      spdlog::warn("TIFFFormat<T>::encodeHeader: TIFF requires that non-colour channels occur as "
+      spdlog::warn("TIFFFormat<T>::writeHeader: TIFF requires that non-colour channels occur as "
                    "last channels in image_. "
                    "TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
       numExtraChannels = 0;
@@ -934,6 +993,37 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
   TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
   TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
   TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, image_->rows_per_strip);
+  if(writePalette)
+  {
+    auto pal = image_->meta->color.palette;
+    uint32_t numEntries = pal->num_entries;
+    // libtiff requires colormap arrays sized 2^BitsPerSample, regardless of how many
+    // entries are populated; unused tail entries are zero-filled.
+    uint32_t mapSize = (bps >= 16) ? 65536U : (1U << bps);
+    if(numEntries > mapSize)
+      numEntries = mapSize;
+    std::unique_ptr<uint16_t[]> redMap(new uint16_t[mapSize]());
+    std::unique_ptr<uint16_t[]> greenMap(new uint16_t[mapSize]());
+    std::unique_ptr<uint16_t[]> blueMap(new uint16_t[mapSize]());
+    uint16_t* maps[3] = {redMap.get(), greenMap.get(), blueMap.get()};
+    for(uint32_t entry = 0; entry < numEntries; ++entry)
+    {
+      for(uint8_t c = 0; c < 3; ++c)
+      {
+        // For a mono palette, replicate channel 0 into R/G/B
+        uint8_t srcChan = (pal->num_channels == 1) ? 0 : c;
+        int32_t v = pal->lut[entry * pal->num_channels + srcChan];
+        uint8_t cprec = pal->channel_prec[srcChan];
+        uint32_t uv = (uint32_t)v;
+        if(cprec < 16)
+          uv <<= (16 - cprec);
+        else if(cprec > 16)
+          uv >>= (cprec - 16);
+        maps[c][entry] = (uint16_t)uv;
+      }
+    }
+    TIFFSetField(tif, TIFFTAG_COLORMAP, redMap.get(), greenMap.get(), blueMap.get());
+  }
   if(tiPhoto == PHOTOMETRIC_YCBCR)
   {
     float refBlackWhite[6] = {0.0, 255.0, 128.0, 255.0, 128.0, 255.0};
@@ -967,23 +1057,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
       TIFFSetField(tif, TIFFTAG_XMLPACKET, image_->meta->xmp_len, image_->meta->xmp_buf);
     if(image_->meta->iptc_buf && image_->meta->iptc_len)
     {
-      // length must be multiple of 4
-      auto iptc_len = image_->meta->iptc_len;
-      iptc_len += (4 - (iptc_len & 0x03));
-      if(iptc_len > image_->meta->iptc_len)
-      {
-        auto new_iptf_buf = new uint8_t[iptc_len];
-        memset(new_iptf_buf, 0, iptc_len);
-        memcpy(new_iptf_buf, image_->meta->iptc_buf, image_->meta->iptc_len);
-        delete[] image_->meta->iptc_buf;
-        image_->meta->iptc_buf = new_iptf_buf;
-        image_->meta->iptc_len = iptc_len;
-      }
-      // Tag is of type TIFF_LONG, so byte length is divided by four
-      if(TIFFIsByteSwapped(tif))
-        TIFFSwabArrayOfLong((uint32_t*)image_->meta->iptc_buf,
-                            (tmsize_t)(image_->meta->iptc_len / 4));
-      TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(image_->meta->iptc_len / 4),
+      TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(image_->meta->iptc_len),
                    (void*)image_->meta->iptc_buf);
     }
   }
@@ -1017,7 +1091,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
   }
   success = true;
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 cleanup:
 
   return success;
@@ -1026,72 +1100,175 @@ cleanup:
  * library-orchestrated pixel encoding
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixels(uint32_t workerId, grk_io_buf pixels)
+bool TIFFFormat<T>::writeStrip(uint32_t workerId, grk_io_buf pixels)
 {
-  std::unique_lock<std::mutex> lk(encodePixelmutex);
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  std::unique_lock<std::mutex> lk(writeStripMutex_);
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded() && !encodeHeader())
+  if(!isHeaderWritten() && !writeHeader())
     return false;
 
-  return encodePixelsCore(workerId, pixels);
+  return writeStripCore(workerId, pixels);
 }
 
 /***
  * application-orchestrated pixel encoding
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixels()
+bool TIFFFormat<T>::writeImage()
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded())
+  if(!isHeaderWritten())
   {
-    if(!encodeHeader())
+    if(!writeHeader())
       return false;
   }
+  return writeImageBand(0, image_->decompress_height);
+}
+
+template<typename T>
+template<typename P>
+bool TIFFFormat<T>::writeBandStrips(grk::PlanarToInterleaved<P>* interleaver, P** planes,
+                                    uint32_t rows)
+{
+  uint32_t rowsPerStrip = image_->rows_per_strip;
+  uint64_t rowBytes = image_->packed_row_bytes;
+  while(rows)
+  {
+    if(!stripCarryRows_)
+      stripCarryBuf_ = pool.get(rowBytes * rowsPerStrip);
+    uint32_t rowsTaken = (std::min)(rowsPerStrip - stripCarryRows_, rows);
+    interleaver->interleave(
+        planes, image_->decompress_num_comps, stripCarryBuf_.data + rowBytes * stripCarryRows_,
+        image_->decompress_width, image_->comps[0].stride, rowBytes, rowsTaken, 0);
+    stripCarryRows_ += rowsTaken;
+    stripRowsWritten_ += rowsTaken;
+    rows -= rowsTaken;
+    if(stripCarryRows_ < rowsPerStrip && stripRowsWritten_ != image_->decompress_height)
+      continue;
+    auto strip = stripCarryBuf_;
+    strip.pooled = true;
+    strip.offset = orchestrator.getOffset();
+    strip.len = rowBytes * stripCarryRows_;
+    strip.index = orchestrator.getNumPooledRequests();
+    stripCarryBuf_ = GrkIOBuf();
+    stripCarryRows_ = 0;
+    if(!writeStripCore(0, strip))
+      return false;
+  }
+  return true;
+}
+
+template<typename T>
+bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
     if(!image_->comps[i].data)
     {
-      spdlog::error("encodePixels: component {} has null data.", i);
+      spdlog::error("writeImageBand: component {} has null data.", i);
       return false;
     }
   }
   bool success = false;
-  uint32_t height = image_->decompress_height;
-  auto planes = std::make_unique<T*[]>(image_->numcomps);
-  auto planesBegin = std::make_unique<T*[]>(image_->numcomps);
   uint16_t numcomps = image_->decompress_num_comps;
-  for(uint16_t i = 0U; i < numcomps; ++i)
+  constexpr uint16_t kMaxStackComps = 4;
+  T* stackPlanes[kMaxStackComps];
+  T* stackPlanesBegin[kMaxStackComps];
+  std::unique_ptr<T*[]> heapPlanes;
+  std::unique_ptr<T*[]> heapPlanesBegin;
+  T** planes;
+  T** planesBegin;
+  if(numcomps <= kMaxStackComps)
   {
-    planes[i] = (T*)image_->comps[i].data;
-    planesBegin[i] = planes[i];
+    planes = stackPlanes;
+    planesBegin = stackPlanesBegin;
   }
-  uint32_t h = 0;
+  else
+  {
+    heapPlanes = std::make_unique<T*[]>(numcomps);
+    heapPlanesBegin = std::make_unique<T*[]>(numcomps);
+    planes = heapPlanes.get();
+    planesBegin = heapPlanesBegin.get();
+  }
   GrkIOBuf packedBuf;
 
   if(isFinalOutputSubsampled(image_))
   {
-    // TIFF-specific
+    bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+    uint32_t stride_luma = image_->comps[0].stride;
+    uint32_t stride_chroma1 = image_->comps[1].stride;
+    uint32_t stride_chroma2 = image_->comps[2].stride;
+
+    // Position planes at yBegin (luma at row yBegin, chroma at row yBegin/dy)
+    // Use int16_t pointers when data is 16-bit to get correct pointer arithmetic
+    int16_t* p16[3] = {};
+    if(isInt16)
+    {
+      p16[0] = (int16_t*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
+      p16[1] = (int16_t*)image_->comps[1].data +
+               (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
+      p16[2] = (int16_t*)image_->comps[2].data +
+               (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    }
+    else
+    {
+      planes[0] = (T*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
+      planes[1] =
+          (T*)image_->comps[1].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
+      planes[2] =
+          (T*)image_->comps[2].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    }
+    int16_t* p16Begin[3] = {p16[0], p16[1], p16[2]};
+    planesBegin[1] = planes[1];
+    planesBegin[2] = planes[2];
+
     uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
     packedBuf = pool.get(packedLengthEncoded);
-    auto bufPtr = (int8_t*)packedBuf.data;
+    auto bufPtr = (uint8_t*)packedBuf.data;
     uint32_t bytesToWrite = 0;
-    uint32_t rowsWritten = 0;
-    for(; h < rowsWritten + height; h += chroma_subsample_y)
+    uint32_t rowsInCurrentStrip = 0;
+    // clump samples carry BitsPerSample bits each, and each clump row starts on a byte
+    // boundary, so a reader that trusts the header finds the strip the header describes
+    const uint8_t bitsPerSample = image_->decompress_prec;
+    const uint32_t sampleMask = bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
+    uint32_t bitAccumulator = 0;
+    uint32_t bitsHeld = 0;
+    auto emitSample = [&](int32_t sample) {
+      bitAccumulator = (bitAccumulator << bitsPerSample) | ((uint32_t)sample & sampleMask);
+      bitsHeld += bitsPerSample;
+      while(bitsHeld >= 8)
+      {
+        bitsHeld -= 8;
+        *bufPtr++ = (uint8_t)(bitAccumulator >> bitsHeld);
+        bytesToWrite++;
+      }
+    };
+    auto flushClumpRow = [&]() {
+      if(bitsHeld)
+      {
+        *bufPtr++ = (uint8_t)(bitAccumulator << (8 - bitsHeld));
+        bytesToWrite++;
+        bitsHeld = 0;
+      }
+      bitAccumulator = 0;
+    };
+    for(uint32_t h = yBegin; h < yEnd; h += chroma_subsample_y)
     {
-      uint32_t rowsSoFar = h - rowsWritten;
-      if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rows_per_strip == 0))
+      // the strip buffer only holds rows_per_strip rows, so flush on the first clump
+      // row that reaches it rather than on an exact multiple that may never land
+      if(bytesToWrite > 0 && rowsInCurrentStrip >= image_->rows_per_strip)
       {
         packedBuf.len = bytesToWrite;
         packedBuf.offset = orchestrator.getOffset();
         packedBuf.index = orchestrator.getNumPooledRequests();
-        if(!encodePixelsCore(0, packedBuf))
+        if(!writeStripCore(0, packedBuf))
           goto cleanup;
         packedBuf = pool.get(packedLengthEncoded);
-        bufPtr = (int8_t*)(packedBuf.data);
+        bufPtr = (uint8_t*)(packedBuf.data);
         bytesToWrite = 0;
+        rowsInCurrentStrip = 0;
       }
       size_t xposLuma = 0;
       size_t xposChroma = 0;
@@ -1102,62 +1279,99 @@ bool TIFFFormat<T>::encodePixels()
         {
           for(size_t sub_x = xposLuma; sub_x < xposLuma + chroma_subsample_x; ++sub_x)
           {
-            bool accept = (h + sub_h) < height && sub_x < image_->decompress_width;
-            *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
-            bytesToWrite++;
+            bool accept = (h + sub_h) < yEnd && sub_x < image_->decompress_width;
+            if(isInt16)
+              emitSample(accept ? p16[0][sub_x + sub_h * stride_luma] : 0);
+            else
+              emitSample(accept ? (int32_t)planes[0][sub_x + sub_h * stride_luma] : 0);
           }
         }
-        if(xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride)
+        if(xposChroma >= stride_chroma1 || xposChroma >= stride_chroma2)
         {
-          spdlog::warn("TIFFFormat<T>::encodePixels: chroma channel width is too short - "
+          spdlog::warn("TIFFFormat<T>::writeImageBand: chroma channel width is too short - "
                        "skipping out of bounds pixel location.");
           break;
         }
         // 2. chroma
-        *bufPtr++ = (int8_t)*planes[1]++;
-        *bufPtr++ = (int8_t)*planes[2]++;
-        bytesToWrite += 2;
+        if(isInt16)
+        {
+          emitSample(*p16[1]++);
+          emitSample(*p16[2]++);
+        }
+        else
+        {
+          emitSample((int32_t)*planes[1]++);
+          emitSample((int32_t)*planes[2]++);
+        }
         xposChroma++;
         xposLuma += chroma_subsample_x;
       }
-      planes[0] += image_->comps[0].stride * chroma_subsample_y;
-      planesBegin[1] += image_->comps[1].stride;
-      planes[1] = planesBegin[1];
-      planesBegin[2] += image_->comps[2].stride;
-      planes[2] = planesBegin[2];
+      flushClumpRow();
+      if(isInt16)
+      {
+        p16[0] += stride_luma * chroma_subsample_y;
+        p16Begin[1] += stride_chroma1;
+        p16[1] = p16Begin[1];
+        p16Begin[2] += stride_chroma2;
+        p16[2] = p16Begin[2];
+      }
+      else
+      {
+        planes[0] += stride_luma * chroma_subsample_y;
+        planesBegin[1] += stride_chroma1;
+        planes[1] = planesBegin[1];
+        planesBegin[2] += stride_chroma2;
+        planes[2] = planesBegin[2];
+      }
+      rowsInCurrentStrip += chroma_subsample_y;
     }
-    if(h != rowsWritten)
-      rowsWritten += h - chroma_subsample_y - rowsWritten;
-    // cleanup
+    // flush remaining
     packedBuf.len = bytesToWrite;
     packedBuf.offset = orchestrator.getOffset();
     packedBuf.index = orchestrator.getNumPooledRequests();
-    if(bytesToWrite && !encodePixelsCore(0, packedBuf))
+    if(bytesToWrite && !writeStripCore(0, packedBuf))
+      goto cleanup;
+  }
+  else if(image_->comps[0].data_type == GRK_INT_16)
+  {
+    constexpr uint16_t kMaxStack16 = 4;
+    int16_t* stackPlanes16[kMaxStack16];
+    std::unique_ptr<int16_t*[]> heapPlanes16;
+    int16_t** planes16;
+    if(numcomps <= kMaxStack16)
+      planes16 = stackPlanes16;
+    else
+    {
+      heapPlanes16 = std::make_unique<int16_t*[]>(numcomps);
+      planes16 = heapPlanes16.get();
+    }
+    for(uint16_t i = 0U; i < numcomps; ++i)
+    {
+      planes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    }
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(image_->decompress_prec);
+      if(!interleaver16_)
+        goto cleanup;
+    }
+    if(!writeBandStrips(interleaver16_, planes16, yEnd - yBegin))
       goto cleanup;
   }
   else
   {
-    auto iter = grk::InterleaverFactory<T>::makeInterleaver(image_->decompress_prec);
-    if(!iter)
-      goto cleanup;
-    while(h < height)
+    for(uint16_t i = 0U; i < numcomps; ++i)
     {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
-      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      iter->interleave(((T**)planes.get()), numcomps, packedBuf.data, image_->decompress_width,
-                       image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
-      packedBuf.pooled = true;
-      packedBuf.offset = orchestrator.getOffset();
-      packedBuf.len = image_->packed_row_bytes * stripRows;
-      packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!encodePixelsCore(0, packedBuf))
-      {
-        delete iter;
-        goto cleanup;
-      }
-      h += stripRows;
+      planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
     }
-    delete iter;
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(image_->decompress_prec);
+      if(!interleaver_)
+        goto cleanup;
+    }
+    if(!writeBandStrips(interleaver_, planes, yEnd - yBegin))
+      goto cleanup;
   }
   success = true;
 cleanup:
@@ -1169,22 +1383,29 @@ cleanup:
  * Common core pixel encoding write to disk
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixelsCoreWrite(grk_io_buf pixels)
+bool TIFFFormat<T>::writeStripToDisk(grk_io_buf pixels)
 {
   tmsize_t written = TIFFWriteEncodedStrip(tif_, pixels.index, pixels.data, (tmsize_t)pixels.len);
   return written != -1;
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeFinish(void)
+bool TIFFFormat<T>::writeFinish(void)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
   {
     assert(!tif_);
     return true;
   }
+  // an aborted decode can leave a partial strip unwritten
+  if(stripCarryRows_)
+  {
+    pool.put(stripCarryBuf_);
+    stripCarryBuf_ = GrkIOBuf();
+    stripCarryRows_ = 0;
+  }
   // save EXIF data before closing the primary TIFF handle
-  uint8_t* exifBuf = nullptr;
+  const uint8_t* exifBuf = nullptr;
   uint32_t exifLen = 0;
   std::string fname;
   if(image_ && image_->meta && image_->meta->exif_buf && image_->meta->exif_len)
@@ -1207,7 +1428,7 @@ bool TIFFFormat<T>::encodeFinish(void)
       TIFFClose(tif);
     }
   }
-  encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+  writeState_ |= IMAGE_FORMAT_PIXELS_WRITTEN;
 
   return true;
 }
@@ -1407,7 +1628,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     success = false;
     goto beach;
   }
-  rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+  rowStride = (tsize_t)(((uint64_t)comps[0].w * tiSpp * comps[0].prec + 7U) / 8U);
   buffer32s = new T[(size_t)comps[0].w * tiSpp];
   strip = 0;
   invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
@@ -1419,11 +1640,9 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     planes[0] = (T*)comp->data;
     uint32_t height = 0;
     // if width % chroma_subsample_x != 0...
-    size_t units = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
-    // each coded row will be padded to fill unit
-    size_t padding = (units * chroma_subsample_x - comp->w);
+    size_t planeUnits = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
     if(subsampled)
-      rowStride = (tsize_t)(units * unitSize);
+      rowStride = (tsize_t)((planeUnits * unitSize * comp->prec + 7U) / 8U);
     size_t xpos = 0;
     for(; (height < comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++)
     {
@@ -1481,7 +1700,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
               {
                 if(!convOk.load(std::memory_order_relaxed))
                   return;
-                const uint8_t* rowData = datau8 + (size_t)r * rowStride;
+                const uint8_t* rowData = datau8 + (size_t)r * (size_t)rowStride;
                 if(!convertRowTIFF<T>(rowData, rowBufs[r], pixelCount, prec, sgnd, invert))
                 {
                   convOk.store(false, std::memory_order_relaxed);
@@ -1520,33 +1739,51 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
           else
           {
             /* Small strip: process sequentially (avoid Taskflow overhead) */
+            auto rowPlanesArr = std::make_unique<T*[]>(numcomps);
             for(uint32_t r = 0; r < rowCount; ++r)
             {
-              if(!convertRowTIFF<T>(datau8 + (size_t)r * rowStride, buffer32s, pixelCount, prec,
-                                    sgnd, invert))
+              if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount,
+                                    prec, sgnd, invert))
               {
                 success = false;
                 goto beach;
               }
-              T* rowPlanesArr[16]; // max components
               for(uint16_t k = 0; k < numcomps; ++k)
                 rowPlanesArr[k] = planes[k] + r * comp->stride;
-              interleave(buffer32s, rowPlanesArr, comp->w, targetPlanes);
+              interleave(buffer32s, rowPlanesArr.get(), comp->w, targetPlanes);
             }
           }
 
           /* Advance all state by rowCount rows */
           for(uint16_t k = 0; k < numcomps; ++k)
             planes[k] += (size_t)rowCount * comp->stride;
-          datau8 += (size_t)rowCount * rowStride;
-          ssize -= (tsize_t)((size_t)rowCount * rowStride);
+          datau8 += (size_t)rowCount * (size_t)rowStride;
+          ssize -= (tsize_t)((size_t)rowCount * (size_t)rowStride);
           height += rowCount;
         }
         else
         {
           uint32_t strideDiffCb = comps[1].stride - comps[1].w;
           uint32_t strideDiffCr = comps[2].stride - comps[2].w;
-          for(size_t i = 0; i < (size_t)rowStride; i += unitSize)
+          // clump samples carry BitsPerSample bits each, packed high bit first and
+          // restarting on a byte boundary at every clump row
+          const uint8_t bitsPerSample = comp->prec;
+          const uint32_t sampleMask =
+              bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
+          const uint8_t* clumpRow = datau8;
+          uint32_t bitAccumulator = 0;
+          uint32_t bitsHeld = 0;
+          auto nextSample = [&]() -> T {
+            while(bitsHeld < bitsPerSample)
+            {
+              bitAccumulator = (bitAccumulator << 8) | *clumpRow++;
+              bitsHeld += 8;
+            }
+            bitsHeld -= bitsPerSample;
+
+            return (T)((bitAccumulator >> bitsHeld) & sampleMask);
+          };
+          for(size_t unit = 0; unit < planeUnits; ++unit)
           {
             // process a unit
             // 1. luma
@@ -1554,21 +1791,20 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             {
               for(size_t j = 0; j < chroma_subsample_x; ++j)
               {
+                T luma = nextSample();
                 bool accept = height + k < comp->h && xpos + j < comp->w;
                 if(accept)
-                  planes[0][xpos + j + k * comp->stride] = datau8[j];
+                  planes[0][xpos + j + k * comp->stride] = luma;
               }
-              datau8 += chroma_subsample_x;
             }
             // 2. chroma
-            *planes[1]++ = *datau8++;
-            *planes[2]++ = *datau8++;
+            *planes[1]++ = nextSample();
+            *planes[2]++ = nextSample();
 
             // 3. increment raster x
             xpos += chroma_subsample_x;
             if(xpos >= comp->w)
             {
-              datau8 += padding;
               xpos = 0;
               planes[0] += comp->stride * chroma_subsample_y;
               planes[1] += strideDiffCb;
@@ -1576,6 +1812,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
               height += chroma_subsample_y;
             }
           }
+          datau8 += rowStride;
           ssize -= rowStride;
         }
       }
@@ -1615,7 +1852,7 @@ bool TIFFFormat<T>::readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint1
     success = false;
     goto beach;
   }
-  rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+  rowStride = (tsize_t)(((uint64_t)comps[0].w * tiSpp * comps[0].prec + 7U) / 8U);
   buffer32s = new T[(size_t)comps[0].w * tiSpp];
   strip = 0;
   for(uint16_t j = 0; j < numcomps; j++)
@@ -1666,7 +1903,88 @@ beach:
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
 template<typename T>
-grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+void TIFFFormat<T>::readMetadataTags(TIFF* tif, grk_image* image, grk_cparameters* parameters,
+                                     bool isCIE)
+{
+  short tiResUnit = 0;
+  float tiXRes = 0, tiYRes = 0;
+  bool hasXRes = false, hasYRes = false, hasResUnit = false;
+  uint32_t icclen = 0;
+  uint8_t* iccbuf = nullptr;
+  uint8_t* xmp_buf = nullptr;
+  uint32_t xmp_len = 0;
+  uint32_t count = 0;
+  void* raw_ptr = nullptr;
+
+  // 5. extract capture resolution
+  hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+  hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+  hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+  if(hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE)
+  {
+    set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+    parameters->write_capture_resolution_from_file = true;
+  }
+  // 6. extract embedded ICC profile (with sanity check on binary size of profile)
+  // note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
+  // CIE and ICC
+  if(!isCIE)
+  {
+    if((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
+       icclen < grk::maxICCProfileBufferLen)
+      copyICC(image, iccbuf, icclen);
+  }
+  // 7. extract IPTC meta-data
+  if(TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &count, &raw_ptr) == 1 && raw_ptr)
+  {
+    const uint8_t* src = static_cast<const uint8_t*>(raw_ptr);
+    if(count > 0)
+    {
+      createMeta(image);
+      image->meta->iptc_len = count;
+      image->meta->iptc_buf = new uint8_t[count];
+      memcpy(image->meta->iptc_buf, src, count);
+    }
+  }
+  // 8. extract XML meta-data
+  if(TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
+  {
+    createMeta(image);
+    image->meta->xmp_len = xmp_len;
+    image->meta->xmp_buf = new uint8_t[xmp_len];
+    memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
+  }
+  // 8b. extract EXIF meta-data
+  {
+    uint8_t* exif_data = nullptr;
+    uint32_t exif_size = 0;
+    if(extractExifFromTiff(tif, &exif_data, &exif_size) && exif_data && exif_size > 0)
+    {
+      createMeta(image);
+      image->meta->exif_buf = exif_data;
+      image->meta->exif_len = exif_size;
+    }
+  }
+}
+template<typename T>
+bool TIFFFormat<T>::readMetadata(const std::string& filename, grk_image* image,
+                                 grk_cparameters* parameters)
+{
+  auto tif = TIFFOpen(filename.c_str(), "r");
+  if(!tif)
+  {
+    spdlog::error("TIFFFormat<T>::readMetadata: Failed to open {} for reading", filename);
+    return false;
+  }
+  uint16_t tiPhoto = 0;
+  TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+  readMetadataTags(tif, image, parameters,
+                   tiPhoto == PHOTOMETRIC_CIELAB || tiPhoto == PHOTOMETRIC_ICCLAB);
+  TIFFClose(tif);
+  return true;
+}
+template<typename T>
+grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   bool found_assocalpha = false;
   size_t alpha_count = 0;
@@ -1677,8 +1995,6 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   grk_image* image = nullptr;
   uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
   bool hasTiSf = false;
-  short tiResUnit = 0;
-  float tiXRes = 0, tiYRes = 0;
   uint32_t tiWidth = 0, tiHeight = 0;
   bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
   bool success = false;
@@ -1692,13 +2008,13 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   tif_ = TIFFOpen(filename.c_str(), "r");
   if(!tif_)
   {
-    spdlog::error("TIFFFormat<T>::decode: Failed to open {} for reading", filename);
+    spdlog::error("TIFFFormat<T>::readImage: Failed to open {} for reading", filename);
     return 0;
   }
 
   if(TIFFIsTiled(tif_))
   {
-    spdlog::error("TIFFFormat<T>::decode: tiled TIFF images not supported");
+    spdlog::error("TIFFFormat<T>::readImage: tiled TIFF images not supported");
     if(tif_)
       TIFFClose(tif_);
     tif_ = nullptr;
@@ -1719,15 +2035,8 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   uint32_t w = tiWidth;
   uint32_t h = tiHeight;
   uint16_t numcomps = 0;
-  uint32_t icclen = 0;
-  uint8_t* iccbuf = nullptr;
-  uint8_t* iptc_buf = nullptr;
-  uint32_t iptc_len = 0;
-  uint8_t* xmp_buf = nullptr;
-  uint32_t xmp_len = 0;
   uint16_t* sampleinfo = nullptr;
   uint16_t extrasamples = 0;
-  bool hasXRes = false, hasYRes = false, hasResUnit = false;
   bool isSigned = (tiSf == SAMPLEFORMAT_INT);
   bool needSignedPixelReader = isSigned && (tiBps == 8 || tiBps == 16);
 
@@ -1748,11 +2057,11 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     }
   } while(TIFFReadDirectory(tif_));
   if(num_pages > 1)
-    spdlog::warn(
-        "TIFFFormat<T>::decode: multi-page document detected. Only the first page will be encoded");
+    spdlog::warn("TIFFFormat<T>::readImage: multi-page document detected. Only the first page will "
+                 "be encoded");
   if(!TIFFSetDirectory(tif_, cur_dir))
   {
-    spdlog::error("TIFFFormat<T>::decode: failed to reset to directory {}", cur_dir);
+    spdlog::error("TIFFFormat<T>::readImage: failed to reset to directory {}", cur_dir);
     goto cleanup;
   }
 
@@ -1762,7 +2071,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
      tiPhoto != PHOTOMETRIC_YCBCR && tiPhoto != PHOTOMETRIC_SEPARATED &&
      tiPhoto != PHOTOMETRIC_PALETTE)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported color format {}.\n"
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported color format {}.\n"
                   "Only RGB(A), GRAY(A), CIELAB, YCC, CMYK and PALETTE have been implemented.",
                   getColourFormatString(tiPhoto));
     goto cleanup;
@@ -1776,7 +2085,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       if((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i])
       {
         spdlog::error(
-            "TIFFFormat<T>::decode: YCbCr image with unsupported non Rec. 601 colour space;");
+            "TIFFFormat<T>::readImage: YCbCr image with unsupported non Rec. 601 colour space;");
         spdlog::error("YCbCrCoefficients: {},{},{}", luma[0], luma[1], luma[2]);
         spdlog::error("Please convert to sRGB before compressing.");
         goto cleanup;
@@ -1786,24 +2095,24 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   // check sample format
   if(hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported sample format: {}.",
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported sample format: {}.",
                   getSampleFormatString(tiSf));
     goto cleanup;
   }
   if(tiSpp == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Samples per pixel must be non-zero");
+    spdlog::error("TIFFFormat<T>::readImage: Samples per pixel must be non-zero");
     goto cleanup;
   }
   if(tiBps > 16U || tiBps == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported precision {}. Maximum 16 Bits supported.",
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported precision {}. Maximum 16 Bits supported.",
                   tiBps);
     goto cleanup;
   }
   if(tiWidth == 0 || tiHeight == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Width({}) and height({}) must both "
+    spdlog::error("TIFFFormat<T>::readImage: Width({}) and height({}) must both "
                   "be non-zero",
                   tiWidth, tiHeight);
     goto cleanup;
@@ -1813,7 +2122,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   // 2. initialize image components and signed/unsigned
   if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
   {
-    spdlog::warn("TIFFFormat<T>::decode: Input image bitdepth is {} bits.", tiBps);
+    spdlog::warn("TIFFFormat<T>::readImage: Input image bitdepth is {} bits.", tiBps);
     spdlog::warn("TIF conversion has automatically rescaled to 12-bits");
     spdlog::warn("to comply with cinema profiles.\n");
   }
@@ -1827,7 +2136,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     case PHOTOMETRIC_PALETTE:
       if(isSigned)
       {
-        spdlog::error("TIFFFormat<T>::decode: Signed palette image not supported");
+        spdlog::error("TIFFFormat<T>::readImage: Signed palette image not supported");
         goto cleanup;
       }
       color_space = GRK_CLRSPC_SRGB;
@@ -1852,45 +2161,66 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       // jpeg library is needed to convert from YCbCr to RGB
       if(compress == COMPRESSION_OJPEG || compress == COMPRESSION_JPEG)
       {
-        spdlog::error("TIFFFormat<T>::decode: YCbCr image with JPEG compression"
+        spdlog::error("TIFFFormat<T>::readImage: YCbCr image with JPEG compression"
                       " is not supported");
         goto cleanup;
       }
       else if(compress == COMPRESSION_PACKBITS)
       {
-        spdlog::error("TIFFFormat<T>::decode: YCbCr image with PACKBITS compression"
+        spdlog::error("TIFFFormat<T>::readImage: YCbCr image with PACKBITS compression"
                       " is not supported");
         goto cleanup;
       }
       color_space = GRK_CLRSPC_SYCC;
       numcomps = (uint16_t)(numcomps + 3);
-      TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
-                            &chroma_subsample_y);
+      // the tag holds uint16 values, larger types break on big-endian hosts
+      {
+        uint16_t subsample_x = 0, subsample_y = 0;
+        TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRSUBSAMPLING, &subsample_x, &subsample_y);
+        chroma_subsample_x = subsample_x;
+        chroma_subsample_y = subsample_y;
+      }
       if(chroma_subsample_x == 0 || chroma_subsample_y == 0)
       {
-        spdlog::error("TIFFFormat<T>::decode: chroma subsampling factors must be positive.");
+        spdlog::error("TIFFFormat<T>::readImage: chroma subsampling factors must be positive.");
         goto cleanup;
       }
       if(chroma_subsample_x > 255 || chroma_subsample_y > 255)
       {
         spdlog::error(
-            "TIFFFormat<T>::decode: chroma subsampling factors must each be less than 256.");
+            "TIFFFormat<T>::readImage: chroma subsampling factors must each be less than 256.");
         goto cleanup;
       }
       if(chroma_subsample_x != 1 || chroma_subsample_y != 1)
       {
         if(isSigned)
         {
-          spdlog::error("TIFFFormat<T>::decode: chroma subsampling {},{} with signed data "
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with signed data "
                         "is not supported",
                         chroma_subsample_x, chroma_subsample_y);
           goto cleanup;
         }
         if(numcomps != 3)
         {
-          spdlog::error("TIFFFormat<T>::decode: chroma subsampling {},{} with alpha "
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with alpha "
                         "channel(s) not supported",
                         chroma_subsample_x, chroma_subsample_y);
+          goto cleanup;
+        }
+        if(tiPC == PLANARCONFIG_SEPARATE)
+        {
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with separate "
+                        "planes not supported",
+                        chroma_subsample_x, chroma_subsample_y);
+          goto cleanup;
+        }
+        uint32_t rowsPerStrip = 0;
+        TIFFGetFieldDefaulted(tif_, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+        if(rowsPerStrip < tiHeight && rowsPerStrip % chroma_subsample_y != 0)
+        {
+          spdlog::error("TIFFFormat<T>::readImage: rows per strip {} must be a multiple of "
+                        "vertical chroma subsampling {}",
+                        rowsPerStrip, chroma_subsample_y);
           goto cleanup;
         }
       }
@@ -1900,21 +2230,21 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       numcomps = (uint16_t)(numcomps + 4);
       break;
     default:
-      spdlog::error("TIFFFormat<T>::decode: Unsupported colour space {}.", tiPhoto);
+      spdlog::error("TIFFFormat<T>::readImage: Unsupported colour space {}.", tiPhoto);
       goto cleanup;
       break;
   }
   if(tiPhoto == PHOTOMETRIC_CIELAB)
   {
     if(hasTiSf && (tiSf != SAMPLEFORMAT_INT))
-      spdlog::warn("TIFFFormat<T>::decode: Input image is in CIE colour space"
+      spdlog::warn("TIFFFormat<T>::readImage: Input image is in CIE colour space"
                    " but sample format is unsigned int. Forcing to signed int");
     isSigned = true;
   }
   else if(tiPhoto == PHOTOMETRIC_ICCLAB)
   {
     if(hasTiSf && (tiSf != SAMPLEFORMAT_UINT))
-      spdlog::warn("TIFFFormat<T>::decode: Input image is in ICC CIE colour"
+      spdlog::warn("TIFFFormat<T>::readImage: Input image is in ICC CIE colour"
                    " space but sample format is signed int. Forcing to unsigned int");
     isSigned = false;
   }
@@ -1922,11 +2252,11 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   if(isSigned)
   {
     if(tiPhoto == PHOTOMETRIC_MINISWHITE)
-      spdlog::error("TIFFFormat<T>::decode: signed image with "
+      spdlog::error("TIFFFormat<T>::readImage: signed image with "
                     "MINISWHITE format is not fully supported");
     if(tiBps != 4 && tiBps != 8 && tiBps != 10 && tiBps != 12 && tiBps != 16)
     {
-      spdlog::error("TIFFFormat<T>::decode: signed image with bit"
+      spdlog::error("TIFFFormat<T>::readImage: signed image with bit"
                     " depth {} is not supported",
                     tiBps);
       goto cleanup;
@@ -1939,6 +2269,8 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     auto img_comp = &cmptparm[j];
     memset(img_comp, 0, sizeof(grk_image_comp));
     img_comp->prec = (uint8_t)tiBps;
+    if constexpr(sizeof(T) == 2)
+      img_comp->data_type = GRK_INT_16;
     bool chroma = (j == 1 || j == 2);
     img_comp->dx = chroma ? (uint8_t)chroma_subsample_x : 1;
     img_comp->dy = chroma ? (uint8_t)chroma_subsample_y : 1;
@@ -1954,7 +2286,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   image->x1 = image->x0 + (w - 1) * 1 + 1;
   if(image->x1 <= image->x0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Bad value for image->x1({}) vs. "
+    spdlog::error("TIFFFormat<T>::readImage: Bad value for image->x1({}) vs. "
                   "image->x0({}).",
                   image->x1, image->x0);
     goto cleanup;
@@ -1963,7 +2295,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   image->y1 = image->y0 + (h - 1) * 1 + 1;
   if(image->y1 <= image->y0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Bad value for image->y1({}) vs. "
+    spdlog::error("TIFFFormat<T>::readImage: Bad value for image->y1({}) vs. "
                   "image->y0({}).",
                   image->y1, image->y0);
     goto cleanup;
@@ -1972,7 +2304,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   {
     if(!TIFFGetField(tif_, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
     {
-      spdlog::error("TIFFFormat<T>::decode: Missing required \"Colormap\" tag");
+      spdlog::error("TIFFFormat<T>::readImage: Missing required \"Colormap\" tag");
       goto cleanup;
     }
     uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
@@ -2011,7 +2343,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       if(alphaType == EXTRASAMPLE_ASSOCALPHA)
       {
         if(found_assocalpha)
-          spdlog::warn("TIFFFormat<T>::decode: Found more than one associated alpha channel");
+          spdlog::warn("TIFFFormat<T>::readImage: Found more than one associated alpha channel");
         alpha_count++;
         comp->type = GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY;
         found_assocalpha = true;
@@ -2059,54 +2391,17 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     goto cleanup;
   }
 
-  // 5. extract capture resolution
-  hasXRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-  hasYRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-  hasResUnit = TIFFGetFieldDefaulted(tif_, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
-  if(hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE)
+  readMetadataTags(tif_, image, parameters, isCIE);
+  // For chunky (interleaved) data the per-row scratch buffer is sized from
+  // tiSpp, but the de-interleavers read width*numcomps samples. If the
+  // photometric/extrasamples-derived numcomps exceeds the SamplesPerPixel tag,
+  // the readers over-read the row buffer, so require them to agree.
+  if(tiPC == PLANARCONFIG_CONTIG && numcomps != tiSpp)
   {
-    set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
-    parameters->write_capture_resolution_from_file = true;
-  }
-  // 6. extract embedded ICC profile (with sanity check on binary size of profile)
-  // note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
-  // CIE and ICC
-  if(!isCIE)
-  {
-    if((TIFFGetFieldDefaulted(tif_, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
-       icclen < grk::maxICCProfileBufferLen)
-      copyICC(image, iccbuf, icclen);
-  }
-  // 7. extract IPTC meta-data
-  if(TIFFGetFieldDefaulted(tif_, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)
-  {
-    if(TIFFIsByteSwapped(tif_))
-      TIFFSwabArrayOfLong((uint32_t*)iptc_buf, iptc_len);
-    // since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
-    // by 4 to get the length in bytes
-    createMeta(image);
-    image->meta->iptc_len = iptc_len * 4;
-    image->meta->iptc_buf = new uint8_t[iptc_len];
-    memcpy(image->meta->iptc_buf, iptc_buf, iptc_len);
-  }
-  // 8. extract XML meta-data
-  if(TIFFGetFieldDefaulted(tif_, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
-  {
-    createMeta(image);
-    image->meta->xmp_len = xmp_len;
-    image->meta->xmp_buf = new uint8_t[xmp_len];
-    memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
-  }
-  // 8b. extract EXIF meta-data
-  {
-    uint8_t* exif_data = nullptr;
-    uint32_t exif_size = 0;
-    if(extractExifFromTiff(tif_, &exif_data, &exif_size) && exif_data && exif_size > 0)
-    {
-      createMeta(image);
-      image->meta->exif_buf = exif_data;
-      image->meta->exif_len = exif_size;
-    }
+    spdlog::error("TIFFFormat<T>::readImage: component count {} does not match "
+                  "SamplesPerPixel {} for contiguous (chunky) data",
+                  numcomps, tiSpp);
+    goto cleanup;
   }
   // 9. read pixel data
   if(needSignedPixelReader)

@@ -83,6 +83,9 @@ TileProcessorCompress::~TileProcessorCompress()
 
 bool TileProcessorCompress::init(void)
 {
+  // a tile processor reused across frames keeps its tree
+  if(isInitialized())
+    return true;
   if(!TileProcessor::init())
     return false;
 
@@ -101,6 +104,15 @@ bool TileProcessorCompress::init(void)
 
   return true;
 }
+void TileProcessorCompress::resetForNextFrame(void)
+{
+  tileIndex_ = 0;
+  ignoreSlopeHint_ = false;
+  checkMinimumLayerSizes_ = false;
+  slopeThreshold_ = 0;
+  preCalculatedTileLen_ = 0;
+  prog_iter_num = 0;
+}
 bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
 {
   tilePartCounter_ = 0;
@@ -113,6 +125,16 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
   // don't need to allocate any buffers if this is from the plugin.
   if(current_plugin_tile_)
     return true;
+  bool use16BitMctWindows = tcp_->mct_ == 1 && headerImage_->numcomps >= 3;
+  for(uint16_t compno = 0; use16BitMctWindows && compno < 3; ++compno)
+  {
+    auto imageComp = headerImage_->comps + compno;
+    auto tileComp = tile_->comps_ + compno;
+    auto tccp = tcp_->tccps_ + compno;
+    bool use16BitDwt = tileComp->num_resolutions_ > 1 &&
+                       grk_get_data_type(true, imageComp->prec, true, tccp->qmfbid_) == GRK_INT_16;
+    use16BitMctWindows = use16BitDwt && imageComp->data_type == GRK_INT_16;
+  }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
@@ -122,50 +144,84 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     if(!tileComp->canCreateWindow(Rect32(tileComp)))
       return false;
     auto unreducedTileComp = tileComp;
-    tileComp->createWindow(Rect32(unreducedTileComp));
+    auto tccp = tcp_->tccps_ + compno;
+    bool use16BitDwt = false;
+    if(tileComp->num_resolutions_ > 1)
+    {
+      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+      use16BitDwt =
+          grk_get_data_type(true, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16;
+    }
+    tileComp->setUse16BitDwt(use16BitDwt);
+    bool isMctComponent = tcp_->mct_ == 1 && compno < 3;
+    bool use16BitWindow = use16BitDwt && imageComp->data_type == GRK_INT_16 && tcp_->mct_ != 2 &&
+                          (!isMctComponent || use16BitMctWindows);
+    tileComp->createWindow(Rect32(unreducedTileComp), use16BitWindow,
+                           std::pmr::new_delete_resource());
   }
   uint32_t numTiles = (uint32_t)cp_->t_grid_height_ * cp_->t_grid_width_;
 
-  bool attachTileToImage = (numTiles == 1);
-  /* if we only have one tile, then simply set tile component data equal to
-   * image component data. Otherwise, allocate tile data and copy */
+  bool singleTile = numTiles == 1;
   for(uint32_t j = 0; j < headerImage_->numcomps; ++j)
   {
     auto tilec = tile_->comps_ + j;
     auto imagec = headerImage_->comps + j;
-    if(attachTileToImage)
-      tilec->getWindow()->attach((int32_t*)imagec->data, imagec->stride);
-    else if(!tilec->getWindow()->alloc())
+    bool matchingDataType =
+        imagec->data_type == (tilec->uses16BitWindow() ? GRK_INT_16 : GRK_INT_32);
+    if(singleTile && matchingDataType)
+      tilec->attachWindowData(imagec->data, imagec->stride);
+    else if(!tilec->allocWindow())
     {
       grklog.error("Error allocating tile component data.");
       return false;
     }
   }
-  // otherwise copy image data to tile
-  if(!attachTileToImage)
+  for(uint16_t i = 0; i < headerImage_->numcomps; ++i)
   {
-    for(uint16_t i = 0; i < headerImage_->numcomps; ++i)
+    auto tilec = tile_->comps_ + i;
+    auto imageComp = headerImage_->comps + i;
+    bool matchingDataType =
+        imageComp->data_type == (tilec->uses16BitWindow() ? GRK_INT_16 : GRK_INT_32);
+    if((singleTile && matchingDataType) || !imageComp->data)
+      continue;
+
+    uint32_t offsetX = ceildiv<uint32_t>(headerImage_->x0, imageComp->dx);
+    uint32_t offsetY = ceildiv<uint32_t>(headerImage_->y0, imageComp->dy);
+    uint64_t imageOffset =
+        (tilec->x0 - offsetX) + (uint64_t)(tilec->y0 - offsetY) * imageComp->stride;
+    if(tilec->uses16BitWindow())
     {
-      auto tilec = tile_->comps_ + i;
-      auto img_comp = headerImage_->comps + i;
-      if(!img_comp->data)
-        continue;
-
-      uint32_t offset_x = ceildiv<uint32_t>(headerImage_->x0, img_comp->dx);
-      uint32_t offset_y = ceildiv<uint32_t>(headerImage_->y0, img_comp->dy);
-      uint64_t image_offset =
-          (tilec->x0 - offset_x) + (uint64_t)(tilec->y0 - offset_y) * img_comp->stride;
-      auto src = (int32_t*)img_comp->data + image_offset;
-      auto dest = tilec->getWindow()->getResWindowBufferHighestSimple();
-      if(!dest.buf_)
-        continue;
-
-      for(uint32_t j = 0; j < tilec->height(); ++j)
+      auto source = static_cast<const int16_t*>(imageComp->data) + imageOffset;
+      auto destination = tilec->getWindow16()->getResWindowBufferHighestSimple();
+      for(uint32_t row = 0; row < tilec->height(); ++row)
       {
-        memcpy(dest.buf_, src, (size_t)tilec->width() * sizeof(int32_t));
-        src += img_comp->stride;
-        dest.buf_ += dest.stride_;
+        memcpy(destination.buf_, source, (size_t)tilec->width() * sizeof(int16_t));
+        source += imageComp->stride;
+        destination.buf_ += destination.stride_;
       }
+      continue;
+    }
+
+    auto destination = tilec->getWindow()->getResWindowBufferHighestSimple();
+    if(imageComp->data_type == GRK_INT_32)
+    {
+      auto source = static_cast<const int32_t*>(imageComp->data) + imageOffset;
+      for(uint32_t row = 0; row < tilec->height(); ++row)
+      {
+        memcpy(destination.buf_, source, (size_t)tilec->width() * sizeof(int32_t));
+        source += imageComp->stride;
+        destination.buf_ += destination.stride_;
+      }
+      continue;
+    }
+
+    auto source = static_cast<const int16_t*>(imageComp->data) + imageOffset;
+    for(uint32_t row = 0; row < tilec->height(); ++row)
+    {
+      for(uint32_t column = 0; column < tilec->width(); ++column)
+        destination.buf_[column] = source[column];
+      source += imageComp->stride;
+      destination.buf_ += destination.stride_;
     }
   }
 
@@ -185,7 +241,13 @@ bool TileProcessorCompress::canWritePocMarker(void)
   bool firstTilePart = (tilePartCounter_ == 0);
 
   // note: DCP standard does not allow POC marker
-  return tcp_->hasPoc() && firstTilePart && !GRK_IS_CINEMA(cp_->rsiz_);
+  if(!tcp_->hasPoc() || !firstTilePart || GRK_IS_CINEMA(cp_->rsiz_))
+    return false;
+
+  // the main header POC carries tile 0's list and applies to every tile,
+  // so only a tile with its own list needs a POC of its own
+  auto mainHeaderTcp = cp_->tcps_.get(0);
+  return !mainHeaderTcp->hasPoc() || !tcp_->sameProgressions(mainHeaderTcp, tile_->numcomps_);
 }
 bool TileProcessorCompress::writeTilePartT2(uint32_t* tileBytesWritten)
 {
@@ -273,7 +335,8 @@ void TileProcessorCompress::scheduleCompressT1()
     mct_norms = (const double*)(tcp->mct_norms_);
   }
 
-  scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
+  scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps,
+                                     cp_->codingParams_.enc_.progressiveRateControl_);
   scheduler_->scheduleT1(nullptr);
 }
 bool TileProcessorCompress::compressT2(uint32_t* tileBytesWritten)
@@ -331,8 +394,6 @@ void TileProcessorCompress::buildCompressDAG(void)
   {
     auto tile_comp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
-    auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
-
     if(tile_comp->num_resolutions_ <= 1)
       continue;
 
@@ -374,8 +435,7 @@ void TileProcessorCompress::buildCompressDAG(void)
     // (MCT handles int→float conversion for its components)
     bool intInput = !isMctComp && (tccp->qmfbid_ == 0);
     WaveletFwdImpl w;
-    auto scratch =
-        w.scheduleCompress(tile_comp, tccp->qmfbid_, maxDim, dcShift, levelFlows, intInput);
+    auto scratch = w.scheduleCompress(tile_comp, tccp->qmfbid_, dcShift, levelFlows, intInput);
     if(scratch)
       dwtScratch_.push_back(std::move(scratch));
 
@@ -425,7 +485,8 @@ void TileProcessorCompress::buildCompressDAG(void)
       mct_numcomps = headerImage_->numcomps;
       mct_norms = (const double*)(tcp->mct_norms_);
     }
-    scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
+    scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps,
+                                       cp_->codingParams_.enc_.progressiveRateControl_);
     static_cast<CompressScheduler*>(scheduler_)->populateT1Flow(t1Flow_.get());
   }
   t1Flow_->addTo(*compressFlow_);
@@ -449,19 +510,10 @@ void TileProcessorCompress::buildCompressDAG(void)
             if(cp_->codingParams_.enc_.writePlt_)
               packetLengthCache_->createMarkers(stream_);
             uint32_t allPacketBytes = 0;
-            bool rc = rateAllocate(&allPacketBytes, false);
-            if(!rc)
+            if(!rateAllocateWithFallback(&allPacketBytes))
             {
-              grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
-              grklog.warn("Rate control will be disabled for this tile");
-              allPacketBytes = 0;
-              rc = rateAllocate(&allPacketBytes, true);
-              if(!rc)
-              {
-                grklog.error("Unable to perform rate control on tile %d", tileIndex_);
-                dagSuccess_ = false;
-                return;
-              }
+              dagSuccess_ = false;
+              return;
             }
             packetTracker_->clear();
             if(canPreCalculateTileLen())
@@ -483,9 +535,13 @@ void TileProcessorCompress::buildCompressDAG(void)
   t1Flow_->precede(rateAllocTask);
 }
 
-tf::Future<void> TileProcessorCompress::submitCompressDAG(void)
+void TileProcessorCompress::runCompressionTasks(void)
 {
-  return TFSingleton::get().run(*compressFlow_);
+  auto& executor = TFSingleton::get();
+  if(executor.this_worker_id() >= 0)
+    executor.corun(*compressFlow_);
+  else
+    executor.run(*compressFlow_).wait();
 }
 
 bool TileProcessorCompress::compressDAGSuccess(void) const
@@ -550,8 +606,6 @@ bool TileProcessorCompress::doCompress(void)
       {
         auto tile_comp = tile_->comps_ + compno;
         auto tccp = tcp_->tccps_ + compno;
-        auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
-
         // compute DC shift for fusion into wavelet first level
         DcShiftParam dcShift;
         if(tile_comp->num_resolutions_ > 1)
@@ -581,7 +635,7 @@ bool TileProcessorCompress::doCompress(void)
         bool isMctComp2 = needsMctDecompress(compno) && tcp_->mct_ == 1;
         bool intInput = !isMctComp2 && (tccp->qmfbid_ == 0);
         WaveletFwdImpl w;
-        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim, dcShift, intInput))
+        if(!w.compress(tile_comp, tccp->qmfbid_, dcShift, intInput))
           return false;
       }
     }
@@ -593,19 +647,8 @@ bool TileProcessorCompress::doCompress(void)
     packetLengthCache_->createMarkers(stream_);
   // 2. rate control
   uint32_t allPacketBytes = 0;
-  bool rc = rateAllocate(&allPacketBytes, false);
-  if(!rc)
-  {
-    grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
-    grklog.warn("Rate control will be disabled for this tile");
-    allPacketBytes = 0;
-    rc = rateAllocate(&allPacketBytes, true);
-    if(!rc)
-    {
-      grklog.error("Unable to perform rate control on tile %d", tileIndex_);
-      return false;
-    }
-  }
+  if(!rateAllocateWithFallback(&allPacketBytes))
+    return false;
   packetTracker_->clear();
 
   if(canPreCalculateTileLen())

@@ -23,21 +23,23 @@
 #include "FileStandardIO.h"
 #include "common.h"
 #include "ImageFormat.h"
+#include <memory>
 
 template<typename T>
 class RAWFormat : public ImageFormat
 {
 public:
   explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   bool bigEndian;
-  grk_image* decode(const char* filename, grk_cparameters* parameters, bool big_endian);
+  grk_image* readImage(const char* filename, grk_cparameters* parameters, bool big_endian);
 
   template<typename WT>
   bool writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w, uint32_t stride,
@@ -52,32 +54,30 @@ template<typename WT>
 bool RAWFormat<T>::writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w,
                                uint32_t stride, uint32_t h, T lower, T upper)
 {
-  const size_t bufSize = 4096;
-  WT buf[bufSize];
-  WT* outPtr = buf;
-  size_t outCount = 0;
-  auto stride_diff = stride - w;
-  for(uint32_t j = 0; j < h; ++j)
+  constexpr size_t bufferLength = (1 << 16) / sizeof(WT);
+  WT buffer[bufferLength];
+  size_t buffered = 0;
+  for(uint32_t row = 0; row < h; ++row, ptr += stride)
   {
-    for(uint32_t i = 0; i < w; ++i)
+    for(uint32_t column = 0; column < w;)
     {
-      T curr = *ptr++;
-      if(curr > upper)
-        curr = upper;
-      else if(curr < lower)
-        curr = lower;
-      if(!grk::writeBytes<WT>((WT)curr, buf, &outPtr, &outCount, bufSize, bigEndian, fileStream_))
-        return false;
+      auto count = std::min<size_t>(w - column, bufferLength - buffered);
+      auto source = ptr + column;
+      auto destination = buffer + buffered;
+      for(size_t i = 0; i < count; ++i)
+        destination[i] = grk::endian<WT>((WT)std::clamp<T>(source[i], lower, upper), bigEndian);
+      column += (uint32_t)count;
+      buffered += count;
+      if(buffered == bufferLength)
+      {
+        if(fwrite(buffer, sizeof(WT), buffered, fileStream_) != buffered)
+          return false;
+        buffered = 0;
+      }
     }
-    ptr += stride_diff;
   }
-  // flush
-  if(outCount)
-  {
-    size_t res = fwrite(buf, sizeof(WT), outCount, fileStream_);
-    if(res != outCount)
-      return false;
-  }
+  if(buffered && fwrite(buffer, sizeof(WT), buffered, fileStream_) != buffered)
+    return false;
 
   return true;
 }
@@ -104,14 +104,14 @@ bool RAWFormat<T>::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t n
 }
 
 template<typename T>
-bool RAWFormat<T>::encodeHeader(void)
+bool RAWFormat<T>::writeHeader(void)
 {
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
   return true;
 }
 
 template<typename T>
-bool RAWFormat<T>::encodePixels(void)
+bool RAWFormat<T>::writeImage(void)
 {
   const char* outfile = fileName_.c_str();
   uint16_t compno, numcomps;
@@ -119,7 +119,7 @@ bool RAWFormat<T>::encodePixels(void)
 
   if((image_->decompress_num_comps * image_->x1 * image_->y1) == 0)
   {
-    spdlog::error("encodePixels: invalid raw image_ parameters");
+    spdlog::error("writeImage: invalid raw image_ parameters");
     goto beach;
   }
 
@@ -137,7 +137,7 @@ bool RAWFormat<T>::encodePixels(void)
   }
   if(compno != numcomps)
   {
-    spdlog::error("encodePixels: All components shall have the same subsampling, same bit depth, "
+    spdlog::error("writeImage: All components shall have the same subsampling, same bit depth, "
                   "same sign.");
     goto beach;
   }
@@ -147,7 +147,7 @@ bool RAWFormat<T>::encodePixels(void)
   if(!fileIO_->open(outfile, "wb"))
     goto beach;
 
-  spdlog::info("encodePixels: raw image_ characteristics: {} components",
+  spdlog::info("writeImage: raw image_ characteristics: {} components",
                image_->decompress_num_comps);
 
   for(compno = 0; compno < image_->decompress_num_comps; compno++)
@@ -158,7 +158,7 @@ bool RAWFormat<T>::encodePixels(void)
 
     if(!comp->data)
     {
-      spdlog::error("encodePixels: component {} is null.", compno);
+      spdlog::error("writeImage: component {} is null.", compno);
 
       goto beach;
     }
@@ -170,34 +170,69 @@ bool RAWFormat<T>::encodePixels(void)
 
     T lower = sgnd ? -(1 << (prec - 1)) : 0;
     T upper = sgnd ? -lower - 1 : (1 << comp->prec) - 1;
-    auto ptr = (T*)comp->data;
+    bool isInt16 = comp->data_type == GRK_INT_16;
 
     bool rc;
     if(prec <= 8)
     {
-      if(sgnd)
-        rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                 upper);
+      if(isInt16)
+      {
+        // widen int16 → int32 for writeToFile; data is 8-bit so this path is rare
+        auto src16 = (int16_t*)comp->data;
+        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
+          widened[idx] = src16[idx];
+        if(sgnd)
+          rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride, h,
+                                   lower, upper);
+        else
+          rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                    h, lower, upper);
+      }
       else
-        rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                  upper);
+      {
+        auto ptr = (T*)comp->data;
+        if(sgnd)
+          rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                   upper);
+        else
+          rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                    upper);
+      }
       if(!rc)
-        spdlog::error("encodePixels: failed to write bytes for {}", outfile);
+        spdlog::error("writeImage: failed to write bytes for {}", outfile);
     }
     else if(prec <= 16)
     {
-      if(sgnd)
-        rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                  upper);
+      if(isInt16)
+      {
+        auto src16 = (int16_t*)comp->data;
+        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
+          widened[idx] = src16[idx];
+        if(sgnd)
+          rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                    h, lower, upper);
+        else
+          rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                     h, lower, upper);
+      }
       else
-        rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                   upper);
+      {
+        auto ptr = (T*)comp->data;
+        if(sgnd)
+          rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                    upper);
+        else
+          rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                     upper);
+      }
       if(!rc)
-        spdlog::error("encodePixels: ailed to write bytes for {}", outfile);
+        spdlog::error("writeImage: failed to write bytes for {}", outfile);
     }
     else
     {
-      spdlog::error("encodePixels: invalid precision: {}", comp->prec);
+      spdlog::error("writeImage: invalid precision: {}", comp->prec);
       goto beach;
     }
   }
@@ -209,19 +244,32 @@ beach:
 }
 
 template<typename T>
-bool RAWFormat<T>::encodeFinish(void)
+bool RAWFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  // RAW writes component-planar data — band-by-band not supported
+  if(yBegin != 0 || yEnd != image_->comps[0].h)
+  {
+    spdlog::error("RAWFormat: partial band writing not supported");
+    return false;
+  }
+  return writeImage();
+}
+
+template<typename T>
+bool RAWFormat<T>::writeFinish(void)
 {
   return fileIO_->close();
 }
 
 template<typename T>
-grk_image* RAWFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* RAWFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
-  return decode(filename.c_str(), parameters, bigEndian);
+  return readImage(filename.c_str(), parameters, bigEndian);
 }
 
 template<typename T>
-grk_image* RAWFormat<T>::decode(const char* filename, grk_cparameters* parameters, bool bigEndian)
+grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parameters,
+                                   bool bigEndian)
 {
   grk_raw_cparameters* raw_cp = &parameters->raw_cp;
   uint32_t subsampling_dx = parameters->subsampling_dx;
@@ -271,6 +319,8 @@ grk_image* RAWFormat<T>::decode(const char* filename, grk_cparameters* parameter
     memset(cmptparm + i, 0, sizeof(grk_image_comp));
     cmptparm[i].prec = raw_cp->prec;
     cmptparm[i].sgnd = raw_cp->sgnd;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[i].data_type = GRK_INT_16;
     cmptparm[i].dx = (uint8_t)(subsampling_dx * raw_cp->comps[i].dx);
     cmptparm[i].dy = (uint8_t)(subsampling_dy * raw_cp->comps[i].dy);
     cmptparm[i].w = w;

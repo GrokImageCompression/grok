@@ -85,15 +85,15 @@
             "name": "SPOT6 MINIO",
             "type": "cppdbg",
             "request": "launch",
-             "program": "${workspaceFolder}/build/bin/core_decompress_async",
+             "program": "${workspaceFolder}/build/bin/grk_decompress",
             //"program": "/usr/bin/time",
             "args": [
                 // "-v",
                 // "${workspaceFolder}/build/bin/core_decompress",
                 "-i",
                 "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2",
-                // "-o",
-                // "$HOME/temp/spot8.tif"
+                "-o",
+                "$HOME/temp/spot6.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -102,7 +102,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -130,7 +130,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -140,13 +140,14 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/usr/bin/time",
+            //"program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-v",
-                "${workspaceFolder}/build/bin/core_decompress_async",
+                "${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
                 "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2",
-                // "-o",
-                // "$HOME/temp/spot6.tif"
+                "-o",
+                "$HOME/temp/spot6.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -163,14 +164,38 @@
             "program": "/usr/bin/time",
             "args": [
                 "-v",
-                "${workspaceFolder}/build/bin/core_decompress_async",
+                "${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
-                "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2"
+                "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2",
+                "-o",
+                "$HOME/temp/spot6_tlm.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
                 { "name": "GRK_EXCALIBUR", "value": "0" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Mars HiRISE",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/grk_decompress",
+                "-i",
+                "$HOME/temp/ESP_028011_2055_RED.JP2",
+                "-o",
+                "$HOME/temp/ESP_028011_2055_RED.JP2.TIF"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_SCHEDULER", "value": "freebyrd" },
+                { "name": "GRK_STRIP", "value": "1" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -215,9 +240,9 @@
             "program": "${workspaceFolder}/build/bin/compare_images",
             "args": [
                 "-b",
-                "/home/aaron/src/grok-test-data/baseline/conformance/subsampling_1.ppm",
+                "$HOME/src/grok-test-data/baseline/conformance/subsampling_1.ppm",
                 "-t",
-                "/home/aaron/src/grok/build/tests/conformance/Temporary/subsampling_1.jp2.ppm",
+                "$HOME/src/grok/build/tests/conformance/Temporary/subsampling_1.jp2.ppm",
                 "-n",
                 "1",
                 "-p",
@@ -314,11 +339,9 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
             "-i",
-             "/home/aaron/src/grok-test-data/input/nonregression/kodak_2layers_lrcp.j2c",
+             "$HOME/temp/0001535002.tif.jp2",
              "-o",
-             "/home/aaron/temp/kodak_2layers_lrcp-l2.j2c.tif",
-            "-l",
-             "2"
+             "$HOME/temp/0001535002_round.tif",
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -328,19 +351,80 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "test failed",
+            "name": "test crash",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+            "-i",
+             "$HOME/temp/grok-jp2-lossy-rpcl-decode-bug-samples-with-source/cnb000537987_2025_BC_user-copy.jp2",
+             "-o",
+             "$HOME/temp/crash.tif",
+             "-d 0,0,512,512"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+
+
+        {
+            "name": "vsicurl",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "/home/aaron/src/grok-test-data/input/nonregression/issue391.jp2",
+                "/vsicurl/https://www.opengeodata.nrw.de/produkte/geobasis/lusat/akt/dop/dop_jp2_f10/dop10rgbi_32_280_5653_1_nw_2025.jp2",
                 "-o",
-                "/home/aaron/temp/issue391.jp2.tif"
+                "$HOME/temp/vsicurl.tif",
+                // "-d",
+                // "0,0,1024,1024"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4"}
+                { "name": "GRK_DEBUG", "value": "3"}
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "vsigs",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "/vsigs/gcp-public-data-sentinel-2/tiles/10/S/DG/S2A_MSIL1C_20150918T190346_N0204_R113_T10SDG_20150918T190345.SAFE/GRANULE/L1C_T10SDG_A001254_20150918T190345/IMG_DATA/T10SDG_20150918T190346_B01.jp2",
+                "-o",
+                "$HOME/temp/vsigs.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3"}
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "vsiaz",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "/vsiaz/CONTAINER/PATH/TO/FILE.jp2",
+                "-o",
+                "$HOME/temp/vsiaz.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3"},
+                { "name": "AZURE_STORAGE_ACCOUNT", "value": "ACCOUNT_NAME"},
+                { "name": "AZURE_STORAGE_SAS_TOKEN", "value": "?sv=..."}
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -463,7 +547,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -545,7 +629,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -744,7 +828,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "TRUE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "TRUE" },
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "TRUE" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -797,7 +881,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "TRUE" },
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "TRUE" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -808,12 +892,12 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
+           // "program": "/usr/bin/valgrind",
             "args": [
+                //"${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4737912531910656",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6266225987223552",
                 "-d 0,0,1024,1024",
-                // "-t",
-                //  "20",
                  "-o",
                 "$HOME/temp/fuzz.pgx"
 
@@ -1046,6 +1130,289 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "5" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress single mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/temp/mammo/bto6/bto06_0000.tif",
+                "-o",
+                "$HOME/temp/mammo/bto6_compressed/bto06_0000.tif.j2k",
+                "--out-fmt",
+                "j2k",
+                "-b",
+                "32,32",
+                "-I"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress batch mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/mammo/bto6",
+                "--out-dir",
+                "$HOME/temp/mammo/bto6_compressed",
+                "--out-fmt",
+                "j2k",
+                "-b",
+                "32,32",
+                //"64,64",
+                "-e",
+                "10"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU decompress single mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/mammo/bto6_compressed/bto06_0003.j2k",
+                "-o",
+                "$HOME/temp/mammo/bto6_round/bto06_0003.j2k.tif",
+                "-e",
+                "2",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU decompress batch mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/mammo/bto6_compressed",
+                "--out-dir",
+                "$HOME/temp/mammo/bto6_round",
+                "--out-fmt",
+                "tif",
+                "-e",
+                "16",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress batch cinema",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/rgb_12",
+                "--out-dir",
+                "$HOME/temp/batch_compressed",
+                "--out-fmt",
+                "jp2",
+                "-e",
+                "50",
+                "--cinema-2k",
+                "24"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU decompress batch cinema",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/batch_compressed",
+                "--out-dir",
+                "$HOME/temp/batch_decompressed",
+                "--out-fmt",
+                "tif",
+                "-e",
+                "50",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress single mono",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/temp/test_mono/input.tiff",
+                "-o",
+                "$HOME/temp/test_mono/output.jp2",
+                "-n",
+                "1",
+                "-b 32,32",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU decompress single cinema",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/test_mono/output.jp2",
+                "-o",
+                "$HOME/temp/test_mono/output_round.tif",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "TCI Selective Fetch CloudFerro",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            //"program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/grk_decompress",
+                "-i",
+                "/vsis3/s2samples/T33UYT_20260503T095051_TCI_10m.jp2",
+                "-o",
+                "$HOME/temp/tci_selective.tif",
+                "-r",
+                "4"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_S3_ENDPOINT", "value": "s3.waw3-1.cloudferro.com" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "AWS_HTTPS", "value": "YES" },
+                // Since this is an open/public file, we skip credential signing
+                { "name": "AWS_NO_SIGN_REQUEST", "value": "YES" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "" },
+                // CloudFerro uses valid CA certs, so we can disable insecure mode
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "NO" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "TCI Selective Fetch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "~/temp/T32TQM_20241115T100159_TCI_10m.jp2",
+                "-o",
+                "$HOME/temp/tci_selective.tif",
+                "-r",
+                "2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"

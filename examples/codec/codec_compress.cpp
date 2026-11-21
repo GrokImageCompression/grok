@@ -18,7 +18,7 @@
 #include <string>
 #include <cstring>
 #include <filesystem>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok_codec.h"
 #include "grk_examples_config.h"
@@ -48,8 +48,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       streamParams.buf_len = (size_t)numComps * (precision / 8) * dimX * dimY;
       streamParams.buf = new uint8_t[streamParams.buf_len];
     }
-    std::vector<std::string> argString;
-    std::vector<char*> args;
     std::string inputFile, outputFile;
 
     if(inputFromImage)

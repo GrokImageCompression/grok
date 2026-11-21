@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cassert>
+#include <cstring>
 #include <vector>
 #include <memory>
 #include <set>
@@ -24,6 +27,8 @@
 #include <atomic>
 
 #include "FetchCommon.h"
+#include "Logger.h"
+#include "IStream.h"
 
 namespace grk
 {
@@ -52,6 +57,15 @@ struct SharedPtrSeq
    * @return Iterator pointing to first shared_ptr
    */
   iterator begin()
+  {
+    return objStore_.begin();
+  }
+
+  /**
+   * @brief Returns const iterator to beginning of sequence
+   * @return Const iterator pointing to first shared_ptr
+   */
+  const_iterator begin() const
   {
     return objStore_.begin();
   }
@@ -96,6 +110,16 @@ struct SharedPtrSeq
   {
     objStore_.resize(N);
   }
+  void clear()
+  {
+    objStore_.clear();
+  }
+
+  template<typename Compare>
+  void sort(Compare comp)
+  {
+    std::sort(objStore_.begin(), objStore_.end(), comp);
+  }
 
 private:
   std::vector<std::shared_ptr<T>> objStore_;
@@ -121,7 +145,7 @@ struct TPSeq : public SharedPtrSeq<DataSlice>
    * @param length tile part length
    * @return true if successful
    */
-  bool push_back(uint8_t tilePart, uint8_t numTileParts, uint64_t offset, uint32_t length)
+  bool push_back(uint8_t tilePart, uint8_t numTileParts, uint64_t offset, uint64_t length)
   {
     // Once one tile part has non-zero number of tile parts, then every
     // subsequent tile part must have matching number of tile parts
@@ -141,6 +165,12 @@ struct TPSeq : public SharedPtrSeq<DataSlice>
     }
     SharedPtrSeq<DataSlice>::push_back(std::make_shared<DataSlice>(offset, length));
     return true;
+  }
+
+  void reset()
+  {
+    clear();
+    signalledNumTileParts_ = 0;
   }
 
   /**
@@ -201,6 +231,12 @@ struct TPFetch : public DataSlice
     {
       data_ = std::make_unique<uint8_t[]>(length_);
     }
+    if(fetchOffset_ + chunkLen > length_)
+    {
+      grklog.error("TPFetch::copy: buffer overflow (offset=%zu + len=%zu > capacity=%zu)",
+                   fetchOffset_, chunkLen, (size_t)length_);
+      return;
+    }
     std::memcpy(data_.get() + fetchOffset_, chunk, chunkLen);
     fetchOffset_ += chunkLen;
   }
@@ -213,6 +249,13 @@ struct TPFetch : public DataSlice
 
 struct TPFetchSeq : SharedPtrSeq<TPFetch>
 {
+  void sortByOffset()
+  {
+    sort([](const std::shared_ptr<TPFetch>& a, const std::shared_ptr<TPFetch>& b) {
+      return a->offset_ < b->offset_;
+    });
+  }
+
   void push_back(uint16_t tileIndex, const std::unique_ptr<TPSeq>& tileParts)
   {
     if(!tileParts)
@@ -239,7 +282,7 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
   }
 
   static void
-      genCollections(const TPSEQ_VEC* allTileParts, std::set<uint16_t>& slated,
+      genCollections(const TPSEQ_VEC* allTileParts, const std::set<uint16_t>& slated,
                      std::shared_ptr<TPFetchSeq>& tilePartFetchFlat,
                      std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>&
                          tilePartFetchByTile)
@@ -260,8 +303,20 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
         }
       }
     }
+
+    // Sort requests by file offset so that batched HTTP requests target
+    // sequential file regions, improving server-side read coalescing
+    // and CDN cache efficiency.
+    tilePartFetchFlat->sortByOffset();
   }
 
+  /**
+   * @brief Atomically increment and return the fetch-completed count.
+   *
+   * When the returned value equals size(), all tile-parts for this tile
+   * have been fetched. Uses uint8_t storage, limiting to 255 tile-parts
+   * per tile (the JPEG 2000 spec allows up to 255 tile-parts per tile).
+   */
   uint8_t incrementFetchCount()
   {
     std::atomic_ref<uint8_t> atomicCount(fetchCount_);

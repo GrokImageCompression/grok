@@ -9,11 +9,13 @@ execute_process(
 )
 # Combine stdout and stderr (java -version outputs to stderr)
 string(CONCAT JAVA_VERSION_OUTPUT "${JAVA_VERSION_OUTPUT}" "${JAVA_VERSION_OUTPUT2}")
-string(REGEX MATCH "\"([0-9]+)" JAVA_VERSION_MATCH "${JAVA_VERSION_OUTPUT}")
-set(JAVA_MAJOR_VERSION "${CMAKE_MATCH_1}")
+# java 8 reports itself as "1.8.0_x"
+string(REGEX MATCH "\"(1\\.)?([0-9]+)" JAVA_VERSION_MATCH "${JAVA_VERSION_OUTPUT}")
+set(JAVA_MAJOR_VERSION "${CMAKE_MATCH_2}")
 
+# --release arrived in javac 9
 set(JAVAC_RELEASE_FLAG "")
-if(JAVA_MAJOR_VERSION)
+if(JAVA_MAJOR_VERSION GREATER_EQUAL 9)
     set(JAVAC_RELEASE_FLAG --release ${JAVA_MAJOR_VERSION})
 endif()
 

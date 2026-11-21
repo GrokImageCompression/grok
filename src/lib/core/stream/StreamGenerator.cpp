@@ -56,6 +56,7 @@ IStream* StreamGenerator::createCallbackStream(void)
   auto stream = new BufferedStream(nullptr, initialDoubleBufferLen, doubleBufferLen, readStream);
   uint64_t dataLen = readStream ? streamParams_.stream_len : 0;
   stream->setUserData(streamParams_.user_data, streamParams_.free_user_data_fn, dataLen);
+  stream->setFromNetwork(streamParams_.from_network);
   StreamCallbacks callbacks(&streamParams_);
   stream->setCallbacks(callbacks);
 
@@ -128,17 +129,61 @@ IStream* StreamGenerator::createCurlFetchStream(void)
     auth.session_token_ = streamParams_.bearer_token;
   if(streamParams_.region[0])
     auth.region_ = streamParams_.region;
-  if(streamParams_.custom_header[0])
-    auth.custom_header_ = streamParams_.custom_header;
+  for(uint8_t i = 0; i < streamParams_.num_custom_headers; ++i)
+  {
+    if(streamParams_.custom_headers[i][0])
+      auth.custom_headers_.emplace_back(streamParams_.custom_headers[i]);
+  }
   if(streamParams_.s3_endpoint[0])
     auth.s3_endpoint_ = streamParams_.s3_endpoint;
   auth.s3_use_https_ = streamParams_.s3_use_https;
   auth.s3_use_virtual_hosting_ = streamParams_.s3_use_virtual_hosting;
   auth.s3_no_sign_request_ = streamParams_.s3_no_sign_request;
   auth.s3_allow_insecure_ = streamParams_.s3_allow_insecure;
+  if(streamParams_.cookie[0])
+    auth.cookie_ = streamParams_.cookie;
+  if(streamParams_.cookie_file[0])
+    auth.cookie_file_ = streamParams_.cookie_file;
+  if(streamParams_.cookie_jar[0])
+    auth.cookie_jar_ = streamParams_.cookie_jar;
+  auth.netrc_ = streamParams_.netrc;
+  if(streamParams_.netrc_file[0])
+    auth.netrc_file_ = streamParams_.netrc_file;
+  if(streamParams_.proxy[0])
+    auth.proxy_ = streamParams_.proxy;
+  if(streamParams_.proxy_userpwd[0])
+    auth.proxy_userpwd_ = streamParams_.proxy_userpwd;
+  if(streamParams_.request_payer[0])
+    auth.request_payer_ = streamParams_.request_payer;
+  if(streamParams_.user_agent[0])
+    auth.user_agent_ = streamParams_.user_agent;
+  auth.timeout_ = streamParams_.timeout;
+  auth.connect_timeout_ = streamParams_.connect_timeout;
+  auth.max_retry_ = streamParams_.max_retry;
+  auth.retry_delay_ = streamParams_.retry_delay;
+  auth.fetch_batch_size_ = streamParams_.fetch_batch_size;
+  auth.http2_multiplex_ = streamParams_.http2_multiplex;
   grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
-  auto fetcher = new S3Fetcher();
+  std::string_view file{streamParams_.file};
+  bool isS3 = file.starts_with("/vsis3/") || file.starts_with("/vsis3_streaming/");
+  bool isAZ = file.starts_with("/vsiaz/");
+  bool isADLS = file.starts_with("/vsiadls/");
+  bool isGS = file.starts_with("/vsigs/");
+  // the fetcher starts a worker thread and a curl handle the moment it is
+  // built, and both init and the stream constructor throw, so hold it until
+  // the stream takes it over
+  std::unique_ptr<CurlFetcher> fetcher;
+  if(isS3)
+    fetcher = std::make_unique<S3Fetcher>();
+  else if(isAZ)
+    fetcher = std::make_unique<AZFetcher>();
+  else if(isADLS)
+    fetcher = std::make_unique<ADLSFetcher>();
+  else if(isGS)
+    fetcher = std::make_unique<GSFetcher>();
+  else
+    fetcher = std::make_unique<HTTPFetcher>();
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();
   auto initial_double_buffer_len =
@@ -146,10 +191,13 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auto double_buffer_len = getDoubleBufferLength(streamParams_.double_buffer_len);
   initial_double_buffer_len = std::min(initial_double_buffer_len, (size_t)dataLen);
   double_buffer_len = std::min(double_buffer_len, (size_t)dataLen);
-  auto stream = new BufferedStream(nullptr, initial_double_buffer_len, double_buffer_len,
-                                   true // read-only stream
-  );
-  stream->setUserData(fetcher, [](void* p) { delete static_cast<CurlFetcher*>(p); }, dataLen);
+  auto stream =
+      std::make_unique<BufferedStream>(nullptr, initial_double_buffer_len, double_buffer_len,
+                                       true // read-only stream
+      );
+  auto fetcherOwnedByStream = fetcher.release();
+  stream->setUserData(
+      fetcherOwnedByStream, [](void* p) { delete static_cast<CurlFetcher*>(p); }, dataLen);
   StreamCallbacks callbacks(
       [](uint8_t* buffer, size_t numBytes, void* user_data) -> size_t {
         auto fetcher = static_cast<CurlFetcher*>(user_data);
@@ -161,15 +209,12 @@ IStream* StreamGenerator::createCurlFetchStream(void)
       },
       nullptr);
   stream->setCallbacks(callbacks);
-  stream->setFetcher(fetcher);
+  stream->setFetcher(fetcherOwnedByStream);
 
-  if(!validateStream(stream))
-  {
-    delete stream;
+  if(!validateStream(stream.get()))
     return nullptr;
-  }
 
-  return stream;
+  return stream.release();
 #else
   grklog.error("CurlSyncFetch stream unavailable: libcurl not enabled.");
   return nullptr;

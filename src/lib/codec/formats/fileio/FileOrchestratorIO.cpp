@@ -36,9 +36,8 @@ void FileOrchestratorIO::setMaxPooledRequests(uint32_t maxRequests)
 {
   max_pooled_requests_ = maxRequests;
 }
-void FileOrchestratorIO::registerGrkReclaimCallback([[maybe_unused]] grk_io_init io_init,
-                                                    grk_io_callback reclaim_callback,
-                                                    void* user_data)
+void FileOrchestratorIO::registerReclaimCallback([[maybe_unused]] grk_io_init io_init,
+                                                 grk_io_callback reclaim_callback, void* user_data)
 {
   reclaim_callback_ = reclaim_callback;
   reclaim_user_data_ = user_data;

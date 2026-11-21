@@ -17,6 +17,11 @@
 
 #pragma once
 
+#include <memory_resource>
+#include <vector>
+
+#include "TileArena.h"
+
 namespace grk
 {
 struct Precinct;
@@ -34,7 +39,7 @@ struct PrecinctImpl
    *
    * @param prec @ref Precinct
    */
-  explicit PrecinctImpl(Precinct* prec);
+  PrecinctImpl(Precinct* prec, std::pmr::memory_resource* arena);
 
   /**
    * @brief Destroys the PrecinctImpl
@@ -56,12 +61,11 @@ struct PrecinctImpl
   /**
    * @brief Initializes code block
    *
-   * @tparam T CodeBlock type
    * @param block code block
    * @param cblkno index of code block in precinct
    */
-  template<typename T>
-  void initCodeBlock(T* block, uint32_t cblkno);
+  void initCodeBlock(t1::CodeblockCompress* block, uint32_t cblkno);
+  void initCodeBlock(t1::CodeblockDecompress* block, uint32_t cblkno);
 
   /**
    * @brief Deletes tag trees
@@ -83,17 +87,17 @@ struct PrecinctImpl
    */
   TagTreeU8* getIMsbTagTree(void);
 
-  /**
-   * @brief Cache of @ref CodeblockCompress
-   *
-   */
-  BlockCache<t1::CodeblockCompress, PrecinctImpl>* enc_;
+  // every block of a compressed precinct is coded
+  t1::CodeblockCompress* enc_;
+  uint32_t numEnc_;
 
   /**
    * @brief Cache of @ref CodeblockDecompress
    *
    */
   BlockCache<t1::CodeblockDecompress, PrecinctImpl>* dec_;
+
+  t1::PrecinctCodeblockStorage* blockStorage_;
 
   /**
    * @brief code block grid
@@ -108,6 +112,7 @@ struct PrecinctImpl
   Precinct* prec_;
 
 protected:
+  std::pmr::memory_resource* arena_;
   bool genCodeBlockGrid(void);
 
 private:
@@ -118,12 +123,12 @@ private:
 
 struct PrecinctImplCompress : public PrecinctImpl
 {
-  PrecinctImplCompress(Precinct* prec, uint16_t numLayers);
+  PrecinctImplCompress(Precinct* prec, uint16_t numLayers, uint8_t maxPasses);
 };
 
-struct PrecinctImplDecompress : public PrecinctImpl
+struct PrecinctImplDecompress : public PrecinctImpl, public TileArenaObject
 {
-  PrecinctImplDecompress(Precinct* prec, uint16_t numLayers);
+  PrecinctImplDecompress(Precinct* prec, uint16_t numLayers, std::pmr::memory_resource* arena);
 };
 
 } // namespace grk

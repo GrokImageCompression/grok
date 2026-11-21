@@ -64,8 +64,8 @@ struct MJ2SampleRecord
 class FileFormatMJ2Compress : public FileFormatJP2Compress
 {
 public:
-  FileFormatMJ2Compress(IStream* stream);
-  virtual ~FileFormatMJ2Compress();
+  explicit FileFormatMJ2Compress(IStream* stream);
+  ~FileFormatMJ2Compress() override;
 
   bool init(grk_cparameters* param, GrkImage* image) override;
   bool start(void) override;

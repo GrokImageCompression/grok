@@ -81,6 +81,12 @@ struct cblk_enc
   }
 };
 
+struct DataChunk
+{
+  uint8_t* data;
+  uint32_t length;
+};
+
 /* Macros to deal with signed integer with just MSB bit set for
  * negative values (smr = signed magnitude representation) */
 #define smr_abs(x) (((uint32_t)(x)) & 0x7FFFFFFFU)

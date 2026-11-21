@@ -1,24 +1,3 @@
-# Dependencies
-
-## ExifTool
-
-If the `-V` flag is used to transfer ExIF tags to the output file, [ExifTool](https://exiftool.org/) must be installed.
-
-### Linux
-
-Use your package manager to install ExifTool. This will ensure that the ExifTool Perl modules
-are correctly installed
-
-### MacOS
-
-Use [brew](https://brew.sh/) package manager to install ExifTool. This will ensure that the ExifTool Perl modules are correctly installed
-
-### Windows
-
-`-V` is not supported on Windows. To transfer tags, simply run
-`$ exiftool -TagsFromFile $SOURCE_FILE "-all:all>all:all" $DEST_FILE`
-after running Grok.
-
 # Install from Package Manager
 
 1. **Debian** Grok `.deb` packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
@@ -39,8 +18,7 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 ## Build
 
-Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms.
-It requires version 3.20 or higher.
+Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms. It requires version 3.20 or higher.
 
 ## Compilers
 
@@ -132,9 +110,9 @@ Default build type is `Release`. For a `Debug` build, configure
 
 ### Build
 
-`$ make -j8`
+`$ make -j$(nproc)`
 
-for a machine with 8 logical cores.
+for a machine with multiple logical cores.
 
 Binaries are located in the `bin` directory.
 
@@ -178,45 +156,9 @@ Important `cmake` flags:
   Note: when using this option, static libraries are not built and executables are dynamically linked.
 * To build the core codec : `-DGRK_BUILD_CODEC:bool=ON` (default: `ON`)
 * To build the documentation: `-DGRK_BUILD_DOC=ON` (default: `OFF`)
-* To enable testing :
+* To enable testing : see [TESTING.md](TESTING.md)
 
-      $  cmake . -DBUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='/PATH/TO/DATA/DIRECTORY'
-      $  make -j8
-      $  ctest -D NightlyMemCheck
-
-Note : JPEG 2000 test files can be cloned
-[here](https://github.com/GrokImageCompression/grok-test-data.git)
-If the `-DGRK_DATA_ROOT:PATH` option is omitted,
-test files will be automatically searched for in
-`${CMAKE_SOURCE_DIR}/../grok-test-data`
-
-### Python Tests
-
-Python tests are automatically enabled when `BUILD_TESTING=ON` and SWIG bindings are built
-(`GRK_BUILD_CORE_SWIG_BINDINGS=ON`). They require [pytest](https://docs.pytest.org/) to be installed.
-
-To run the Python tests via `ctest`:
-
-    $  cd /PATH/TO/BUILD
-    $  ctest -R python_tests -V
-
-To run them directly with `pytest`:
-
-    $  cd /PATH/TO/BUILD/bin
-    $  PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest /PATH/TO/SOURCE/tests/python -v --tb=short
-
-To run a single test file:
-
-    $  cd /PATH/TO/BUILD/bin
-    $  PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest /PATH/TO/SOURCE/tests/python/test_roundtrip.py -v
-
-Note: if the build has address sanitizer enabled (`-DWITH_SANITIZER=Address`),
-Python tests will fail because the ASAN runtime must be loaded before Python.
-Either rebuild without ASAN (`-DWITH_SANITIZER=OFF`) or preload the runtime:
-
-    $  LD_PRELOAD=$(gcc -print-file-name=libasan.so) PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest ...
-
-## macOS
+### macOS
 
 macOS builds are configured similar to *NIX builds.
 The Xcode project files can be generated using:
@@ -257,4 +199,175 @@ Third party libraries such as `libtiff` are built by default. To disable
 Grok provides bindings for Python, C#, Java, and Rust.
 
 - **Python/C#/Java** (SWIG): see [bindings/swig/README.md](bindings/swig/README.md) for build instructions, API reference, and test information.
+
+  The Python modules install under the install prefix. When using a custom
+  `CMAKE_INSTALL_PREFIX`, add them to `PYTHONPATH`, e.g.:
+
+  `export PYTHONPATH=$HOME/bin/grok/lib64/python3.14/site-packages:$PYTHONPATH`
 - **Rust** (bindgen): see [bindings/rust/README.md](bindings/rust/README.md) for build and usage instructions.
+
+## GPU Plugin Integration
+
+Grok supports GPU-accelerated Tier-1 encode and decode via the
+closed source `grok-gpu-plugin` project (submodule
+`extern/grok-gpu-plugin`). The plugin offloads DWT, bit-plane coding, and
+MQ arithmetic coding to an NVIDIA CUDA GPU or Apple Silicon Metal GPU
+while Grok handles file I/O, header parsing, and Tier-2 packet assembly.
+
+Full Metal prerequisites and CMake options live in
+[extern/grok-gpu-plugin/README.md](extern/grok-gpu-plugin/README.md).
+
+### Requirements
+
+| Dependency     | Version   | Notes                                      |
+|----------------|-----------|--------------------------------------------|
+| CMake          | ≥ 3.21    |                                            |
+| C++23 compiler | GCC 13+ / Clang 17+ / Apple Clang |                       |
+| CUDA Toolkit   | ≥ 11.0    | CUDA backend only                          |
+| NVIDIA GPU     | CC ≥ 6.0  | CUDA. Tested on Ampere (CC 8.6)            |
+| Xcode          | ≥ 15      | Metal. Full Xcode.app + Metal toolchain    |
+| Apple Silicon  | M1+       | Metal. Tested on M1 Pro, M2 Max, M4, M5    |
+| libtiff        | any recent | `brew install libtiff` on macOS           |
+
+### Building the plugin with Grok (recommended)
+
+The submodule is marked `update = none`, so a recursive clone skips it:
+
+```bash
+git submodule update --init --checkout extern/grok-gpu-plugin
+git -C extern/grok-gpu-plugin submodule update --init --recursive
+```
+
+Then configure Grok with the plugin loader. On Apple Silicon, disable CUDA
+and enable Metal. CMake names the library `libgrokj2k_plugin` and copies
+`grok_kernels.metallib` next to it — no extra symlink.
+
+```bash
+# NVIDIA
+cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DGRK_BUILD_PLUGIN_LOADER=ON \
+    -DGPUP_USE_CUDA=ON \
+    -DGPUP_CUDA_ARCH=86          # your GPU compute capability
+
+# Apple Silicon
+cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DGRK_BUILD_PLUGIN_LOADER=ON \
+    -DGPUP_USE_CUDA=OFF \
+    -DGPUP_USE_METAL=ON
+
+cmake --build build --parallel
+```
+
+`GPUP_ENABLE_AUTH` defaults to **OFF**: `plugin_init` uses a stub
+`checkRegistration` that always succeeds, so no licence or register
+server is required. A licensed build is `-DGPUP_ENABLE_AUTH=ON` (libcurl
+and OpenSSL) and registers with nonce-bound signed tokens. A licensed CUDA
+build also needs `-DGPUP_KERNEL_KEY_FILE`. A Release configure
+that still has the `// dev key` line in `src/auth/license_public_key.h` then
+needs `-DGPUP_ALLOW_DEV_LICENSE_KEY=ON`. See the plugin README
+development-licence section.
+
+On current macOS, Command Line Tools often have no `metal` compiler. Point
+`xcode-select` at Xcode.app and, if needed, run
+`xcodebuild -downloadComponent MetalToolchain`. Details are in the plugin
+README.
+
+### Plugin discovery
+
+Grok looks for `libgrokj2k_plugin` (`.so` / `.dylib` / `.dll`) in:
+
+1. the directory `GRK_PLUGIN_PATH` names
+2. the current working directory
+3. the directory of the Grok executable
+
+It does **not** search `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH`.
+On Metal the same directory must also contain `grok_kernels.metallib`.
+
+```bash
+export GRK_PLUGIN_PATH=/PATH/TO/grok/build/bin   # or $PREFIX/lib after install
+export GRK_DEBUG=3                               # log the load path and device
+```
+
+### Using the GPU Plugin
+
+Pass `-k 1` to `grk_compress` or `grk_decompress` to enable GPU acceleration.
+
+#### Single-file compress
+
+```bash
+grk_compress -i input.tiff -o output.jp2 -k 1
+```
+
+#### Single-file decompress
+
+```bash
+grk_decompress -i input.jp2 -o output.tif -k 1
+```
+
+#### Batch compress (directory of TIFFs)
+
+```bash
+grk_compress --batch-src /path/to/tiffs \
+             --out-dir /path/to/output \
+             --out-fmt jp2 \
+             -k 1 -e 10
+```
+
+#### Batch decompress
+
+```bash
+grk_decompress --batch-src /path/to/jp2s \
+               --out-dir /path/to/output \
+               --out-fmt tif \
+               -k 1 -e 10
+```
+
+The `-e` flag sets the number of executor threads for batch file I/O.
+
+### Environment Variables
+
+| Variable              | Value   | Purpose                                          |
+|-----------------------|---------|--------------------------------------------------|
+| `GRK_PLUGIN_PATH`     | dir     | Directory that contains `libgrokj2k_plugin` (and `grok_kernels.metallib` on Metal) |
+| `CUDA_MODULE_LOADING` | `EAGER` | CUDA only. Ensures CUDA modules load at init time |
+| `GRK_DEBUG`           | `1`–`5` | Optional. Verbosity: 1=error 2=warn 3=info 4=debug 5=trace. Level ≥ 3 enables plugin verbose output |
+
+### Plugin Constraints
+
+- Single tile per image (no multi-tile images)
+- Precision: 8, 10, 12, or 16 bits per component
+- No subsampling (`dx = dy = 1`)
+- Maximum 4 components
+- No code block style extensions (`cblk_sty = 0`)
+- Unsigned samples only
+- **Colour on the device** (16-bit Rec.709 RGB→XYZ, planar 8/10-bit YUV→RGB/XYZ,
+  inverse XYZ→sRGB, and the display LUT) runs on CUDA, HIP and Metal. See the
+  plugin README Metal notes.
+
+### Known Issues
+
+- **Python bindings**: When `libgrokj2k_plugin.so` is present in `build/bin/`,
+  the plugin's auto-discovery intercepts Python SWIG binding calls to
+  `grk_codec_compress()`. Remove or rename the symlink before running Python
+  tests via `ctest`.
+
+- **CUDA cleanup at exit**: The executables call `grk_deinitialize()` before
+  returning from `main()` to ensure CUDA resources are released before the
+  CUDA runtime unloads. This is handled automatically by `grk_compress` and
+  `grk_decompress`; library consumers should call `grk_deinitialize()` at
+  process exit if using the GPU plugin.
+
+### Debugging with VS Code
+
+The repository includes GPU launch configurations in `.vscode/launch.json`:
+
+| Configuration               | Description                                          |
+|-----------------------------|------------------------------------------------------|
+| `single compress GPU`       | Single-file GPU compress                             |
+| `single decompress GPU`     | Single-file GPU decompress                           |
+| `compress GPU`              | Batch GPU compress (directory of TIFFs)              |
+| `decompress GPU`            | Batch GPU decompress (directory of JP2s)             |
+
+These configs set `CUDA_MODULE_LOADING=EAGER` and `GRK_DEBUG=3` automatically.

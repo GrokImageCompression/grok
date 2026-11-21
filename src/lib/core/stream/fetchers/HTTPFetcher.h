@@ -29,6 +29,12 @@ namespace grk
 
 class HTTPFetcher : public CurlFetcher
 {
+public:
+  ~HTTPFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {
@@ -36,9 +42,8 @@ protected:
     std::string mutable_path = path;
     if(mutable_path.starts_with("/vsicurl/"))
     {
-      ParsedFetchPath parsed;
-      FetchPathParser::parseVsiPath(mutable_path, parsed, "vsicurl");
-      url_ = "https://" + parsed.bucket + "/" + parsed.key;
+      // Content after /vsicurl/ is a complete URL — use it directly
+      url_ = mutable_path.substr(9); // strlen("/vsicurl/") == 9
       if(!url_.starts_with("http://") && !url_.starts_with("https://"))
       {
         grklog.error("Invalid /vsicurl/ URL: must start with http:// or https://: %s",
@@ -101,10 +106,10 @@ protected:
       grklog.debug("GRK_HTTP_HEADER_FILE set to %s (not fully implemented)", header_file);
     }
 
-    // Log custom header and bearer token usage
-    if(!auth_.custom_header_.empty())
+    // Log custom headers and bearer token usage
+    for(const auto& hdr : auth_.custom_headers_)
     {
-      grklog.debug("Using custom header: %s", auth_.custom_header_.c_str());
+      grklog.debug("Using custom header: %s", hdr.c_str());
     }
     if(!auth_.bearer_token_.empty())
     {
@@ -114,10 +119,10 @@ protected:
 
   curl_slist* prepareAuthHeaders(curl_slist* headers) override
   {
-    // Add custom header from FetchAuth if provided
-    if(!auth_.custom_header_.empty())
+    // Add custom headers from FetchAuth if provided
+    for(const auto& hdr : auth_.custom_headers_)
     {
-      headers = curl_slist_append(headers, auth_.custom_header_.c_str());
+      headers = curl_slist_append(headers, hdr.c_str());
     }
 
     // Add Authorization header for bearer token if provided

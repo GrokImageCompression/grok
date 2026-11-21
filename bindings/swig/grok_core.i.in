@@ -1,5 +1,8 @@
 %module grok_core
 
+// suppress SWIG 451 (const char* member may leak)
+#pragma SWIG nowarn=451
+
 // Dynamically include grok.h using CMake's configured path
 %{
 #include "@GROK_CORE_INCLUDE_PATH@/grok.h"
@@ -9,7 +12,7 @@
 
 
 %typemap(out) grk_image_comp* {
-    grk_image* img_ptr = (grk_image*) SWIG_Python_GetSwigThis(*swig_obj);
+    grk_image* img_ptr = (grk_image*) SWIG_Python_GetSwigThis(*swig_obj)->ptr;
     int num_components = img_ptr->numcomps;
     PyObject* py_list = PyList_New(num_components);
 

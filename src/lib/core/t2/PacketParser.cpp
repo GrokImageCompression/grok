@@ -144,11 +144,11 @@ uint32_t PacketParser::readHeader(void)
   if(*remainingBytes == 0)
     throw t1_t2::TruncatedPacketHeaderException();
   auto currentHeaderPtr = *headerStart;
-  std::shared_ptr<t1_t2::BitIO> bio(new t1_t2::BitIO(currentHeaderPtr, *remainingBytes, false));
+  t1_t2::BitIO bio(currentHeaderPtr, *remainingBytes, false);
   auto tccp = tcp->tccps_ + compno_;
   try
   {
-    tagBitsPresent_ = bio->read();
+    tagBitsPresent_ = bio.read();
     // grklog.info("present=%u ", present);
     if(tagBitsPresent_)
     {
@@ -160,23 +160,17 @@ uint32_t PacketParser::readHeader(void)
         auto prc = band->tryGetPrecinct(precinctIndex_);
         if(!prc)
           continue;
-        auto numPrecCodeBlocks = prc->getNumCblks();
-        // assuming 1 bit minimum encoded per code block,
-        // let's check if we have enough bytes
-        if((numPrecCodeBlocks >> 3) > packets_->length())
-        {
-          headerError_ = true;
-          throw t1_t2::TruncatedPacketHeaderException();
-        }
-        for(uint32_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
-        {
+        auto incl = prc->getInclTree();
+        if(!incl)
+          continue;
+        incl->forEachLeafThatMayReadBits([&](uint64_t leafno) {
+          auto cblkno = (uint32_t)leafno;
           auto cblk = prc->tryGetDecompressBlock(cblkno);
           uint8_t included;
           if(!cblk || !cblk->numlenbits())
           {
             uint16_t value;
-            auto incl = prc->getInclTree();
-            incl->decode(bio.get(), cblkno, layno_ + 1, &value);
+            incl->decode(&bio, cblkno, layno_ + 1, &value);
             if(value != incl->getUninitializedValue() && value != layno_)
             {
               grklog.warn("Tile number: %u", tileIndex_ + 1);
@@ -188,10 +182,10 @@ uint32_t PacketParser::readHeader(void)
           }
           else
           {
-            included = bio->read();
+            included = bio.read();
           }
           if(!included)
-            continue;
+            return;
           if(!cblk)
             cblk = prc->getDecompressBlock(cblkno);
           if(!cblk->numlenbits())
@@ -202,7 +196,7 @@ uint32_t PacketParser::readHeader(void)
 
             // see Taubman + Marcellin page 388
             // loop below stops at (# of missing bit planes  + 1)
-            imsb->decode(bio.get(), cblkno, K_msbs, &value);
+            imsb->decode(&bio, cblkno, K_msbs, &value);
             while(value >= K_msbs)
             {
               ++K_msbs;
@@ -213,7 +207,7 @@ uint32_t PacketParser::readHeader(void)
                             K_msbs, maxBitPlanesJ2K);
                 throw t1::CorruptPacketHeaderException();
               }
-              imsb->decode(bio.get(), cblkno, K_msbs, &value);
+              imsb->decode(&bio, cblkno, K_msbs, &value);
             }
             if(K_msbs == 0)
             {
@@ -241,12 +235,12 @@ uint32_t PacketParser::readHeader(void)
             }
             cblk->setNumLenBits(3);
           }
-          cblk->readPacketHeader(bio, signalledLayerDataBytes_, layno_, tccp->cblkStyle_);
-        }
+          cblk->readPacketHeader(&bio, signalledLayerDataBytes_, layno_, tccp->cblkStyle_);
+        });
       }
     }
-    bio->readFinalHeaderByte();
-    currentHeaderPtr += bio->numBytes();
+    bio.readFinalHeaderByte();
+    currentHeaderPtr += bio.numBytes();
   }
   catch([[maybe_unused]] const t1_t2::InvalidMarkerException& ex)
   {
@@ -336,7 +330,10 @@ void PacketParser::readData(void)
     bool isHT = tileProcessor_->getTCP()->isHT();
     for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
     {
-      auto cblk = prc->getDecompressBlock(cblkno);
+      // blocks never included in a packet header were never created, skip them
+      auto cblk = prc->tryGetDecompressBlock(cblkno);
+      if(!cblk)
+        continue;
       try
       {
         cblk->parsePacketData(layno_, layerBytesAvailable_, isHT, layerData_, layerDataOffset);
@@ -396,7 +393,7 @@ void AllLayersPrecinctPacketParser::enqueue(PacketParser* parser)
 }
 
 ResolutionPacketParser::ResolutionPacketParser(ITileProcessor* tileProcessor)
-    : tileProcessor_(tileProcessor)
+    : tileProcessor_(tileProcessor), allLayerPrecinctParsers_(&tileProcessor->getTile()->arena_)
 {}
 
 ResolutionPacketParser::~ResolutionPacketParser()
@@ -413,12 +410,8 @@ void ResolutionPacketParser::enqueue(uint64_t precinctIndex, PacketParser* parse
   if(!parser)
     return;
 
-  // Use std::make_unique to create a unique_ptr for AllLayersPrecinctPacketParser
-  auto [it, inserted] = allLayerPrecinctParsers_.try_emplace(
-      precinctIndex, std::make_unique<AllLayersPrecinctPacketParser>(tileProcessor_));
-
-  // Enqueue the parser
-  it->second->enqueue(parser);
+  auto [it, inserted] = allLayerPrecinctParsers_.try_emplace(precinctIndex, tileProcessor_);
+  it->second.enqueue(parser);
 }
 
 } // namespace grk

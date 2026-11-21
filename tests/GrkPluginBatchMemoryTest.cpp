@@ -1,0 +1,2314 @@
+// The plugin's batch pipeline fed from host memory: frames go in through
+// grk_plugin_batch_memory_submit and code streams come back on the plugin's
+// threads, no file and no shared memory anywhere.
+//
+// Needs the plugin library and a device: GRK_PLUGIN_PATH names the directory
+// holding libgrokj2k_plugin.
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <algorithm>
+#include <atomic>
+#include <vector>
+#include "grok.h"
+
+namespace grk
+{
+// exported by libgrokj2k, the same transform grk_compress runs for apply_xyz_transform
+GRK_API bool applyXYZTransform(grk_image* image, uint8_t targetPrec);
+} // namespace grk
+
+namespace
+{
+int g_failures = 0;
+// frames submitted plus frames delivered
+std::atomic<uint64_t> g_progress{0};
+constexpr uint16_t kNumComps = 3;
+constexpr uint8_t kPrecision = 12;
+constexpr uint8_t kSourcePrecision16 = 16;
+constexpr int32_t kMaxSample = (1 << kPrecision) - 1;
+constexpr uint32_t kCodeBlock = 32;
+constexpr uint8_t kResolutions = 6;
+constexpr uint32_t kWidth = 1998;
+constexpr uint32_t kHeight = 1080;
+constexpr uint32_t kNumFrames = 48;
+constexpr double kCinemaRatio = 10.0;
+// a lossy 12 bit encode held against the transformed source: the device's 9/7
+// pipeline lands within a handful of codes
+constexpr int32_t kCinemaEncodeTolerance = 16;
+// device and host colour transform held against each other through the same
+// encoder: only the transform's own rounding separates them
+constexpr int32_t kTransformTolerance = 2;
+// the device inverse wavelet and the CPU's land within a code of each other
+constexpr int32_t kDeviceDecodeTolerance = 2;
+// the same wavelet difference through the sRGB curve, which stretches it near black
+constexpr int kSrgb8ByteTolerance = 8;
+constexpr double kSrgb8ShareOverOneCode = 0.1;
+constexpr double kSrgb8PullWait = 60.0;
+// neither the identity nor the sRGB curve, so a device running its own transform fails
+constexpr float kDisplayTransferGamma = 2.4f;
+constexpr float kDisplayTransferScale = 0.9f;
+// the 8 bit encode inverts a 2.2 gamma at 12 bits with the low four bits dropped
+constexpr float kDisplayEncodeGamma = 2.2f;
+constexpr int kDisplayEncodeCodeStep = 16;
+constexpr int kDisplayEncodeLevels = 256;
+// a monitor profile's output curves: the sRGB curve under a different peak per channel
+constexpr float kMonitorChannelPeak[kNumComps] = {1.0f, 0.95f, 0.9f};
+constexpr float kSrgbCodeMax = 255.0f;
+
+void fail(const char* what)
+{
+  ++g_failures;
+  std::fprintf(stderr, "FAIL: %s\n", what);
+}
+
+// picture-like content, so a 10:1 encode has something to work with. Every
+// component differs at every pixel and every frame differs from its neighbours,
+// so a swapped plane, a bad stride or a misrouted frame cannot pass.
+grk_image* patternFrame(uint32_t frameIndex, uint8_t precision)
+{
+  const int32_t maxSample = (1 << precision) - 1;
+  // the same picture at every precision, so a 16 bit frame and its 12 bit twin
+  // differ only by the width of the samples
+  const int32_t frameStep = 37 * ((maxSample + 1) / (kMaxSample + 1));
+  auto components = std::make_unique<grk_image_comp[]>(kNumComps);
+  for(uint32_t i = 0; i < kNumComps; ++i)
+  {
+    auto c = &components[i];
+    c->w = kWidth;
+    c->h = kHeight;
+    c->dx = 1;
+    c->dy = 1;
+    c->prec = precision;
+    c->sgnd = false;
+  }
+  auto image = grk_image_new(kNumComps, components.get(), GRK_CLRSPC_SRGB, true);
+  if(!image)
+    return nullptr;
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    auto data = (int32_t*)comp->data;
+    for(uint32_t y = 0; y < comp->h; ++y)
+    {
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        int32_t gradient = (int32_t)(((uint64_t)x * maxSample) / kWidth);
+        int32_t band = ((y / 64) % 2) ? maxSample / 4 : 0;
+        int32_t tint = compno * (maxSample / 8);
+        int32_t value =
+            (gradient + band + tint) / 2 + (int32_t)(y % 7) + (int32_t)(frameIndex * frameStep);
+        data[x] = std::min(maxSample, value % (maxSample + 1));
+      }
+      data += comp->stride;
+    }
+  }
+  return image;
+}
+
+void baseParameters(grk_cparameters& params)
+{
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.numresolution = kResolutions;
+  params.cblockw_init = kCodeBlock;
+  params.cblockh_init = kCodeBlock;
+  params.numlayers = 1;
+  params.mct = 1;
+  params.prog_order = GRK_CPRL;
+}
+
+// the samples of every component, row major without padding, empty on failure
+std::vector<std::vector<int32_t>> decodeOnCpu(const std::vector<uint8_t>& stream)
+{
+  std::vector<std::vector<int32_t>> planes;
+  grk_decompress_parameters params = {};
+  grk_stream_params streamParams = {};
+  streamParams.buf = const_cast<uint8_t*>(stream.data());
+  streamParams.buf_len = stream.size();
+  auto codec = grk_decompress_init(&streamParams, &params);
+  grk_header_info header = {};
+  if(!codec || !grk_decompress_read_header(codec, &header) || !grk_decompress(codec, nullptr))
+  {
+    grk_object_unref(codec);
+    return planes;
+  }
+  auto image = grk_decompress_get_image(codec);
+  if(!image)
+  {
+    grk_object_unref(codec);
+    return planes;
+  }
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    std::vector<int32_t> plane;
+    plane.reserve((size_t)comp->w * comp->h);
+    for(uint32_t y = 0; y < comp->h; ++y)
+    {
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        size_t index = (size_t)y * comp->stride + x;
+        switch(comp->data_type)
+        {
+          case GRK_INT_16:
+            plane.push_back(((int16_t*)comp->data)[index]);
+            break;
+          case GRK_INT_8:
+            plane.push_back(((int8_t*)comp->data)[index]);
+            break;
+          default:
+            plane.push_back(((int32_t*)comp->data)[index]);
+            break;
+        }
+      }
+    }
+    planes.push_back(std::move(plane));
+  }
+  grk_object_unref(codec);
+  return planes;
+}
+
+bool samplesEqual(const grk_image* source, const std::vector<std::vector<int32_t>>& planes,
+                  int32_t tolerance, int32_t* maxDifference)
+{
+  *maxDifference = 0;
+  if(planes.size() != source->numcomps)
+    return false;
+  for(uint16_t compno = 0; compno < source->numcomps; ++compno)
+  {
+    auto comp = source->comps + compno;
+    if(planes[compno].size() != (size_t)comp->w * comp->h)
+      return false;
+    auto data = (const int32_t*)comp->data;
+    for(uint32_t y = 0; y < comp->h; ++y)
+      for(uint32_t x = 0; x < comp->w; ++x)
+      {
+        int32_t d =
+            std::abs(data[(size_t)y * comp->stride + x] - planes[compno][(size_t)y * comp->w + x]);
+        if(d > *maxDifference)
+          *maxDifference = d;
+      }
+  }
+  return *maxDifference <= tolerance;
+}
+
+bool planesEqual(const std::vector<std::vector<int32_t>>& left,
+                 const std::vector<std::vector<int32_t>>& right, int32_t tolerance,
+                 int32_t* maxDifference)
+{
+  *maxDifference = 0;
+  if(left.empty() || left.size() != right.size())
+    return false;
+  for(size_t plane = 0; plane < left.size(); ++plane)
+  {
+    if(left[plane].size() != right[plane].size())
+      return false;
+    for(size_t i = 0; i < left[plane].size(); ++i)
+    {
+      int32_t d = std::abs(left[plane][i] - right[plane][i]);
+      if(d > *maxDifference)
+        *maxDifference = d;
+    }
+  }
+  return *maxDifference <= tolerance;
+}
+
+double secondsSince(std::chrono::steady_clock::time_point start)
+{
+  return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+}
+
+// the code streams the batch handed back, keyed by the frame identity submitted
+// with each frame. Callbacks run on the plugin's threads, so it takes a lock.
+struct Collector
+{
+  std::mutex mutex;
+  std::map<size_t, std::vector<uint8_t>> codestreams;
+  int emptyStreams = 0;
+  int duplicates = 0;
+};
+
+void collect(void* user, void* frame, const uint8_t* codestream, size_t length)
+{
+  auto collector = (Collector*)user;
+  std::lock_guard<std::mutex> lock(collector->mutex);
+  if(!length)
+  {
+    ++collector->emptyStreams;
+    return;
+  }
+  ++g_progress;
+  auto frameId = (size_t)frame;
+  if(collector->codestreams.count(frameId))
+    ++collector->duplicates;
+  collector->codestreams[frameId] = std::vector<uint8_t>(codestream, codestream + length);
+}
+
+// the depths one batch runs at: what the code stream carries, what the caller
+// declares its frames to be, and what the submitted frames actually are
+struct BatchShape
+{
+  uint8_t prec;
+  uint8_t sourcePrec;
+  uint8_t framePrec;
+};
+
+// runs numFrames pattern frames through one batch. Reports the seconds spent in
+// submit and end, so synthesizing the frames does not count against the pipeline.
+bool runBatch(grk_cparameters& params, BatchShape shape, Collector& collector, double* seconds,
+              bool* xyzOnDevice, uint32_t numFrames = kNumFrames, bool lastFrameFirst = false)
+{
+  *xyzOnDevice = false;
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kWidth;
+  info.height = kHeight;
+  info.numcomps = kNumComps;
+  info.prec = shape.prec;
+  info.source_prec = shape.sourcePrec;
+  info.callback = collect;
+  info.user = &collector;
+  info.xyz_on_device = xyzOnDevice;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  if(rc != 0)
+  {
+    std::fprintf(stderr, "grk_plugin_batch_memory_begin returned %d\n", (int)rc);
+    return false;
+  }
+  double submitSeconds = 0;
+  for(uint32_t submitted = 0; submitted < numFrames; ++submitted)
+  {
+    uint32_t i = lastFrameFirst ? numFrames - 1 - submitted : submitted;
+    auto frame = patternFrame(i, shape.framePrec);
+    if(!frame)
+    {
+      fail("frame allocation");
+      break;
+    }
+    // the frame identity starts at 1: it travels to the callback as a pointer
+    // and a frame numbered 0 would be indistinguishable from no frame at all
+    auto submitStart = std::chrono::steady_clock::now();
+    bool accepted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
+    submitSeconds += secondsSince(submitStart);
+    ++g_progress;
+    grk_object_unref(&frame->obj);
+    if(!accepted)
+    {
+      fail("grk_plugin_batch_memory_submit");
+      break;
+    }
+  }
+  auto endStart = std::chrono::steady_clock::now();
+  bool ended = grk_plugin_batch_memory_end();
+  *seconds = submitSeconds + secondsSince(endStart);
+  if(!ended)
+    fail("grk_plugin_batch_memory_end");
+  return ended;
+}
+
+void checkCollector(const Collector& collector, const char* what, uint32_t numFrames = kNumFrames)
+{
+  if(collector.emptyStreams)
+  {
+    std::printf("  %d frame(s) came back empty\n", collector.emptyStreams);
+    fail(what);
+  }
+  if(collector.duplicates)
+  {
+    std::printf("  %d frame identity(s) arrived twice\n", collector.duplicates);
+    fail(what);
+  }
+  if(collector.codestreams.size() != numFrames)
+  {
+    std::printf("  %u of %u frames arrived\n", (unsigned)collector.codestreams.size(), numFrames);
+    fail(what);
+  }
+}
+
+// lossless: every frame's code stream decodes to that frame's own samples
+void checkLossless()
+{
+  std::printf("lossless 12 bit, mct, %ux%u, %u frames\n", kWidth, kHeight, kNumFrames);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+
+  Collector collector;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, &seconds, &xyzOnDevice))
+  {
+    fail("lossless batch");
+    return;
+  }
+  std::printf("lossless batch: %.2f s, %.1f frames per second\n", seconds, kNumFrames / seconds);
+  checkCollector(collector, "lossless batch delivery");
+
+  for(const auto& entry : collector.codestreams)
+  {
+    auto frameIndex = (uint32_t)(entry.first - 1);
+    auto source = patternFrame(frameIndex, kPrecision);
+    if(!source)
+    {
+      fail("lossless source frame allocation");
+      return;
+    }
+    int32_t difference = 0;
+    auto decoded = decodeOnCpu(entry.second);
+    if(!samplesEqual(source, decoded, 0, &difference))
+    {
+      std::printf("  frame %u: max difference %d\n", frameIndex, difference);
+      fail("a lossless batch frame does not decode to its own source");
+    }
+    grk_object_unref(&source->obj);
+  }
+  std::printf("lossless batch: all %u frames decode to their own source exactly\n", kNumFrames);
+}
+
+// irreversible cinema 2K with the colour transform: every frame's decode stays
+// within a few codes of the transformed source
+void cinemaParameters(grk_cparameters& params)
+{
+  baseParameters(params);
+  params.rsiz = GRK_PROFILE_CINEMA_2K;
+  params.framerate = 24;
+  params.irreversible = true;
+  params.apply_xyz_transform = true;
+  params.allocation_by_rate_distortion = true;
+  params.layer_rate[0] = kCinemaRatio;
+  params.write_tlm = true;
+}
+
+void checkCinema()
+{
+  std::printf("cinema 2K irreversible, xyz transform, %ux%u, %u frames\n", kWidth, kHeight,
+              kNumFrames);
+  grk_cparameters params;
+  cinemaParameters(params);
+
+  Collector collector;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, &seconds, &xyzOnDevice))
+  {
+    fail("cinema batch");
+    return;
+  }
+  std::printf("cinema batch: %.2f s, %.1f frames per second, most of it the colour transform "
+              "submit runs on the caller's frame\n",
+              seconds, kNumFrames / seconds);
+  if(xyzOnDevice)
+    fail("a 12 bit source has no device colour transform");
+  checkCollector(collector, "cinema batch delivery");
+
+  for(const auto& entry : collector.codestreams)
+  {
+    auto frameIndex = (uint32_t)(entry.first - 1);
+    auto expected = patternFrame(frameIndex, kPrecision);
+    if(!expected || !grk::applyXYZTransform(expected, kPrecision))
+    {
+      fail("cinema source frame allocation");
+      if(expected)
+        grk_object_unref(&expected->obj);
+      return;
+    }
+    int32_t difference = 0;
+    auto decoded = decodeOnCpu(entry.second);
+    if(!samplesEqual(expected, decoded, kCinemaEncodeTolerance, &difference))
+    {
+      std::printf("  frame %u: max difference %d codes\n", frameIndex, difference);
+      fail("a cinema batch frame strays from the transformed source");
+    }
+    grk_object_unref(&expected->obj);
+  }
+  std::printf("cinema batch: all %u frames within %d codes of the transformed source\n", kNumFrames,
+              kCinemaEncodeTolerance);
+}
+
+// a 16 bit RGB source encoded at 12 bits: the preprocess kernel runs the colour
+// transform, so submit hands the frame over untouched. Held against the host
+// transform, and against the host transform through the same encoder.
+void checkCinemaSource16()
+{
+  std::printf("cinema 2K irreversible, xyz transform on device, 16 bit source, %ux%u, %u frames\n",
+              kWidth, kHeight, kNumFrames);
+  grk_cparameters params;
+  cinemaParameters(params);
+
+  Collector deviceTransform;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, kSourcePrecision16, kSourcePrecision16}, deviceTransform,
+               &seconds, &xyzOnDevice))
+  {
+    fail("16 bit source cinema batch");
+    return;
+  }
+  std::printf("16 bit source cinema batch: %.2f s, %.1f frames per second\n", seconds,
+              kNumFrames / seconds);
+  if(!xyzOnDevice)
+    fail("a 16 bit RGB source encoded at 12 bits should transform on the device");
+  checkCollector(deviceTransform, "16 bit source cinema batch delivery");
+
+  // the same frames declared as a 12 bit source, which sends the transform back
+  // to the host and leaves the encoder identical
+  grk_cparameters hostParams;
+  cinemaParameters(hostParams);
+  Collector hostTransform;
+  double hostSeconds = 0;
+  bool hostXyzOnDevice = false;
+  if(!runBatch(hostParams, {kPrecision, 0, kSourcePrecision16}, hostTransform, &hostSeconds,
+               &hostXyzOnDevice))
+  {
+    fail("16 bit source cinema batch with the host transform");
+    return;
+  }
+  std::printf("16 bit source, host transform: %.2f s, %.1f frames per second\n", hostSeconds,
+              kNumFrames / hostSeconds);
+  if(hostXyzOnDevice)
+    fail("a batch declaring a 12 bit source should transform on the host");
+  checkCollector(hostTransform, "16 bit source host transform batch delivery");
+
+  int32_t worstTransformDifference = 0;
+  for(const auto& entry : deviceTransform.codestreams)
+  {
+    auto frameIndex = (uint32_t)(entry.first - 1);
+    auto expected = patternFrame(frameIndex, kSourcePrecision16);
+    if(!expected || !grk::applyXYZTransform(expected, kPrecision))
+    {
+      fail("16 bit source frame allocation");
+      if(expected)
+        grk_object_unref(&expected->obj);
+      return;
+    }
+    auto decoded = decodeOnCpu(entry.second);
+    int32_t difference = 0;
+    if(!samplesEqual(expected, decoded, kCinemaEncodeTolerance, &difference))
+    {
+      std::printf("  frame %u: max difference %d codes\n", frameIndex, difference);
+      fail("a 16 bit source cinema frame strays from the transformed source");
+    }
+    grk_object_unref(&expected->obj);
+
+    auto host = hostTransform.codestreams.find(entry.first);
+    if(host == hostTransform.codestreams.end())
+    {
+      fail("a device transform frame has no host transform code stream");
+      continue;
+    }
+    if(!planesEqual(decoded, decodeOnCpu(host->second), kTransformTolerance, &difference))
+    {
+      std::printf("  frame %u: device and host transform differ by %d codes\n", frameIndex,
+                  difference);
+      fail("the device colour transform strays from the host one");
+    }
+    if(difference > worstTransformDifference)
+      worstTransformDifference = difference;
+  }
+  std::printf("16 bit source cinema batch: all %u frames within %d codes of the transformed "
+              "source, and within %d of the host transform through the same encoder\n",
+              kNumFrames, kCinemaEncodeTolerance, worstTransformDifference);
+}
+
+// ---------------------------------------------------------------------------
+// planar YUV straight from a video decoder
+// ---------------------------------------------------------------------------
+
+constexpr uint32_t kYuvWidth = 512;
+constexpr uint32_t kYuvHeight = 288;
+constexpr uint32_t kYuvNumFrames = 48;
+// The reference goes through the 16 bit RGB path and the planes through the YUV
+// one, so the kernel's rgb16 has to match the scalar reference at every sample.
+// The check asserts every frame's two code streams are identical byte for byte
+// and that both decode to the same samples.
+// the planes carry a row pitch wider than the picture, so a submit that ignored
+// the stride would read the wrong samples
+constexpr uint32_t kYuvLumaStridePadding = 13;
+constexpr uint32_t kYuvChromaStridePadding = 7;
+
+struct YuvSource
+{
+  const char* name;
+  GRK_SOURCE_FORMAT format;
+  GRK_YUV_MATRIX matrix;
+  bool matrixIsExplicit;
+  bool fullRange;
+  uint8_t sourcePrec;
+};
+
+// the colour constants the plugin derives from the matrix and the range, so the
+// reference and the kernel start from the same numbers
+struct YuvColour
+{
+  float lumaOffset;
+  float lumaScale;
+  float chromaOffset;
+  float chromaScale;
+  float redFromCr;
+  float greenFromCb;
+  float greenFromCr;
+  float blueFromCb;
+};
+
+YuvColour yuvColour(const YuvSource& source)
+{
+  YuvColour colour = {};
+  if(source.fullRange)
+  {
+    auto sampleMaximum = (float)((1u << source.sourcePrec) - 1u);
+    colour.lumaOffset = 0.0f;
+    colour.lumaScale = 1.0f / sampleMaximum;
+    colour.chromaOffset = (float)(1u << (source.sourcePrec - 1));
+    colour.chromaScale = 1.0f / sampleMaximum;
+  }
+  else
+  {
+    auto scale = (float)(1u << (source.sourcePrec - 8));
+    colour.lumaOffset = 16.0f * scale;
+    colour.lumaScale = 1.0f / (219.0f * scale);
+    colour.chromaOffset = 128.0f * scale;
+    colour.chromaScale = 1.0f / (224.0f * scale);
+  }
+  switch(source.matrix)
+  {
+    case GRK_YUV_BT601:
+      colour.redFromCr = 1.402f;
+      colour.greenFromCb = -0.344136f;
+      colour.greenFromCr = -0.714136f;
+      colour.blueFromCb = 1.772f;
+      break;
+    case GRK_YUV_BT2020:
+      colour.redFromCr = 1.4746f;
+      colour.greenFromCb = -0.16455f;
+      colour.greenFromCr = -0.57135f;
+      colour.blueFromCb = 1.8814f;
+      break;
+    default:
+      colour.redFromCr = 1.5748f;
+      colour.greenFromCb = -0.1873242f;
+      colour.greenFromCr = -0.4681243f;
+      colour.blueFromCb = 1.8556f;
+      break;
+  }
+  return colour;
+}
+
+// planar Y, Cb and Cr held as 16 bit samples whatever the source depth is, so
+// the reference and the submitted planes read the same picture
+struct YuvPlanes
+{
+  uint32_t chromaWidth;
+  uint32_t chromaHeight;
+  uint32_t lumaStride;
+  uint32_t chromaStride;
+  std::vector<uint16_t> luma;
+  std::vector<uint16_t> cb;
+  std::vector<uint16_t> cr;
+};
+
+uint32_t pseudoRandom(uint32_t seed)
+{
+  seed = seed * 1664525u + 1013904223u;
+  seed ^= seed >> 15;
+  return seed * 2246822519u;
+}
+
+YuvPlanes makeYuvPlanes(const YuvSource& source, uint32_t frameIndex)
+{
+  YuvPlanes planes;
+  planes.chromaWidth = (kYuvWidth + 1) / 2;
+  planes.chromaHeight = source.format == GRK_SOURCE_YUV420P ? (kYuvHeight + 1) / 2 : kYuvHeight;
+  planes.lumaStride = kYuvWidth + kYuvLumaStridePadding;
+  planes.chromaStride = planes.chromaWidth + kYuvChromaStridePadding;
+  planes.luma.assign((size_t)planes.lumaStride * kYuvHeight, 0);
+  planes.cb.assign((size_t)planes.chromaStride * planes.chromaHeight, 0);
+  planes.cr.assign((size_t)planes.chromaStride * planes.chromaHeight, 0);
+
+  auto scale = (int32_t)(1u << (source.sourcePrec - 8));
+  int32_t lumaLow = 16 * scale;
+  int32_t lumaHigh = 235 * scale;
+  int32_t chromaLow = 16 * scale;
+  int32_t chromaHigh = 240 * scale;
+  for(uint32_t y = 0; y < kYuvHeight; ++y)
+  {
+    for(uint32_t x = 0; x < kYuvWidth; ++x)
+    {
+      int32_t gradient = lumaLow + (int32_t)((uint64_t)x * (lumaHigh - lumaLow) / (kYuvWidth - 1));
+      int32_t band = ((y / 32) % 2) ? (lumaHigh - lumaLow) / 8 : 0;
+      int32_t jitter = (int32_t)(pseudoRandom(x * 7919u + y * 104729u + frameIndex * 15485863u) %
+                                 (uint32_t)(24 * scale));
+      int32_t value = gradient + band + jitter + (int32_t)frameIndex * scale;
+      planes.luma[(size_t)y * planes.lumaStride + x] =
+          (uint16_t)std::min(lumaHigh, std::max(lumaLow, value));
+    }
+  }
+  for(uint32_t y = 0; y < planes.chromaHeight; ++y)
+  {
+    for(uint32_t x = 0; x < planes.chromaWidth; ++x)
+    {
+      // Cb runs down the picture and Cr across it, so swapping the two planes
+      // cannot pass
+      int32_t blueGradient =
+          chromaLow + (int32_t)((uint64_t)y * (chromaHigh - chromaLow) / (planes.chromaHeight - 1));
+      int32_t redGradient =
+          chromaLow + (int32_t)((uint64_t)x * (chromaHigh - chromaLow) / (planes.chromaWidth - 1));
+      int32_t blueJitter =
+          (int32_t)(pseudoRandom(x * 2654435761u + y * 40503u + frameIndex * 6700417u) %
+                    (uint32_t)(16 * scale));
+      int32_t redJitter =
+          (int32_t)(pseudoRandom(x * 374761393u + y * 668265263u + frameIndex * 2971215073u) %
+                    (uint32_t)(16 * scale));
+      planes.cb[(size_t)y * planes.chromaStride + x] =
+          (uint16_t)std::min(chromaHigh, std::max(chromaLow, blueGradient + blueJitter));
+      planes.cr[(size_t)y * planes.chromaStride + x] =
+          (uint16_t)std::min(chromaHigh, std::max(chromaLow, redGradient + redJitter));
+    }
+  }
+  return planes;
+}
+
+// chroma sample i is co-sited with luma column 2i, so an even column takes i and
+// an odd one the average of i and i+1, clamped at the right edge
+float chromaColumnTap(const uint16_t* row, uint32_t column, uint32_t chromaWidth)
+{
+  uint32_t left = column >> 1;
+  float sample = (float)row[left];
+  if((column & 1) == 0)
+    return sample;
+  uint32_t right = (left + 1 < chromaWidth) ? left + 1 : chromaWidth - 1;
+  return 0.5f * (sample + (float)row[right]);
+}
+
+void referenceChroma(const YuvPlanes& planes, bool chromaIsHalfHeight, uint32_t column,
+                     uint32_t row, float* cb, float* cr)
+{
+  auto rowOf = [&planes](const std::vector<uint16_t>& plane, uint32_t index) {
+    return plane.data() + (size_t)index * planes.chromaStride;
+  };
+  if(chromaIsHalfHeight)
+  {
+    uint32_t own = row >> 1;
+    uint32_t leaning = (row & 1) ? own + 1 : (own ? own - 1 : 0);
+    if(leaning >= planes.chromaHeight)
+      leaning = planes.chromaHeight - 1;
+    *cb = 0.75f * chromaColumnTap(rowOf(planes.cb, own), column, planes.chromaWidth) +
+          0.25f * chromaColumnTap(rowOf(planes.cb, leaning), column, planes.chromaWidth);
+    *cr = 0.75f * chromaColumnTap(rowOf(planes.cr, own), column, planes.chromaWidth) +
+          0.25f * chromaColumnTap(rowOf(planes.cr, leaning), column, planes.chromaWidth);
+  }
+  else
+  {
+    *cb = chromaColumnTap(rowOf(planes.cb, row), column, planes.chromaWidth);
+    *cr = chromaColumnTap(rowOf(planes.cr, row), column, planes.chromaWidth);
+  }
+}
+
+uint32_t toRgb16(float value)
+{
+  if(value <= 0.0f)
+    return 0u;
+  if(value >= 1.0f)
+    return 65535u;
+  return (uint32_t)(value * 65535.0f + 0.5f);
+}
+
+// the same siting, filter and matrix the kernel runs, as a scalar 16 bit planar
+// RGB image the existing RGB batch path can encode
+grk_image* referenceRgbFrame(const YuvPlanes& planes, const YuvSource& source)
+{
+  auto colour = yuvColour(source);
+  bool chromaIsHalfHeight = source.format == GRK_SOURCE_YUV420P;
+  auto components = std::make_unique<grk_image_comp[]>(kNumComps);
+  for(uint32_t i = 0; i < kNumComps; ++i)
+  {
+    auto c = &components[i];
+    c->w = kYuvWidth;
+    c->h = kYuvHeight;
+    c->dx = 1;
+    c->dy = 1;
+    c->prec = kSourcePrecision16;
+    c->sgnd = false;
+  }
+  auto image = grk_image_new(kNumComps, components.get(), GRK_CLRSPC_SRGB, true);
+  if(!image)
+    return nullptr;
+  auto red = (int32_t*)image->comps[0].data;
+  auto green = (int32_t*)image->comps[1].data;
+  auto blue = (int32_t*)image->comps[2].data;
+  for(uint32_t y = 0; y < kYuvHeight; ++y)
+  {
+    for(uint32_t x = 0; x < kYuvWidth; ++x)
+    {
+      float luma = (float)planes.luma[(size_t)y * planes.lumaStride + x] - colour.lumaOffset;
+      luma *= colour.lumaScale;
+      float cb = 0.0f;
+      float cr = 0.0f;
+      referenceChroma(planes, chromaIsHalfHeight, x, y, &cb, &cr);
+      cb = (cb - colour.chromaOffset) * colour.chromaScale;
+      cr = (cr - colour.chromaOffset) * colour.chromaScale;
+      red[x] = (int32_t)toRgb16(luma + colour.redFromCr * cr);
+      green[x] = (int32_t)toRgb16(luma + colour.greenFromCb * cb + colour.greenFromCr * cr);
+      blue[x] = (int32_t)toRgb16(luma + colour.blueFromCb * cb);
+    }
+    red += image->comps[0].stride;
+    green += image->comps[1].stride;
+    blue += image->comps[2].stride;
+  }
+  return image;
+}
+
+// the planes as the caller holds them: one byte per sample at 8 bits and a
+// little endian 16 bit container at 10
+struct YuvFrameBuffers
+{
+  std::vector<uint8_t> luma;
+  std::vector<uint8_t> cb;
+  std::vector<uint8_t> cr;
+};
+
+void copyPlane(const std::vector<uint16_t>& source, std::vector<uint8_t>& target,
+               size_t containerBytes)
+{
+  target.resize(source.size() * containerBytes);
+  for(size_t i = 0; i < source.size(); ++i)
+  {
+    if(containerBytes == 1)
+    {
+      target[i] = (uint8_t)source[i];
+    }
+    else
+    {
+      target[2 * i] = (uint8_t)(source[i] & 0xFF);
+      target[2 * i + 1] = (uint8_t)(source[i] >> 8);
+    }
+  }
+}
+
+YuvFrameBuffers toFrameBuffers(const YuvPlanes& planes, uint8_t sourcePrec)
+{
+  size_t containerBytes = sourcePrec > 8 ? 2 : 1;
+  YuvFrameBuffers buffers;
+  copyPlane(planes.luma, buffers.luma, containerBytes);
+  copyPlane(planes.cb, buffers.cb, containerBytes);
+  copyPlane(planes.cr, buffers.cr, containerBytes);
+  return buffers;
+}
+
+grk_image* yuvFrameImage(const YuvPlanes& planes, const YuvSource& source, YuvFrameBuffers& buffers)
+{
+  auto components = std::make_unique<grk_image_comp[]>(kNumComps);
+  for(uint32_t i = 0; i < kNumComps; ++i)
+  {
+    auto c = &components[i];
+    bool isChroma = i > 0;
+    c->w = isChroma ? planes.chromaWidth : kYuvWidth;
+    c->h = isChroma ? planes.chromaHeight : kYuvHeight;
+    c->dx = isChroma ? 2 : 1;
+    c->dy = (isChroma && source.format == GRK_SOURCE_YUV420P) ? 2 : 1;
+    c->prec = source.sourcePrec;
+    c->sgnd = false;
+    c->data_type = source.sourcePrec > 8 ? GRK_INT_16 : GRK_INT_8;
+  }
+  auto image = grk_image_new(kNumComps, components.get(), GRK_CLRSPC_SYCC, false);
+  if(!image)
+    return nullptr;
+  image->comps[0].data = buffers.luma.data();
+  image->comps[0].stride = planes.lumaStride;
+  image->comps[1].data = buffers.cb.data();
+  image->comps[1].stride = planes.chromaStride;
+  image->comps[2].data = buffers.cr.data();
+  image->comps[2].stride = planes.chromaStride;
+  return image;
+}
+
+void yuvCinemaParameters(grk_cparameters& params)
+{
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.numresolution = kResolutions;
+  params.cblockw_init = kCodeBlock;
+  params.cblockh_init = kCodeBlock;
+  params.numlayers = 1;
+  params.mct = 1;
+  params.prog_order = GRK_CPRL;
+  params.rsiz = GRK_PROFILE_CINEMA_2K;
+  params.framerate = 24;
+  params.irreversible = true;
+  params.apply_xyz_transform = true;
+  params.allocation_by_rate_distortion = true;
+  params.layer_rate[0] = kCinemaRatio;
+  params.write_tlm = true;
+}
+
+// the reference RGB frames through the existing 16 bit path
+bool runReferenceBatch(const YuvSource& source, Collector& collector)
+{
+  grk_cparameters params;
+  yuvCinemaParameters(params);
+  bool xyzOnDevice = false;
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kYuvWidth;
+  info.height = kYuvHeight;
+  info.numcomps = kNumComps;
+  info.prec = kPrecision;
+  info.source_prec = kSourcePrecision16;
+  info.callback = collect;
+  info.user = &collector;
+  info.xyz_on_device = &xyzOnDevice;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  if(rc != 0)
+  {
+    std::fprintf(stderr, "reference batch begin returned %d\n", (int)rc);
+    return false;
+  }
+  if(!xyzOnDevice)
+    fail("the 16 bit reference batch should transform on the device");
+  for(uint32_t i = 0; i < kYuvNumFrames; ++i)
+  {
+    auto planes = makeYuvPlanes(source, i);
+    auto frame = referenceRgbFrame(planes, source);
+    if(!frame)
+    {
+      fail("reference frame allocation");
+      break;
+    }
+    bool submitted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
+    grk_object_unref(&frame->obj);
+    if(!submitted)
+    {
+      fail("reference frame submit");
+      break;
+    }
+  }
+  return grk_plugin_batch_memory_end();
+}
+
+// the same pictures as planes, converted on the device
+bool runYuvBatch(const YuvSource& source, Collector& collector, double* seconds)
+{
+  grk_cparameters params;
+  yuvCinemaParameters(params);
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kYuvWidth;
+  info.height = kYuvHeight;
+  info.numcomps = kNumComps;
+  info.prec = kPrecision;
+  info.source_prec = source.sourcePrec;
+  info.callback = collect;
+  info.user = &collector;
+  info.source_format = source.format;
+  if(source.matrixIsExplicit)
+    info.yuv_matrix = source.matrix;
+  info.yuv_full_range = source.fullRange;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  if(rc != 0)
+  {
+    std::fprintf(stderr, "yuv batch begin returned %d\n", (int)rc);
+    return false;
+  }
+  double submitSeconds = 0;
+  for(uint32_t i = 0; i < kYuvNumFrames; ++i)
+  {
+    auto planes = makeYuvPlanes(source, i);
+    auto buffers = toFrameBuffers(planes, source.sourcePrec);
+    auto frame = yuvFrameImage(planes, source, buffers);
+    if(!frame)
+    {
+      fail("yuv frame allocation");
+      break;
+    }
+    auto submitStart = std::chrono::steady_clock::now();
+    bool submitted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
+    submitSeconds += secondsSince(submitStart);
+    grk_object_unref(&frame->obj);
+    if(!submitted)
+    {
+      fail("yuv frame submit");
+      break;
+    }
+  }
+  auto endStart = std::chrono::steady_clock::now();
+  bool ended = grk_plugin_batch_memory_end();
+  *seconds = submitSeconds + secondsSince(endStart);
+  return ended;
+}
+
+// the frames the determinism check runs twice: the 8 bit 4:2:0 pictures turned
+// into 16 bit RGB, which is what the reference batch encodes
+const YuvSource kDeterminismSource = {
+    "planar 8 bit 4:2:0, limited range, BT.709", GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false, 8};
+
+// reports the frame identities whose two code streams differ, and how
+size_t countIdenticalStreams(const Collector& first, const Collector& second, const char* what)
+{
+  size_t identical = 0;
+  for(const auto& entry : first.codestreams)
+  {
+    auto found = second.codestreams.find(entry.first);
+    if(found == second.codestreams.end())
+    {
+      fail("a frame arrived in only one of the two batches");
+      continue;
+    }
+    if(entry.second == found->second)
+    {
+      ++identical;
+      continue;
+    }
+    size_t offset = 0;
+    size_t shortest = std::min(entry.second.size(), found->second.size());
+    while(offset < shortest && entry.second[offset] == found->second[offset])
+      ++offset;
+    std::printf("  %s frame %u: %zu and %zu bytes, first difference at %zu\n", what,
+                (unsigned)(entry.first - 1), entry.second.size(), found->second.size(), offset);
+  }
+  return identical;
+}
+
+// the same frames through the same batch shape twice in one process: an encode
+// that is reproducible hands back the same bytes
+void checkDeterminism()
+{
+  std::printf("determinism, same frames encoded twice\n");
+
+  grk_cparameters losslessParams;
+  baseParameters(losslessParams);
+  losslessParams.irreversible = false;
+  Collector losslessFirst;
+  Collector losslessSecond;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(losslessParams, {kPrecision, 0, kPrecision}, losslessFirst, &seconds,
+               &xyzOnDevice) ||
+     !runBatch(losslessParams, {kPrecision, 0, kPrecision}, losslessSecond, &seconds, &xyzOnDevice))
+  {
+    fail("determinism lossless batch");
+    return;
+  }
+  checkCollector(losslessFirst, "determinism lossless first batch delivery");
+  checkCollector(losslessSecond, "determinism lossless second batch delivery");
+  auto losslessIdentical = countIdenticalStreams(losslessFirst, losslessSecond, "lossless");
+  std::printf("  lossless: %zu of %u code streams identical\n", losslessIdentical, kNumFrames);
+  if(losslessIdentical != kNumFrames)
+    fail("a lossless batch encoded twice does not give the same code streams");
+
+  Collector cinemaFirst;
+  Collector cinemaSecond;
+  if(!runReferenceBatch(kDeterminismSource, cinemaFirst) ||
+     !runReferenceBatch(kDeterminismSource, cinemaSecond))
+  {
+    fail("determinism cinema batch");
+    return;
+  }
+  checkCollector(cinemaFirst, "determinism cinema first batch delivery");
+  checkCollector(cinemaSecond, "determinism cinema second batch delivery");
+  auto cinemaIdentical = countIdenticalStreams(cinemaFirst, cinemaSecond, "cinema");
+  std::printf("  rate controlled: %zu of %u code streams identical\n", cinemaIdentical,
+              kYuvNumFrames);
+  if(cinemaIdentical != kYuvNumFrames)
+    fail("a rate controlled batch encoded twice does not give the same code streams");
+}
+
+// a number of rounds, replaces the checks
+constexpr const char* kStressRoundsVariable = "GRK_PLUGIN_BATCH_STRESS";
+constexpr int kStressStallSeconds = 60;
+constexpr int kStressStallExitCode = 2;
+// batches of different lengths end with different numbers of frames in flight
+constexpr uint32_t kStressFrameCounts[] = {kNumFrames, 1, 2, 3, 5, 16, 17, 31};
+
+// a hung batch never returns
+void exitWhenStalled()
+{
+  uint64_t lastProgress = g_progress;
+  int stalledSeconds = 0;
+  for(;;)
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    uint64_t progress = g_progress;
+    stalledSeconds = progress == lastProgress ? stalledSeconds + 1 : 0;
+    lastProgress = progress;
+    if(stalledSeconds < kStressStallSeconds)
+      continue;
+    std::fprintf(stderr, "FAIL: no frame submitted or delivered for %d seconds\n",
+                 kStressStallSeconds);
+    std::_Exit(kStressStallExitCode);
+  }
+}
+
+void checkStressLossless(uint32_t numFrames, bool lastFrameFirst,
+                         std::map<size_t, std::vector<uint8_t>>& firstStreams, double* seconds)
+{
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  Collector collector;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, seconds, &xyzOnDevice, numFrames,
+               lastFrameFirst))
+  {
+    fail("stress lossless batch");
+    return;
+  }
+  checkCollector(collector, "stress lossless batch delivery", numFrames);
+  for(const auto& entry : collector.codestreams)
+  {
+    auto first = firstStreams.find(entry.first);
+    bool repeats = first != firstStreams.end() && first->second == entry.second;
+    if(repeats)
+      continue;
+    if(first != firstStreams.end())
+    {
+      std::printf("  frame %u: %zu bytes, %zu the first time\n", (unsigned)(entry.first - 1),
+                  entry.second.size(), first->second.size());
+      fail("a lossless stress frame does not repeat its first code stream");
+    }
+    auto source = patternFrame((uint32_t)(entry.first - 1), kPrecision);
+    if(!source)
+    {
+      fail("stress source frame allocation");
+      return;
+    }
+    int32_t difference = 0;
+    if(!samplesEqual(source, decodeOnCpu(entry.second), 0, &difference))
+    {
+      std::printf("  frame %u: max difference %d\n", (unsigned)(entry.first - 1), difference);
+      fail("a lossless stress frame does not decode to its own source");
+    }
+    grk_object_unref(&source->obj);
+    firstStreams.emplace(entry.first, entry.second);
+  }
+}
+
+void checkStressRateControlled(std::unique_ptr<Collector>& first)
+{
+  auto collector = std::make_unique<Collector>();
+  if(!runReferenceBatch(kDeterminismSource, *collector))
+  {
+    fail("stress rate controlled batch");
+    return;
+  }
+  checkCollector(*collector, "stress rate controlled batch delivery", kYuvNumFrames);
+  if(!first)
+    first = std::move(collector);
+  else if(countIdenticalStreams(*first, *collector, "rate controlled") != kYuvNumFrames)
+    fail("a rate controlled stress frame does not repeat its first code stream");
+}
+
+constexpr uint64_t kFnvOffsetBasis = 14695981039346656037ull;
+constexpr uint64_t kFnvPrime = 1099511628211ull;
+
+// compared between two plugin builds
+uint64_t streamsChecksum(const std::map<size_t, std::vector<uint8_t>>& streams, uint64_t checksum)
+{
+  for(const auto& entry : streams)
+    for(uint8_t byte : entry.second)
+      checksum = (checksum ^ byte) * kFnvPrime;
+  return checksum;
+}
+
+void runStress(int rounds)
+{
+  std::thread(exitWhenStalled).detach();
+  std::map<size_t, std::vector<uint8_t>> firstLossless;
+  std::unique_ptr<Collector> firstRateControlled;
+  int failedRounds = 0;
+  double losslessSeconds = 0;
+  uint64_t losslessFrames = 0;
+  for(int round = 0; round < rounds; ++round)
+  {
+    int failuresBefore = g_failures;
+    uint32_t numFrames = kStressFrameCounts[round % std::size(kStressFrameCounts)];
+    // a frame's code stream must not depend on the frames encoded before it
+    bool lastFrameFirst = (round / std::size(kStressFrameCounts)) % 2 == 1;
+    double seconds = 0;
+    checkStressLossless(numFrames, lastFrameFirst, firstLossless, &seconds);
+    losslessSeconds += seconds;
+    losslessFrames += numFrames;
+    checkStressRateControlled(firstRateControlled);
+    if(g_failures != failuresBefore)
+    {
+      ++failedRounds;
+      std::printf("stress round %d failed, %u lossless frames\n", round, numFrames);
+    }
+  }
+  std::printf("stress: %d of %d rounds failed, lossless %.1f frames per second\n", failedRounds,
+              rounds, losslessSeconds > 0 ? losslessFrames / losslessSeconds : 0.0);
+  auto checksum = streamsChecksum(firstLossless, kFnvOffsetBasis);
+  if(firstRateControlled)
+    checksum = streamsChecksum(firstRateControlled->codestreams, checksum);
+  std::printf("stress: code stream checksum %016llx\n", (unsigned long long)checksum);
+}
+
+// grk_decompress consults the plugin flag, so this one runs on the device
+std::vector<std::vector<int32_t>> decodeOnDevice(const std::vector<uint8_t>& stream)
+{
+  grk_plugin_set_enabled(true);
+  auto planes = decodeOnCpu(stream);
+  grk_plugin_set_enabled(false);
+  return planes;
+}
+
+// a batch replaces the image the plugin's decoder was built against, so a
+// device decompress on either side of a batch has to keep working
+void checkDecompressBetweenBatches()
+{
+  std::printf("device decompress on both sides of a batch\n");
+  int32_t worst = 0;
+  for(int round = 0; round < 2; ++round)
+  {
+    Collector collector;
+    if(!runReferenceBatch(kDeterminismSource, collector))
+    {
+      fail("decompress between batches: batch");
+      return;
+    }
+    checkCollector(collector, "decompress between batches delivery");
+    if(collector.codestreams.empty())
+      return;
+    const auto& stream = collector.codestreams.begin()->second;
+    auto onDevice = decodeOnDevice(stream);
+    auto onHost = decodeOnCpu(stream);
+    int32_t difference = 0;
+    if(!planesEqual(onDevice, onHost, kDeviceDecodeTolerance, &difference))
+    {
+      std::printf("  round %d: device and host decode differ by %d codes\n", round, difference);
+      fail("a device decompress around a batch strays from the host decode");
+    }
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("  two batches, a device decompress after each, max difference %d codes from the "
+              "host decode\n",
+              worst);
+}
+
+// the frames an in-memory decompress batch handed back, keyed by frame identity
+struct DecodedCollector
+{
+  std::mutex mutex;
+  std::map<size_t, std::vector<std::vector<int32_t>>> frames;
+  int failed = 0;
+  int duplicates = 0;
+};
+
+void collectDecoded(void* user, void* frame, const grk_image* image)
+{
+  auto collector = (DecodedCollector*)user;
+  std::lock_guard<std::mutex> lock(collector->mutex);
+  if(!image)
+  {
+    ++collector->failed;
+    return;
+  }
+  auto frameId = (size_t)frame;
+  if(collector->frames.count(frameId))
+    ++collector->duplicates;
+  std::vector<std::vector<int32_t>> planes;
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    std::vector<int32_t> plane((size_t)comp->w * comp->h);
+    auto data = (const int32_t*)comp->data;
+    for(uint32_t y = 0; y < comp->h; ++y)
+      std::copy(data + (size_t)y * comp->stride, data + (size_t)y * comp->stride + comp->w,
+                plane.begin() + (size_t)y * comp->w);
+    planes.push_back(std::move(plane));
+  }
+  collector->frames[frameId] = std::move(planes);
+}
+
+// kNumFrames cinema frames compressed on the CPU, keyed like a batch's collector
+bool compressOnCpu(grk_cparameters& params, Collector& encoded)
+{
+  grk_plugin_set_enabled(false);
+  for(uint32_t i = 0; i < kNumFrames; ++i)
+  {
+    auto frame = patternFrame(i, kPrecision);
+    if(!frame)
+      return false;
+    std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 2);
+    grk_cparameters frameParams = params;
+    grk_stream_params streamParams = {};
+    streamParams.buf = stream.data();
+    streamParams.buf_len = stream.size();
+    uint64_t length = 0;
+    auto codec = grk_compress_init(&streamParams, &frameParams, frame);
+    if(codec)
+      length = grk_compress(codec, nullptr);
+    grk_object_unref(codec);
+    grk_object_unref(&frame->obj);
+    if(!length)
+      return false;
+    stream.resize(length);
+    encoded.codestreams[(size_t)(i + 1)] = std::move(stream);
+  }
+  return true;
+}
+
+// lossless HT: every frame's code stream is the CPU encoder's, byte for byte
+void checkHTLossless()
+{
+  std::printf("HT lossless 12 bit, mct, %ux%u, %u frames\n", kWidth, kHeight, kNumFrames);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  params.cblk_sty = GRK_CBLKSTY_HT_ONLY;
+  Collector cpu;
+  if(!compressOnCpu(params, cpu))
+  {
+    fail("HT CPU compress");
+    return;
+  }
+
+  Collector collector;
+  double seconds = 0;
+  bool xyzOnDevice = false;
+  if(!runBatch(params, {kPrecision, 0, kPrecision}, collector, &seconds, &xyzOnDevice))
+  {
+    fail("HT lossless batch");
+    return;
+  }
+  std::printf("HT lossless batch: %.2f s, %.1f frames per second\n", seconds, kNumFrames / seconds);
+  checkCollector(collector, "HT lossless batch delivery");
+  size_t differing = 0;
+  for(const auto& entry : collector.codestreams)
+  {
+    if(entry.second != cpu.codestreams[entry.first])
+      ++differing;
+  }
+  if(differing)
+  {
+    std::printf("  %zu of %u frames differ from the CPU code stream\n", differing, kNumFrames);
+    fail("an HT batch frame differs from the CPU code stream");
+  }
+}
+
+// the interleaved 8 bit rows an srgb8 batch hands back, keyed by frame identity
+struct Rgb8Collector
+{
+  std::mutex mutex;
+  std::map<size_t, std::vector<uint8_t>> frames;
+  int failed = 0;
+  int wrongShape = 0;
+};
+
+// what the batch's workers pull from: the code streams in order, the truncated one last
+struct PullSource
+{
+  std::mutex mutex;
+  std::vector<std::pair<size_t, const std::vector<uint8_t>*>> frames;
+  size_t next = 0;
+  size_t truncatedId = 0;
+  DecodedCollector* decoded = nullptr;
+  Rgb8Collector* rgb8 = nullptr;
+};
+
+// both callbacks get the same user pointer, the source
+void collectPulledFrame(void* user, void* frame, const grk_image* image)
+{
+  collectDecoded(((PullSource*)user)->decoded, frame, image);
+}
+
+void collectPulledRgb8(void* user, void* frame, const grk_image* image)
+{
+  auto collector = ((PullSource*)user)->rgb8;
+  std::lock_guard<std::mutex> lock(collector->mutex);
+  if(!image)
+  {
+    ++collector->failed;
+    return;
+  }
+  bool shaped = image->numcomps == kNumComps && image->comps[0].data && !image->comps[1].data &&
+                !image->comps[2].data;
+  for(uint16_t compno = 0; shaped && compno < kNumComps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    shaped = comp->w == kWidth && comp->h == kHeight && comp->prec == 8;
+  }
+  if(!shaped)
+  {
+    ++collector->wrongShape;
+    return;
+  }
+  const size_t rowBytes = (size_t)kWidth * kNumComps;
+  auto bytes = (const uint8_t*)image->comps[0].data;
+  std::vector<uint8_t> frameBytes(rowBytes * kHeight);
+  for(uint32_t y = 0; y < kHeight; ++y)
+    std::copy(bytes + (size_t)y * image->comps[0].stride,
+              bytes + (size_t)y * image->comps[0].stride + rowBytes,
+              frameBytes.begin() + (size_t)y * rowBytes);
+  collector->frames[(size_t)frame] = std::move(frameBytes);
+}
+
+// postkit's XyzToSrgb: 12 bit DCI X'Y'Z' to 8 bit sRGB through two 4096 entry curves
+struct XyzToSrgb
+{
+  XyzToSrgb()
+  {
+    for(int code = 0; code <= kMaxSample; ++code)
+    {
+      linear[code] = std::pow((float)code / 4095.0f, 2.6f);
+      float u = (float)code / 4095.0f;
+      float s = u <= 0.0031308f ? 12.92f * u : 1.055f * std::pow(u, 1.0f / 2.4f) - 0.055f;
+      encoded[code] = (uint8_t)(s * 255.0f + 0.5f);
+    }
+  }
+  uint8_t channel(float value) const
+  {
+    float clamped = std::min(std::max(value, 0.0f), 1.0f);
+    return encoded[(unsigned int)(clamped * 4095.0f)];
+  }
+  void pixel(int32_t xCode, int32_t yCode, int32_t zCode, uint8_t* out) const
+  {
+    float x = linear[xCode];
+    float y = linear[yCode];
+    float z = linear[zCode];
+    out[0] = channel(kM[0] * x + kM[1] * y + kM[2] * z);
+    out[1] = channel(kM[3] * x + kM[4] * y + kM[5] * z);
+    out[2] = channel(kM[6] * x + kM[7] * y + kM[8] * z);
+  }
+  static constexpr float kDciCoefficient = 52.37f / 48.0f;
+  static constexpr float kM[9] = {
+      3.240454f * kDciCoefficient,  -1.537139f * kDciCoefficient, -0.498531f * kDciCoefficient,
+      -0.969266f * kDciCoefficient, 1.876011f * kDciCoefficient,  0.041556f * kDciCoefficient,
+      0.055643f * kDciCoefficient,  -0.204026f * kDciCoefficient, 1.057225f * kDciCoefficient};
+  float linear[kMaxSample + 1];
+  uint8_t encoded[kMaxSample + 1];
+};
+constexpr float XyzToSrgb::kM[9];
+
+// the same planes the device transforms, run through the host reference
+std::vector<uint8_t> srgb8Reference(const XyzToSrgb& transform,
+                                    const std::vector<std::vector<int32_t>>& planes)
+{
+  std::vector<uint8_t> rgb;
+  if(planes.size() != kNumComps)
+    return rgb;
+  rgb.resize(planes[0].size() * kNumComps);
+  for(size_t i = 0; i < planes[0].size(); ++i)
+    transform.pixel(planes[0][i], planes[1][i], planes[2][i], rgb.data() + i * kNumComps);
+  return rgb;
+}
+
+// postkit's render_display_rgb8: table, optional matrix, threshold encode
+struct DisplayTransform
+{
+  explicit DisplayTransform(bool withMatrix) : matrixOn(withMatrix)
+  {
+    for(int code = 0; code <= kMaxSample; ++code)
+      transfer[code] =
+          std::pow((float)code / 4095.0f, kDisplayTransferGamma) * kDisplayTransferScale;
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+      for(int code = 0; code < kDisplayEncodeLevels; ++code)
+        threshold[channelNum][code] =
+            std::pow((float)(code * kDisplayEncodeCodeStep) / 4095.0f, kDisplayEncodeGamma);
+  }
+  // each code starts halfway between its own light and the one below
+  void useMonitorCurves()
+  {
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+    {
+      threshold[channelNum][0] = 0.0f;
+      for(int code = 1; code < kDisplayEncodeLevels; ++code)
+      {
+        float encoded = ((float)code - 0.5f) / kSrgbCodeMax;
+        float light =
+            encoded <= 0.04045f ? encoded / 12.92f : std::pow((encoded + 0.055f) / 1.055f, 2.4f);
+        threshold[channelNum][code] = light * kMonitorChannelPeak[channelNum];
+      }
+    }
+  }
+  uint8_t channel(float light, int channelNum) const
+  {
+    auto first = threshold[channelNum];
+    auto above = std::upper_bound(first, first + kDisplayEncodeLevels, light) - first;
+    return (uint8_t)(above ? above - 1 : 0);
+  }
+  void pixel(int32_t redCode, int32_t greenCode, int32_t blueCode, uint8_t* out) const
+  {
+    float rgb[kNumComps] = {transfer[redCode], transfer[greenCode], transfer[blueCode]};
+    if(matrixOn)
+    {
+      float mixed[kNumComps];
+      for(int row = 0; row < kNumComps; ++row)
+        mixed[row] = kMatrix[row * kNumComps] * rgb[0] + kMatrix[row * kNumComps + 1] * rgb[1] +
+                     kMatrix[row * kNumComps + 2] * rgb[2];
+      for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+        rgb[channelNum] = mixed[channelNum];
+    }
+    for(int channelNum = 0; channelNum < kNumComps; ++channelNum)
+      out[channelNum] = channel(rgb[channelNum], channelNum);
+  }
+  // made up, rows summing to about 1 so a frame keeps its brightness
+  static constexpr float kMatrix[9] = {1.2f,   -0.15f, -0.05f, -0.1f, 1.15f,
+                                       -0.05f, 0.0f,   -0.1f,  1.1f};
+  bool matrixOn;
+  float transfer[kMaxSample + 1];
+  float threshold[kNumComps][kDisplayEncodeLevels];
+};
+
+// the same planes the device transforms, run through the host reference
+std::vector<uint8_t> displayReference(const DisplayTransform& transform,
+                                      const std::vector<std::vector<int32_t>>& planes)
+{
+  std::vector<uint8_t> rgb;
+  if(planes.size() != kNumComps)
+    return rgb;
+  rgb.resize(planes[0].size() * kNumComps);
+  for(size_t i = 0; i < planes[0].size(); ++i)
+    transform.pixel(planes[0][i], planes[1][i], planes[2][i], rgb.data() + i * kNumComps);
+  return rgb;
+}
+
+bool pullNextFrame(void* user, const uint8_t** codestream, size_t* length, void** frameUser)
+{
+  auto source = (PullSource*)user;
+  std::lock_guard<std::mutex> lock(source->mutex);
+  if(source->next >= source->frames.size())
+    return false;
+  const auto& entry = source->frames[source->next++];
+  *codestream = entry.second->data();
+  *length = entry.first == source->truncatedId ? entry.second->size() / 8 : entry.second->size();
+  *frameUser = (void*)entry.first;
+  return true;
+}
+
+// one display transform batch over a whole set of code streams, run to the end
+bool runDisplayBatch(const Collector& encoded, const std::vector<uint8_t>& shapeStream,
+                     const grk_plugin_display_transform& transform, Rgb8Collector& rgb8,
+                     double* seconds)
+{
+  PullSource source;
+  source.rgb8 = &rgb8;
+  for(const auto& entry : encoded.codestreams)
+    source.frames.emplace_back(entry.first, &entry.second);
+
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledRgb8;
+  info.user = &source;
+  info.display_transform = &transform;
+  bool onDevice = false;
+  info.rgb8_on_device = &onDevice;
+  grk_plugin_set_enabled(true);
+  auto start = std::chrono::steady_clock::now();
+  int32_t rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  display grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    grk_plugin_set_enabled(false);
+    return false;
+  }
+  // end makes every pull return false, so the workers need their chance at the streams first
+  while(secondsSince(start) < kSrgb8PullWait)
+  {
+    bool pulledEverything = false;
+    {
+      std::lock_guard<std::mutex> lock(source.mutex);
+      pulledEverything = source.next >= source.frames.size();
+    }
+    if(pulledEverything)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  bool drained = grk_plugin_batch_decompress_memory_end();
+  *seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  if(!drained)
+    std::printf("  display grk_plugin_batch_decompress_memory_end failed\n");
+  if(!onDevice)
+    std::printf("  the device declined the display transform\n");
+
+  return drained && onDevice;
+}
+
+// the code streams of a cinema batch decoded through the in-memory decompress
+// batch, each held against the host decode of the same stream
+void checkBatchDecompress()
+{
+  std::printf("in-memory decompress batch, cinema 2K, %u frames\n", kNumFrames);
+  grk_cparameters params;
+  cinemaParameters(params);
+  Collector encoded;
+  if(!compressOnCpu(params, encoded))
+  {
+    fail("decompress batch: source frames");
+    return;
+  }
+  checkCollector(encoded, "decompress batch source delivery");
+  if(encoded.codestreams.size() != kNumFrames)
+    return;
+  const auto& shapeStream = encoded.codestreams.begin()->second;
+
+  DecodedCollector decoded;
+  PullSource source;
+  source.decoded = &decoded;
+  for(const auto& entry : encoded.codestreams)
+    source.frames.emplace_back(entry.first, &entry.second);
+  // a stream cut short still gets its callback, so the caller never waits on it
+  source.truncatedId = kNumFrames + 1;
+  source.frames.emplace_back(source.truncatedId, &shapeStream);
+
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledFrame;
+  info.user = &source;
+  grk_plugin_set_enabled(true);
+  // the pull answers nothing here, so a begin and an end is how a caller probes a shape
+  source.next = source.frames.size();
+  int32_t rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("decompress batch: begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("decompress batch: end with no frame");
+
+  source.next = 0;
+  auto start = std::chrono::steady_clock::now();
+  rc = grk_plugin_batch_decompress_memory_begin(info);
+  if(rc != 0)
+  {
+    std::printf("  second grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("decompress batch: second begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  // an ordinary decompress during the batch runs on the CPU
+  uint64_t routed = grk_plugin_accelerated_frames();
+  auto duringBatch = decodeOnCpu(shapeStream);
+  if(duringBatch.empty())
+    fail("decompress batch: grk_decompress during the batch failed");
+  if(grk_plugin_accelerated_frames() != routed)
+    fail("decompress batch: grk_decompress during the batch went to the device");
+  // a player shows frames as they come: once the pull runs dry, only the tiles
+  // enqueued ahead of the frames can hold frames back, the rest arrive without a drain
+  const auto deliveryWait = std::chrono::seconds(5);
+  size_t arrivedBeforeEnd = 0;
+  while(secondsSince(start) < deliveryWait.count())
+  {
+    {
+      std::lock_guard<std::mutex> lock(decoded.mutex);
+      arrivedBeforeEnd = decoded.frames.size() + decoded.failed;
+    }
+    if(arrivedBeforeEnd >= kNumFrames / 2)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  double secondsBeforeEnd = secondsSince(start);
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("grk_plugin_batch_decompress_memory_end");
+  double seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  std::printf("decompress batch: %u of %u frames arrived in %.2f s before the drain, %.2f s and "
+              "%.1f frames per second with it\n",
+              (unsigned)arrivedBeforeEnd, kNumFrames, secondsBeforeEnd, seconds,
+              kNumFrames / seconds);
+  if(arrivedBeforeEnd < kNumFrames / 2)
+    fail("a decompress batch holds frames back until it is drained");
+
+  if(decoded.duplicates)
+  {
+    std::printf("  %d frame identity(s) arrived twice\n", decoded.duplicates);
+    fail("decompress batch delivery");
+  }
+  size_t truncatedArrived = decoded.frames.count(source.truncatedId) ? 1 : 0;
+  if(decoded.frames.size() - truncatedArrived != kNumFrames ||
+     decoded.failed + truncatedArrived != 1)
+  {
+    std::printf("  %u frames arrived, %d failed\n", (unsigned)decoded.frames.size(),
+                decoded.failed);
+    fail("decompress batch delivery");
+  }
+  int32_t worst = 0;
+  for(const auto& entry : decoded.frames)
+  {
+    if(entry.first == source.truncatedId)
+      continue;
+    auto onHost = decodeOnCpu(encoded.codestreams[entry.first]);
+    int32_t difference = 0;
+    if(!planesEqual(entry.second, onHost, kDeviceDecodeTolerance, &difference))
+    {
+      std::printf("  frame %u: device and host decode differ by %d codes\n",
+                  (unsigned)(entry.first - 1), difference);
+      fail("a decompress batch frame strays from the host decode");
+    }
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("decompress batch: all %u frames within %d codes of the host decode\n", kNumFrames,
+              worst);
+
+  // the same code streams again, this time transformed and packed on the device
+  Rgb8Collector rgb8;
+  PullSource rgb8Source;
+  rgb8Source.rgb8 = &rgb8;
+  for(const auto& entry : encoded.codestreams)
+    rgb8Source.frames.emplace_back(entry.first, &entry.second);
+
+  grk_plugin_batch_decompress_memory_info srgb8Info = {};
+  srgb8Info.codestream = shapeStream.data();
+  srgb8Info.codestream_length = shapeStream.size();
+  srgb8Info.pull = pullNextFrame;
+  srgb8Info.callback = collectPulledRgb8;
+  srgb8Info.user = &rgb8Source;
+  srgb8Info.srgb8_output = true;
+  bool onDevice = false;
+  srgb8Info.rgb8_on_device = &onDevice;
+  grk_plugin_set_enabled(true);
+  start = std::chrono::steady_clock::now();
+  rc = grk_plugin_batch_decompress_memory_begin(srgb8Info);
+  if(rc != 0)
+  {
+    std::printf("  srgb8 grk_plugin_batch_decompress_memory_begin returned %d\n", (int)rc);
+    fail("srgb8 batch: begin");
+    grk_plugin_set_enabled(false);
+    return;
+  }
+  // end makes every pull return false, so the workers need their chance at the streams first
+  while(secondsSince(start) < kSrgb8PullWait)
+  {
+    bool pulledEverything = false;
+    {
+      std::lock_guard<std::mutex> lock(rgb8Source.mutex);
+      pulledEverything = rgb8Source.next >= rgb8Source.frames.size();
+    }
+    if(pulledEverything)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  if(!grk_plugin_batch_decompress_memory_end())
+    fail("srgb8 batch: end");
+  double srgb8Seconds = secondsSince(start);
+  grk_plugin_set_enabled(false);
+  if(!onDevice)
+  {
+    fail("srgb8 batch: the device declined the transform");
+    return;
+  }
+  std::printf("srgb8 batch: %u frames on device in %.2f s, %.1f frames per second\n", kNumFrames,
+              srgb8Seconds, kNumFrames / srgb8Seconds);
+  if(rgb8.frames.size() != kNumFrames || rgb8.failed || rgb8.wrongShape)
+  {
+    std::printf("  %u frames arrived, %d failed, %d of the wrong shape\n",
+                (unsigned)rgb8.frames.size(), rgb8.failed, rgb8.wrongShape);
+    fail("srgb8 batch delivery");
+    return;
+  }
+
+  XyzToSrgb transform;
+  const size_t frameSamples = (size_t)kWidth * kHeight * kNumComps;
+  int worstByte = 0;
+  size_t overOneCode = 0;
+  size_t compared = 0;
+  for(const auto& entry : rgb8.frames)
+  {
+    auto reference = srgb8Reference(transform, decodeOnCpu(encoded.codestreams[entry.first]));
+    if(reference.size() != frameSamples || entry.second.size() != frameSamples)
+    {
+      fail("srgb8 batch: frame size");
+      return;
+    }
+    for(size_t i = 0; i < frameSamples; ++i)
+    {
+      int difference = std::abs((int)entry.second[i] - (int)reference[i]);
+      if(difference > worstByte)
+      {
+        worstByte = difference;
+        std::printf("  frame %u sample %u: device %d, reference %d\n", (unsigned)(entry.first - 1),
+                    (unsigned)i, (int)entry.second[i], (int)reference[i]);
+      }
+      if(difference > 1)
+        ++overOneCode;
+    }
+    compared += frameSamples;
+  }
+  double shareOverOneCode = 100.0 * (double)overOneCode / (double)compared;
+  std::printf("srgb8 batch: worst byte difference %d, %.4f%% of samples over one code\n", worstByte,
+              shareOverOneCode);
+  if(worstByte > kSrgb8ByteTolerance)
+    fail("an srgb8 frame strays from the host transform");
+  if(shareOverOneCode > kSrgb8ShareOverOneCode)
+    fail("too many srgb8 samples stray from the host transform by more than one code");
+
+  // the same code streams through the caller's own tables, with and without the matrix
+  DisplayTransform matrixTransform(true);
+  DisplayTransform plainTransform(false);
+  grk_plugin_display_transform matrixRequest = {matrixTransform.transfer, DisplayTransform::kMatrix,
+                                                nullptr};
+  grk_plugin_display_transform plainRequest = {plainTransform.transfer, nullptr, nullptr};
+  Rgb8Collector matrixFrames;
+  Rgb8Collector plainFrames;
+  double matrixSeconds = 0;
+  double plainSeconds = 0;
+  if(!runDisplayBatch(encoded, shapeStream, matrixRequest, matrixFrames, &matrixSeconds))
+  {
+    fail("display transform batch with a matrix");
+    return;
+  }
+  if(!runDisplayBatch(encoded, shapeStream, plainRequest, plainFrames, &plainSeconds))
+  {
+    fail("display transform batch without a matrix");
+    return;
+  }
+  std::printf("display transform batch: %u frames on device in %.2f s with a matrix and %.2f s "
+              "without, %.1f and %.1f frames per second\n",
+              kNumFrames, matrixSeconds, plainSeconds, kNumFrames / matrixSeconds,
+              kNumFrames / plainSeconds);
+  if(matrixFrames.frames.size() != kNumFrames || matrixFrames.failed || matrixFrames.wrongShape ||
+     plainFrames.frames.size() != kNumFrames || plainFrames.failed || plainFrames.wrongShape)
+  {
+    std::printf("  with a matrix %u frames, %d failed, %d of the wrong shape; without %u frames, "
+                "%d failed, %d of the wrong shape\n",
+                (unsigned)matrixFrames.frames.size(), matrixFrames.failed, matrixFrames.wrongShape,
+                (unsigned)plainFrames.frames.size(), plainFrames.failed, plainFrames.wrongShape);
+    fail("display transform batch delivery");
+    return;
+  }
+
+  // both variants hold against the same host decode, so each stream decodes once
+  int worstMatrixByte = 0;
+  int worstPlainByte = 0;
+  size_t matrixOverOneCode = 0;
+  size_t plainOverOneCode = 0;
+  compared = 0;
+  for(const auto& entry : encoded.codestreams)
+  {
+    auto planes = decodeOnCpu(entry.second);
+    const auto& fromMatrix = matrixFrames.frames[entry.first];
+    const auto& fromPlain = plainFrames.frames[entry.first];
+    auto matrixExpected = displayReference(matrixTransform, planes);
+    auto plainExpected = displayReference(plainTransform, planes);
+    if(matrixExpected.size() != frameSamples || plainExpected.size() != frameSamples ||
+       fromMatrix.size() != frameSamples || fromPlain.size() != frameSamples)
+    {
+      fail("display transform batch: frame size");
+      return;
+    }
+    for(size_t i = 0; i < frameSamples; ++i)
+    {
+      int matrixDifference = std::abs((int)fromMatrix[i] - (int)matrixExpected[i]);
+      int plainDifference = std::abs((int)fromPlain[i] - (int)plainExpected[i]);
+      if(matrixDifference > worstMatrixByte)
+        worstMatrixByte = matrixDifference;
+      if(plainDifference > worstPlainByte)
+        worstPlainByte = plainDifference;
+      if(matrixDifference > 1)
+        ++matrixOverOneCode;
+      if(plainDifference > 1)
+        ++plainOverOneCode;
+    }
+    compared += frameSamples;
+  }
+  double matrixShare = 100.0 * (double)matrixOverOneCode / (double)compared;
+  double plainShare = 100.0 * (double)plainOverOneCode / (double)compared;
+  std::printf("display transform batch: worst byte difference %d with a matrix and %d without, "
+              "%.4f%% and %.4f%% of samples over one code\n",
+              worstMatrixByte, worstPlainByte, matrixShare, plainShare);
+  if(worstMatrixByte > kSrgb8ByteTolerance || worstPlainByte > kSrgb8ByteTolerance)
+    fail("a display transform frame strays from the host transform");
+  if(matrixShare > kSrgb8ShareOverOneCode || plainShare > kSrgb8ShareOverOneCode)
+    fail("too many display transform samples stray from the host transform by more than one code");
+
+  // asking for both transforms at once is a caller error that starts nothing
+  Rgb8Collector noFrames;
+  PullSource emptySource;
+  emptySource.rgb8 = &noFrames;
+  grk_plugin_batch_decompress_memory_info bothInfo = {};
+  bothInfo.codestream = shapeStream.data();
+  bothInfo.codestream_length = shapeStream.size();
+  bothInfo.pull = pullNextFrame;
+  bothInfo.callback = collectPulledRgb8;
+  bothInfo.user = &emptySource;
+  bothInfo.srgb8_output = true;
+  bothInfo.display_transform = &plainRequest;
+  grk_plugin_set_enabled(true);
+  if(grk_plugin_batch_decompress_memory_begin(bothInfo) != -1)
+  {
+    fail("a begin asking for both transforms");
+    grk_plugin_batch_decompress_memory_end();
+  }
+  // the failed begin left no batch running, so this one takes
+  bothInfo.srgb8_output = false;
+  rc = grk_plugin_batch_decompress_memory_begin(bothInfo);
+  if(rc != 0)
+  {
+    std::printf("  begin after the rejected one returned %d\n", (int)rc);
+    fail("a begin after one asking for both transforms");
+  }
+  else if(!grk_plugin_batch_decompress_memory_end())
+  {
+    fail("end after the rejected begin");
+  }
+  grk_plugin_set_enabled(false);
+}
+
+// lossless frames, so the device transforms exactly the samples the host reference does
+void checkDisplayOutputThresholds()
+{
+  std::printf("display transform output thresholds, lossless 12 bit, %ux%u, %u frames\n", kWidth,
+              kHeight, kNumFrames);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = false;
+  Collector encoded;
+  if(!compressOnCpu(params, encoded))
+  {
+    fail("output thresholds: source frames");
+    return;
+  }
+  const auto& shapeStream = encoded.codestreams.begin()->second;
+
+  DisplayTransform gammaTransform(false);
+  grk_plugin_display_transform withoutThresholds = {gammaTransform.transfer, nullptr, nullptr};
+  grk_plugin_display_transform gammaThresholds = {gammaTransform.transfer, nullptr,
+                                                  &gammaTransform.threshold[0][0]};
+  Rgb8Collector withoutFrames;
+  Rgb8Collector gammaFrames;
+  double seconds = 0;
+  if(!runDisplayBatch(encoded, shapeStream, withoutThresholds, withoutFrames, &seconds) ||
+     !runDisplayBatch(encoded, shapeStream, gammaThresholds, gammaFrames, &seconds))
+  {
+    fail("output thresholds: 2.2 batches");
+    return;
+  }
+  if(withoutFrames.frames.size() != kNumFrames || withoutFrames.frames != gammaFrames.frames)
+    fail("2.2 output thresholds give different frames from none");
+  else
+    std::printf("output thresholds: the 2.2 thresholds give the same %u frames as none\n",
+                kNumFrames);
+
+  DisplayTransform monitorTransform(true);
+  monitorTransform.useMonitorCurves();
+  grk_plugin_display_transform monitorRequest = {
+      monitorTransform.transfer, DisplayTransform::kMatrix, &monitorTransform.threshold[0][0]};
+  Rgb8Collector monitorFrames;
+  if(!runDisplayBatch(encoded, shapeStream, monitorRequest, monitorFrames, &seconds))
+  {
+    fail("output thresholds: monitor curve batch");
+    return;
+  }
+  if(monitorFrames.frames.size() != kNumFrames || monitorFrames.failed || monitorFrames.wrongShape)
+  {
+    fail("output thresholds: monitor curve batch delivery");
+    return;
+  }
+  size_t mismatches = 0;
+  for(const auto& entry : encoded.codestreams)
+  {
+    auto expected = displayReference(monitorTransform, decodeOnCpu(entry.second));
+    const auto& fromDevice = monitorFrames.frames[entry.first];
+    if(expected.size() != fromDevice.size())
+    {
+      fail("output thresholds: frame size");
+      return;
+    }
+    for(size_t i = 0; i < expected.size(); ++i)
+    {
+      if(fromDevice[i] == expected[i])
+        continue;
+      if(mismatches++ < 4)
+        std::printf("  frame %u sample %u: device %d, reference %d\n", (unsigned)(entry.first - 1),
+                    (unsigned)i, (int)fromDevice[i], (int)expected[i]);
+    }
+  }
+  std::printf("output thresholds: %u monitor curve frames in %.2f s, %u samples differ from the "
+              "host reference\n",
+              kNumFrames, seconds, (unsigned)mismatches);
+  if(mismatches)
+    fail("a monitor curve frame differs from the host reference");
+
+  // a decreasing pair or a NaN in the last channel is a caller error that starts nothing
+  Rgb8Collector noFrames;
+  PullSource emptySource;
+  emptySource.rgb8 = &noFrames;
+  grk_plugin_batch_decompress_memory_info info = {};
+  info.codestream = shapeStream.data();
+  info.codestream_length = shapeStream.size();
+  info.pull = pullNextFrame;
+  info.callback = collectPulledRgb8;
+  info.user = &emptySource;
+  DisplayTransform badTransform(false);
+  grk_plugin_display_transform badRequest = {badTransform.transfer, nullptr,
+                                             &badTransform.threshold[0][0]};
+  info.display_transform = &badRequest;
+  auto& lastChannel = badTransform.threshold[kNumComps - 1];
+  std::swap(lastChannel[100], lastChannel[101]);
+  grk_plugin_set_enabled(true);
+  if(grk_plugin_batch_decompress_memory_begin(info) != -1)
+  {
+    fail("a begin with decreasing output thresholds");
+    grk_plugin_batch_decompress_memory_end();
+  }
+  std::swap(lastChannel[100], lastChannel[101]);
+  lastChannel[kDisplayEncodeLevels - 1] = std::nanf("");
+  if(grk_plugin_batch_decompress_memory_begin(info) != -1)
+  {
+    fail("a begin with a NaN output threshold");
+    grk_plugin_batch_decompress_memory_end();
+  }
+  grk_plugin_set_enabled(false);
+}
+
+void checkYuvSource(const YuvSource& source)
+{
+  std::printf("%s, %ux%u, %u frames\n", source.name, kYuvWidth, kYuvHeight, kYuvNumFrames);
+  Collector reference;
+  if(!runReferenceBatch(source, reference))
+  {
+    fail("reference batch");
+    return;
+  }
+  checkCollector(reference, "reference batch delivery");
+
+  Collector devices;
+  double seconds = 0;
+  if(!runYuvBatch(source, devices, &seconds))
+  {
+    fail("yuv batch");
+    return;
+  }
+  std::printf("  yuv batch: %.2f s, %.1f frames per second\n", seconds, kYuvNumFrames / seconds);
+  checkCollector(devices, "yuv batch delivery");
+
+  int32_t worst = 0;
+  size_t identicalStreams = 0;
+  for(const auto& entry : devices.codestreams)
+  {
+    auto frameIndex = (uint32_t)(entry.first - 1);
+    auto found = reference.codestreams.find(entry.first);
+    if(found == reference.codestreams.end())
+    {
+      fail("a yuv frame has no reference code stream");
+      continue;
+    }
+    if(entry.second == found->second)
+      ++identicalStreams;
+    else
+      std::printf("  frame %u: %zu bytes against the reference's %zu\n", frameIndex,
+                  entry.second.size(), found->second.size());
+    auto decodedYuv = decodeOnCpu(entry.second);
+    auto decodedReference = decodeOnCpu(found->second);
+    if(decodedYuv.empty() || decodedReference.empty())
+    {
+      fail("a yuv frame did not decode");
+      continue;
+    }
+    int32_t difference = 0;
+    if(!planesEqual(decodedYuv, decodedReference, 0, &difference))
+    {
+      std::printf("  frame %u: device and scalar reference differ by %d codes\n", frameIndex,
+                  difference);
+      fail("a yuv frame strays from the scalar reference");
+    }
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("  %zu of %zu code streams identical, max difference %d codes\n", identicalStreams,
+              devices.codestreams.size(), worst);
+  if(identicalStreams != devices.codestreams.size())
+    fail("a yuv frame's code stream differs from the scalar reference's");
+}
+
+// ---------------------------------------------------------------------------
+// interleaved 16 bit RGB
+// ---------------------------------------------------------------------------
+
+// the same picture as patternFrame, interleaved into one 16 bit buffer with a
+// row pitch wider than the picture
+struct Rgb48Frame
+{
+  std::vector<uint16_t> samples;
+  uint32_t stride;
+};
+
+Rgb48Frame makeRgb48Frame(const grk_image* source)
+{
+  Rgb48Frame frame;
+  frame.stride = source->comps[0].w * kNumComps + kYuvLumaStridePadding;
+  frame.samples.assign((size_t)frame.stride * source->comps[0].h, 0);
+  for(uint32_t y = 0; y < source->comps[0].h; ++y)
+  {
+    for(uint32_t x = 0; x < source->comps[0].w; ++x)
+    {
+      for(uint16_t compno = 0; compno < kNumComps; ++compno)
+      {
+        auto comp = source->comps + compno;
+        auto value = ((const int32_t*)comp->data)[(size_t)y * comp->stride + x];
+        frame.samples[(size_t)y * frame.stride + x * kNumComps + compno] = (uint16_t)value;
+      }
+    }
+  }
+  return frame;
+}
+
+grk_image* rgb48Image(const grk_image* source, Rgb48Frame& buffer)
+{
+  auto components = std::make_unique<grk_image_comp[]>(kNumComps);
+  for(uint32_t i = 0; i < kNumComps; ++i)
+  {
+    auto c = &components[i];
+    c->w = source->comps[0].w;
+    c->h = source->comps[0].h;
+    c->dx = 1;
+    c->dy = 1;
+    c->prec = source->comps[0].prec;
+    c->sgnd = false;
+    c->data_type = GRK_INT_16;
+  }
+  auto image = grk_image_new(kNumComps, components.get(), GRK_CLRSPC_SRGB, false);
+  if(!image)
+    return nullptr;
+  image->comps[0].data = buffer.samples.data();
+  image->comps[0].stride = buffer.stride;
+  return image;
+}
+
+// the planar int32 frames and the same pictures interleaved must reach the
+// device as the same samples, so their code streams have to match byte for byte
+void checkRgb48(bool applyXyz)
+{
+  const uint32_t frameCount = 8;
+  uint8_t framePrec = applyXyz ? kSourcePrecision16 : kPrecision;
+  std::printf("interleaved 16 bit RGB, xyz %s, %ux%u, %u frames\n", applyXyz ? "on" : "off", kWidth,
+              kHeight, frameCount);
+  grk_cparameters params;
+  cinemaParameters(params);
+  params.apply_xyz_transform = applyXyz;
+  if(!applyXyz)
+    params.rsiz = GRK_PROFILE_NONE;
+
+  Collector planar;
+  Collector interleaved;
+  for(int pass = 0; pass < 2; ++pass)
+  {
+    grk_cparameters passParams = params;
+    grk_plugin_batch_memory_info info = {};
+    info.compress_parameters = &passParams;
+    info.width = kWidth;
+    info.height = kHeight;
+    info.numcomps = kNumComps;
+    info.prec = kPrecision;
+    info.source_prec = framePrec;
+    info.callback = collect;
+    info.user = pass ? &interleaved : &planar;
+    info.source_format = pass ? GRK_SOURCE_RGB48LE : GRK_SOURCE_PLANAR_RGB;
+    int32_t rc = grk_plugin_batch_memory_begin(info);
+    if(rc != 0)
+    {
+      std::fprintf(stderr, "rgb48 batch begin returned %d\n", (int)rc);
+      fail("rgb48 batch begin");
+      return;
+    }
+    for(uint32_t i = 0; i < frameCount; ++i)
+    {
+      auto source = patternFrame(i, framePrec);
+      if(!source)
+      {
+        fail("rgb48 source frame allocation");
+        break;
+      }
+      bool submitted = false;
+      if(pass)
+      {
+        auto buffer = makeRgb48Frame(source);
+        auto frame = rgb48Image(source, buffer);
+        if(frame)
+        {
+          submitted = grk_plugin_batch_memory_submit(frame, (void*)(size_t)(i + 1));
+          grk_object_unref(&frame->obj);
+        }
+      }
+      else
+      {
+        submitted = grk_plugin_batch_memory_submit(source, (void*)(size_t)(i + 1));
+      }
+      grk_object_unref(&source->obj);
+      if(!submitted)
+      {
+        fail("rgb48 frame submit");
+        break;
+      }
+    }
+    if(!grk_plugin_batch_memory_end())
+    {
+      fail("rgb48 batch end");
+      return;
+    }
+  }
+  if(planar.codestreams.size() != frameCount || interleaved.codestreams.size() != frameCount)
+  {
+    fail("rgb48 batch delivery");
+    return;
+  }
+  int32_t worst = 0;
+  for(const auto& entry : interleaved.codestreams)
+  {
+    auto found = planar.codestreams.find(entry.first);
+    if(found == planar.codestreams.end())
+    {
+      fail("an interleaved frame has no planar code stream");
+      continue;
+    }
+    int32_t difference = 0;
+    if(!planesEqual(decodeOnCpu(entry.second), decodeOnCpu(found->second), 0, &difference))
+      fail("an interleaved frame decodes differently from its planar twin");
+    if(difference > worst)
+      worst = difference;
+  }
+  std::printf("  interleaved and planar decode to the same samples, max difference %d\n", worst);
+}
+
+// a caller finds out whether a frame shape is taken with a begin and an end and
+// no frame in between
+void checkYuvProbe()
+{
+  grk_cparameters params;
+  yuvCinemaParameters(params);
+  Collector collector;
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kYuvWidth;
+  info.height = kYuvHeight;
+  info.numcomps = kNumComps;
+  info.prec = kPrecision;
+  info.source_prec = 8;
+  info.callback = collect;
+  info.user = &collector;
+  info.source_format = GRK_SOURCE_YUV420P;
+  info.yuv_matrix = GRK_YUV_BT709;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  std::printf("yuv probe: grk_plugin_batch_memory_begin returned %d\n", (int)rc);
+  if(rc < 0)
+  {
+    fail("a yuv probe should be taken or declined, not fail");
+    return;
+  }
+  if(rc == 0 && !grk_plugin_batch_memory_end())
+    fail("a yuv batch that took no frames should still end");
+  if(collector.codestreams.size())
+    fail("a yuv probe delivered a code stream");
+}
+
+// a source depth the kernels are not instantiated for: the caller is told to
+// compress on the CPU
+void checkYuvUnsupportedDepth()
+{
+  grk_cparameters params;
+  yuvCinemaParameters(params);
+  Collector collector;
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kYuvWidth;
+  info.height = kYuvHeight;
+  info.numcomps = kNumComps;
+  info.prec = kPrecision;
+  info.source_prec = kSourcePrecision16;
+  info.callback = collect;
+  info.user = &collector;
+  info.source_format = GRK_SOURCE_YUV422P;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  std::printf("16 bit yuv source: grk_plugin_batch_memory_begin returned %d\n", (int)rc);
+  if(rc != 1)
+    fail("a 16 bit yuv source should return 1");
+}
+
+// parameters the plugin does not handle: the caller is told to compress on the CPU
+void checkUnsupportedParameters()
+{
+  grk_cparameters params;
+  baseParameters(params);
+  params.cblk_sty = 1;
+
+  Collector collector;
+  grk_plugin_batch_memory_info info = {};
+  info.compress_parameters = &params;
+  info.width = kWidth;
+  info.height = kHeight;
+  info.numcomps = kNumComps;
+  info.prec = kPrecision;
+  info.callback = collect;
+  info.user = &collector;
+  int32_t rc = grk_plugin_batch_memory_begin(info);
+  std::printf("code block style 1: grk_plugin_batch_memory_begin returned %d\n", (int)rc);
+  if(rc != 1)
+    fail("a code block style the plugin does not handle should return 1");
+}
+} // namespace
+
+int main()
+{
+  bool loaded = false;
+  grk_initialize(nullptr, 0, &loaded);
+  if(!loaded)
+  {
+    std::fprintf(stderr, "no accelerator plugin loaded: set GRK_PLUGIN_PATH to the directory "
+                         "holding libgrokj2k_plugin\n");
+    return 1;
+  }
+  grk_plugin_init_info init = {};
+  init.device_id = 0;
+  // a plugin built with licence checking wants these, unset is the auth-off build
+  init.license = std::getenv("GRK_PLUGIN_LICENSE");
+  init.server = std::getenv("GRK_PLUGIN_SERVER");
+  if(!grk_plugin_init(init))
+  {
+    std::fprintf(stderr, "the plugin refused device 0\n");
+    return 1;
+  }
+  // every check decodes on the CPU. The batch API does not consult this flag,
+  // so it only steers grk_decompress.
+  grk_plugin_set_enabled(false);
+  if(auto stressRounds = std::getenv(kStressRoundsVariable))
+  {
+    runStress(std::atoi(stressRounds));
+    grk_deinitialize();
+    return g_failures ? 1 : 0;
+  }
+  // first, before any batch has loaded a kernel: a player opens this cold
+  checkBatchDecompress();
+  checkDisplayOutputThresholds();
+  checkLossless();
+  checkHTLossless();
+  checkCinema();
+  checkCinemaSource16();
+  checkYuvProbe();
+  checkYuvUnsupportedDepth();
+  checkDeterminism();
+  checkDecompressBetweenBatches();
+  static const YuvSource yuvSources[] = {{"planar 8 bit 4:2:0, limited range, BT.709",
+                                          GRK_SOURCE_YUV420P, GRK_YUV_BT709, true, false, 8},
+                                         {"planar 10 bit 4:2:2, limited range, BT.709",
+                                          GRK_SOURCE_YUV422P, GRK_YUV_BT709, true, false, 10},
+                                         {"planar 8 bit 4:2:0, limited range, BT.601 left unset",
+                                          GRK_SOURCE_YUV420P, GRK_YUV_BT601, false, false, 8}};
+  for(const auto& source : yuvSources)
+    checkYuvSource(source);
+  checkRgb48(true);
+  checkRgb48(false);
+  checkUnsupportedParameters();
+  grk_deinitialize();
+  if(g_failures)
+  {
+    std::fprintf(stderr, "%d failure(s)\n", g_failures);
+    return 1;
+  }
+  std::printf("plugin in-memory batch OK\n");
+  return 0;
+}

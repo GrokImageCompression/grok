@@ -155,6 +155,8 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
       grklog.error("required QCD marker not found in main header");
       return false;
     }
+    if(!defaultTcp_->validateMct())
+      return false;
     if(!mergePpm(&cp_))
     {
       grklog.error("Failed to merge PPM data");
@@ -162,15 +164,13 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
     }
     auto tileStreamStart = stream_->tell() - MARKER_BYTES;
     markerCache_->setTileStreamStart(tileStreamStart);
-    if(cp_.tlmMarkers_)
+    if(cp_.hasTLM())
     {
       cp_.tlmMarkers_->readComplete(tileStreamStart);
     }
     else
     {
-      auto p = std::string("/temp");
-      cp_.tlmMarkers_ = std::make_unique<TLMMarker>(p, cp_.t_grid_width_ * cp_.t_grid_height_,
-                                                    markerCache_->getTileStreamStart());
+      cp_.tlmMarkers_ = TLMMarker::forSotWalk(cp_.t_grid_width_ * cp_.t_grid_height_);
     }
 
     return true;
@@ -188,16 +188,21 @@ void CodeStreamDecompress::postReadHeader(void)
   // set up tile completion based on tile and image bounds
   if(headerRead_)
   {
-    setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));
+    if(!setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1)))
+    {
+      headerError_ = true;
+      return;
+    }
+    // Refresh decompress_width/height/etc. now that region bounds are applied.
+    // Without this, formats that write headers before decompress() see stale
+    // full-image dimensions instead of the (possibly reduced) region dimensions.
+    multiTileComposite_->postReadHeader(&cp_);
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
-      auto bounds = headerImage_->getBounds();
       tileCompletion_ = std::make_unique<TileCompletion>(
-          tileCache_.get(), bounds, cp_.t_width_, cp_.t_height_,
-          [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
-            onRowCompleted(tileIndexBegin, tileIndexEnd);
-          },
+          tileCache_.get(), tileGridBounds(), cp_.t_width_, cp_.t_height_,
+          [this](uint16_t tileIndexBegin, uint16_t) { onRowCompleted(tileIndexBegin); },
           [this]() { scheduleTileBatch(); }, tilesToDecompress_.getSlatedTileRect());
     }
   }
@@ -207,6 +212,10 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
 {
   if(headerError_)
     return false;
+
+  // the coder pool is sized from TFSingleton::num_threads() below, so it has to see
+  // this codec's own thread count and not the global pool's
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
 
   if(!headerRead_)
   {
@@ -226,12 +235,17 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
       if(headerImage_->color_space == GRK_CLRSPC_UNKNOWN)
         headerImage_->color_space = headerInfo->color_space;
       headerImage_->force_rgb = headerInfo->force_rgb;
+      headerImage_->apply_palette = headerInfo->apply_palette;
       headerImage_->upsample = headerInfo->upsample;
       headerImage_->precision = headerInfo->precision;
       headerImage_->num_precision = headerInfo->num_precision;
+      headerImage_->rescale = headerInfo->rescale;
+      headerImage_->num_rescale = headerInfo->num_rescale;
     }
     headerImage_->copyHeaderTo(multiTileComposite_.get());
     multiTileComposite_->validateColourSpace();
+    headerImage_->validateColourSpace();
+    multiTileComposite_->postReadHeader(&cp_);
     uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<t1::ICoder> {
       return std::shared_ptr<t1::ICoder>(
@@ -243,6 +257,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
           t1::CoderFactory::makeCoder(isHT_, false, 32, 32, tileCache_->getStrategy()));
     });
     defaultTcp_->finalizePocs();
+    if(!defaultTcp_->resolvePart2())
+      return false;
     if(isHT_)
     {
       if(!defaultTcp_->isHT())
@@ -298,7 +314,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
 
   postReadHeader();
 
-  return true;
+  return !headerError_;
 }
 GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {
@@ -360,27 +376,77 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   }
   uint16_t tileIndex;
   grk_read(&headerData, &tileIndex);
+
+  uint16_t totalTiles = cp_.t_grid_width_ * cp_.t_grid_height_;
+  if(tileIndex >= totalTiles)
+  {
+    grklog.error("readSOT: tile index %d lies outside tile grid %d x %d", tileIndex,
+                 cp_.t_grid_width_, cp_.t_grid_height_);
+    return false;
+  }
   currTileIndex_ = tileIndex;
 
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
-  if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
+  if(sotWalkBuildsTLM())
   {
-    return currTilePartInfo_.tilePartLength_
-               ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
-               : true;
+    auto sotFields = headerData;
+    uint8_t tilePart, numTileParts;
+    grk_read(&sotFields, &tilePart);
+    grk_read(&sotFields, &numTileParts);
+    recordWalkedTilePart(tileIndex, stream_->tell() - sotMarkerSegmentLen,
+                         currTilePartInfo_.tilePartLength_, tilePart, numTileParts);
   }
 
   auto cached = tileCache_->get(tileIndex);
-  if(cached && cached->processor && cached->processor->isBestEffortDecompressed())
+  // Skip tiles that are already decompressed (best-effort or normal) or already
+  // handed to the scheduler: a late tile part must not re-init a tile whose
+  // decompress tasks are still running
+  if(cached && cached->processor() &&
+     (cached->processor()->isBestEffortDecompressed() ||
+      cached->processor()->scheduledForDecompression() ||
+      (cached->processor()->getImage() && !cached->dirty())))
   {
+    auto sotFields = headerData;
+    uint8_t tilePart, numTileParts;
+    grk_read(&sotFields, &tilePart);
+    grk_read(&sotFields, &numTileParts);
+    validateTilePartIndex(tileIndex, tilePart, cp_.correctedNumTileParts(numTileParts));
     currTileIndex_ = -1;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
                : true;
   }
 
+  if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
+  {
+    if(cached && cached->processor())
+    {
+      if(!cached->processor()->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_,
+                                       false))
+        return false;
+    }
+    else
+    {
+      auto sotFields = headerData;
+      uint8_t tilePart, numTileParts;
+      grk_read(&sotFields, &tilePart);
+      grk_read(&sotFields, &numTileParts);
+      validateTilePartIndex(tileIndex, tilePart, cp_.correctedNumTileParts(numTileParts));
+      if(currTilePartInfo_.tilePartLength_ &&
+         currTilePartInfo_.tilePartLength_ < sotMarkerSegmentLen)
+      {
+        grklog.error("Illegal Psot value %u", currTilePartInfo_.tilePartLength_);
+        return false;
+      }
+    }
+    return currTilePartInfo_.tilePartLength_
+               ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
+               : true;
+  }
+
   auto processor = getTileProcessor(tileIndex);
-  if(!processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
+  if(!processor ||
+     !processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
     return false;
   currTileProcessor_ = processor;
   return true;
@@ -490,6 +556,8 @@ bool CodeStreamDecompress::readSOC()
   return true;
 }
 
+const uint32_t pcapHTFlag = 0x00020000;
+
 bool CodeStreamDecompress::readCAP(uint8_t* headerData, uint16_t headerSize)
 {
   if(headerSize < sizeof(cp_.pcap_))
@@ -500,18 +568,9 @@ bool CodeStreamDecompress::readCAP(uint8_t* headerData, uint16_t headerSize)
 
   uint32_t tmp;
   grk_read(&headerData, &tmp); /* Pcap */
-  if(tmp & 0xFFFDFFFF)
-  {
-    grklog.error("Pcap in CAP marker has unsupported options.");
-    return false;
-  }
-  if((tmp & 0x00020000) == 0)
-  {
-    grklog.error("Pcap in CAP marker should have its 15th MSB set. ");
-    return false;
-  }
   cp_.pcap_ = tmp;
-  if(cp_.pcap_)
+  // bit 15 of Pcap announces Ccap15, the HT capabilities, other bits announce other parts
+  if(cp_.pcap_ & pcapHTFlag)
     isHT_ = true;
   uint32_t count = grk_population_count(cp_.pcap_);
   uint32_t expectedSize = (uint32_t)sizeof(cp_.pcap_) + 2U * count;

@@ -23,6 +23,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/include/taskflow # taskflow submodule (nests headers under taskflow/)
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
@@ -56,7 +57,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/flow
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur
   ${CMAKE_CURRENT_SOURCE_DIR}/stream
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/s3
@@ -65,6 +65,12 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/debug
   ${LCMS_INCLUDE_DIRNAME}
 )
+
+# When the GPU plugin submodule is present and the loader is enabled,
+# add the submodule's include path for plugin_api.h / plugin_types.h
+if (GRK_BUILD_PLUGIN_LOADER AND EXISTS "${GROK_SOURCE_DIR}/extern/grok-gpu-plugin/include")
+  include_directories(${GROK_SOURCE_DIR}/extern/grok-gpu-plugin/include)
+endif()
 
 # Defines the source code for executables
 set(GROK_EXECUTABLES_SRCS
@@ -77,13 +83,14 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/SparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImageSIMD.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/XYZTransform.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/lanes.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MemStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MappedFile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamGenerator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/CurlFetcher.cpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin_manager.cpp
@@ -126,7 +133,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketIter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketParser.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketCache.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/SelectiveFetchRanges.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/QuantizerFactory.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/Qfactor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part15/QuantizerOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part1//Quantizer.cpp
 
@@ -136,9 +145,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/SchedulerStandard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/DecompressScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/CompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/DecompressSchedulerExcalibur.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/CompressSchedulerExcalibur.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/SchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 
@@ -146,6 +152,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletPoolData.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97_16.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct/Precinct.cpp
@@ -159,6 +166,7 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/PostDecodeFiltersOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
@@ -182,9 +190,9 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     # SSSE3-accelerated decoder
     list(APPEND GROK_LIBRARY_SRCS
       ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp)
-    # AVX2-accelerated decoder and encoder
+    # AVX2-accelerated decoder (grok's derived copy) and encoder
     list(APPEND GROK_LIBRARY_SRCS
-      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/HTBlockDecoderAVX2.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp)
     # AVX512-accelerated encoder
     list(APPEND GROK_LIBRARY_SRCS
@@ -192,25 +200,56 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 
     if(MSVC)
       set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/HTBlockDecoderAVX2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
         PROPERTIES COMPILE_FLAGS "/arch:AVX2")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
         PROPERTIES COMPILE_FLAGS "/arch:AVX512")
     else()
+      # -fno-lto: gcc LTO merges static constructors across translation units
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp
-        PROPERTIES COMPILE_FLAGS -mssse3)
+        PROPERTIES COMPILE_FLAGS "-mssse3 -fno-lto -w")
       set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/HTBlockDecoderAVX2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
-        PROPERTIES COMPILE_FLAGS -mavx2)
+        PROPERTIES COMPILE_FLAGS "-mavx2 -fno-lto -w")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
-        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd")
+        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd -fno-lto -w")
     endif()
   endif()
+endif()
+
+# suppress warnings from third-party OpenJPH code
+set_source_files_properties(
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_arch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
+  PROPERTIES COMPILE_OPTIONS "-w")
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1952)
+  # msvc 19.52 SSA optimizer crashes with internal compiler error C1001 on BlockCoderDec.cpp
+  set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
+    PROPERTIES COMPILE_OPTIONS "/d2SSAOptimizer-")
+endif()
+
+# the reversible 5/3 inverse wavelet lifting is exact modular arithmetic:
+# valid coefficients never overflow, but a malformed codestream can push an
+# intermediate past int range. define that as 2's-complement wraparound (what
+# the hardware already does) so it is defined behavior, not a ubsan trap.
+if(NOT MSVC)
+  set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97_16.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp
+    PROPERTIES COMPILE_OPTIONS "-fwrapv")
 endif()
 
 if (GRK_BUILD_PLUGIN_LOADER)
@@ -251,7 +290,124 @@ endif (GRK_ARCH MATCHES "mips")
 if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif(UNIX)
-target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
+target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
+
+# mercury streaming fast path — compile mercury's DWT kernels against grok's
+# Highway and link the extern-kernels mercury staticlib (built by cargo
+# into the build tree, so read-only sources and several build trees work). requires cargo: when it is absent the fast path is dropped and
+# mercury_fastpath.cpp compiles to a no-op fallback. run cargo --version
+# rather than trusting find_program: the oss-fuzz base-builder image puts a
+# cargo wrapper on PATH without a rust toolchain behind it.
+set(MERCURY_DIR ${CMAKE_SOURCE_DIR}/mercury)
+find_program(CARGO_EXECUTABLE cargo)
+set(GRK_ENABLE_MERCURY OFF)
+if(CARGO_EXECUTABLE AND EXISTS ${MERCURY_DIR}/Cargo.toml)
+  execute_process(COMMAND ${CARGO_EXECUTABLE} --version
+    RESULT_VARIABLE CARGO_VERSION_RESULT OUTPUT_QUIET ERROR_QUIET)
+  if(CARGO_VERSION_RESULT EQUAL 0)
+    set(GRK_ENABLE_MERCURY ON)
+  endif()
+endif()
+set(GRK_ENABLE_MERCURY ${GRK_ENABLE_MERCURY} PARENT_SCOPE)
+
+set(MERCURY_HOOK_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mercury_compress.cpp)
+target_sources(${GROK_CORE_NAME} PRIVATE ${MERCURY_HOOK_SOURCES})
+set_source_files_properties(${MERCURY_HOOK_SOURCES} PROPERTIES
+  INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
+
+if(GRK_ENABLE_MERCURY)
+  # an explicit cargo target (CARGO_BUILD_TARGET) keeps RUSTFLAGS off build
+  # scripts and proc macros, and moves the artifact under a triple subdir
+  set(MERCURY_TARGET_ROOT ${CMAKE_BINARY_DIR}/mercury-target)
+  if(DEFINED ENV{CARGO_BUILD_TARGET})
+    set(MERCURY_TARGET_ROOT ${MERCURY_TARGET_ROOT}/$ENV{CARGO_BUILD_TARGET})
+  endif()
+  if(MSVC)
+    set(MERCURY_LIB ${MERCURY_TARGET_ROOT}/release/mercury.lib)
+  else()
+    set(MERCURY_LIB ${MERCURY_TARGET_ROOT}/release/libmercury.a)
+  endif()
+  file(GLOB_RECURSE MERCURY_RUST_SRCS CONFIGURE_DEPENDS ${MERCURY_DIR}/src/*.rs)
+  add_custom_command(
+    OUTPUT ${MERCURY_LIB}
+    COMMAND ${CARGO_EXECUTABLE} build --release --lib
+            --no-default-features --features extern-kernels
+            --target-dir ${CMAKE_BINARY_DIR}/mercury-target
+    WORKING_DIRECTORY ${MERCURY_DIR}
+    DEPENDS ${MERCURY_RUST_SRCS}
+            ${MERCURY_DIR}/Cargo.toml ${MERCURY_DIR}/Cargo.lock ${MERCURY_DIR}/build.rs
+    COMMENT "Building mercury staticlib (cargo)"
+    VERBATIM)
+  add_custom_target(mercury_lib DEPENDS ${MERCURY_LIB})
+  add_dependencies(${GROK_CORE_NAME} mercury_lib)
+
+  # the kernels live in their own archive, not inside grokj2k: the rust lib
+  # pulls mercury_hwy_* from them, so static consumer links must resolve
+  # left to right as grokj2k -> mercury -> kernels -> hwy.
+  add_library(mercury_kernels STATIC
+    ${MERCURY_DIR}/native/transform/hwy_dwt.cpp
+    ${MERCURY_DIR}/native/transform/hwy_dwt_analysis.cpp
+    ${MERCURY_DIR}/native/transform/hwy_quantize.cpp
+    ${MERCURY_DIR}/native/transform/hwy_ict.cpp
+    ${MERCURY_DIR}/native/t1enc/block_encoder.cpp
+    ${MERCURY_DIR}/native/t1enc/mqc.cpp
+    ${MERCURY_DIR}/native/t1enc/mqc_state.cpp
+    ${MERCURY_DIR}/native/t1enc/rate_hull.cpp
+    ${MERCURY_DIR}/native/transform/mercury_dwt_bridge.cpp)
+  set_target_properties(mercury_kernels PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  # -msse2 is the x86 SSE baseline for the Highway kernels; on non-x86
+  # targets (e.g. arm64 macOS) it is invalid, so omit it there. msvc gets
+  # sse2 by default on x64 and uses per-config optimization flags.
+  if(MSVC)
+    set(MERCURY_KERNEL_OPTS "/w")
+  else()
+    set(MERCURY_KERNEL_OPTS "-O2;-std=gnu++23;-w")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64|amd64|i[3-6]86)")
+      list(APPEND MERCURY_KERNEL_OPTS "-msse2")
+    endif()
+  endif()
+  target_compile_options(mercury_kernels PRIVATE ${MERCURY_KERNEL_OPTS})
+  # the T1 encoder and the ICT are grok's code, built like grok's own
+  if(NOT MSVC)
+    set_source_files_properties(${MERCURY_DIR}/native/t1enc/block_encoder.cpp
+      ${MERCURY_DIR}/native/t1enc/mqc.cpp ${MERCURY_DIR}/native/t1enc/rate_hull.cpp
+      ${MERCURY_DIR}/native/transform/hwy_ict.cpp
+      PROPERTIES COMPILE_OPTIONS "-O3")
+  endif()
+  target_compile_definitions(mercury_kernels PRIVATE
+    HWY_STATIC_DEFINE TOOLCHAIN_MISS_ASM_HWCAP_H NDEBUG)
+  target_include_directories(mercury_kernels PRIVATE
+    ${MERCURY_DIR}/native ${CMAKE_CURRENT_SOURCE_DIR}/highway)
+  target_link_libraries(mercury_kernels PRIVATE hwy)
+
+  target_sources(${GROK_CORE_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_encode_shim.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mercury_encode_oracle.cpp)
+
+  set_source_files_properties(${MERCURY_HOOK_SOURCES} PROPERTIES
+    COMPILE_DEFINITIONS GRK_MERCURY_BUILD)
+  if(WIN32)
+    # system libs rust's std needs (rustc --print native-static-libs)
+    target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels
+      advapi32 bcrypt ntdll userenv ws2_32 synchronization)
+    if(MSVC AND BUILD_SHARED_LIBS)
+      # the mercury tests call these rust functions through grokj2k.dll
+      target_link_options(${GROK_CORE_NAME} PRIVATE
+        /EXPORT:mercury_encode_dci /EXPORT:mercury_forward_dwt_tile)
+    endif()
+  else()
+    target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels dl)
+  endif()
+  if(NOT BUILD_SHARED_LIBS)
+    # static grokj2k keeps mercury_kernels in its link interface, so the
+    # export set must carry it
+    install(TARGETS mercury_kernels EXPORT GrokTargets
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries)
+  endif()
+endif()
 if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
   target_link_libraries(${GROK_CORE_NAME} PRIVATE ${GRK_CURL_TARGET})
   target_include_directories(${GROK_CORE_NAME} PRIVATE

@@ -107,6 +107,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         assert image.comps[0].w == w
         assert image.comps[0].h == h
         assert image.comps[0].prec == prec
@@ -121,6 +122,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         for c in range(nc):
             assert image.comps[c].w == w
             assert image.comps[c].h == h
@@ -143,10 +145,16 @@ class TestCompressDecompressRoundTrip:
         assert image is not None
 
         comp = image.comps[0]
-        data_ptr = ctypes.cast(
-            int(comp.data),
-            ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
-        )
+        if comp.data_type == grok_core.GRK_INT_16:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int16 * (comp.h * comp.stride)),
+            )
+        else:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
+            )
         arr = data_ptr.contents
         for y in range(h):
             for x in range(w):
@@ -167,6 +175,7 @@ class TestCompressDecompressRoundTrip:
         image, codec = self._decompress_file(jp2)
         assert image is not None
         assert image.numcomps == nc
+        assert len(image.comps) == nc
         grok_core.grk_object_unref(codec)
 
     def test_16bit_roundtrip(self, tmp_path):
@@ -216,3 +225,155 @@ class TestHeaderReading:
         assert header.numresolutions == 4
         assert header.irreversible is False
         grok_core.grk_object_unref(codec2)
+
+
+class TestInt16Gate:
+    """Tests for the int16 vs int32 decode-path selection (grk_get_data_type).
+    From BIBO analysis the int16 fixed-point path is viable iff sample precision +
+    transform headroom <= 16.  For irreversible 9/7 the headroom is 7 (≈3 bits 2D
+    BIBO gain + ≈4 bits fractional precision), so int16 is used only for precision
+    <= 9; 10/11/12-bit (incl. DCI) decode via 32-bit float."""
+
+    def _compress_irrev_rgb(self, path, width, height, prec):
+        """Compress a synthetic RGB image with irreversible 9/7 + MCT."""
+        params = grok_core.grk_cparameters()
+        grok_core.grk_compress_set_default_params(params)
+        params.cod_format = grok_core.GRK_FMT_J2K
+        params.irreversible = True
+        params.mct = 1
+
+        image = grok_core.grk_image_new_uniform(
+            3, width, height, 1, 1, prec, False, grok_core.GRK_CLRSPC_SRGB
+        )
+        if image is None:
+            return False
+
+        max_val = (1 << prec) - 1
+        for c in range(3):
+            comp = image.comps[c]
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
+            )
+            arr = data_ptr.contents
+            for y in range(comp.h):
+                for x in range(comp.w):
+                    arr[y * comp.stride + x] = ((x * 13 + y * 7 + c * 41) * 37) % (
+                        max_val + 1
+                    )
+
+        stream = grok_core.grk_stream_params()
+        stream.file = path
+        codec = grok_core.grk_compress_init(stream, params, image)
+        if codec is None:
+            grok_core.grk_object_unref(image.obj)
+            return False
+
+        length = grok_core.grk_compress(codec, None)
+        grok_core.grk_object_unref(codec)
+        grok_core.grk_object_unref(image.obj)
+        return length > 0
+
+    def _decompress(self, path, irreversible_int16=False):
+        """Decompress fully and return (image, codec)."""
+        stream = grok_core.grk_stream_params()
+        stream.file = path
+
+        params = grok_core.grk_decompress_parameters()
+        params.core.irreversible_int16 = irreversible_int16
+        codec = grok_core.grk_decompress_init(stream, params)
+        if codec is None:
+            return None, None
+
+        header = grok_core.grk_header_info()
+        if not grok_core.grk_decompress_read_header(codec, header):
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        image = grok_core.grk_decompress_get_image(codec)
+        if image is None:
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        if not grok_core.grk_decompress(codec, None):
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        return image, codec
+
+    def test_12bit_mct_produces_int32(self, tmp_path):
+        """12-bit RGB 9/7 + MCT decodes via 32-bit float (above the 10-bit limit)."""
+        j2k = str(tmp_path / "rgb12_irrev.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 12)
+
+        image, codec = self._decompress(j2k)
+        assert image is not None
+        for c in range(3):
+            assert image.comps[c].data_type == grok_core.GRK_INT_32
+        grok_core.grk_object_unref(codec)
+
+    def test_8bit_mct_produces_int16(self, tmp_path):
+        """8-bit RGB 9/7 + MCT decodes via the int16 path (within the 10-bit limit)."""
+        j2k = str(tmp_path / "rgb8_irrev.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 8)
+
+        image, codec = self._decompress(j2k)
+        assert image is not None
+        for c in range(3):
+            assert image.comps[c].data_type == grok_core.GRK_INT_16
+        grok_core.grk_object_unref(codec)
+
+    @pytest.mark.parametrize("mercury", ["0", "1"])
+    def test_12bit_irreversible_int16_opt_in(self, tmp_path, monkeypatch, mercury):
+        j2k = str(tmp_path / "rgb12_irrev_int16.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 12)
+        monkeypatch.setenv("GRK_MERCURY", mercury)
+        # measured 12 on classic and 10 on mercury for this image, 16 at 256 x 256
+        max_int16_error = 16
+
+        float_image, float_codec = self._decompress(j2k)
+        int16_image, int16_codec = self._decompress(j2k, irreversible_int16=True)
+        assert float_image is not None and int16_image is not None
+        worst = 0
+        for c in range(3):
+            float_comp, int16_comp = float_image.comps[c], int16_image.comps[c]
+            assert float_comp.data_type == grok_core.GRK_INT_32
+            assert int16_comp.data_type == grok_core.GRK_INT_16
+            floats = ctypes.cast(
+                int(float_comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (float_comp.h * float_comp.stride)),
+            ).contents
+            int16s = ctypes.cast(
+                int(int16_comp.data),
+                ctypes.POINTER(ctypes.c_int16 * (int16_comp.h * int16_comp.stride)),
+            ).contents
+            for y in range(float_comp.h):
+                for x in range(float_comp.w):
+                    difference = floats[y * float_comp.stride + x] - int16s[y * int16_comp.stride + x]
+                    worst = max(worst, abs(difference))
+        assert worst <= max_int16_error
+        grok_core.grk_object_unref(float_codec)
+        grok_core.grk_object_unref(int16_codec)
+
+    def test_grk_get_data_type_irreversible(self):
+        """Irreversible 9/7 (qmfbid=0): int16 iff prec <= 10,
+        independent of MCT on decode."""
+        # decode, MCT: 10-bit -> int16, 11/12-bit -> int32
+        assert grok_core.grk_get_data_type(False, 10, True, 0) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 11, True, 0) == grok_core.GRK_INT_32
+        assert grok_core.grk_get_data_type(False, 12, True, 0) == grok_core.GRK_INT_32
+        # decode, non-MCT (single component): same threshold
+        assert grok_core.grk_get_data_type(False, 10, False, 0) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 11, False, 0) == grok_core.GRK_INT_32
+        # compress: MCT 9/7 always int32 (forward ICT is float)
+        assert grok_core.grk_get_data_type(True, 8, True, 0) == grok_core.GRK_INT_32
+
+    def test_grk_get_data_type_reversible(self):
+        """Reversible 5/3 (qmfbid=1): decode int16 iff prec <= 12, with or without MCT."""
+        assert grok_core.grk_get_data_type(False, 12, False, 1) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 13, False, 1) == grok_core.GRK_INT_32
+        assert grok_core.grk_get_data_type(False, 12, True, 1) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(False, 13, True, 1) == grok_core.GRK_INT_32
+        # compress with MCT keeps one more bit of headroom
+        assert grok_core.grk_get_data_type(True, 11, True, 1) == grok_core.GRK_INT_16
+        assert grok_core.grk_get_data_type(True, 12, True, 1) == grok_core.GRK_INT_32

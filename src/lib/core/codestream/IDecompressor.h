@@ -17,8 +17,11 @@
 
 #pragma once
 
+#include "grk_exceptions.h"
+
 namespace grk
 {
+struct CodingParams;
 
 /**
  * @struct IDecompressor
@@ -57,11 +60,29 @@ public:
    */
   virtual void wait(grk_wait_swath* swath) = 0;
 
+  virtual CodingParams* getCodingParams(void) = 0;
+
   /**
    * @brief Initializes decompressor
    * @param @ref grk_decompress_parameters
    */
   virtual void init(grk_decompress_parameters* param) = 0;
+
+  /**
+   * @brief Records the input file path when the stream is file-backed
+   */
+  virtual void setInputFilePath([[maybe_unused]] const char* path) {}
+
+  /**
+   * @brief Sets a band-completion callback for incremental writing.
+   *
+   * Must be called after readHeader() but before decompress().
+   */
+  virtual void setBandCallback(grk_io_band_callback callback, void* user_data)
+  {
+    (void)callback;
+    (void)user_data;
+  }
 
   /**
    * @brief Gets the @ref grk_progression_state for a tile
@@ -86,6 +107,21 @@ public:
    * @return true if successful
    */
   virtual bool decompress(grk_plugin_tile* tile) = 0;
+
+  virtual bool postProcessPluginImage(const grk_image* decoded) = 0;
+
+  // 0 decoded, 1 the plugin cannot decode the tile, -1 failure
+  int32_t decompressPluginTile(grk_plugin_tile* tile)
+  {
+    try
+    {
+      return decompress(tile) ? 0 : -1;
+    }
+    catch(const PluginDecodeUnsupportedException&)
+    {
+      return 1;
+    }
+  }
 
   /**
    * @brief Decompresses a single tile

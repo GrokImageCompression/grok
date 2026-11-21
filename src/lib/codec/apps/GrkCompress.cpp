@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <sstream>
+#include <cinttypes>
 #ifndef _WIN32
 #include <cstring>
 #include <sys/time.h>
@@ -36,6 +37,7 @@
 #include <chrono>
 #include <algorithm>
 #include <filesystem>
+#include <unordered_map>
 #include "CLI/CLI.hpp"
 
 #include "common.h"
@@ -48,7 +50,6 @@ using namespace grk;
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "BMPFormat.h"
-#include "YUVFormat.h"
 #ifdef GROK_HAVE_LIBJPEG
 #include "JPEGFormat.h"
 #endif
@@ -62,6 +63,8 @@ using namespace grk;
 #include "grk_string.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "GrkCompress.h"
+#include "Messenger.h"
+#include "XYZTransform.h"
 
 void exit_func()
 {
@@ -149,6 +152,11 @@ CompressInitParams::~CompressInitParams()
   free(inputFolder.imgdirpath);
   free(outFolder.imgdirpath);
 }
+static std::string withoutExtension(const std::string& fileName)
+{
+  auto pos = fileName.rfind(".");
+  return pos == std::string::npos ? fileName : fileName.substr(0, pos);
+}
 static char nextFile(const std::string& inputFile, const grk_img_fol* inputFolder,
                      const grk_img_fol* outFolder, grk_cparameters* parameters)
 {
@@ -165,13 +173,7 @@ static char nextFile(const std::string& inputFile, const grk_img_fol* inputFolde
   {
     return 1;
   }
-  std::string outputRootFile;
-  // if we don't find a file tag, then just use the full file name
-  auto pos = inputFile.rfind(".");
-  if(pos != std::string::npos)
-    outputRootFile = inputFile.substr(0, pos);
-  else
-    outputRootFile = inputFile;
+  auto outputRootFile = withoutExtension(inputFile);
   if(inputFolder->set_out_format)
   {
     std::string outfilename = outFolder->imgdirpath + std::string(grk::pathSeparator()) +
@@ -195,7 +197,6 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format)
     case GRK_FMT_RAWL:
     case GRK_FMT_PNG:
     case GRK_FMT_JPG:
-    case GRK_FMT_YUV:
       break;
     default:
       return false;
@@ -265,6 +266,7 @@ static void validateCinema(const std::string& arg, uint16_t profile, grk_cparame
   parameters->numgbits = (profile == GRK_PROFILE_CINEMA_2K) ? 1 : 2;
 }
 
+template<typename T>
 static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
 {
   grk_image* image = nullptr;
@@ -279,53 +281,48 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
   switch(fmt)
   {
     case GRK_FMT_PGX: {
-      PGXFormat<int32_t> pgx;
-      image = pgx.decode(filename, parameters);
+      PGXFormat<T> pgx;
+      image = pgx.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_PXM: {
-      PNMFormat<int32_t> pnm(false);
-      image = pnm.decode(filename, parameters);
+      PNMFormat<T> pnm(false);
+      image = pnm.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_BMP: {
-      BMPFormat<int32_t> bmp;
-      image = bmp.decode(filename, parameters);
+      BMPFormat<T> bmp;
+      image = bmp.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBTIFF
     case GRK_FMT_TIF: {
-      TIFFFormat<int32_t> tif;
-      image = tif.decode(filename, parameters);
+      TIFFFormat<T> tif;
+      image = tif.readImage(filename, parameters);
     }
     break;
 #endif
     case GRK_FMT_RAW: {
-      RAWFormat<int32_t> raw(true);
-      image = raw.decode(filename, parameters);
+      RAWFormat<T> raw(true);
+      image = raw.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_RAWL: {
-      RAWFormat<int32_t> raw(false);
-      image = raw.decode(filename, parameters);
-    }
-    break;
-    case GRK_FMT_YUV: {
-      YUVFormat yuv;
-      image = yuv.decode(filename, parameters);
+      RAWFormat<T> raw(false);
+      image = raw.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBPNG
     case GRK_FMT_PNG: {
-      PNGFormat<int32_t> png;
-      image = png.decode(filename, parameters);
+      PNGFormat<T> png;
+      image = png.readImage(filename, parameters);
     }
     break;
 #endif
 #ifdef GROK_HAVE_LIBJPEG
     case GRK_FMT_JPG: {
-      JPEGFormat<int32_t> jpeg;
-      image = jpeg.decode(filename, parameters);
+      JPEGFormat<T> jpeg;
+      image = jpeg.readImage(filename, parameters);
     }
     break;
 #endif
@@ -358,6 +355,13 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     if(!initParams.initialized)
     {
       success = EXIT_FAILURE;
+      goto cleanup;
+    }
+
+    // CPU shared memory batch compress
+    if(initParams.parameters.shared_memory_interface)
+    {
+      success = shmBatchCompress(&initParams);
       goto cleanup;
     }
 
@@ -399,11 +403,24 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         initParams.parameters.rate_control_algorithm = rate_control_algorithm;
         initParams.parameters.decod_format = GRK_FMT_UNK;
 
-        grk_image* image = loadInputImage(filePath.string().c_str(), &initParams.parameters);
+        grk_image* image =
+            loadInputImage<int32_t>(filePath.string().c_str(), &initParams.parameters);
         if(!image)
         {
           spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());
           continue;
+        }
+
+        // Apply RGB → X'Y'Z' colour transform if requested
+        if(initParams.parameters.apply_xyz_transform)
+        {
+          if(!grk::applyXYZTransform(image, grk::xyzTargetPrecision(initParams.parameters.rsiz)))
+          {
+            spdlog::error("Failed to apply XYZ colour transform");
+            grk_object_unref(&image->obj);
+            success = EXIT_FAILURE;
+            goto mj2_main_cleanup;
+          }
         }
 
         if(first)
@@ -460,6 +477,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
 
     // cache certain settings
     grk_cparameters parametersCache = initParams.parameters;
+    uint16_t carriedSlopeHint = parametersCache.rate_control_slope_hint;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < initParams.parameters.repeats; ++i)
     {
@@ -479,11 +497,25 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         for(const auto& entry :
             std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
         {
+          auto fileName = entry.path().filename().string();
           initParams.parameters = parametersCache;
-          if(compress(entry.path().filename().string(), &initParams) == 1)
+          initParams.parameters.rate_control_slope_hint = carriedSlopeHint;
+          int rc = compress(fileName, &initParams);
+          // a shifted frame that kept every pass would have kept the shifted planes too
+          bool shiftedFrameKeptEveryPass = rc == 1 && parametersCache.quant_step_shift &&
+                                           carriedSlopeHint &&
+                                           !initParams.parameters.rate_control_slope_hint;
+          if(shiftedFrameKeptEveryPass)
+          {
+            initParams.parameters = parametersCache;
+            initParams.parameters.rate_control_slope_hint = 0;
+            rc = compress(fileName, &initParams);
+          }
+          if(rc == 1)
           {
             spdlog::info("Compressed file {}", initParams.parameters.outfile);
             numCompressedFiles++;
+            carriedSlopeHint = initParams.parameters.rate_control_slope_hint;
           }
         }
       }
@@ -503,8 +535,200 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     goto cleanup;
   }
 cleanup:
-
   return success;
+}
+
+int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
+{
+  using namespace grk_plugin;
+
+  setUpSignalHandler();
+
+  // parse "GRK_MSGR_BATCH_IMAGE,width,stride,height,spp,depth" from batch_src
+  std::string batchSrc(initParams->inputFolder.imgdirpath);
+  Msg batchMsg(batchSrc);
+  auto tag = batchMsg.next();
+  if(tag != GRK_MSGR_BATCH_IMAGE)
+  {
+    spdlog::error("shmBatchCompress: expected {} tag, got '{}'", GRK_MSGR_BATCH_IMAGE, tag);
+    return 1;
+  }
+  uint32_t imgWidth = batchMsg.nextUint();
+  uint32_t imgStride = batchMsg.nextUint();
+  (void)imgStride;
+  uint32_t imgHeight = batchMsg.nextUint();
+  uint32_t imgSpp = batchMsg.nextUint();
+  uint32_t imgDepth = batchMsg.nextUint();
+
+  size_t uncompressedFrameSize = Messenger::uncompressedFrameSize(imgWidth, imgHeight, imgSpp);
+  // conservative upper bound for compressed frame size
+  size_t compressedFrameSize = (size_t)imgWidth * imgHeight * imgSpp * ((imgDepth + 7) / 8) * 3 / 2;
+  if(compressedFrameSize < 4096)
+    compressedFrameSize = 4096;
+  const size_t numFrames = 8;
+
+  setMessengerLogger(new MessengerLogger("[SHM-CPU] "));
+
+  auto* parameters = &initParams->parameters;
+
+  // shared state for flush synchronization
+  std::atomic<uint32_t> framesProcessed{0};
+  std::atomic<uint32_t> flushTarget{0};
+  std::atomic<bool> flushRequested{false};
+  std::mutex flushMutex;
+  std::condition_variable flushCv;
+
+  auto processor = [&](std::string message) {
+    Msg msg(message);
+    auto msgTag = msg.next();
+
+    if(msgTag == GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED)
+    {
+      auto clientFrameId = msg.nextUint();
+      auto uncompressedFrameId = msg.nextUint();
+      uint8_t* srcPixels = messenger_->getUncompressedFrame(uncompressedFrameId);
+      if(!srcPixels)
+      {
+        spdlog::error("shmBatchCompress: null uncompressed frame {}", uncompressedFrameId);
+        return;
+      }
+
+      // create grk_image from raw pixel data
+      auto cmptparms = std::make_unique<grk_image_comp[]>(imgSpp);
+      for(uint32_t c = 0; c < imgSpp; ++c)
+      {
+        memset(&cmptparms[c], 0, sizeof(grk_image_comp));
+        cmptparms[c].dx = 1;
+        cmptparms[c].dy = 1;
+        cmptparms[c].w = imgWidth;
+        cmptparms[c].h = imgHeight;
+        cmptparms[c].prec = (uint8_t)imgDepth;
+        cmptparms[c].sgnd = false;
+      }
+      GRK_COLOR_SPACE clrspc = (imgSpp >= 3) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
+      grk_image* image = grk_image_new((uint16_t)imgSpp, cmptparms.get(), clrspc, true);
+      if(!image)
+      {
+        spdlog::error("shmBatchCompress: failed to create image for frame {}", clientFrameId);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressedFrameId);
+        return;
+      }
+
+      image->x0 = 0;
+      image->y0 = 0;
+      image->x1 = imgWidth;
+      image->y1 = imgHeight;
+
+      // copy pixel data from SHM (interleaved 16-bit) into planar int32_t components
+      auto* src16 = reinterpret_cast<const uint16_t*>(srcPixels);
+      for(uint32_t y = 0; y < imgHeight; ++y)
+      {
+        for(uint32_t x = 0; x < imgWidth; ++x)
+        {
+          for(uint32_t c = 0; c < imgSpp; ++c)
+          {
+            auto* data = static_cast<int32_t*>(image->comps[c].data);
+            data[y * imgWidth + x] = (int32_t)src16[(y * imgWidth + x) * imgSpp + c];
+          }
+        }
+      }
+
+      // done reading uncompressed buffer — release it back to client
+      messenger_->send(GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressedFrameId);
+
+      // compress to memory buffer
+      grk_cparameters localParams = *parameters;
+      if(localParams.mct == 255)
+        localParams.mct = (imgSpp >= 3) ? 1 : 0;
+
+      // get a compressed buffer slot from the server queue
+      BufferSrc compressedSlot;
+      if(!messenger_->availableBuffers_.waitAndPop(compressedSlot))
+      {
+        spdlog::error("shmBatchCompress: no compressed buffer available");
+        grk_object_unref(&image->obj);
+        return;
+      }
+
+      grk_stream_params streamParams{};
+      streamParams.buf = compressedSlot.framePtr_;
+      streamParams.buf_len = compressedFrameSize;
+
+      grk_object* codec = grk_compress_init(&streamParams, &localParams, image);
+      uint64_t compressedLen = 0;
+      if(codec)
+      {
+        compressedLen = grk_compress(codec, nullptr);
+        grk_object_unref(codec);
+      }
+      grk_object_unref(&image->obj);
+
+      if(!compressedLen)
+      {
+        spdlog::error("shmBatchCompress: compression failed for frame {}", clientFrameId);
+        messenger_->availableBuffers_.push(compressedSlot);
+        return;
+      }
+
+      messenger_->send(GRK_MSGR_BATCH_SUBMIT_COMPRESSED, clientFrameId, compressedSlot.frameId_,
+                       compressedLen);
+
+      uint32_t count = ++framesProcessed;
+      if(flushRequested.load() && count >= flushTarget.load())
+      {
+        std::lock_guard<std::mutex> lk(flushMutex);
+        flushCv.notify_all();
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_FLUSH)
+    {
+      auto enqueuedCount = msg.nextUint();
+      flushTarget.store(enqueuedCount);
+      flushRequested.store(true);
+      {
+        std::unique_lock<std::mutex> lk(flushMutex);
+        flushCv.wait(lk, [&] { return framesProcessed.load() >= enqueuedCount; });
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_SHUTDOWN)
+    {
+      messenger_->running = false;
+    }
+  };
+
+  uint32_t num_threads = std::thread::hardware_concurrency();
+  if(num_threads == 0)
+    num_threads = 4;
+
+  MessengerInit init(false, // server
+                     grokToClientMessageBuf, grokSentSynch, clientReceiveReadySynch,
+                     clientToGrokMessageBuf, clientSentSynch, grokReceiveReadySynch, processor,
+                     num_threads, uncompressedFrameSize, compressedFrameSize, numFrames);
+
+  messenger_ = new Messenger(init);
+
+  // tell client the buffer layout
+  spdlog::info("[SHM-CPU] Sending shared memory batch compress init message");
+  messenger_->send(GRK_MSGR_BATCH_COMPRESS_INIT, imgWidth, imgStride, imgHeight, imgSpp, imgDepth,
+                   compressedFrameSize, numFrames);
+  spdlog::info("[SHM-CPU] Waiting for client messages...");
+
+  // wait until shutdown
+  while(messenger_->running)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  delete messenger_;
+  messenger_ = nullptr;
+
+  return 0;
+}
+
+// batch frames compress at the same time, so each one writes its slope threshold to its own copy
+static uint64_t pluginBatchCompressCallback(grk_plugin_compress_user_callback_info* info)
+{
+  grk_cparameters frameParameters = *info->compressor_parameters;
+  info->compressor_parameters = &frameParameters;
+  return pluginCompressCallback(info);
 }
 
 int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
@@ -515,7 +739,7 @@ int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
   info.input_dir = initParams->inputFolder.imgdirpath;
   info.output_dir = initParams->outFolder.imgdirpath;
   info.compress_parameters = &initParams->parameters;
-  info.callback = pluginCompressCallback;
+  info.callback = pluginBatchCompressCallback;
   int success = grk_plugin_batch_compress(info);
   // if plugin successfully begins batch compress, then wait for batch to complete
   if(success == 0)
@@ -545,6 +769,12 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   tiffSetErrorAndWarningHandlers(true);
 #endif
   initParams->initialized = true;
+  // skip GPU plugin when -G is not specified or is -2 (CPU only)
+  if(!initParams->usePlugin)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
   // load plugin but do not actually create codec
   bool pluginInitialised;
   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads, &pluginInitialised);
@@ -561,6 +791,10 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   initInfo.device_id = initParams->parameters.device_id;
   initInfo.license = initParams->license_.c_str();
   initInfo.server = initParams->server_.c_str();
+  {
+    const char* debug_env = std::getenv("GRK_DEBUG");
+    initInfo.verbose = debug_env && std::atoi(debug_env) >= 3;
+  }
   if(!grk_plugin_init(initInfo))
   {
     spdlog::info("Failed to create codec");
@@ -577,8 +811,21 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
 
   // 2. single image encode
   if(!initParams->inputFolder.set_imgdir)
-    return grk_plugin_compress(&initParams->parameters, pluginCompressCallback) ? GrkRCSuccess
-                                                                                : GrkRCFail;
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+    uint32_t repeats = std::max(initParams->parameters.repeats, 1u);
+    for(uint32_t i = 0; i < repeats; ++i)
+    {
+      if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
+        return GrkRCFail;
+    }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    if(repeats > 1)
+      spdlog::info("compress time: {} ms/image ({} FPS)",
+                   (elapsed.count() * 1000) / (double)repeats, (double)repeats / elapsed.count());
+    return GrkRCSuccess;
+  }
 
   // 3. directory encode (non-MJ2)
   {
@@ -614,46 +861,6 @@ static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool h
   }
 }
 
-bool parseCommaSeparatedIntegers(const std::string& input, std::vector<uint32_t>& output,
-                                 size_t numIntegers)
-{
-  std::stringstream ss(input);
-  std::string token;
-  output.clear();
-
-  while(std::getline(ss, token, ','))
-  {
-    try
-    {
-      int32_t value = std::stoi(token);
-      if(value <= 0)
-      {
-        spdlog::error("Synthesfmtize values must be positive.");
-        return false;
-      }
-      output.push_back((uint32_t)value);
-    }
-    catch(const std::invalid_argument& e)
-    {
-      std::cerr << "Invalid integer value: " << token << std::endl;
-      return false;
-    }
-    catch(const std::out_of_range& e)
-    {
-      std::cerr << "Integer value out of range: " << token << std::endl;
-      return false;
-    }
-  }
-
-  if(output.size() != numIntegers)
-  {
-    std::cerr << "Error: Exactly " << numIntegers << " integer values are required." << std::endl;
-    return false;
-  }
-
-  return true;
-}
-
 uint8_t charToUint8(char c)
 {
   switch(c)
@@ -672,6 +879,28 @@ uint8_t charToUint8(char c)
 
 GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitParams* initParams)
 {
+  // Convert legacy single-dash long options (used by dcpomatic) to double-dash
+  static const std::unordered_map<std::string, std::string> legacyFlags = {
+      {"-batch_src", "--batch-src"},       {"-out_fmt", "--out-fmt"},
+      {"-cinema2K", "--cinema-2k"},        {"-cinema4K", "--cinema-4k"},
+      {"-kernel_build", "--kernel_build"},
+  };
+  std::vector<std::string> normalizedArgs;
+  normalizedArgs.reserve(static_cast<size_t>(argc));
+  for(int i = 0; i < argc; ++i)
+  {
+    std::string arg = argv[i];
+    auto it = legacyFlags.find(arg);
+    if(it != legacyFlags.end())
+      normalizedArgs.push_back(it->second);
+    else
+      normalizedArgs.push_back(std::move(arg));
+  }
+  std::vector<const char*> normalizedArgv;
+  normalizedArgv.reserve(normalizedArgs.size());
+  for(auto& a : normalizedArgs)
+    normalizedArgv.push_back(a.c_str());
+
   grk_cparameters* parameters = &initParams->parameters;
   grk_img_fol* inputFolder = &initParams->inputFolder;
   grk_img_fol* outFolder = &initParams->outFolder;
@@ -686,12 +915,16 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 
   int32_t deviceId;
   uint8_t resolutions;
+  uint32_t qfactor = 0;
   uint32_t rateControlAlgorithm, repetitions, numThreads, kernelBuildOptions, duration, mode,
       guardBits, mct;
   std::string tileParts;
   uint16_t rsiz;
+  uint16_t slopeHint;
+  uint8_t quantStepShift;
+  double rateTolerance;
 
-  bool eph, applyICC, irreversible, plt, sop, tlm;
+  bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC, strictCompressionRatios;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
   auto rateControlAlgorithmOpt =
@@ -738,6 +971,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       app.add_option("-p,--progression_order", progressionOrder, "Progression order");
   auto pocOpt = app.add_option("-P,--poc", poc, "Progression order changes");
   auto qualityOpt = app.add_option("-q,--quality", quality, "Layer rates expressed as quality");
+  auto qfactorOpt = app.add_option("--qfactor", qfactor, "JPEG style quality factor");
   auto captureResOpt = app.add_option("-Q,--capture-res", captureRes, "Capture resolution");
   auto compressionRatiosOpt = app.add_option("-r,--compression-ratios", compressionRatios,
                                              "Layer rates expressed as compression ratios");
@@ -759,14 +993,35 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
                                     "Source image directory OR comma separated list of compression "
                                     "settings for shared memory interface");
   auto mctOpt = app.add_option("-Y,--mct", mct, "Multi component transform")->default_val(0);
+  bool verbose = false;
+  app.add_flag("-v,--verbose", verbose, "Verbose output");
   auto imfOpt = app.add_option("-z,--imf", imf, "IMF profile");
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
+  auto progressiveRCOpt =
+      app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
+  auto slopeHintOpt = app.add_option("--slope-hint", slopeHint,
+                                     "Rate control slope threshold from a previous frame");
+  auto quantStepShiftOpt = app.add_option(
+      "--quant-step-shift", quantStepShift,
+      "Quantization step shift, applied only after a frame that hit its byte budget");
+  auto rateToleranceOpt =
+      app.add_option("--rate-tolerance", rateTolerance, "Rate control tolerance");
+  auto strictCompressionRatiosOpt = app.add_flag("--strict-rates", strictCompressionRatios,
+                                                 "Fail when a compression ratio cannot be met");
+  app.add_option("--write-metadata", parameters->metadata_write_flags,
+                 "JP2 metadata: 1=EXIF, 2=IPTC, 4=XMP, 8=none, 0=all")
+      ->default_val(0);
+
+  bool xyzTransform;
+  auto xyzOpt = app.add_flag("--xyz", xyzTransform,
+                             "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
 
   app.set_help_flag("-h", "Show abreviated usage");
+  app.set_version_flag("-V,--version", grk_version(), "Show version");
   app.add_flag("--help", "Show detailed usage");
   try
   {
-    app.parse(argc, argv);
+    app.parse(static_cast<int>(normalizedArgv.size()), normalizedArgv.data());
   }
   catch(const CLI::ParseError& e)
   {
@@ -782,6 +1037,15 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   {
     compress_help_display();
     return GrkRCUsage;
+  }
+
+  if(verbose && !std::getenv("GRK_DEBUG"))
+  {
+#ifdef _WIN32
+    _putenv("GRK_DEBUG=3");
+#else
+    setenv("GRK_DEBUG", "3", 0);
+#endif
   }
 
   configureLogging(logfile);
@@ -801,6 +1065,18 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->write_plt = true;
   if(tlmOpt->count() > 0)
     parameters->write_tlm = true;
+  if(progressiveRCOpt->count() > 0)
+    parameters->progressive_rate_control = true;
+  if(slopeHintOpt->count() > 0)
+    parameters->rate_control_slope_hint = slopeHint;
+  if(quantStepShiftOpt->count() > 0)
+    parameters->quant_step_shift = quantStepShift;
+  if(rateToleranceOpt->count() > 0)
+    parameters->rate_control_tolerance = rateTolerance;
+  if(strictCompressionRatiosOpt->count() > 0)
+    parameters->strict_compression_ratios = strictCompressionRatios;
+  if(xyzOpt->count() > 0)
+    parameters->apply_xyz_transform = true;
   if(repetitionsOpt->count() > 0)
     parameters->repeats = repetitions;
   if(rateControlAlgorithmOpt->count() > 0)
@@ -814,7 +1090,11 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   if(numThreadsOpt->count() > 0)
     parameters->num_threads = numThreads;
   if(deviceIdOpt->count() > 0)
+  {
     parameters->device_id = deviceId;
+    initParams->usePlugin = (deviceId != -2);
+    parameters->cpu_only = deviceId == -2;
+  }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
   if(inputFormatOpt->count() > 0)
@@ -890,6 +1170,30 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     {
       return GrkRCFail;
     }
+  }
+  if(outputFormatOpt->count() > 0)
+  {
+    std::string outformat = std::string(".") + outputFormat;
+    inputFolder->set_out_format = true;
+    parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
+    switch(parameters->cod_format)
+    {
+      case GRK_FMT_J2K:
+        inputFolder->out_format = isHT ? "jhc" : "j2k";
+        break;
+      case GRK_FMT_JP2:
+        inputFolder->out_format = isHT ? "jph" : "jp2";
+        break;
+      case GRK_FMT_MJ2:
+        inputFolder->out_format = "mj2";
+        break;
+      default:
+        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
+                      "*.jhc or *.mj2] supported");
+        return GrkRCFail;
+    }
+    if(isHT)
+      setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
   }
   if(rawFormatOpt->count() > 0)
   {
@@ -1064,14 +1368,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       progression[numProgressions].comp_e = (uint16_t)comp_e;
       progression[numProgressions].specified_compression_poc_prog =
           getProgression(progression[numProgressions].progression_str);
-      // sanity check on layer
-      if(progression[numProgressions].lay_e > parameters->numlayers)
-      {
-        spdlog::warn("End layer {} in POC {} is greater than"
-                     " total number of layers {}. Truncating.",
-                     progression[numProgressions].lay_e, numProgressions, parameters->numlayers);
-        progression[numProgressions].lay_e = parameters->numlayers;
-      }
       if(progression[numProgressions].res_e > parameters->numresolution)
       {
         spdlog::warn("POC end resolution {} cannot be greater than"
@@ -1128,6 +1424,15 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->csty |= 0x04;
   if(irreversibleOpt->count() > 0)
     parameters->irreversible = true;
+  if(qfactorOpt->count() > 0)
+  {
+    if(qfactor < 1 || qfactor > 100)
+    {
+      spdlog::error("Quality factor {} must be between 1 and 100", qfactor);
+      return GrkRCFail;
+    }
+    parameters->qfactor = (uint8_t)qfactor;
+  }
   if(guardBitsOpt->count() > 0)
   {
     if(guardBits > 7)
@@ -1515,6 +1820,21 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->numlayers = 1;
     parameters->allocation_by_rate_distortion = false;
   }
+  // the layer count is only known once the rates are parsed
+  if(pocOpt->count() > 0)
+  {
+    for(uint32_t i = 0; i <= parameters->numpocs; i++)
+    {
+      auto& progression = parameters->progression[i];
+      if(progression.lay_e > parameters->numlayers)
+      {
+        spdlog::warn("End layer {} in POC {} is greater than total number of layers {}. "
+                     "Truncating.",
+                     progression.lay_e, i, parameters->numlayers);
+        progression.lay_e = parameters->numlayers;
+      }
+    }
+  }
   // cinema/broadcast profiles
   if(!isHT)
   {
@@ -1722,30 +2042,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   {
     parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
   }
-  if(outputFormatOpt->count() > 0)
-  {
-    std::string outformat = std::string(".") + outputFormat;
-    inputFolder->set_out_format = true;
-    parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
-    switch(parameters->cod_format)
-    {
-      case GRK_FMT_J2K:
-        inputFolder->out_format = "j2k";
-        break;
-      case GRK_FMT_JP2:
-        inputFolder->out_format = "jp2";
-        break;
-      case GRK_FMT_MJ2:
-        inputFolder->out_format = "mj2";
-        break;
-      default:
-        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
-                      "*.jhc or *.mj2] supported");
-        return GrkRCFail;
-    }
-    if(isHT)
-      setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
-  }
   if(serverOpt->count() > 0 && licenseOpt->count() > 0)
   {
     initParams->server_ = server;
@@ -1855,10 +2151,12 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 {
   auto parameters = info->compressor_parameters;
+  grk_cparameters frameParameters;
   uint64_t compressedBytes = 0;
   grk_object* codec = nullptr;
   grk_image* image = info->image;
   bool createdImage = false;
+  bool attachedPluginMetadata = false;
   std::string outfile;
   std::string temp_ofname;
 
@@ -1870,7 +2168,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     {
       if(info->output_file_name_is_relative)
       {
-        temp_ofname = get_file_name((char*)info->output_file_name);
+        temp_ofname = withoutExtension(info->output_file_name);
         if(img_fol_plugin.set_out_format)
         {
           outfile =
@@ -1908,113 +2206,11 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       }
     }
     /* decode the source image */
-    switch(info->compressor_parameters->decod_format)
+    image = loadInputImage<int32_t>(info->input_file_name, info->compressor_parameters);
+    if(!image)
     {
-      case GRK_FMT_PGX: {
-        PGXFormat<int32_t> pgx;
-        image = pgx.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load pgx file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_PXM: {
-        PNMFormat<int32_t> pnm(false);
-        image = pnm.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load pnm file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_BMP: {
-        BMPFormat<int32_t> bmp;
-        image = bmp.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load bmp file");
-          goto cleanup;
-        }
-      }
-      break;
-
-#ifdef GROK_HAVE_LIBTIFF
-      case GRK_FMT_TIF: {
-        TIFFFormat<int32_t> tif;
-        image = tif.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-          goto cleanup;
-      }
-      break;
-#endif /* GROK_HAVE_LIBTIFF */
-
-      case GRK_FMT_RAW: {
-        RAWFormat<int32_t> raw(true);
-        image = raw.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_RAWL: {
-        RAWFormat<int32_t> raw(false);
-        image = raw.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_YUV: {
-        YUVFormat yuv;
-        image = yuv.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-#ifdef GROK_HAVE_LIBPNG
-      case GRK_FMT_PNG: {
-        PNGFormat<int32_t> png;
-        image = png.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load png file");
-          goto cleanup;
-        }
-      }
-      break;
-#endif /* GROK_HAVE_LIBPNG */
-
-#ifdef GROK_HAVE_LIBJPEG
-      case GRK_FMT_JPG: {
-        JPEGFormat<int32_t> jpeg;
-        image = jpeg.decode(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load jpeg file");
-          goto cleanup;
-        }
-      }
-      break;
-#endif /* GROK_HAVE_LIBPNG */
-      default:
-        spdlog::error("Input file format {} is not supported",
-                      convertFileFmtToString(info->compressor_parameters->decod_format));
-        goto cleanup;
+      spdlog::error("Unable to load input file");
+      goto cleanup;
     }
 
     /* Can happen if input file is TIFF or PNG
@@ -2085,20 +2281,22 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     }
   }
 
+  // a plugin batch shares parameters across frames of different shapes
+  frameParameters = *parameters;
   /* Decide if MCT should be used */
-  if(parameters->mct == 255)
+  if(frameParameters.mct == 255)
   { /* mct mode has not been set in commandline */
-    parameters->mct = (image->numcomps >= 3) ? 1 : 0;
+    frameParameters.mct = (image->numcomps >= 3) ? 1 : 0;
   }
   else
   { /* mct mode has been set in commandline */
-    if((parameters->mct == 1) && (image->numcomps < 3))
+    if((frameParameters.mct == 1) && (image->numcomps < 3))
     {
       spdlog::error("RGB->YCC conversion cannot be used:");
       spdlog::error("Input image has less than 3 components");
       goto cleanup;
     }
-    if((parameters->mct == 2) && (!parameters->mct_data))
+    if((frameParameters.mct == 2) && (!frameParameters.mct_data))
     {
       spdlog::error("Custom MCT has been set but no array-based MCT");
       spdlog::error("has been provided.");
@@ -2157,11 +2355,21 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       spdlog::warn("MSamples/sec is {}, whereas limit is {}.", msamplespersec, limit);
   }
 
+#ifdef GROK_HAVE_LIBTIFF
+  // the plugin reads only the pixels of a TIFF, not its metadata tags
+  if(info->tile && !createdImage && info->input_file_name && info->input_file_name[0])
+  {
+    TIFFFormat<int32_t> tif;
+    if(!tif.readMetadata(info->input_file_name, image, &frameParameters))
+      goto cleanup;
+    attachedPluginMetadata = true;
+  }
+#endif
   if(!info->stream_params.buf)
   {
     safe_strcpy(info->stream_params.file, outfile.c_str());
   }
-  codec = grk_compress_init(&info->stream_params, parameters, image);
+  codec = grk_compress_init(&info->stream_params, &frameParameters, image);
   if(!codec)
   {
     spdlog::error("failed to compress image: grk_compress_init");
@@ -2173,11 +2381,22 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     spdlog::error("failed to compress image: grk_compress");
     goto cleanup;
   }
+  {
+    // carry the threshold to the next frame of a directory encode, zero included
+    uint16_t slopeThreshold = grk_compress_get_slope_threshold(codec);
+    parameters->rate_control_slope_hint = slopeThreshold;
+    spdlog::info("rate control slope threshold {}", slopeThreshold);
+  }
 
 cleanup:
   grk_object_unref(codec);
   if(createdImage)
     grk_object_unref(&image->obj);
+  if(attachedPluginMetadata && image->meta)
+  {
+    grk_object_unref(&image->meta->obj);
+    image->meta = nullptr;
+  }
   if(!compressedBytes)
   {
     spdlog::error("failed to compress image");

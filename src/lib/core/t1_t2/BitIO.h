@@ -87,10 +87,15 @@ public:
   bool write(uint32_t v, uint8_t n)
   {
     assert(n != 0 && n <= 32);
-    for(int8_t i = (int8_t)(n - 1); i >= 0; i--)
+    while(n)
     {
-      if(!putbit((v >> i) & 1))
+      if(ct == 0 && !write8u())
         return false;
+      uint8_t take = n < ct ? n : ct;
+      n = (uint8_t)(n - take);
+      ct = (uint8_t)(ct - take);
+      uint32_t bits = (v >> n) & ((1U << take) - 1U);
+      buf = static_cast<uint8_t>(buf | (bits << ct));
     }
     return true;
   }
@@ -163,14 +168,9 @@ public:
    */
   bool putcommacode(uint8_t n)
   {
-    int16_t nn = n;
-    while(--nn >= 0)
-    {
-      if(!write(1))
-        return false;
-    }
-
-    return write(0);
+    assert(n < 32);
+    // n ones then a zero
+    return write(((1U << n) - 1U) << 1, (uint8_t)(n + 1));
   }
 
   /**

@@ -16,8 +16,11 @@
  */
 
 #include "grok_codec.h"
+#include "grok.h"
 
 int main(int argc, const char* argv[])
 {
-  return grk_codec_decompress(argc, argv);
+  int rc = grk_codec_decompress(argc, argv);
+  grk_deinitialize();
+  return rc;
 }

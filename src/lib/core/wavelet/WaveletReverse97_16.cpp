@@ -1,0 +1,1616 @@
+/*
+ *    Copyright (C) 2016-2026 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+/******************************************************************************
+ *
+ *  16-bit Fixed-Point 9/7 Irreversible Inverse Wavelet Transform
+ *
+ ******************************************************************************
+ *
+ *  TABLE OF CONTENTS
+ *  -----------------
+ *  1.  Overview
+ *  2.  References
+ *  3.  Lifting scheme (analysis & synthesis)
+ *  4.  Gain normalization (K scaling)
+ *  5.  Fixed-point representation (Q1.15 / MulFixedPoint15)
+ *  6.  Coefficient decomposition — per-step strategies
+ *  7.  Neighbor-sum-first flag and BIBO headroom
+ *  8.  Q-format fractional bits and dynamic range
+ *  9.  Eligible images and precision limits
+ *  10. Implementation notes (Highway SIMD)
+ *
+ *
+ *  1. OVERVIEW
+ *  -----------
+ *  This module implements the CDF 9/7 (Cohen–Daubechies–Feauveau biorthogonal
+ *  wavelet with 9 analysis / 7 synthesis taps) inverse discrete wavelet
+ *  transform (IDWT) using 16-bit fixed-point arithmetic.
+ *
+ *  Compared to the standard float32 path (WaveletReverse97.cpp), this path:
+ *    - Halves memory bandwidth (2 bytes/sample vs 4)
+ *    - Improves cache utilization (2× more samples per cache line)
+ *    - Uses integer SIMD which is often faster than float SIMD on low-power cores
+ *    - Trades ~0.5 dB peak SNR for the above benefits (acceptable for lossy)
+ *
+ *  The implementation uses Google Highway (HWY) for portable SIMD, targeting
+ *  the MulFixedPoint15 operation (Q1.15 fixed-point multiply) that maps to
+ *  single-instruction hardware on all major ISAs:
+ *    - x86 SSSE3+/AVX2/AVX-512:  VPMULHRSW
+ *    - ARM NEON:                  VQRDMULH
+ *    - WASM SIMD:                 i16x8.q15mulr_sat_s
+ *    - RISC-V V:                  equivalent rounding shift-right multiply
+ *
+ *
+ *  2. REFERENCES
+ *  -------------
+ *  [T.800]  ITU-T Rec. T.800 | ISO/IEC 15444-1:2019, "JPEG 2000 Part 1:
+ *           Core coding system", Annex F — Discrete wavelet transformation
+ *
+ *  [CDF97]  A. Cohen, I. Daubechies, J.-C. Feauveau, "Biorthogonal bases
+ *           of compactly supported wavelets", Comm. Pure Appl. Math. 45,
+ *           pp. 485–560, 1992.
+ *
+ *  [SWE95]  W. Sweldens, "The lifting scheme: A custom-design construction
+ *           of biorthogonal wavelets", Appl. Comp. Harm. Anal. 3(2),
+ *           pp. 186–200, 1996.
+ *
+ *  [DAU98]  I. Daubechies, W. Sweldens, "Factoring wavelet transforms into
+ *           lifting steps", J. Fourier Anal. Appl. 4(3), pp. 245–267, 1998.
+ *
+ *  [BIBO]   D. Taubman, M. Marcellin, "JPEG2000: Image Compression
+ *           Fundamentals, Standards and Practice", Springer, 2002.
+ *           Section 10.4 — BIBO gain analysis for irreversible transforms.
+ *
+ *
+ *  3. LIFTING SCHEME (ANALYSIS & SYNTHESIS)
+ *  -----------------------------------------
+ *  The 9/7 wavelet is factored into four lifting steps [DAU98, SWE95].
+ *  Per [T.800] Annex F, the ANALYSIS (forward) direction applies:
+ *
+ *    Step 0 (predict 1):  D[n] += α × (S[n] + S[n+1])     α = -1.586134342
+ *    Step 1 (update  1):  S[n] += β × (D[n-1] + D[n])     β = -0.052980118
+ *    Step 2 (predict 2):  D[n] += γ × (S[n] + S[n+1])     γ =  0.882911075
+ *    Step 3 (update  2):  S[n] += δ × (D[n-1] + D[n])     δ =  0.443506852
+ *
+ *  followed by gain normalization (Section 4 below).
+ *
+ *  Here S[n] denotes even-indexed (low-pass) samples and D[n] denotes
+ *  odd-indexed (high-pass) samples in the polyphase decomposition.
+ *
+ *  The SYNTHESIS (inverse) direction reverses the step order and negates
+ *  each coefficient:
+ *
+ *    Step 3 (undo update  2):  S[n] -= δ × (D[n-1] + D[n])
+ *    Step 2 (undo predict 2):  D[n] -= γ × (S[n] + S[n+1])
+ *    Step 1 (undo update  1):  S[n] -= β × (D[n-1] + D[n])
+ *    Step 0 (undo predict 1):  D[n] -= α × (S[n] + S[n+1])
+ *
+ *  Since α is negative, "D[n] -= α × sum" = "D[n] += |α| × sum" = addition.
+ *  Similarly β is negative, so "S[n] -= β × sum" = "S[n] += |β| × sum".
+ *  Steps 2,3 have positive coefficients, so synthesis subtracts.
+ *
+ *
+ *  4. GAIN NORMALIZATION (K SCALING)
+ *  ----------------------------------
+ *  After lifting, the analysis filter bank applies gain normalization
+ *  [T.800, Equation F-4]:
+ *
+ *    even (low-pass) samples  *= 1/K
+ *    odd  (high-pass) samples *= K/2
+ *
+ *  where K = 1.230174105 is the 9/7 normalization constant.
+ *
+ *  Synthesis must undo this BEFORE the lifting steps:
+ *
+ *    even *= K     = 1.230174105
+ *    odd  *= 2/K   = 1.625732422
+ *
+ *  In this 16-bit path, K/invK scaling is fused into the interleave phase
+ *  (when loading subband data into the scratch buffer).  See Section 6 for
+ *  the fixed-point decomposition of these factors.
+ *
+ *
+ *  5. FIXED-POINT REPRESENTATION (Q1.15 / MulFixedPoint15)
+ *  --------------------------------------------------------
+ *  All intermediate lifting computations use signed 16-bit integers.  The
+ *  MulFixedPoint15(a, b) operation computes:
+ *
+ *    result = (a × b + 2^14) >> 15
+ *
+ *  This is equivalent to multiplying by a Q1.15 fixed-point factor in the
+ *  range [-1.0, +1.0).  The "+2^14" provides rounding (vs truncation).
+ *
+ *  Shifts by a small number of bits (the ×8/>>3 of step 1 and the final
+ *  Q-format-to-sample shift) round to nearest with TIES TO EVEN.  One sample in
+ *  2^shift lands exactly on a .5 boundary, so rounding those up brightens the
+ *  decoded image by a fraction of an LSB per shift, and the fractions
+ *  accumulate across passes and decomposition levels.
+ *
+ *  Since MulFixedPoint15 can only represent factors with |f| < 1.0, any
+ *  coefficient whose magnitude exceeds 1.0 must be decomposed into an
+ *  integer part (handled by addition) and a fractional part (handled by
+ *  MulFixedPoint15).  See Section 6 for each step's decomposition.
+ *
+ *
+ *  6. COEFFICIENT DECOMPOSITION — PER-STEP STRATEGIES
+ *  ---------------------------------------------------
+ *  Each of the four synthesis lifting steps requires a different strategy
+ *  to encode its coefficient in Q1.15 format.
+ *
+ *  ┌──────────┬────────────────┬──────────────────────────────────────────┐
+ *  │ Synth    │ Analysis       │ Fixed-point strategy                     │
+ *  │ step     │ coefficient    │                                          │
+ *  ├──────────┼────────────────┼──────────────────────────────────────────┤
+ *  │ 3 (δ)   │ +0.443506852   │ Direct: |δ| < 1.0, fits in Q1.15.       │
+ *  │          │                │ fp15 = round(0.443506852 × 2^15) = 14533│
+ *  │          │                │ Synthesis subtracts: S[n] -= mf15(sum,c) │
+ *  ├──────────┼────────────────┼──────────────────────────────────────────┤
+ *  │ 2 (γ)   │ +0.882911075   │ Direct: |γ| < 1.0, fits in Q1.15.       │
+ *  │          │                │ fp15 = round(0.882911075 × 2^15) = 28931│
+ *  │          │                │ Synthesis subtracts: D[n] -= mf15(sum,c) │
+ *  ├──────────┼────────────────┼──────────────────────────────────────────┤
+ *  │ 1 (β)   │ -0.052980118   │ Precision boost: |β| is very small, so   │
+ *  │          │                │ direct encoding loses too many bits.      │
+ *  │          │                │ Instead: multiply each neighbor SEPARATELY│
+ *  │          │                │ by (β × 2^3), sum the products, then      │
+ *  │          │                │ round-shift right by 3, ties to even.      │
+ *  │          │                │ fp15 = round(|β| × 2^18) = 13888         │
+ *  │          │                │ Net: S[n] += rshift_even(mf15(D[n-1],c)   │
+ *  │          │                │              + mf15(D[n],c), 3)          │
+ *  │          │                │ This gives 3 extra bits of precision.     │
+ *  ├──────────┼────────────────┼──────────────────────────────────────────┤
+ *  │ 0 (α)   │ -1.586134342   │ Additive decomposition: |α| > 1.0, so    │
+ *  │          │                │ decompose as α = -1 + (α + 1):           │
+ *  │          │                │   D[n] -= α × sum                         │
+ *  │          │                │        = D[n] + sum - (α+1) × sum         │
+ *  │          │                │        = D[n] + sum + mf15(sum, frac)     │
+ *  │          │                │ where frac = -(α+1) = 0.586134342        │
+ *  │          │                │ fp15 = round(0.586134342 × 2^15) = 19206 │
+ *  │          │                │ Note: -(α+1) is POSITIVE since α < -1.    │
+ *  └──────────┴────────────────┴──────────────────────────────────────────┘
+ *
+ *  K/invK Scaling Decomposition:
+ *
+ *    K = 1.230174105 > 1.0 → decompose: x×K = x + mf15(x, K−1)
+ *      K−1 = 0.230174105 → fp15 = round(0.230174105 × 2^15) = 7542
+ *
+ *    2/K = 1.625732422 > 1.0 → decompose: x×(2/K) = x + mf15(x, 2/K−1)
+ *      2/K−1 = 0.625732422 → fp15 = round(0.625732422 × 2^15) = 20504
+ *
+ *
+ *  7. NEIGHBOR-SUM-FIRST FLAG AND BIBO HEADROOM
+ *  ----------------------------------------------
+ *  For each lifting step, the standard formulation computes:
+ *
+ *    target -= coefficient × (neighbor_prev + neighbor_next)
+ *
+ *  When both neighbors are stored as int16, their sum can momentarily
+ *  require 17 bits, causing overflow.  Two strategies are available:
+ *
+ *  (a) SUM-FIRST: Form the 16-bit sum (risking overflow on large values),
+ *      then multiply once.  This is faster (one multiply vs two) but
+ *      requires extra headroom.  The BIBO analysis must account for the
+ *      doubled input range at this step.
+ *
+ *  (b) MULTIPLY-FIRST: Multiply each neighbor separately, then sum the
+ *      two products.  This avoids sum overflow but costs an extra multiply.
+ *      Used for step 1 (β) since the coefficient is very small and the
+ *      products individually fit in int16 with room to spare.
+ *
+ *  Per-step assignment:
+ *    Step 3 (δ = 0.444):  SUM-FIRST  — moderate coefficient, sum risk managed by headroom
+ *    Step 2 (γ = 0.883):  SUM-FIRST  — large coefficient but result still bounded
+ *    Step 1 (β = 0.053):  MULTIPLY-FIRST — small coefficient, precision boost via ×8/>>3
+ *    Step 0 (α = 1.586):  SUM-FIRST  — decomposed, each partial within range
+ *
+ *  For SUM-FIRST steps, the BIBO analysis (Section 8) doubles the input
+ *  gain to account for the momentary 17-bit intermediate.
+ *
+ *
+ *  8. Q-FORMAT FRACTIONAL BITS AND DYNAMIC RANGE
+ *  ----------------------------------------------
+ *  Coefficients arrive already dequantized into a Q-format: PostDecodeFilters
+ *  left-shifts them by qShift (= 13 - prec, set in TileProcessor), synthesis
+ *  runs entirely in that scale across every decomposition level, and the
+ *  fractional bits are shifted back out once, at the final synthesis output
+ *  (or by the inverse MCT, which consumes the Q-format directly).
+ *
+ *  Those fractional bits are what keeps the accumulated lifting rounding below
+ *  a sample LSB.  Each of the ~3 roundings a sample sees per 1D pass costs half
+ *  a Q-format LSB, and a 6-level 2D synthesis runs 12 passes.  Each extra
+ *  fractional bit halves the number of samples that land on a different integer
+ *  than the float path picks, which is what the T.803 tolerances measure.
+ *
+ *  The budget is set by the largest quantity the int16 lanes must hold.  With
+ *  the reconstructed sample peak at 2^(prec-1+qShift) = 2^12:
+ *
+ *    scaled input coefficients        ~2.1× the sample peak
+ *    neighbour sums (SUM-FIRST steps) ~3.5× the sample peak
+ *    high-pass samples between the γ and α steps
+ *                                     ~4.0× the sample peak  ← the binding one
+ *
+ *  The last is inherent to the lifting factorization: undoing γ leaves the odd
+ *  samples holding a correction that undoing α then cancels.  Measured over the
+ *  ETS/NR corpus the worst intermediate is 17545, 54% of the int16 range, so
+ *  the 3 bits of headroom above the sample peak cover it with room to spare.
+ *
+ *  Every add in the lifting saturates instead of wrapping, so an image sharper
+ *  than anything in that corpus clips a few samples rather than tearing.
+ *
+ *
+ *  9. ELIGIBLE IMAGES
+ *  ------------------
+ *  This path is selected at runtime when ALL of the following hold:
+ *
+ *    1. Irreversible wavelet (qmfbid == 0)
+ *    2. Image precision ≤ 10 bits (grk_get_data_type)
+ *
+ *  A region decode qualifies on the same terms: hwy_step_16_97 runs these
+ *  lifting steps over the partial framework's window and reproduces the
+ *  whole-tile output sample for sample.
+ *
+ *  At prec 10 the Q-format has 3 fractional bits. Mean squared error against
+ *  the float path is 0.39 at 10 bits and 0.18 at 9 bits on a test image.
+ *
+ *  For RGB images with ICT (irreversible multi-component transform):
+ *  The ICT is applied AFTER the inverse DWT (on each component
+ *  independently), so it does not affect DWT overflow.  The ICT output
+ *  for 12-bit data (worst-case ~5700 via 1.772× Cb amplification) fits
+ *  comfortably in int16.
+ *
+ *
+ *  10. IMPLEMENTATION NOTES (HIGHWAY SIMD)
+ *  ----------------------------------------
+ *  - All SIMD lifting uses Highway's MulFixedPoint15() which maps to
+ *    the fastest available instruction on each architecture.
+ *  - The horizontal pass processes rows independently; the vertical pass
+ *    processes columns one-at-a-time in the scalar version and will
+ *    be extended to multi-column SIMD in a future revision.
+ *  - Thread parallelism is achieved by splitting rows (horizontal) or
+ *    columns (vertical) across tasks, each with its own scratch buffer
+ *    from a pre-allocated pool.
+ *
+ ******************************************************************************/
+
+#include <algorithm>
+#include <chrono>
+#include <functional>
+#include <limits>
+#include <memory>
+
+#include "hwy_arm_disable_targets.h"
+
+#include "TFSingleton.h"
+#include "grk_restrict.h"
+#include "simd.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
+#include "Logger.h"
+#include "buffer.h"
+#include "GrkObjectWrapper.h"
+#include "ISparseCanvas.h"
+#include "TileFutureManager.h"
+#include "ImageComponentFlow.h"
+#include "IStream.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct ITileProcessor;
+}
+#include "CodingParams.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "BitIO.h"
+
+#include "TagTree.h"
+
+#include "CodeblockCompress.h"
+
+#include "CodeblockDecompress.h"
+#include "Precinct.h"
+#include "Subband.h"
+#include "Resolution.h"
+
+#include "CodecScheduler.h"
+#include "TileComponentWindow.h"
+#include "WaveletReverse.h"
+#include "TileComponent.h"
+#include "DecompressScheduler.h"
+
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "wavelet/WaveletReverse97_16.cpp"
+#include <hwy/foreach_target.h>
+#include <hwy/highway.h>
+
+HWY_BEFORE_NAMESPACE();
+namespace grk
+{
+namespace HWY_NAMESPACE
+{
+  /**************************************************************************
+   *                    Fixed-Point Coefficient Constants
+   *
+   *  Q1.15 ENCODING
+   *  --------------
+   *  All coefficients are stored as int16_t values for use with the
+   *  MulFixedPoint15 operation.  MulFixedPoint15(a, b) computes:
+   *
+   *    result = (a × b + 16384) >> 15
+   *
+   *  which is equivalent to multiplying by b/32768.  So to encode a
+   *  real-valued coefficient C as a Q1.15 integer:
+   *
+   *    fp15 = round(C × 32768) = round(C × 2^15)
+   *
+   *  This works for |C| < 1.0.  Larger coefficients must be decomposed
+   *  (see per-step documentation below).
+   *
+   *  NAMING CONVENTION
+   *  -----------------
+   *  Coefficients are named with the pattern:
+   *    synth_coeff_<step>   — the Q1.15 coefficient for synthesis step N
+   *    scale_K_frac         — fractional part of K (for even-sample scaling)
+   *    scale_invK_frac      — fractional part of 2/K (for odd-sample scaling)
+   **************************************************************************/
+
+  /*
+   * Synthesis Step 3 — Undo analysis update δ = +0.443506852
+   * ---------------------------------------------------------
+   * Analysis added δ × (D[n-1] + D[n]) to each even sample S[n].
+   * Synthesis reverses this:  S[n] -= δ × (D[n-1] + D[n])
+   *
+   * δ = 0.443506852 < 1.0, so it fits directly in Q1.15:
+   *   synth_coeff_3 = round(0.443506852 × 2^15) = 14533
+   *
+   * In code: target -= MulFixedPoint15(neighbor_sum, synth_coeff_3)
+   * This step uses SUM-FIRST (neighbors summed before multiply).
+   */
+  static const int16_t synth_coeff_3 = (int16_t)(0.5 + 0.443506852 * (double)(1 << 15));
+
+  /*
+   * Synthesis Step 2 — Undo analysis predict γ = +0.882911075
+   * ----------------------------------------------------------
+   * Analysis added γ × (S[n] + S[n+1]) to each odd sample D[n].
+   * Synthesis reverses this:  D[n] -= γ × (S[n] + S[n+1])
+   *
+   * γ = 0.882911075 < 1.0, so it fits directly in Q1.15:
+   *   synth_coeff_2 = round(0.882911075 × 2^15) = 28931
+   *
+   * In code: target -= MulFixedPoint15(neighbor_sum, synth_coeff_2)
+   * This step uses SUM-FIRST.
+   */
+  static const int16_t synth_coeff_2 = (int16_t)(0.5 + 0.882911075 * (double)(1 << 15));
+
+  /*
+   * Synthesis Step 1 — Undo analysis update β = -0.052980118
+   * ---------------------------------------------------------
+   * Analysis added β × (D[n-1] + D[n]) to each even sample S[n].
+   * Synthesis reverses this:  S[n] -= β × (D[n-1] + D[n])
+   *
+   * Since β is negative, subtraction becomes addition:
+   *   S[n] += |β| × (D[n-1] + D[n])
+   *
+   * PRECISION BOOST: |β| = 0.052980118 is very small.  In Q1.15, the
+   * direct encoding round(0.053 × 32768) = 1736 uses only 11 of the
+   * available 15 magnitude bits, wasting 4 bits of precision.
+   *
+   * To recover precision, we use the MULTIPLY-FIRST strategy with a ×8
+   * amplification:
+   *
+   *   1. Multiply each neighbor SEPARATELY by (|β| × 8) in Q1.15:
+   *        synth_coeff_1 = round(|β| × 2^18) = round(0.052980118 × 262144) = 13888
+   *      Each product is ≈ 0.424 × neighbor, well within int16 range.
+   *
+   *   2. Sum the two products with rounding offset 4:
+   *        val = MulFixedPoint15(D[n-1], c) + MulFixedPoint15(D[n], c) + 4
+   *
+   *   3. Right-shift by 3 to cancel the ×8 amplification:
+   *        val >>= 3
+   *
+   *   4. Add to target:  S[n] += val
+   *
+   * This gives 3 extra bits of precision compared to direct encoding.
+   * The MULTIPLY-FIRST approach also avoids the neighbor-sum overflow
+   * risk (no SUM-FIRST doubling in BIBO analysis).
+   */
+  static const int16_t synth_coeff_1 = (int16_t)(0.5 + 0.052980118 * (double)(1 << 18));
+
+  /*
+   * Synthesis Step 0 — Undo analysis predict α = -1.586134342
+   * ----------------------------------------------------------
+   * Analysis added α × (S[n] + S[n+1]) to each odd sample D[n].
+   * Synthesis reverses this:  D[n] -= α × (S[n] + S[n+1])
+   *
+   * Since α is negative, subtraction becomes addition:
+   *   D[n] += |α| × (S[n] + S[n+1])       where |α| = 1.586134342
+   *
+   * ADDITIVE DECOMPOSITION: |α| > 1.0, so it cannot be represented
+   * directly in Q1.15.  We decompose using α = -1 + (α + 1):
+   *
+   *   D[n] -= α × sum = D[n] + |α| × sum
+   *         = D[n] + 1 × sum + (|α| - 1) × sum
+   *         = D[n] + sum + 0.586134342 × sum
+   *
+   * The fractional part 0.586134342 = -(α + 1) fits in Q1.15:
+   *   synth_coeff_0_frac = round(0.586134342 × 2^15) = 19206
+   *
+   * In code:
+   *   frac = MulFixedPoint15(sum, synth_coeff_0_frac)
+   *   D[n] = D[n] + sum + frac
+   *
+   * This step uses SUM-FIRST (the neighbor sum is formed once, then
+   * both the plain addition and the MulFixedPoint15 use it).
+   */
+  static const int16_t synth_coeff_0_frac = (int16_t)(0.5 + 0.586134342 * (double)(1 << 15));
+
+  /*
+   * K Scaling — Even (low-pass) samples
+   * ------------------------------------
+   * Synthesis un-scales even samples by multiplying by K = 1.230174105.
+   * Since K > 1.0, we decompose:  x × K = x + MulFixedPoint15(x, K−1)
+   *
+   *   K − 1 = 0.230174105
+   *   scale_K_frac = round(0.230174105 × 2^15) = 7542
+   */
+  static const int16_t scale_K_frac = (int16_t)(0.5 + 0.230174105 * (double)(1 << 15));
+
+  /*
+   * 2/K Scaling — Odd (high-pass) samples
+   * --------------------------------------
+   * Synthesis un-scales odd samples by multiplying by 2/K = 1.625732422.
+   * Since 2/K > 1.0, we decompose:  x × (2/K) = x + MulFixedPoint15(x, 2/K−1)
+   *
+   *   2/K − 1 = 0.625732422
+   *   scale_invK_frac = round(0.625732422 × 2^15) = 20504
+   */
+  static const int16_t scale_invK_frac = (int16_t)(0.5 + 0.625732422 * (double)(1 << 15));
+
+  /**************************************************************************
+   *  Scalar Helper Functions
+   *
+   *  These provide the building blocks for the scalar (non-SIMD) synthesis.
+   *  Each has a corresponding SIMD implementation using Highway intrinsics.
+   **************************************************************************/
+
+  /**
+   * @brief Q1.15 fixed-point multiply with rounding (scalar fallback).
+   *
+   * Computes round(a × b / 2^15) = (a × b + 2^14) >> 15.
+   * This matches Highway's MulFixedPoint15 semantics exactly.
+   *
+   * The intermediate product a×b is computed in 32 bits to avoid overflow.
+   * Result is truncated back to int16.
+   */
+  static inline int16_t mf15(int16_t a, int16_t b)
+  {
+    return (int16_t)(((int32_t)a * (int32_t)b + (1 << 14)) >> 15);
+  }
+
+  /**
+   * @brief int16 saturating add / subtract, matching Highway SaturatedAdd/Sub.
+   *
+   * The lifting intermediates reach half the int16 range on the test corpus, so
+   * a sharper image than any of those clips a few samples instead of wrapping.
+   * A strip boundary decides per column whether the scalar or the SIMD kernel
+   * runs, so both must saturate at the same points and combine terms in the
+   * same order.
+   */
+  static inline int16_t sat_add(int16_t a, int16_t b)
+  {
+    return sat_add_16(a, b);
+  }
+  static inline int16_t sat_sub(int16_t a, int16_t b)
+  {
+    return (int16_t)std::clamp((int32_t)a - (int32_t)b, -32768, 32767);
+  }
+
+  /**
+   * @brief Right shift, rounding to nearest with ties to even.
+   *
+   * One value in 2^shift lands exactly halfway between two outputs.  Sending
+   * all of those up brightens the decoded image by a fraction of an LSB per
+   * shift; ties to even splits them evenly.
+   */
+  static inline int16_t rshift_even(int16_t x, int shift)
+  {
+    return rshift_even_16(x, shift);
+  }
+  template<class D, class V>
+  static HWY_INLINE V vrshift_even(D d, V x, int shift)
+  {
+    const auto one = Set(d, (int16_t)(shift > 0 ? 1 : 0));
+    const auto half = Set(d, (int16_t)(shift > 0 ? (1 << (shift - 1)) - 1 : 0));
+    return ShiftRightSame(SaturatedAdd(x, half + And(ShiftRightSame(x, shift), one)), shift);
+  }
+
+  /**
+   * @brief Apply K scaling to an even (low-pass) sample.
+   *
+   * Computes x × K = x + round(x × (K−1)) where K = 1.230174105.
+   * Uses additive decomposition since K > 1.0 (see Section 6).
+   */
+  static inline int16_t apply_K_scale(int16_t x)
+  {
+    return sat_add(x, mf15(x, scale_K_frac));
+  }
+
+  /**
+   * @brief Apply 2/K scaling to an odd (high-pass) sample.
+   *
+   * Computes x × (2/K) = x + round(x × (2/K−1)) where 2/K = 1.625732422.
+   * Uses additive decomposition since 2/K > 1.0 (see Section 6).
+   */
+  static inline int16_t apply_invK_scale(int16_t x)
+  {
+    return sat_add(x, mf15(x, scale_invK_frac));
+  }
+
+  /**************************************************************************
+   *  Scalar Vertical 1D 16-bit 9/7 Synthesis (column-at-a-time)
+   *
+   *  Identical algorithm to the horizontal version, but reads input from
+   *  strided column buffers and writes to a strided destination column.
+   *  The scratch buffer linearizes the column for cache-friendly lifting.
+   *
+   *  @param scratch    Scratch buffer (must hold ≥ height samples)
+   *  @param height     Output height in samples (= sn + dn)
+   *  @param bandL      Low-pass column start pointer
+   *  @param strideL    Row stride of the L band buffer (in int16_t units)
+   *  @param bandH      High-pass column start pointer
+   *  @param strideH    Row stride of the H band buffer
+   *  @param dest       Destination column start pointer
+   *  @param strideDest Row stride of the destination buffer
+   *  @param parity     0 if first output row is even, 1 if odd (= y0 & 1)
+   *  @param sn         Number of low-pass rows
+   *  @param dn         Number of high-pass rows
+   **************************************************************************/
+  static void scalar_v_synth_16_97(int16_t* scratch, uint32_t height, const int16_t* bandL,
+                                   uint32_t strideL, const int16_t* bandH, uint32_t strideH,
+                                   int16_t* dest, uint32_t strideDest, uint32_t parity,
+                                   [[maybe_unused]] uint32_t sn, [[maybe_unused]] uint32_t dn)
+  {
+    if(height == 0)
+      return;
+    if(height == 1)
+    {
+      // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+      // (the float 9/7 path skips the same scaling for this case)
+      // coefficients are in Q-format; output stays in Q-format (intermediate level
+      // or MCT component) — the sink (final non-MCT level / inverse MCT) downshifts.
+      *dest = (parity == 0) ? *bandL : *bandH;
+      return;
+    }
+
+    // Gather column data into contiguous scratch with K / (2/K) scaling
+    uint32_t lIdx = 0, hIdx = 0;
+    for(uint32_t i = 0; i < height; ++i)
+    {
+      if((i + parity) % 2 == 0)
+      {
+        scratch[i] = apply_K_scale(bandL[lIdx * strideL]);
+        lIdx++;
+      }
+      else
+      {
+        scratch[i] = apply_invK_scale(bandH[hIdx * strideH]);
+        hIdx++;
+      }
+    }
+
+    // Step 3 — Undo δ: S[n] -= δ × (D[n-1] + D[n])
+    for(uint32_t i = parity; i < height; i += 2)
+    {
+      int16_t d_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
+      int16_t d_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
+      scratch[i] = sat_sub(scratch[i], mf15(sat_add(d_prev, d_next), synth_coeff_3));
+    }
+
+    // Step 2 — Undo γ: D[n] -= γ × (S[n] + S[n+1])
+    for(uint32_t i = 1 - parity; i < height; i += 2)
+    {
+      int16_t s_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
+      int16_t s_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
+      scratch[i] = sat_sub(scratch[i], mf15(sat_add(s_prev, s_next), synth_coeff_2));
+    }
+
+    // Step 1 — Undo β: S[n] += |β| × (D[n-1] + D[n])  [MULTIPLY-FIRST, ×8/>>3]
+    for(uint32_t i = parity; i < height; i += 2)
+    {
+      int16_t d_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
+      int16_t d_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
+      int16_t prod_sum = (int16_t)(mf15(d_prev, synth_coeff_1) + mf15(d_next, synth_coeff_1));
+      scratch[i] = sat_add(scratch[i], rshift_even(prod_sum, 3));
+    }
+
+    // Step 0 — Undo α: D[n] += sum + frac×sum  [additive decomposition]
+    for(uint32_t i = 1 - parity; i < height; i += 2)
+    {
+      int16_t s_prev = (i > 0) ? scratch[i - 1] : scratch[i + 1];
+      int16_t s_next = (i + 1 < height) ? scratch[i + 1] : scratch[i - 1];
+      int16_t even_sum = sat_add(s_prev, s_next);
+      int16_t frac = mf15(even_sum, synth_coeff_0_frac);
+      scratch[i] = sat_add(sat_add(scratch[i], even_sum), frac);
+    }
+
+    // Scatter to strided destination column (stays in Q-format; sink downshifts)
+    for(uint32_t i = 0; i < height; ++i)
+    {
+      *dest = scratch[i];
+      dest += strideDest;
+    }
+  }
+
+  /**************************************************************************
+   *  Scalar Vertical Synthesis with DC Shift + Clamp
+   *
+   *  Used only at the FINAL resolution level of the inverse DWT.  After
+   *  synthesis produces pixel-domain values, this function applies:
+   *
+   *    pixel = clamp(synth_value + dc_shift, dc_min, dc_max)
+   *
+   *  For an N-bit unsigned image, the typical values are:
+   *    dc_shift = 2^(N-1)      (e.g. 128 for 8-bit, 2048 for 12-bit)
+   *    dc_min   = 0
+   *    dc_max   = 2^N - 1      (e.g. 255 for 8-bit, 4095 for 12-bit)
+   *
+   *  All arithmetic stays in int16 since dc_shift and dc_max fit for ≤12-bit.
+   **************************************************************************/
+  [[maybe_unused]] static void
+      scalar_v_synth_16_97_dc(int16_t* scratch, uint32_t height, const int16_t* bandL,
+                              uint32_t strideL, const int16_t* bandH, uint32_t strideH,
+                              int16_t* dest, uint32_t strideDest, uint32_t parity, uint32_t sn,
+                              uint32_t dn, int16_t dc, int16_t dcMin, int16_t dcMax, int qShift)
+  {
+    // Synthesize into scratch first (using scratch as both workspace and temporary
+    // destination with stride=1); the result is in Q-format.
+    scalar_v_synth_16_97(scratch, height, bandL, strideL, bandH, strideH, scratch, 1, parity, sn,
+                         dn);
+
+    // This is the synthesis sink: round the Q-format fractional bits back out,
+    // apply DC shift and clamp, scatter to strided destination column.
+    // Must stay bit-identical to hwy_v_synth_16_97's sink (int16 wrapping adds),
+    // since strip boundaries decide per column whether SIMD or scalar runs.
+    for(uint32_t i = 0; i < height; ++i)
+    {
+      int16_t s = rshift_even(scratch[i], qShift);
+      *dest = std::clamp(sat_add(s, dc), dcMin, dcMax);
+      dest += strideDest;
+    }
+  }
+
+  /**************************************************************************
+   *  SIMD Horizontal 1D 16-bit 9/7 Synthesis (one row)
+   *
+   *  Processes one row using separated even/odd arrays for cache-friendly
+   *  SIMD lifting.  Instead of interleaving L/H into scratch (which creates
+   *  stride-2 access patterns hostile to SIMD), we keep even-phase (E) and
+   *  odd-phase (O) samples in separate contiguous arrays within scratch:
+   *
+   *    scratch[0..sn-1]    = E[k]  (from L band, scaled by K)
+   *    scratch[sn..sn+dn-1] = O[k]  (from H band, scaled by 2/K)
+   *
+   *  The four lifting steps then operate on contiguous arrays with simple
+   *  offset loads (k-1 or k+1), which SIMD handles trivially via LoadU.
+   *  After lifting, E and O are interleaved into dest using Highway's
+   *  InterleaveLower/InterleaveUpper.
+   *
+   *  Neighbor relationships by parity:
+   *    parity=0: interleave order = E,O,E,O,...
+   *      Steps targeting E: left = O[k-1], right = O[k]
+   *      Steps targeting O: left = E[k],   right = E[k+1]
+   *    parity=1: interleave order = O,E,O,E,...
+   *      Steps targeting E: left = O[k],   right = O[k+1]
+   *      Steps targeting O: left = E[k-1], right = E[k]
+   **************************************************************************/
+  /*
+   *  Coefficients arrive already in the fixed-point Q-format (dequantized with a
+   *  qShift left-shift, see PostDecodeFilters / TileProcessor), so the synthesis
+   *  here simply runs in that scale; the fractional bits are removed once at the
+   *  vertical-synthesis output (hwy_v_synth_16_97) / inverse MCT.
+   */
+  static void hwy_h_synth_16_97(int16_t* scratch, uint32_t width, const int16_t* bandL,
+                                const int16_t* bandH, int16_t* dest, uint32_t parity, uint32_t sn,
+                                uint32_t dn)
+  {
+    if(width == 0)
+      return;
+    if(width == 1)
+    {
+      // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+      // (the float 9/7 path skips the same scaling for this case)
+      dest[0] = (parity == 0) ? bandL[0] : bandH[0];
+      return;
+    }
+
+    const HWY_FULL(int16_t) di;
+    const auto L = (uint32_t)Lanes(di);
+    const auto vK_frac = Set(di, scale_K_frac);
+    const auto vinvK_frac = Set(di, scale_invK_frac);
+    const auto vc3 = Set(di, synth_coeff_3);
+    const auto vc2 = Set(di, synth_coeff_2);
+    const auto vc1 = Set(di, synth_coeff_1);
+    const auto vc0_frac = Set(di, synth_coeff_0_frac);
+    int16_t* E = scratch;
+    int16_t* O = scratch + sn;
+
+    /* Phase 1: scale L → E with K, H → O with 2/K */
+    uint32_t k;
+    for(k = 0; k + L <= sn; k += L)
+    {
+      auto v = LoadU(di, bandL + k);
+      StoreU(SaturatedAdd(v, MulFixedPoint15(v, vK_frac)), di, E + k);
+    }
+    for(; k < sn; k++)
+      E[k] = apply_K_scale(bandL[k]);
+
+    for(k = 0; k + L <= dn; k += L)
+    {
+      auto v = LoadU(di, bandH + k);
+      StoreU(SaturatedAdd(v, MulFixedPoint15(v, vinvK_frac)), di, O + k);
+    }
+    for(; k < dn; k++)
+      O[k] = apply_invK_scale(bandH[k]);
+
+    /* Phase 2: Lifting steps on separated E[0..sn-1] and O[0..dn-1] */
+
+    if(parity == 0)
+    {
+      /* --- Step 3 (δ): E[k] -= δ × (O[k-1] + O[k]) --- */
+      /* k=0 boundary: O[-1] mirrors to O[0] */
+      E[0] = sat_sub(E[0], mf15(sat_add(O[0], O[0]), synth_coeff_3));
+      /* SIMD bulk: k=1..min(sn,dn)-L, O[k-1] and O[k] both in-bounds */
+      {
+        uint32_t simd_end = std::min(sn, dn);
+        for(k = 1; k + L <= simd_end; k += L)
+        {
+          auto ol = LoadU(di, O + k - 1);
+          auto or_ = LoadU(di, O + k);
+          auto e = LoadU(di, E + k);
+          StoreU(SaturatedSub(e, MulFixedPoint15(SaturatedAdd(ol, or_), vc3)), di, E + k);
+        }
+      }
+      /* Scalar tail (remaining + boundary if sn > dn) */
+      for(; k < sn; k++)
+      {
+        int16_t ol = O[k - 1];
+        int16_t or_ = (k < dn) ? O[k] : O[dn - 1];
+        E[k] = sat_sub(E[k], mf15(sat_add(ol, or_), synth_coeff_3));
+      }
+
+      /* --- Step 2 (γ): O[k] -= γ × (E[k] + E[k+1]) --- */
+      {
+        uint32_t simd_end = std::min(dn, sn > 0 ? sn - 1 : 0u);
+        for(k = 0; k + L <= simd_end; k += L)
+        {
+          auto el = LoadU(di, E + k);
+          auto er = LoadU(di, E + k + 1);
+          auto o = LoadU(di, O + k);
+          StoreU(SaturatedSub(o, MulFixedPoint15(SaturatedAdd(el, er), vc2)), di, O + k);
+        }
+      }
+      for(; k < dn; k++)
+      {
+        int16_t el = E[k];
+        int16_t er = (k + 1 < sn) ? E[k + 1] : E[sn - 1];
+        O[k] = sat_sub(O[k], mf15(sat_add(el, er), synth_coeff_2));
+      }
+
+      /* --- Step 1 (β): E[k] += (mf15(O[k-1],c) + mf15(O[k],c) + 4) >> 3 --- */
+      E[0] = sat_add(
+          E[0], rshift_even((int16_t)(mf15(O[0], synth_coeff_1) + mf15(O[0], synth_coeff_1)), 3));
+      {
+        uint32_t simd_end = std::min(sn, dn);
+        for(k = 1; k + L <= simd_end; k += L)
+        {
+          auto ol = LoadU(di, O + k - 1);
+          auto or_ = LoadU(di, O + k);
+          auto e = LoadU(di, E + k);
+          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1);
+          StoreU(SaturatedAdd(e, vrshift_even(di, ps, 3)), di, E + k);
+        }
+      }
+      for(; k < sn; k++)
+      {
+        int16_t ol = O[k - 1];
+        int16_t or_ = (k < dn) ? O[k] : O[dn - 1];
+        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1));
+        E[k] = sat_add(E[k], rshift_even(ps, 3));
+      }
+
+      /* --- Step 0 (α): O[k] += sum + mf15(sum, frac) --- */
+      {
+        uint32_t simd_end = std::min(dn, sn > 0 ? sn - 1 : 0u);
+        for(k = 0; k + L <= simd_end; k += L)
+        {
+          auto el = LoadU(di, E + k);
+          auto er = LoadU(di, E + k + 1);
+          auto o = LoadU(di, O + k);
+          auto sum = SaturatedAdd(el, er);
+          StoreU(SaturatedAdd(SaturatedAdd(o, sum), MulFixedPoint15(sum, vc0_frac)), di, O + k);
+        }
+      }
+      for(; k < dn; k++)
+      {
+        int16_t el = E[k];
+        int16_t er = (k + 1 < sn) ? E[k + 1] : E[sn - 1];
+        int16_t sum = sat_add(el, er);
+        O[k] = sat_add(sat_add(O[k], sum), mf15(sum, synth_coeff_0_frac));
+      }
+    }
+    else /* parity == 1 */
+    {
+      /* --- Step 3 (δ): E[k] -= δ × (O[k] + O[k+1]) --- */
+      {
+        uint32_t simd_end = std::min(sn, dn > 0 ? dn - 1 : 0u);
+        for(k = 0; k + L <= simd_end; k += L)
+        {
+          auto ol = LoadU(di, O + k);
+          auto or_ = LoadU(di, O + k + 1);
+          auto e = LoadU(di, E + k);
+          StoreU(SaturatedSub(e, MulFixedPoint15(SaturatedAdd(ol, or_), vc3)), di, E + k);
+        }
+      }
+      for(; k < sn; k++)
+      {
+        int16_t ol = O[k];
+        int16_t or_ = (k + 1 < dn) ? O[k + 1] : O[dn - 1];
+        E[k] = sat_sub(E[k], mf15(sat_add(ol, or_), synth_coeff_3));
+      }
+
+      /* --- Step 2 (γ): O[k] -= γ × (E[k-1] + E[k]) --- */
+      O[0] = sat_sub(O[0], mf15(sat_add(E[0], E[0]), synth_coeff_2));
+      {
+        uint32_t simd_end = std::min(dn, sn);
+        for(k = 1; k + L <= simd_end; k += L)
+        {
+          auto el = LoadU(di, E + k - 1);
+          auto er = LoadU(di, E + k);
+          auto o = LoadU(di, O + k);
+          StoreU(SaturatedSub(o, MulFixedPoint15(SaturatedAdd(el, er), vc2)), di, O + k);
+        }
+      }
+      for(; k < dn; k++)
+      {
+        int16_t el = (k > 0) ? E[k - 1] : E[0];
+        int16_t er = (k < sn) ? E[k] : E[sn - 1];
+        O[k] = sat_sub(O[k], mf15(sat_add(el, er), synth_coeff_2));
+      }
+
+      /* --- Step 1 (β): E[k] += (mf15(O[k],c) + mf15(O[k+1],c) + 4) >> 3 --- */
+      {
+        uint32_t simd_end = std::min(sn, dn > 0 ? dn - 1 : 0u);
+        for(k = 0; k + L <= simd_end; k += L)
+        {
+          auto ol = LoadU(di, O + k);
+          auto or_ = LoadU(di, O + k + 1);
+          auto e = LoadU(di, E + k);
+          auto ps = MulFixedPoint15(ol, vc1) + MulFixedPoint15(or_, vc1);
+          StoreU(SaturatedAdd(e, vrshift_even(di, ps, 3)), di, E + k);
+        }
+      }
+      for(; k < sn; k++)
+      {
+        int16_t ol = O[k];
+        int16_t or_ = (k + 1 < dn) ? O[k + 1] : O[dn - 1];
+        int16_t ps = (int16_t)(mf15(ol, synth_coeff_1) + mf15(or_, synth_coeff_1));
+        E[k] = sat_add(E[k], rshift_even(ps, 3));
+      }
+
+      /* --- Step 0 (α): O[k] += sum + mf15(sum, frac) where sum = E[k-1]+E[k] --- */
+      {
+        int16_t sum0 = sat_add(E[0], E[0]);
+        O[0] = sat_add(sat_add(O[0], sum0), mf15(sum0, synth_coeff_0_frac));
+      }
+      {
+        uint32_t simd_end = std::min(dn, sn);
+        for(k = 1; k + L <= simd_end; k += L)
+        {
+          auto el = LoadU(di, E + k - 1);
+          auto er = LoadU(di, E + k);
+          auto o = LoadU(di, O + k);
+          auto sum = SaturatedAdd(el, er);
+          StoreU(SaturatedAdd(SaturatedAdd(o, sum), MulFixedPoint15(sum, vc0_frac)), di, O + k);
+        }
+      }
+      for(; k < dn; k++)
+      {
+        int16_t el = (k > 0) ? E[k - 1] : E[0];
+        int16_t er = (k < sn) ? E[k] : E[sn - 1];
+        int16_t sum = sat_add(el, er);
+        O[k] = sat_add(sat_add(O[k], sum), mf15(sum, synth_coeff_0_frac));
+      }
+    }
+
+    /* Phase 3: Interleave E and O into dest */
+    {
+      const int16_t* first = (parity == 0) ? E : O;
+      const int16_t* second = (parity == 0) ? O : E;
+      uint32_t fn = (parity == 0) ? sn : dn;
+      uint32_t sn2 = (parity == 0) ? dn : sn;
+      uint32_t i = 0, d = 0;
+#if HWY_TARGET != HWY_SCALAR
+      /* SIMD interleave: L elements of first + L of second → 2L dest */
+      /* InterleaveWhole* is unavailable on the scalar target, see #414 */
+      for(; i + L <= fn && i + L <= sn2; i += L)
+      {
+        auto f = LoadU(di, first + i);
+        auto s = LoadU(di, second + i);
+        StoreU(InterleaveWholeLower(di, f, s), di, dest + d);
+        StoreU(InterleaveWholeUpper(di, f, s), di, dest + d + L);
+        d += 2 * L;
+      }
+#endif
+      /* Scalar interleave for remainder */
+      for(; i < fn || i < sn2; i++)
+      {
+        if(i < fn)
+          dest[d++] = first[i];
+        if(i < sn2)
+          dest[d++] = second[i];
+      }
+    }
+  }
+
+  static uint32_t GetHWY_PLL_COLS_16_97(void)
+  {
+    const HWY_FULL(int16_t) di16;
+    return 2 * (uint32_t)Lanes(di16);
+  }
+
+  static const uint32_t HWY_PLL_COLS_16_97 = GetHWY_PLL_COLS_16_97();
+
+  /**************************************************************************
+   *  SIMD Vertical 16-bit 9/7 Synthesis (multi-column)
+   *
+   *  Processes HWY_PLL_COLS_16_97 = 2×Lanes(int16_t) columns at once.
+   *  Uses Highway MulFixedPoint15 (maps to VPMULHRSW on x86, VQRDMULH on
+   *  ARM NEON) for Q1.15 fixed-point arithmetic.
+   *
+   *  Algorithm:
+   *    Phase 1 — Interleave L/H bands into scratch with K/invK scaling
+   *    Phase 2 — Four synthesis lifting steps (δ, γ, β, α)
+   *    Phase 3 — Scatter to strided destination with optional DC shift + clamp
+   **************************************************************************/
+  static void hwy_v_synth_16_97(int16_t* scratch, uint32_t height, const int16_t* bandL,
+                                uint32_t strideL, const int16_t* bandH, uint32_t strideH,
+                                int16_t* dest, uint32_t strideDest, uint32_t parity,
+                                [[maybe_unused]] uint32_t sn, [[maybe_unused]] uint32_t dn,
+                                int16_t dc, int16_t dcMin, int16_t dcMax, int qShift)
+  {
+    const HWY_FULL(int16_t) di;
+    const auto L = (uint32_t)Lanes(di);
+    const uint32_t PLL = HWY_PLL_COLS_16_97;
+
+    const auto vcoeff3 = Set(di, synth_coeff_3);
+    const auto vcoeff2 = Set(di, synth_coeff_2);
+    const auto vcoeff1 = Set(di, synth_coeff_1);
+    const auto vcoeff0_frac = Set(di, synth_coeff_0_frac);
+    const auto vK_frac = Set(di, scale_K_frac);
+    const auto vinvK_frac = Set(di, scale_invK_frac);
+    /* ------------------------------------------------------------------ */
+    /*  Phase 1: Interleave L/H into scratch with K / (2/K) scaling       */
+    /* ------------------------------------------------------------------ */
+    uint32_t lIdx = 0, hIdx = 0;
+    for(uint32_t i = 0; i < height; ++i)
+    {
+      if((i + parity) % 2 == 0)
+      {
+        auto v0 = LoadU(di, bandL + (size_t)lIdx * strideL);
+        auto v1 = LoadU(di, bandL + (size_t)lIdx * strideL + L);
+        v0 = SaturatedAdd(v0, MulFixedPoint15(v0, vK_frac));
+        v1 = SaturatedAdd(v1, MulFixedPoint15(v1, vK_frac));
+        Store(v0, di, scratch + (size_t)i * PLL);
+        Store(v1, di, scratch + (size_t)i * PLL + L);
+        lIdx++;
+      }
+      else
+      {
+        auto v0 = LoadU(di, bandH + (size_t)hIdx * strideH);
+        auto v1 = LoadU(di, bandH + (size_t)hIdx * strideH + L);
+        v0 = SaturatedAdd(v0, MulFixedPoint15(v0, vinvK_frac));
+        v1 = SaturatedAdd(v1, MulFixedPoint15(v1, vinvK_frac));
+        Store(v0, di, scratch + (size_t)i * PLL);
+        Store(v1, di, scratch + (size_t)i * PLL + L);
+        hIdx++;
+      }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Phase 2: Four synthesis lifting steps                             */
+    /* ------------------------------------------------------------------ */
+
+    // Step 3 — δ: S[n] -= δ × (D[n-1] + D[n])
+    for(uint32_t i = parity; i < height; i += 2)
+    {
+      size_t pr = (i > 0) ? (i - 1) : (i + 1);
+      size_t nr = (i + 1 < height) ? (i + 1) : (i - 1);
+      auto p0 = Load(di, scratch + pr * PLL);
+      auto p1 = Load(di, scratch + pr * PLL + L);
+      auto n0 = Load(di, scratch + nr * PLL);
+      auto n1 = Load(di, scratch + nr * PLL + L);
+      auto t0 = Load(di, scratch + (size_t)i * PLL);
+      auto t1 = Load(di, scratch + (size_t)i * PLL + L);
+      t0 = SaturatedSub(t0, MulFixedPoint15(SaturatedAdd(p0, n0), vcoeff3));
+      t1 = SaturatedSub(t1, MulFixedPoint15(SaturatedAdd(p1, n1), vcoeff3));
+      Store(t0, di, scratch + (size_t)i * PLL);
+      Store(t1, di, scratch + (size_t)i * PLL + L);
+    }
+
+    // Step 2 — γ: D[n] -= γ × (S[n] + S[n+1])
+    for(uint32_t i = 1 - parity; i < height; i += 2)
+    {
+      size_t pr = (i > 0) ? (i - 1) : (i + 1);
+      size_t nr = (i + 1 < height) ? (i + 1) : (i - 1);
+      auto p0 = Load(di, scratch + pr * PLL);
+      auto p1 = Load(di, scratch + pr * PLL + L);
+      auto n0 = Load(di, scratch + nr * PLL);
+      auto n1 = Load(di, scratch + nr * PLL + L);
+      auto t0 = Load(di, scratch + (size_t)i * PLL);
+      auto t1 = Load(di, scratch + (size_t)i * PLL + L);
+      t0 = SaturatedSub(t0, MulFixedPoint15(SaturatedAdd(p0, n0), vcoeff2));
+      t1 = SaturatedSub(t1, MulFixedPoint15(SaturatedAdd(p1, n1), vcoeff2));
+      Store(t0, di, scratch + (size_t)i * PLL);
+      Store(t1, di, scratch + (size_t)i * PLL + L);
+    }
+
+    // Step 1 — β: S[n] += |β|×(D[n-1]+D[n])  MULTIPLY-FIRST, ×8/>>3
+    for(uint32_t i = parity; i < height; i += 2)
+    {
+      size_t pr = (i > 0) ? (i - 1) : (i + 1);
+      size_t nr = (i + 1 < height) ? (i + 1) : (i - 1);
+      auto p0 = Load(di, scratch + pr * PLL);
+      auto p1 = Load(di, scratch + pr * PLL + L);
+      auto n0 = Load(di, scratch + nr * PLL);
+      auto n1 = Load(di, scratch + nr * PLL + L);
+      auto t0 = Load(di, scratch + (size_t)i * PLL);
+      auto t1 = Load(di, scratch + (size_t)i * PLL + L);
+      auto ps0 = MulFixedPoint15(p0, vcoeff1) + MulFixedPoint15(n0, vcoeff1);
+      auto ps1 = MulFixedPoint15(p1, vcoeff1) + MulFixedPoint15(n1, vcoeff1);
+      t0 = SaturatedAdd(t0, vrshift_even(di, ps0, 3));
+      t1 = SaturatedAdd(t1, vrshift_even(di, ps1, 3));
+      Store(t0, di, scratch + (size_t)i * PLL);
+      Store(t1, di, scratch + (size_t)i * PLL + L);
+    }
+
+    // Step 0 — α: D[n] += sum + MulFixedPoint15(sum, frac)  additive decomposition
+    for(uint32_t i = 1 - parity; i < height; i += 2)
+    {
+      size_t pr = (i > 0) ? (i - 1) : (i + 1);
+      size_t nr = (i + 1 < height) ? (i + 1) : (i - 1);
+      auto p0 = Load(di, scratch + pr * PLL);
+      auto p1 = Load(di, scratch + pr * PLL + L);
+      auto n0 = Load(di, scratch + nr * PLL);
+      auto n1 = Load(di, scratch + nr * PLL + L);
+      auto t0 = Load(di, scratch + (size_t)i * PLL);
+      auto t1 = Load(di, scratch + (size_t)i * PLL + L);
+      auto sum0 = SaturatedAdd(p0, n0);
+      auto sum1 = SaturatedAdd(p1, n1);
+      t0 = SaturatedAdd(SaturatedAdd(t0, sum0), MulFixedPoint15(sum0, vcoeff0_frac));
+      t1 = SaturatedAdd(SaturatedAdd(t1, sum1), MulFixedPoint15(sum1, vcoeff0_frac));
+      Store(t0, di, scratch + (size_t)i * PLL);
+      Store(t1, di, scratch + (size_t)i * PLL + L);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Phase 3: Scatter to strided destination                            */
+    /*                                                                     */
+    /*  A clamp range marks the final non-MCT level: this is the synthesis  */
+    /*  sink, so round the Q-format fractional bits back out (round-shift   */
+    /*  by qShift), add the DC level shift and clamp. The shift alone is    */
+    /*  zero on signed components. Without a range this is an intermediate  */
+    /*  level or an MCT component, whose output stays in Q-format for the   */
+    /*  next level / the inverse MCT to consume; copy it through unchanged. */
+    /* ------------------------------------------------------------------ */
+    if(dc != 0 || dcMin != dcMax)
+    {
+      const auto vdc = Set(di, dc);
+      const auto vmin = Set(di, dcMin);
+      const auto vmax = Set(di, dcMax);
+      for(uint32_t i = 0; i < height; ++i)
+      {
+        auto s0 = vrshift_even(di, Load(di, scratch + (size_t)i * PLL), qShift);
+        auto s1 = vrshift_even(di, Load(di, scratch + (size_t)i * PLL + L), qShift);
+        StoreU(Clamp(SaturatedAdd(s0, vdc), vmin, vmax), di, dest + (size_t)i * strideDest);
+        StoreU(Clamp(SaturatedAdd(s1, vdc), vmin, vmax), di, dest + (size_t)i * strideDest + L);
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < height; ++i)
+      {
+        StoreU(Load(di, scratch + (size_t)i * PLL), di, dest + (size_t)i * strideDest);
+        StoreU(Load(di, scratch + (size_t)i * PLL + L), di, dest + (size_t)i * strideDest + L);
+      }
+    }
+  }
+
+  /**************************************************************************
+   *  Windowed 16-bit 9/7 Synthesis (region decode)
+   *
+   *  Same four lifting steps and same Q1.15 arithmetic as hwy_v_synth_16_97,
+   *  run over the partial framework's interleaved scratch instead of a whole
+   *  line.  One buffer element is vec8s::NUM_ELTS int16 lanes, one lane per
+   *  row of a horizontal strip (or per column of a vertical one), and
+   *  consecutive elements are consecutive positions of the output line.
+   *
+   *  The window geometry is the float path's (WaveletReverse97.cpp
+   *  makeParams97 / hwy_step_97_lift): band_0/band_1 bound the targets,
+   *  lenMax marks where the line's last sample loses its partner and the
+   *  neighbour mirrors.  Inside the window the neighbours are real samples
+   *  the sparse canvas supplied, so the mirror only fires at a true line end
+   *  and the output matches the whole-tile kernel sample for sample.  The
+   *  targets in the FILTER_WIDTH padding are computed with whatever sits
+   *  beside them and are discarded by the caller's write-back.
+   **************************************************************************/
+  struct Window16Params97
+  {
+    int16_t* data;
+    int16_t* dataPrev;
+    uint32_t len;
+    uint32_t lenMax;
+  };
+
+  static Window16Params97 make_window_16_97(int16_t* memL, int16_t* memH, uint32_t sn, uint32_t dn,
+                                            uint32_t parity, Line32 win_l, Line32 win_h,
+                                            bool isBandL, bool scaleOnly)
+  {
+    constexpr int64_t lanes = (int64_t)vec8s::NUM_ELTS;
+    const int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+    const int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+    const int64_t parityOffset = isBandL ? parity : !parity;
+    int64_t lenMax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOffset)
+                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOffset);
+    if(lenMax < 0)
+      lenMax = 0;
+    assert(lenMax >= band_0);
+    lenMax -= band_0;
+    assert(band_1 >= band_0);
+
+    Window16Params97 rc = {};
+    rc.data = (isBandL ? memL : memH) + (parityOffset + band_0 - win_l.x0) * lanes;
+    rc.len = (uint32_t)(band_1 - band_0);
+    if(!scaleOnly)
+    {
+      rc.data += lanes;
+      rc.dataPrev = parityOffset ? rc.data - 2 * lanes : rc.data;
+      rc.lenMax = (uint32_t)lenMax;
+    }
+    return rc;
+  }
+
+  // undo the analysis gain: x * K for the low band, x * (2/K) for the high band
+  template<class D, class V>
+  static void window_scale_16_97(D d, const Window16Params97& p, V frac)
+  {
+    constexpr size_t lanes = vec8s::NUM_ELTS;
+    for(size_t lane = 0; lane < lanes; lane += Lanes(d))
+    {
+      int16_t* pos = p.data + lane;
+      for(uint32_t i = 0; i < p.len; ++i, pos += 2 * lanes)
+      {
+        auto v = LoadU(d, pos);
+        StoreU(SaturatedAdd(v, MulFixedPoint15(v, frac)), d, pos);
+      }
+    }
+  }
+
+  // one lifting step: target at pos[-1 element], neighbours at pos[-2] and pos[0]
+  template<class D, class Op>
+  static void window_lift_16_97(D d, const Window16Params97& p, Op op)
+  {
+    constexpr size_t lanes = vec8s::NUM_ELTS;
+    const uint32_t imax = (std::min<uint32_t>)(p.len, p.lenMax);
+    for(size_t lane = 0; lane < lanes; lane += Lanes(d))
+    {
+      int16_t* pos = p.data + lane;
+      auto prev = LoadU(d, p.dataPrev + lane);
+      for(uint32_t i = 0; i < imax; ++i, pos += 2 * lanes)
+      {
+        auto target = LoadU(d, pos - lanes);
+        auto next = LoadU(d, pos);
+        StoreU(op(target, prev, next), d, pos - lanes);
+        prev = next;
+      }
+      if(p.lenMax < p.len)
+      {
+        // last sample of the line: its partner is off the end, so the neighbour mirrors
+        assert(p.lenMax + 1 == p.len);
+        auto target = LoadU(d, pos - lanes);
+        auto mirrored = LoadU(d, pos - 2 * lanes);
+        StoreU(op(target, mirrored, mirrored), d, pos - lanes);
+      }
+    }
+  }
+
+  static void hwy_step_16_97(int16_t* memL, int16_t* memH, uint32_t sn, uint32_t dn,
+                             uint32_t parity, Line32 win_l, Line32 win_h)
+  {
+    // a lone sample has no lifting partner, so it carries no K or 2/K gain to undo
+    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
+      return;
+
+    const HWY_CAPPED(int16_t, vec8s::NUM_ELTS) d;
+    const auto vc3 = Set(d, synth_coeff_3);
+    const auto vc2 = Set(d, synth_coeff_2);
+    const auto vc1 = Set(d, synth_coeff_1);
+    const auto vc0_frac = Set(d, synth_coeff_0_frac);
+
+    auto window = [&](bool isBandL, bool scaleOnly) {
+      return make_window_16_97(memL, memH, sn, dn, parity, win_l, win_h, isBandL, scaleOnly);
+    };
+
+    window_scale_16_97(d, window(true, true), Set(d, scale_K_frac));
+    window_scale_16_97(d, window(false, true), Set(d, scale_invK_frac));
+
+    // step 3 (delta): S -= delta * (D[n-1] + D[n])
+    window_lift_16_97(d, window(true, false), [&](auto target, auto prev, auto next) {
+      return SaturatedSub(target, MulFixedPoint15(SaturatedAdd(prev, next), vc3));
+    });
+    // step 2 (gamma): D -= gamma * (S[n] + S[n+1])
+    window_lift_16_97(d, window(false, false), [&](auto target, auto prev, auto next) {
+      return SaturatedSub(target, MulFixedPoint15(SaturatedAdd(prev, next), vc2));
+    });
+    // step 1 (beta): multiply-first with the x8/>>3 precision boost
+    window_lift_16_97(d, window(true, false), [&](auto target, auto prev, auto next) {
+      auto products = MulFixedPoint15(prev, vc1) + MulFixedPoint15(next, vc1);
+      return SaturatedAdd(target, vrshift_even(d, products, 3));
+    });
+    // step 0 (alpha): additive decomposition, |alpha| > 1
+    window_lift_16_97(d, window(false, false), [&](auto target, auto prev, auto next) {
+      auto sum = SaturatedAdd(prev, next);
+      return SaturatedAdd(SaturatedAdd(target, sum), MulFixedPoint15(sum, vc0_frac));
+    });
+  }
+
+} // namespace HWY_NAMESPACE
+} // namespace grk
+HWY_AFTER_NAMESPACE();
+
+#if HWY_ONCE
+namespace grk
+{
+
+HWY_EXPORT(GetHWY_PLL_COLS_16_97);
+HWY_EXPORT(hwy_v_synth_16_97);
+HWY_EXPORT(hwy_h_synth_16_97);
+HWY_EXPORT(hwy_step_16_97);
+
+void WaveletReverse::step_16_97(dwt_scratch<vec8s>* GRK_RESTRICT scratch)
+{
+  HWY_DYNAMIC_DISPATCH(hwy_step_16_97)
+  ((int16_t*)scratch->memL, (int16_t*)scratch->memH, scratch->sn, scratch->dn, scratch->parity,
+   scratch->win_l, scratch->win_h);
+}
+
+uint32_t get_PLL_COLS_16_97(void)
+{
+  static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_16_97)();
+  return value;
+}
+
+/******************************************************************************
+ *  tile_16_97 — Top-level 16-bit 9/7 inverse DWT
+ *
+ *  Orchestrates the multi-resolution synthesis for one tile component.
+ *  For each resolution level (from lowest to highest), performs:
+ *    1. Horizontal synthesis: combines LL+HL → L row, LH+HH → H row
+ *    2. Vertical synthesis: combines L rows + H rows → output resolution
+ *
+ *  Thread parallelism: rows (horizontal) and columns (vertical) are split
+ *  across tasks.  Each task uses its own scratch buffer from the pool.
+ ******************************************************************************/
+bool WaveletReverse::tile_16_97(void)
+{
+  if(numres_ == 1U)
+    return true;
+
+  auto bandLL = tilec_->resolutions_;
+  auto tileBuffer = tilec_->getWindow16();
+
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
+  horizPool16_ = std::make_unique<dwt_scratch<int16_t>[]>(num_threads);
+  vertPool16_ = std::make_unique<dwt_scratch<int16_t>[]>(num_threads);
+
+  for(uint8_t res = 1; res < numres_; ++res)
+  {
+    horiz16_.sn = bandLL->width();
+    vert16_.sn = bandLL->height();
+    for(uint32_t i = 0; i < num_threads; ++i)
+    {
+      horizPool16_[i].sn = bandLL->width();
+      vertPool16_[i].sn = bandLL->height();
+    }
+    ++bandLL;
+    auto resWidth = bandLL->width();
+    auto resHeight = bandLL->height();
+    if(resWidth == 0 || resHeight == 0)
+      continue;
+    horiz16_.dn = resWidth - horiz16_.sn;
+    horiz16_.parity = bandLL->x0 & 1;
+    vert16_.dn = resHeight - vert16_.sn;
+    vert16_.parity = bandLL->y0 & 1;
+
+    for(uint32_t i = 0; i < num_threads; ++i)
+    {
+      horizPool16_[i].dn = resWidth - horizPool16_[i].sn;
+      horizPool16_[i].parity = bandLL->x0 & 1;
+      if(!scratch_)
+      {
+        grklog.error("tile_16_97: pool data not allocated");
+        return false;
+      }
+      horizPool16_[i].allocatedMem = (int16_t*)scratch_->getHoriz(i);
+      horizPool16_[i].mem = (int16_t*)scratch_->getHoriz(i);
+
+      vertPool16_[i].dn = resHeight - vertPool16_[i].sn;
+      vertPool16_[i].parity = bandLL->y0 & 1;
+      vertPool16_[i].allocatedMem = (int16_t*)scratch_->getVert(i);
+      vertPool16_[i].mem = (int16_t*)scratch_->getVert(i);
+    }
+    h_16_97(res, tileBuffer, resHeight);
+    v_16_97(res, tileBuffer, resWidth);
+  }
+
+  return true;
+}
+
+/******************************************************************************
+ *  Horizontal 16-bit 9/7 strip processing
+ ******************************************************************************/
+void WaveletReverse::h_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t hMin,
+                                   uint32_t hMax, Buffer2dSimple<int16_t> winL,
+                                   Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest)
+{
+  for(uint32_t j = hMin; j < hMax; ++j)
+  {
+    HWY_DYNAMIC_DISPATCH(hwy_h_synth_16_97)
+    (scratch->mem, scratch->sn + scratch->dn, winL.buf_, winH.buf_, winDest.buf_, scratch->parity,
+     scratch->sn, scratch->dn);
+    winL.incY_IN_PLACE(1);
+    winH.incY_IN_PLACE(1);
+    winDest.incY_IN_PLACE(1);
+  }
+}
+
+void WaveletReverse::h_16_97(uint8_t res, TileComponentWindow<int16_t>* tileBuffer,
+                             uint32_t resHeight)
+{
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
+  Buffer2dSimple<int16_t> winL, winH, winDest;
+  auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  if(!imageComponentFlow)
+    return;
+  auto resFlow = imageComponentFlow->getResflow(res - 1);
+  if(!resFlow)
+    return;
+  uint32_t numTasks[2] = {0, 0};
+  uint32_t height[2] = {0, 0};
+
+  for(uint32_t orient = 0; orient < 2; ++orient)
+  {
+    height[orient] = (orient == 0) ? vert16_.sn : resHeight - vert16_.sn;
+    numTasks[orient] = height[orient] < num_threads ? height[orient] : num_threads;
+  }
+  for(uint32_t orient = 0; orient < 2; ++orient)
+  {
+    if(height[orient] == 0)
+      continue;
+    if(orient == 0)
+    {
+      winL = tileBuffer->getResWindowBufferSimple((uint8_t)(res - 1U));
+      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_HL);
+      winDest = tileBuffer->getResWindowBufferSplitSimple(res, SPLIT_L);
+    }
+    else
+    {
+      winL = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_LH);
+      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_HH);
+      winDest = tileBuffer->getResWindowBufferSplitSimple(res, SPLIT_H);
+    }
+
+    uint32_t heightIncr = height[orient] / numTasks[orient];
+    for(uint32_t j = 0; j < numTasks[orient]; ++j)
+    {
+      auto hMin = j * heightIncr;
+      auto hMax = j < (numTasks[orient] - 1U) ? (j + 1U) * heightIncr : height[orient];
+      uint32_t sn = horiz16_.sn;
+      uint32_t dn = horiz16_.dn;
+      uint32_t par = horiz16_.parity;
+      resFlow->waveletHoriz_->nextTask().work([this, sn, dn, par, winL, winH, winDest, hMin, hMax] {
+        horizPool16_[TFSingleton::workerId()].sn = sn;
+        horizPool16_[TFSingleton::workerId()].dn = dn;
+        horizPool16_[TFSingleton::workerId()].parity = par;
+        h_strip_16_97(&horizPool16_[TFSingleton::workerId()], hMin, hMax, winL, winH, winDest);
+      });
+      winL.incY_IN_PLACE(heightIncr);
+      winH.incY_IN_PLACE(heightIncr);
+      winDest.incY_IN_PLACE(heightIncr);
+    }
+  }
+}
+
+/******************************************************************************
+ *  Vertical 16-bit 9/7 strip processing
+ ******************************************************************************/
+void WaveletReverse::v_16_97(const dwt_scratch<int16_t>* scratch, Buffer2dSimple<int16_t> winL,
+                             Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest,
+                             uint32_t nb_cols, DcShiftParam dcShift)
+{
+  const uint32_t height = scratch->sn + scratch->dn;
+  if(height == 0)
+    return;
+
+  int16_t dc = dcShift.enabled ? (int16_t)dcShift.shift : 0;
+  int16_t dcMin = (int16_t)dcShift.min;
+  int16_t dcMax = (int16_t)dcShift.max;
+
+  if(height > 1 && nb_cols == get_PLL_COLS_16_97())
+  {
+    HWY_DYNAMIC_DISPATCH(hwy_v_synth_16_97)
+    (scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
+     winDest.stride_, scratch->parity, scratch->sn, scratch->dn, dc, dcMin, dcMax,
+     tilec_->qShift());
+    return;
+  }
+
+  for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+  {
+    if(dcShift.enabled)
+    {
+      HWY_NAMESPACE::scalar_v_synth_16_97_dc(scratch->mem, height, winL.buf_, winL.stride_,
+                                             winH.buf_, winH.stride_, winDest.buf_, winDest.stride_,
+                                             scratch->parity, scratch->sn, scratch->dn, dc, dcMin,
+                                             dcMax, tilec_->qShift());
+    }
+    else
+    {
+      HWY_NAMESPACE::scalar_v_synth_16_97(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_,
+                                          winH.stride_, winDest.buf_, winDest.stride_,
+                                          scratch->parity, scratch->sn, scratch->dn);
+    }
+  }
+}
+
+void WaveletReverse::v_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin,
+                                   uint32_t wMax, Buffer2dSimple<int16_t> winL,
+                                   Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest,
+                                   DcShiftParam dcShift)
+{
+  uint32_t j;
+  const uint32_t pllCols = get_PLL_COLS_16_97();
+  for(j = wMin; j + pllCols <= wMax; j += pllCols)
+  {
+    v_16_97(scratch, winL, winH, winDest, pllCols, dcShift);
+    winL.incX_IN_PLACE(pllCols);
+    winH.incX_IN_PLACE(pllCols);
+    winDest.incX_IN_PLACE(pllCols);
+  }
+  if(j < wMax)
+  {
+    v_16_97(scratch, winL, winH, winDest, wMax - j, dcShift);
+  }
+}
+
+void WaveletReverse::v_16_97(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth)
+{
+  if(resWidth == 0)
+    return;
+  /* Apply DC shift only on the last resolution level */
+  DcShiftParam dcShift = (res == numres_ - 1) ? dcShift_ : DcShiftParam{};
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
+  auto winL = buf->getResWindowBufferSplitSimple(res, SPLIT_L);
+  auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
+  auto winDest = buf->getResWindowBufferSimple(res);
+  auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  if(!imageComponentFlow)
+    return;
+  auto resFlow = imageComponentFlow->getResflow(res - 1);
+  if(!resFlow)
+    return;
+  const uint32_t numTasks = resWidth < num_threads ? resWidth : num_threads;
+  uint32_t widthIncr = resWidth / numTasks;
+  for(uint32_t j = 0; j < numTasks; j++)
+  {
+    auto wMin = j * widthIncr;
+    auto wMax = j < (numTasks - 1U) ? (j + 1U) * widthIncr : resWidth;
+    uint32_t sn = vert16_.sn;
+    uint32_t dn = vert16_.dn;
+    uint32_t par = vert16_.parity;
+    resFlow->waveletVert_->nextTask().work(
+        [this, sn, dn, par, wMin, wMax, winL, winH, winDest, dcShift] {
+          vertPool16_[TFSingleton::workerId()].dn = dn;
+          vertPool16_[TFSingleton::workerId()].sn = sn;
+          vertPool16_[TFSingleton::workerId()].parity = par;
+
+          v_strip_16_97(&vertPool16_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest,
+                        dcShift);
+        });
+    winL.incX_IN_PLACE(widthIncr);
+    winH.incX_IN_PLACE(widthIncr);
+    winDest.incX_IN_PLACE(widthIncr);
+  }
+}
+
+// bench hook: single-threaded multi-level int16 fixed-point inverse, same
+// kernels and in-place quadrant layout as tile_16_97 minus the task graph.
+// Widths must divide evenly into PLL column blocks at every level.
+extern "C" double grk_bench_dwt_16_97(uint32_t width, uint32_t height, uint8_t numres,
+                                      uint32_t iters)
+{
+  if(numres < 2 || !width || !height || !iters)
+    return -1.0;
+  auto dim = [](uint32_t full, uint32_t shift) { return (full + (1u << shift) - 1) >> shift; };
+  const uint32_t pllCols = get_PLL_COLS_16_97();
+  auto window = (int16_t*)grk_aligned_malloc((uint64_t)width * height * sizeof(int16_t));
+  if(!window)
+    return -1.0;
+  size_t dataLength = std::max(width, height);
+  dwt_scratch<int16_t> horiz, vert;
+  if(!horiz.alloc(dataLength * pllCols) || !vert.alloc(dataLength * pllCols))
+  {
+    grk_aligned_free(window);
+    return -1.0;
+  }
+  const int16_t qShift = 5;
+  double best = std::numeric_limits<double>::max();
+  for(uint32_t it = 0; it < iters; ++it)
+  {
+    for(size_t i = 0; i < (size_t)width * height; ++i)
+      window[i] = (int16_t)(((i * 2654435761u) & 1023u) - 512);
+    auto start = std::chrono::steady_clock::now();
+    for(uint8_t res = 1; res < numres; ++res)
+    {
+      uint32_t pw = dim(width, (uint32_t)(numres - res));
+      uint32_t ph = dim(height, (uint32_t)(numres - res));
+      uint32_t rw = dim(width, (uint32_t)(numres - 1 - res));
+      uint32_t rh = dim(height, (uint32_t)(numres - 1 - res));
+      uint32_t sn = pw, dn = rw - pw;
+      auto splitH = window + (size_t)ph * width;
+      auto hRow = [&](int16_t* rowL, int16_t* rowH, int16_t* rowDest, uint32_t rows) {
+        for(uint32_t j = 0; j < rows; ++j)
+        {
+          HWY_DYNAMIC_DISPATCH(hwy_h_synth_16_97)
+          (horiz.mem, sn + dn, rowL, rowH, rowDest, 0, sn, dn);
+          rowL += width;
+          rowH += width;
+          rowDest += width;
+        }
+      };
+      hRow(window, window + pw, window, ph);
+      hRow(splitH, splitH + pw, splitH, rh - ph);
+      for(uint32_t c = 0; c + pllCols <= rw; c += pllCols)
+      {
+        HWY_DYNAMIC_DISPATCH(hwy_v_synth_16_97)
+        (vert.mem, rh, window + c, width, splitH + c, width, window + c, width, 0, ph, rh - ph, 0,
+         0, 0, qShift);
+      }
+    }
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+    best = std::min(best, elapsed.count());
+  }
+  grk_aligned_free(window);
+  return best;
+}
+
+} // namespace grk
+#endif

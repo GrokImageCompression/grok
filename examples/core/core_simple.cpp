@@ -25,7 +25,7 @@ with memory buffers as source and destination
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <inttypes.h>
+#include <cinttypes>
 #include <vector>
 #include <chrono>
 #include <cstdlib>
@@ -203,7 +203,7 @@ int core_simple(uint32_t dimX, uint32_t dimY, uint8_t precision)
 
     // 1. retrieve decompressed image
     bool images_equal = true;
-    grk_image* decOutputImage = nullptr; // uncompressed image created by decompressor
+    const grk_image* decOutputImage = nullptr; // uncompressed image created by decompressor
     if(numComps != (uint16_t)uncompressedData.size())
     {
       fprintf(stderr, "Decompression failed\n");

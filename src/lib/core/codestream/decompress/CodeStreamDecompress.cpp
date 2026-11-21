@@ -15,9 +15,13 @@
  *
  */
 
+#include <chrono>
+#include <cmath>
 #include <functional>
+#include <optional>
 
 #include "TFSingleton.h"
+#include "plugin_accelerate.h"
 #include "grk_fseek.h"
 #include "geometry.h"
 #include "grk_exceptions.h"
@@ -30,6 +34,7 @@
 #include "TileFutureManager.h"
 #include "FlowComponent.h"
 #include "IStream.h"
+#include "StreamIO.h"
 #include "MarkerCache.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
@@ -53,12 +58,12 @@ struct ITileProcessor;
 #include "CoderPool.h"
 #include "BitIO.h"
 
-#include "SchedulerExcalibur.h"
 #include "TileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
 #include "GrkImageSIMD.h"
 #include "CodeStreamDecompress.h"
+#include "SelectiveFetchRanges.h"
 
 namespace grk
 {
@@ -76,6 +81,11 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
                 SIZ, [this](uint8_t* data, uint16_t len) { return readSIZ(data, len); })},
       {CAP, new MarkerProcessor(
                 CAP, [this](uint8_t* data, uint16_t len) { return readCAP(data, len); })},
+      {PRF, new MarkerProcessor(PRF, [](uint8_t*, uint16_t) { return true; })},
+      {DFS, new MarkerProcessor(
+                DFS, [this](uint8_t* data, uint16_t len) { return cp_.readDfs(data, len); })},
+      {ATK, new MarkerProcessor(
+                ATK, [this](uint8_t* data, uint16_t len) { return cp_.readAtk(data, len); })},
       {TLM, new MarkerProcessor(
                 TLM, [this](uint8_t* data, uint16_t len) { return readTLM(data, len); })},
       {PLM, new MarkerProcessor(
@@ -129,16 +139,60 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
   tileMarkerParsers_.resize(TFSingleton::num_threads());
   std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
                 []() { return std::make_unique<MarkerParser>(); });
+
+  // Single-threaded mode: give this codec its own inline (0-worker) executor so
+  // concurrent decodes run on their own thread instead of contending on the
+  // global singleton.  Multi-threaded mode keeps using the shared pool.
+  if(TFSingleton::isSingleThreaded())
+    localExecutor_ = std::make_unique<tf::Executor>(0);
 }
+static uint32_t layerBudget(uint16_t layersToDecompress)
+{
+  // zero decodes every layer
+  return layersToDecompress == 0 ? UINT32_MAX : layersToDecompress;
+}
+
 void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 {
   assert(parameters);
-  cp_.init(parameters, tileCache_);
+  const auto& requested = parameters->core;
+  const auto& previous = cp_.codingParams_.dec_;
+  const bool moreLayers =
+      layerBudget(requested.layers_to_decompress) > layerBudget(previous.layersToDecompress_);
+  const bool fewerLayers =
+      layerBudget(requested.layers_to_decompress) < layerBudget(previous.layersToDecompress_);
+  const bool finerResolution = requested.reduce < previous.reduce_;
+  const bool coarserResolution = requested.reduce > previous.reduce_;
+  const bool int16Changed = requested.irreversible_int16 != previous.irreversibleInt16_;
+  differentialDecodeAllowed_ =
+      (moreLayers || finerResolution) && !fewerLayers && !coarserResolution && !int16Changed;
+  if(cp_.init(parameters, tileCache_))
+    compositeDecompressed_ = false;
   auto core = &parameters->core;
   tileCache_->setStrategy(core->tile_cache_strategy);
+  tileCache_->setMaxActiveTiles(core->max_active_tiles);
   ioBufferCallback_ = core->io_buffer_callback;
   ioUserData_ = core->io_user_data;
   grkRegisterReclaimCallback_ = core->io_register_client_callback;
+  ioBandCallback_ = core->io_band_callback;
+  ioBandUserData_ = core->io_band_user_data;
+  cpuOnly_ = parameters->cpu_only;
+
+  // guard on null: never replace an executor a decode may already be running on
+  if(parameters->num_threads && !localExecutor_)
+  {
+    localNumThreads_ = parameters->num_threads;
+    localExecutor_ = TFSingleton::makeLocalExecutor(localNumThreads_);
+    tileMarkerParsers_.resize(localNumThreads_);
+    std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
+                  []() { return std::make_unique<MarkerParser>(); });
+  }
+  else if(localExecutor_ && parameters->num_threads && parameters->num_threads != localNumThreads_)
+  {
+    grklog.warn("num_threads changed from %zu to %u after codec creation: ignored, "
+                "the codec keeps its original thread pool",
+                localNumThreads_, parameters->num_threads);
+  }
 
   // Initialize compressed chunk cache for LRU + network fetches
   if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())
@@ -150,16 +204,379 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 
   postReadHeader();
 }
+void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  ioBandCallback_ = callback;
+  ioBandUserData_ = user_data;
+}
 
 // Multi Tile //////////////////////////////////////////////////////////
 
+// the plugin's callback carries no user pointer of ours
+static thread_local CodeStreamDecompress* pluginDecompressCurrent = nullptr;
+
+bool CodeStreamDecompress::pluginDecompressEligible(void)
+{
+  auto& dec = cp_.codingParams_.dec_;
+  bool windowed = cp_.dw_x0 != 0 || cp_.dw_y0 != 0 || cp_.dw_x1 != 0 || cp_.dw_y1 != 0;
+  return headerRead_ && !headerError_ && dec.reduce_ == 0 && dec.layersToDecompress_ == 0 &&
+         !windowed && !ioBandCallback_ && cp_.t_grid_width_ == 1 && cp_.t_grid_height_ == 1;
+}
+int32_t CodeStreamDecompress::pluginDecompress(void)
+{
+  // no input file: the plugin asks this codec for the header and the packets
+  grk_decompress_parameters parameters = {};
+  pluginDecompressCurrent = this;
+  int32_t rc = grk_plugin_decompress(&parameters, pluginDecompressCallback);
+  pluginDecompressCurrent = nullptr;
+  if(rc == 0 || rc == 1)
+    return rc;
+  return -1;
+}
+int32_t CodeStreamDecompress::pluginDecompressCallback(grk_plugin_decompress_callback_info* info)
+{
+  auto self = pluginDecompressCurrent;
+  if(!self || !info)
+    return -1;
+  if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
+    return 0;
+  if(info->decompress_flags & GRK_DECODE_HEADER)
+  {
+    if(!self->readHeader(&info->header_info) || !info->init_decompressors_func)
+      return -1;
+    info->image = self->multiTileComposite_.get();
+    return info->init_decompressors_func(&info->header_info, info->image);
+  }
+  if(info->decompress_flags & GRK_DECODE_T2)
+  {
+    if(!info->tile)
+      return -1;
+    info->tile->decompress_flags = info->decompress_flags;
+    return self->decompressPluginTile(info->tile);
+  }
+  if(info->decompress_flags & GRK_DECODE_POST_T1)
+    return self->postProcessPluginImage(info->image) ? 0 : -1;
+  return -1;
+}
+// the parsed tiles point at the plugin's tile, which the plugin frees
+void CodeStreamDecompress::discardPluginTileParse(void)
+{
+  current_plugin_tile = nullptr;
+  currTileProcessor_ = nullptr;
+  currTileIndex_ = -1;
+  tileCache_->discardTiles();
+}
+// the plugin's sample buffers go away when the callback returns
+bool CodeStreamDecompress::postProcessPluginImage(const grk_image* decoded)
+{
+  auto composite = multiTileComposite_.get();
+  if(!decoded || !decoded->comps || decoded->numcomps != composite->numcomps)
+    return false;
+  for(uint16_t compno = 0; compno < composite->numcomps; ++compno)
+  {
+    auto dest = composite->comps + compno;
+    auto src = decoded->comps + compno;
+    if(!src->data || src->w != dest->w || src->h != dest->h)
+      return false;
+    dest->data_type = GRK_INT_32;
+    if(!GrkImage::allocData(dest))
+      return false;
+    size_t srcStride = src->stride ? src->stride : src->w;
+    for(uint32_t y = 0; y < dest->h; ++y)
+      memcpy((int32_t*)dest->data + (size_t)y * dest->stride,
+             (const int32_t*)src->data + y * srcStride, (size_t)dest->w * sizeof(int32_t));
+  }
+  if(composite->decompress_prec == 0)
+  {
+    composite->decompress_prec = composite->comps[0].prec;
+    composite->decompress_width = composite->comps[0].w;
+    composite->decompress_height = composite->comps[0].h;
+    composite->decompress_num_comps = composite->numcomps;
+    composite->decompress_colour_space = composite->color_space;
+  }
+  return postProcess(composite);
+}
+
+static bool tileAlreadyDecompressed(TileCacheEntry* cacheEntry)
+{
+  auto proc = cacheEntry->processor();
+  return (proc->isBestEffortDecompressed() || proc->getImage()) && !cacheEntry->dirty();
+}
+
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this decode is in flight.
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // decoding (single-threaded mode only; no-op when localExecutor_ is null).
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+  // readSeek fails once an earlier decode on this codec reached the stream end
+  stream_->clearEndOfStream();
+
+  if(!tile && !compositeDecompressed_ && !cpuOnly_ && pluginAccelerates() &&
+     pluginDecompressEligible())
+  {
+    int32_t rc;
+    {
+      std::lock_guard<std::mutex> guard(pluginFrameMutex());
+      rc = pluginDecompress();
+    }
+    if(rc == 0)
+    {
+      compositeDecompressed_ = true;
+      pluginCountAcceleratedFrame();
+      return success_;
+    }
+    if(rc < 0)
+    {
+      grklog.error("The accelerator plugin failed to decompress the code stream");
+      success_ = false;
+      return false;
+    }
+  }
+
   current_plugin_tile = tile;
+
+  // GPU plugin T2-only fast path: skip heavy infrastructure
+  if(tile && !(tile->decompress_flags & GRK_DECODE_T1))
+  {
+    tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
+    decompressSequentialPrepare();
+    success_ = true;
+    // Parse tile parts (SOT markers + tile data)
+    while(!markerParser_.endOfCodeStream() && stream_->numBytesLeft() != 0)
+    {
+      try
+      {
+        auto [processed, length] = markerParser_.processMarker();
+        if(!processed)
+          break;
+      }
+      catch([[maybe_unused]] const CorruptSOTMarkerException&)
+      {
+        break;
+      }
+      try
+      {
+        if(!markerParser_.readId(false))
+          break;
+      }
+      catch([[maybe_unused]] const t1_t2::InvalidMarkerException&)
+      {
+        break;
+      }
+      if(!currTileProcessor_)
+        continue;
+      if(!currTileProcessor_->parseTilePart(nullptr, nullptr, markerParser_.currId(),
+                                            currTilePartInfo_))
+      {
+        success_ = false;
+        break;
+      }
+      if(!currTileProcessor_->allSOTMarkersParsed() && !markerParser_.readSOTorEOC())
+        break;
+      if(currTileProcessor_->allSOTMarkersParsed())
+        break;
+    }
+    if(currTileProcessor_)
+    {
+      currTileProcessor_->prepareForDecompression();
+      // Run T2 inline with no-op post (no image extraction needed)
+      try
+      {
+        currTileProcessor_->scheduleAndRunDecompress(
+            &coderPool_, headerImage_->getBounds(), nullptr, []() {}, decompressTileFutureManager_);
+      }
+      catch(const PluginDecodeUnsupportedException&)
+      {
+        discardPluginTileParse();
+        throw;
+      }
+      if(currTileProcessor_->hasError())
+        success_ = false;
+      currTileProcessor_ = nullptr;
+      currTileIndex_ = -1;
+    }
+    endSequentialWalk(!success_);
+    if(!success_)
+      discardPluginTileParse();
+    return success_;
+  }
+
+  if(compositeDecompressed_)
+    return success_;
+
   multiTileComposite_->postReadHeader(&cp_);
+  // LOCAL-ONLY: mercury streaming fast path — decodes eligible streams
+  // through grok T1 via the mercury shim, either streaming rows_per_strip
+  // bands into ioBandCallback_ (O(strip) memory) or filling
+  // multiTileComposite_ when no band callback is set. Ineligible/rejected
+  // streams fall through unchanged; a true return means the fast path
+  // owned the decode and success_ reflects its outcome.
+  if(mercuryFastPath(*this))
+  {
+    // mercury asynchronous tile tasks write success_ while this runs
+    if(cp_.asynchronous_)
+      return true;
+    compositeDecompressed_ = success_;
+    return success_;
+  }
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
-  auto slated = tilesToDecompress_.getSlatedTiles();
-  if(!decompressImpl(slated))
+  // band writing is one shot: tile delivery is latched and the caller's sink has
+  // already consumed those rows, so reusing a tracker would deliver no bands
+  if(ioBandCallback_ && tileCompletion_)
+  {
+    grklog.error("A band callback only works on the first full decompress of a codec, "
+                 "and not alongside an asynchronous region decode");
+    return false;
+  }
+  // create TileCompletion for band callback if set after header read
+  if(ioBandCallback_)
+  {
+    // Use unreduced image bounds so that TileCompletion computes the same tile grid
+    // (t_grid_width_ x t_grid_height_) as the codec.  Tile indices from
+    // tileProcessor->getIndex() are based on the unreduced grid.
+    // Compute in uint64_t and clip to UINT32_MAX so a tile grid extent that exceeds
+    // uint32_t (e.g. Xsiz=UINT32_MAX with XTsiz=2^31) doesn't wrap to 0.
+    uint64_t unreducedX1 = (uint64_t)cp_.tx0_ + (uint64_t)cp_.t_grid_width_ * cp_.t_width_;
+    uint64_t unreducedY1 = (uint64_t)cp_.ty0_ + (uint64_t)cp_.t_grid_height_ * cp_.t_height_;
+    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_,
+                           (uint32_t)std::min<uint64_t>(unreducedX1, UINT32_MAX),
+                           (uint32_t)std::min<uint64_t>(unreducedY1, UINT32_MAX));
+    auto slatedRect = tilesToDecompress_.getSlatedTileRect();
+    nextBandTileY_ = slatedRect.y0;
+    pendingBands_.clear();
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    // Compute reduced-resolution pixel extents for Y clamping.
+    // multiTileComposite_ bounds are unreduced at this point; apply reduction.
+    auto compositeBounds = multiTileComposite_->getBounds();
+    uint32_t regionY0 = ceildivpow2<uint32_t>(compositeBounds.y0, reduce);
+    uint32_t regionY1 = ceildivpow2<uint32_t>(compositeBounds.y1, reduce);
+    uint32_t unreducedTy0 = cp_.ty0_;
+    uint32_t unreducedTileHeight = cp_.t_height_;
+    uint32_t unreducedRegionY1 = compositeBounds.y1;
+    tileCompletion_ = std::make_unique<TileCompletion>(
+        tileCache_.get(), unreducedBounds, cp_.t_width_, cp_.t_height_,
+        [this, regionY0, regionY1, unreducedTy0, unreducedTileHeight, unreducedRegionY1,
+         reduce](uint16_t tileIndexBegin, uint16_t) {
+          uint16_t numTileCols = tileCompletion_->getNumTileCols();
+          uint16_t tileY = tileIndexBegin / numTileCols;
+          // Compute exact reduced-resolution tile Y extents using ceildivpow2
+          // on unreduced coordinates, since DWT reduction is not uniformly divisible
+          uint32_t unreducedTileYBegin = unreducedTy0 + (uint32_t)tileY * unreducedTileHeight;
+          uint32_t unreducedTileYEnd = std::min(
+              unreducedTy0 + ((uint32_t)tileY + 1) * unreducedTileHeight, unreducedRegionY1);
+          uint32_t tileGlobalYBegin = ceildivpow2<uint32_t>(unreducedTileYBegin, reduce);
+          uint32_t tileGlobalYEnd = ceildivpow2<uint32_t>(unreducedTileYEnd, reduce);
+          // Strip-relative y coordinates: the strip buffer starts at offset 0
+          // for the current tile row
+          uint32_t yBegin = 0;
+          uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
+
+          uint16_t tileX0 = tileIndexBegin % numTileCols;
+          uint16_t numSlatedCols = (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
+
+          // All compositing, band writing, and strip advancing must be serialized
+          // to prevent races on the shared strip buffer.
+          // Empty rows (yEnd <= yBegin) are inserted as sentinels so the drain
+          // loop processes them in order — an early-return would lose the
+          // advancement when an empty row completes before a prior row.
+          std::lock_guard<std::mutex> lock(bandOrderMutex_);
+          pendingBands_[tileY] = {yBegin, yEnd, tileX0, numSlatedCols};
+          while(pendingBands_.count(nextBandTileY_))
+          {
+            auto& band = pendingBands_[nextBandTileY_];
+
+            // Skip compositing and callback for empty rows (zero pixels
+            // after resolution reduction).
+            if(band.yEnd > band.yBegin)
+            {
+              bool rowHasFailedTile = false;
+              for(uint16_t col = 0; col < band.numCols; col++)
+              {
+                uint16_t tileIndex =
+                    static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                auto cacheEntry = tileCache_->get(tileIndex);
+                if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->hasError())
+                  rowHasFailedTile = true;
+              }
+              // no strip buffer means no tile decompressed, and quietly skipping a
+              // band would shift every later band in the output
+              if(!scratchDataAllocated_)
+              {
+                if(success_)
+                  grklog.error("No tile data was decompressed for image row %u", nextBandTileY_);
+                success_ = false;
+              }
+              else if(rowHasFailedTile)
+              {
+                if(success_)
+                  grklog.error("A tile in image row %u failed to decompress", nextBandTileY_);
+                success_ = false;
+              }
+              else
+              {
+                // Composite all tiles in this row into the strip buffer
+                for(uint16_t col = 0; col < band.numCols; col++)
+                {
+                  uint16_t tileIndex =
+                      static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                  auto cacheEntry = tileCache_->get(tileIndex);
+                  if(!cacheEntry || !cacheEntry->processor())
+                    continue;
+                  auto tileImage = cacheEntry->processor()->getImage();
+                  if(tileImage)
+                  {
+                    if(!scratchImage_->composite(tileImage))
+                      success_ = false;
+                  }
+                }
+
+                if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+                  success_ = false;
+              }
+
+              // Release tile processors for this completed row
+              for(uint16_t col = 0; col < band.numCols; col++)
+              {
+                uint16_t tileIndex =
+                    static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                tileCache_->releaseForSwath(tileIndex);
+              }
+            }
+
+            pendingBands_.erase(nextBandTileY_);
+
+            // Advance strip buffer for the next tile row
+            uint16_t nextTileY = nextBandTileY_ + 1;
+            uint32_t nextUnreducedY0 = unreducedTy0 + (uint32_t)nextTileY * unreducedTileHeight;
+            if(nextUnreducedY0 < unreducedRegionY1)
+            {
+              uint32_t nextUnreducedY1 =
+                  std::min(nextUnreducedY0 + unreducedTileHeight, unreducedRegionY1);
+              for(uint16_t i = 0; i < scratchImage_->numcomps; i++)
+              {
+                auto comp = scratchImage_->comps + i;
+                comp->y0 =
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(nextUnreducedY0, comp->dy), reduce);
+                uint32_t compY1 =
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(nextUnreducedY1, comp->dy), reduce);
+                comp->h = compY1 - comp->y0;
+              }
+            }
+
+            nextBandTileY_ = nextTileY;
+          }
+          // Wake the parser thread so it can schedule more tiles
+          bandDrainCV_.notify_one();
+        },
+        nullptr, tilesToDecompress_.getSlatedTileRect());
+  }
+  auto slatedTiles = tilesToDecompress_.getSlatedTiles();
+  if(!decompressImpl(slatedTiles))
     return false;
 
   // If all slated tiles were already cached, decompressImpl returned
@@ -168,14 +585,10 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // complete so that grk_decompress_wait() won't hang.
   if(tileCompletion_)
   {
-    for(auto tileIndex : slated)
+    for(auto tileIndex : slatedTiles)
     {
       auto cacheEntry = tileCache_->get(tileIndex);
-      if(!cacheEntry)
-        continue;
-      auto proc = cacheEntry->processor;
-      if(proc->isBestEffortDecompressed() ||
-         (proc->getImage() && (!cacheEntry->dirty_ || proc->allSOTMarkersParsed())))
+      if(cacheEntry && tileAlreadyDecompressed(cacheEntry))
         tileCompletion_->complete(tileIndex);
     }
   }
@@ -186,51 +599,203 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     return true;
 
   wait(nullptr);
+  compositeDecompressed_ = success_;
 
   return success_;
 }
 
-bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
+bool CodeStreamDecompress::sotWalkBuildsTLM(void)
 {
-  // Filter out fully cached tiles from slated
-  std::erase_if(slated, [this](uint16_t index) {
-    auto cacheEntry = tileCache_->get(index);
-    if(!cacheEntry)
+  // PLM lengths are read in stream order from the first tile-part, and network chunk fetches
+  // start at the first SOT
+  return cp_.tlmMarkers_ && cp_.tlmMarkers_->builtFromSotWalk() && !cp_.plmMarkers_ &&
+         !stream_->getFetcher();
+}
+
+void CodeStreamDecompress::recordWalkedTilePart(uint16_t tileIndex, uint64_t offset,
+                                                uint32_t tilePartLength, uint8_t tilePart,
+                                                uint8_t numTileParts)
+{
+  auto& tlm = *cp_.tlmMarkers_;
+  uint64_t length = tilePartLength;
+  // A.4.2: only the last tile-part has Psot zero, and it runs to the EOC
+  const bool lastTilePart = tilePartLength == 0;
+  if(lastTilePart)
+  {
+    const uint64_t position = stream_->tell();
+    const uint64_t codestreamEnd = position + stream_->numBytesLeft();
+    length = codestreamEnd - offset;
+    uint8_t marker[2] = {};
+    if(length >= sizeof marker &&
+       stream_->readAt(codestreamEnd - sizeof marker, marker, sizeof marker) && marker[0] == 0xFF &&
+       marker[1] == 0xD9)
+      length -= sizeof marker;
+    stream_->seek(position);
+  }
+  const auto& parts = tlm.getTileParts()[tileIndex];
+  const size_t numParts = (parts ? parts->size() : 0) + 1;
+  const uint8_t signalledParts = cp_.correctedNumTileParts(numTileParts);
+  const bool completesTile = signalledParts != 0 && numParts == signalledParts;
+  if(!tlm.addWalkedTilePart(tileIndex, offset, length, tilePart, numTileParts, completesTile))
+  {
+    tlm.clearSotWalk();
+    return;
+  }
+  // mercury trusts TNsot only when the first tile-part of the stream signals one part
+  const auto& walk = tlm.sotWalk();
+  const bool trustNumTileParts = walk ? walk->trustNumTileParts : numTileParts == 1;
+  tlm.setSotWalk(SotWalkPosition{offset + length, trustNumTileParts, lastTilePart});
+}
+
+void CodeStreamDecompress::endSequentialWalk(bool walkFailed)
+{
+  if(!sotWalkBuildsTLM())
+    return;
+  auto& tlm = *cp_.tlmMarkers_;
+  if(walkFailed)
+  {
+    tlm.clearSotWalk();
+    return;
+  }
+  const bool reachedEnd = markerParser_.endOfCodeStream() || markerParser_.currId() == EOC;
+  const auto& walk = tlm.sotWalk();
+  if(!reachedEnd || !walk)
+    return;
+  tlm.setSotWalk(SotWalkPosition{walk->nextSot, walk->trustNumTileParts, true});
+}
+
+bool CodeStreamDecompress::extendWalkedTLM(const std::set<uint16_t>& tiles)
+{
+  auto& tlm = *cp_.tlmMarkers_;
+  auto someTileIncomplete = [&]() {
+    return std::ranges::any_of(tiles,
+                               [&](uint16_t tileIndex) { return !tlm.tileComplete(tileIndex); });
+  };
+  const uint16_t numTiles = (uint16_t)(cp_.t_grid_width_ * cp_.t_grid_height_);
+  const uint64_t streamEnd = stream_->tell() + stream_->numBytesLeft();
+  while(someTileIncomplete() && !tlm.sotWalk()->reachedEnd)
+  {
+    const uint64_t sotOffset = tlm.sotWalk()->nextSot;
+    uint8_t sot[sotMarkerSegmentLen];
+    const bool sotRead = sotOffset + sotMarkerSegmentLen <= streamEnd && stream_->seek(sotOffset) &&
+                         stream_->read(sot, nullptr, sotMarkerSegmentLen) == sotMarkerSegmentLen;
+    uint8_t* fields = sot;
+    uint16_t marker = 0, segmentLength, tileIndex;
+    uint32_t tilePartLength;
+    uint8_t tilePart, numTileParts;
+    if(sotRead)
+    {
+      grk_read(&fields, &marker);
+      grk_read(&fields, &segmentLength);
+      grk_read(&fields, &tileIndex);
+      grk_read(&fields, &tilePartLength);
+      grk_read(&fields, &tilePart);
+      grk_read(&fields, &numTileParts);
+    }
+    // classic ignores whatever follows a tile-part if it is not a whole SOT segment
+    if(marker != SOT)
+    {
+      const auto walk = *tlm.sotWalk();
+      tlm.setSotWalk(SotWalkPosition{walk.nextSot, walk.trustNumTileParts, true});
+      break;
+    }
+    const bool validSot =
+        tileIndex < numTiles && (tilePartLength == 0 || tilePartLength >= sotMarkerSegmentLen);
+    if(!validSot)
+    {
+      tlm.clearSotWalk();
       return false;
-    auto proc = cacheEntry->processor;
-    return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty_);
+    }
+    recordWalkedTilePart(tileIndex, sotOffset, tilePartLength, tilePart, numTileParts);
+    if(!tlm.sotWalk())
+      return false;
+  }
+  // the sequential walk completes tiles missing from a truncated stream
+  const bool someTileMissing = std::ranges::any_of(
+      tiles, [&](uint16_t tileIndex) { return !tlm.getTileParts()[tileIndex]; });
+  return !someTileIncomplete() && !someTileMissing;
+}
+
+void CodeStreamDecompress::activateWalkedTLM(const std::set<uint16_t>& tiles)
+{
+  if(!sotWalkBuildsTLM())
+    return;
+  auto& tlm = *cp_.tlmMarkers_;
+  if(tiles.empty() || !tlm.sotWalk())
+  {
+    tlm.setValid(false);
+    return;
+  }
+  // tile-parts decoded through the TLM are checked against the corrected TNsot
+  if(!numTilePartsChecked_)
+    detectShortNumTileParts();
+  tlm.setValid(extendWalkedTLM(tiles));
+}
+
+bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
+{
+  // schedule() for cached and differential tiles must not take the TLM route
+  if(sotWalkBuildsTLM())
+    cp_.tlmMarkers_->setValid(false);
+  // Filter out fully cached tiles
+  std::erase_if(pendingTiles, [this](uint16_t index) {
+    auto cacheEntry = tileCache_->get(index);
+    return cacheEntry && tileAlreadyDecompressed(cacheEntry);
   });
-  if(slated.empty())
+  if(pendingTiles.empty())
     return true;
 
-  // Extract LRU-evicted tiles that can be re-decompressed from cache
-  // (opt-in: only when compressed chunk cache is active and TLM is present)
-  std::set<uint16_t> reDecompressTiles;
-  if(compressedChunkCache_ && cp_.hasTLM())
+  // the differential route only decodes the layers a tile lacks
+  if(!differentialDecodeAllowed_)
   {
-    for(auto it = slated.begin(); it != slated.end();)
+    for(auto tileIndex : pendingTiles)
     {
-      auto cacheEntry = tileCache_->get(*it);
-      if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
-         cacheEntry->dirty_ && compressedChunkCache_->contains(*it))
+      auto cacheEntry = tileCache_->get(tileIndex);
+      if(cacheEntry && cacheEntry->processor()->getTile() &&
+         cacheEntry->processor()->allSOTMarkersParsed())
+        cacheEntry->processor()->release(GRK_TILE_CACHE_NONE);
+    }
+  }
+
+  // Extract tiles whose decompressed data was dropped but whose compressed data can be
+  // reached again: LRU evictions, and every tile of a completed decode under a cache
+  // strategy that freed tile_ (and, under GRK_TILE_CACHE_NONE, image_ as well)
+  std::set<uint16_t> reDecompressTLM; // from compressed chunk cache
+  std::set<uint16_t> reDecompressSeek; // from cached SOT offsets
+  for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
+  {
+    auto cacheEntry = tileCache_->get(*it);
+    if(cacheEntry && !cacheEntry->processor()->getTile() && cacheEntry->dirty())
+    {
+      if(compressedChunkCache_ && compressedChunkCache_->contains(*it))
       {
-        reDecompressTiles.insert(*it);
-        it = slated.erase(it);
+        reDecompressTLM.insert(*it);
+        it = pendingTiles.erase(it);
+      }
+      else if(cacheEntry->processor()->allSOTMarkersParsed())
+      {
+        reDecompressSeek.insert(*it);
+        it = pendingTiles.erase(it);
       }
       else
       {
         ++it;
       }
     }
+    else
+    {
+      ++it;
+    }
   }
 
   // Require tile_ to exist for differential updates — an LRU-evicted tile
   // without cached compressed data must go through the full decompress path
-  bool doDifferential = !slated.empty();
-  for(auto& tileIndex : slated)
+  bool doDifferential = !pendingTiles.empty();
+  for(auto& tileIndex : pendingTiles)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    if(!cacheEntry || !cacheEntry->processor->getImage() || !cacheEntry->processor->getTile())
+    if(!cacheEntry || !cacheEntry->processor()->getTile() ||
+       !cacheEntry->processor()->getNumProcessedPackets())
     {
       doDifferential = false;
       break;
@@ -239,16 +804,22 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
 
   scratchImage_ = std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>(
       new GrkImage(), RefCountedDeleter<GrkImage>());
-  if(!activateScratch(false, scratchImage_.get()))
+  // callers that skip the composite or take a tile callback read the per-tile image
+  const bool singleTileWindow =
+      !ioBandCallback_ && !cp_.codingParams_.dec_.skipAllocateComposite_ &&
+      !cp_.decompressCallback_ && tilesToDecompress_.getSlatedTiles().size() == 1;
+  if(!activateScratch(singleTileWindow, scratchImage_.get()))
     return false;
+  if(singleTileWindow)
+    scratchImage_->has_multiple_tiles = false;
   success_ = true;
   numTilesDecompressed_ = 0;
 
   // Re-decompress LRU-evicted tiles from compressed chunk cache
-  for(auto tileIndex : reDecompressTiles)
+  for(auto tileIndex : reDecompressTLM)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    auto proc = cacheEntry->processor;
+    auto proc = cacheEntry->processor();
     auto cachedSeq = compressedChunkCache_->get(tileIndex);
     if(!cachedSeq || !proc->reinitForReDecompress())
       continue;
@@ -256,155 +827,234 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     auto decompressTask =
         genDecompressTileTLMTask(proc, cachedSeq, scratchImage_->getBounds(), generator);
     decompressTask();
-    cacheEntry->dirty_ = false;
+    cacheEntry->setDirty(false);
   }
 
-  if(slated.empty())
+  // Re-decompress LRU-evicted tiles by seeking to cached SOT offsets
+  for(auto tileIndex : reDecompressSeek)
+  {
+    auto cacheEntry = tileCache_->get(tileIndex);
+    auto proc = cacheEntry->processor();
+    if(!proc->reinitForReDecompress())
+      continue;
+    if(!proc->decompressFromCachedTileParts())
+      continue;
+    schedule(proc, true);
+  }
+
+  if(pendingTiles.empty())
     return true;
 
-  // synchronous batch init
-  if(doTileBatching() && !cp_.hasTLM())
-  {
-    batchTileUnscheduledSequential_ = (uint16_t)slated.size();
-    batchTileScheduleHeadroomSequential_ =
-        batchTileHeadroomIncrement(batchTileInitialRows_, batchTileUnscheduledSequential_);
-    batchTileScheduledRows_ = batchTileInitialRows_;
-  }
-
-  // prepare for different types of decompression
+  // prepare for differential decompression
   if(doDifferential)
   {
     differentialUpdate(scratchImage_.get());
-  }
-  else if(cp_.hasTLM())
-  {
-    // a) begin network fetch
-    auto generator = [this](ITileProcessor* tp) {
-      return postMultiTile(tp); // Return the result directly
-    };
-
-    if(fetchByTile(slated, scratchImage_->getBounds(), generator))
-      return true;
-
-    // b) prepare for TLM decompress
-    tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
-    tilePartFetchByTile_ =
-        std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
-    TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), slated, tilePartFetchFlat_,
-                               tilePartFetchByTile_);
-  }
-  else
-  {
-    // a) begin network fetch
-    auto fetcher = stream_->getFetcher();
-    if(stream_->getFetcher())
+    for(auto& tileIndex : pendingTiles)
     {
-      auto chunkSize = cp_.t_width_ * cp_.t_height_;
-      chunkBuffer_ = std::make_shared<ChunkBuffer<>>(chunkSize, markerCache_->getTileStreamStart(),
-                                                     fetcher->size());
-      fetcher->fetchChunks(chunkBuffer_);
-      stream_->setChunkBuffer(chunkBuffer_);
-    }
-
-    // b) prepare for sequential decompress
-    decompressSequentialPrepare();
-  }
-
-  // schedule decompression
-
-  // 1. differential decompression
-  if(doDifferential)
-  {
-    for(auto& tileIndex : slated)
-    {
-      if(doDifferential)
-      {
-        auto cacheEntry = tileCache_->get(tileIndex);
-        auto tileProcessor = cacheEntry->processor;
-        if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
-        {
-          return false;
-        }
-
-        if(!schedule(tileProcessor, true))
-          return false;
-      }
+      auto cacheEntry = tileCache_->get(tileIndex);
+      auto tileProcessor = cacheEntry->processor();
+      if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
+        return false;
+      schedule(tileProcessor, true);
     }
     return true;
   }
 
-  std::function<void()> task;
-  if(cp_.hasTLM())
-    task = [this, slated]() { decompressTLM(slated); };
-  else
-    task = [this]() { decompressSequential(); };
+  activateWalkedTLM(pendingTiles);
+  return cp_.hasTLM() ? startTLMDecompress(pendingTiles) : startSequentialDecompress(pendingTiles);
+}
 
-  decompressWorker_ = std::thread(task);
+bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
+{
+  // TLM markers list every tile part in the codestream
+  const auto& tlmTileParts = cp_.tlmMarkers_->getTileParts();
+  std::erase_if(pendingTiles, [&](uint16_t tileIndex) {
+    const auto& tileParts = tlmTileParts[tileIndex];
+    if(tileParts && !tileParts->empty())
+      return false;
+    if(tileCompletion_)
+      tileCompletion_->complete(tileIndex);
+    return true;
+  });
+
+  // begin network fetch
+  auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
+
+  // Try selective fetch for reduced resolution over network
+  uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+  if(reduce > 0 && stream_->getFetcher())
+  {
+    if(fetchByTileSelective(pendingTiles, scratchImage_->getBounds(), generator))
+      return true;
+  }
+
+  if(fetchByTile(pendingTiles, scratchImage_->getBounds(), generator))
+    return true;
+
+  // prepare TLM decompress
+  tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
+  tilePartFetchByTile_ =
+      std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
+  TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), pendingTiles, tilePartFetchFlat_,
+                             tilePartFetchByTile_);
+
+  // single thread: run the producer inline on the caller, no worker thread
+  if(TFSingleton::isSingleThreaded())
+  {
+    decompressTLM(pendingTiles);
+    return true;
+  }
+
+  // start decompress worker
+  decompressWorker_ = std::thread([this, pendingTiles]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+    decompressTLM(pendingTiles);
+  });
   return true;
 }
 
-bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
+bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pendingTiles)
 {
+  // batch init
+  if(doTileBatching())
+  {
+    batchTileUnscheduledSequential_ = (uint16_t)pendingTiles.size();
+    batchTileScheduleHeadroomSequential_ =
+        batchTileHeadroomIncrement(batchTileInitialRows_, batchTileUnscheduledSequential_);
+    batchTileScheduledRows_ = batchTileInitialRows_;
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
+  }
+
+  // begin network fetch
+  auto fetcher = stream_->getFetcher();
+  if(fetcher)
+  {
+    auto chunkSize = cp_.t_width_ * cp_.t_height_;
+    chunkBuffer_ = std::make_shared<ChunkBuffer<>>(chunkSize, markerCache_->getTileStreamStart(),
+                                                   fetcher->size());
+    fetcher->fetchChunks(chunkBuffer_);
+    stream_->setChunkBuffer(chunkBuffer_);
+  }
+
+  // prepare sequential decompress
+  decompressSequentialPrepare();
+
+  // single thread: run the producer inline on the caller, no worker thread
+  if(TFSingleton::isSingleThreaded())
+  {
+    decompressSequential(pendingTiles);
+    return true;
+  }
+
+  // start decompress worker
+  decompressWorker_ = std::thread([this, pendingTiles]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+    decompressSequential(pendingTiles);
+  });
+  return true;
+}
+
+// a row can only drain once every one of its tiles has been handed to the scheduler
+bool CodeStreamDecompress::bandRowFullyScheduled(uint16_t tileY)
+{
+  if(tileY >= bandRowScheduledTiles_.size())
+    return true;
+
+  return bandRowScheduledTiles_[tileY] >= tilesToDecompress_.getSlatedTileRect().width();
+}
+
+void CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
+{
+  if(tileCompletion_ && !bandRowScheduledTiles_.empty())
+  {
+    uint16_t tileY = tileProcessor->getIndex() / tileCompletion_->getNumTileCols();
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    if(tileY < bandRowScheduledTiles_.size())
+      bandRowScheduledTiles_[tileY]++;
+    bandDrainCV_.notify_one();
+  }
   if(cp_.hasTLM())
   {
     auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
     auto decompressTileTask =
         genDecompressTileTLMTask(tileProcessor, (*tilePartFetchByTile_)[tileProcessor->getIndex()],
                                  scratchImage_->getBounds(), generator);
-    return decompressTileTask();
+    if(!decompressTileTask() && tileCompletion_)
+      tileCompletion_->complete(tileProcessor->getIndex());
   }
   else
   {
     // T2 + T1 decompression
     // Once we schedule a processor for T1 compression, we will destroy it
     // regardless of success or not
+    // When band callback is active, always use the multi-tile post path so that
+    // tile data stays in scratchImage_ for the band writer to consume.
+    bool useMultiPost = multiTile || ioBandCallback_;
     tileProcessor->scheduleAndRunDecompress(
-        &coderPool_, multiTile ? scratchImage_->getBounds() : headerImage_->getBounds(),
-        multiTile ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
+        &coderPool_, useMultiPost ? scratchImage_->getBounds() : headerImage_->getBounds(),
+        scratchImage_.get(),
+        useMultiPost ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
         decompressTileFutureManager_);
-
-    return true;
   }
 }
 
 // TLM ///////////////////////////////////////////////////////////////
 
-void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
+void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
 {
-  // 1 schedule all slated tiles
+  // 1 schedule all pending tiles
   if(!doTileBatching())
   {
-    for(auto& tileIndex : slated)
+    for(const auto& tileIndex : pendingTiles)
     {
-      if(!schedule(getTileProcessor(tileIndex), true))
-        break;
+      // Backpressure for strip-based band callback: block if this tile's row
+      // is too far ahead of the row currently being drained, matching the
+      // sequential path's throttle in sequentialParseAndSchedule().
+      if(ioBandCallback_ && tileCompletion_)
+      {
+        uint16_t numTileCols = tileCompletion_->getNumTileCols();
+        uint16_t tileY = tileIndex / numTileCols;
+        std::unique_lock<std::mutex> lock(bandOrderMutex_);
+        while(!(tileY < nextBandTileY_ + 2 || !success_ || !bandRowFullyScheduled(nextBandTileY_)))
+          bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
+      }
+      schedule(getTileProcessor(tileIndex), true);
     }
     return;
   }
 
-  // 2. push all slated tiles into the queue
-  for(const auto& value : slated)
-    batchTileQueueTLM_.push(value);
+  {
+    std::lock_guard<std::mutex> lock(bandOrderMutex_);
+    bandRowScheduledTiles_.assign(cp_.t_grid_height_, 0);
+  }
+
+  // 2. push all pending tiles into the queue
+  // row-completion callbacks can drain this queue before all tiles are pushed
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    for(const auto& value : pendingTiles)
+      batchTileQueueTLM_.push(value);
+  }
 
   // 3. schedule first  N rows
   uint16_t initialBatchCount =
-      batchTileHeadroomIncrement(batchTileInitialRows_, (uint16_t)slated.size());
+      batchTileHeadroomIncrement(batchTileInitialRows_, (uint16_t)pendingTiles.size());
   batchTileScheduledRows_ = batchTileInitialRows_;
   {
     std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
-    for(size_t i = 0; i < initialBatchCount; ++i)
+    for(size_t i = 0; i < initialBatchCount && !batchTileQueueTLM_.empty(); ++i)
     {
       auto tileIndex = batchTileQueueTLM_.front();
       batchTileQueueTLM_.pop();
-      if(!schedule(getTileProcessor(tileIndex), true))
-        return; // Stop on scheduling failure
+      schedule(getTileProcessor(tileIndex), true);
     }
   }
 
   // Wait for all all tiles to complete
   {
     std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-    batchTileQueueCondition_.wait(lock, [this] { return batchTileQueueTLM_.empty(); });
+    batchTileQueueCondition_.wait(lock, [this] { return batchTileQueueTLM_.empty() || !success_; });
   }
 }
 
@@ -418,7 +1068,7 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
     try
     {
       if(!tileProcessor->decompressWithTLM(tilePartFetchSeq, &coderPool_, unreducedImageBounds,
-                                           post, decompressTileFutureManager_))
+                                           scratchImage_.get(), post, decompressTileFutureManager_))
       {
         return false;
       }
@@ -437,29 +1087,76 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
 
 // Sequential /////////////////////////////////////////////////////////////////////
 
+void CodeStreamDecompress::detectShortNumTileParts(void)
+{
+  numTilePartsChecked_ = true;
+  if(cp_.hasTLM() || stream_->getFetcher())
+    return;
+  const uint64_t streamEnd = stream_->tell() + stream_->numBytesLeft();
+  uint64_t position = markerCache_->getTileStreamStart();
+  for(bool firstSOT = true;; firstSOT = false)
+  {
+    uint8_t sot[sotMarkerSegmentLen];
+    if(position + sotMarkerSegmentLen > streamEnd || !stream_->seek(position) ||
+       stream_->read(sot, nullptr, sotMarkerSegmentLen) != sotMarkerSegmentLen)
+      return;
+    uint8_t* fields = sot;
+    uint16_t marker, segmentLength, tileIndex;
+    uint32_t tilePartLength;
+    uint8_t tilePart, numTileParts;
+    grk_read(&fields, &marker);
+    grk_read(&fields, &segmentLength);
+    grk_read(&fields, &tileIndex);
+    grk_read(&fields, &tilePartLength);
+    grk_read(&fields, &tilePart);
+    grk_read(&fields, &numTileParts);
+    if(marker != SOT)
+      return;
+    if(firstSOT && numTileParts <= 1)
+      return;
+    // TPsot == TNsot means TNsot is one too low for every tile
+    if(numTileParts && tilePart == numTileParts)
+    {
+      cp_.numTilePartsCorrection_ = 1;
+      return;
+    }
+    if(tilePartLength == 0)
+      return;
+    position += tilePartLength;
+  }
+}
+
 void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
+  if(!numTilePartsChecked_)
+    detectShortNumTileParts();
+  if(sotWalkBuildsTLM())
+    cp_.tlmMarkers_->clearSotWalk();
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
   markerParser_.setSOT();
+  // the walk restarts at the first SOT, so the tile a previous walk stopped on
+  // must not decide whether this one has anything to parse
+  currTileIndex_ = -1;
   tileCache_->resetSOTParsing();
   if(cp_.plmMarkers_)
     cp_.plmMarkers_->rewind();
   stream_->memAdvise(stream_->tell(), 0, GrkAccessPattern::ACCESS_RANDOM);
 }
 
-void CodeStreamDecompress::decompressSequential(void)
+void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendingTiles)
 {
   bool foundUnknownMarker = false;
-  while(!markerParser_.endOfCodeStream() && !foundUnknownMarker)
+  auto firstUnparsedTile = pendingTiles.begin();
+  while(!markerParser_.endOfCodeStream() && !foundUnknownMarker && success_)
   {
     // 1. parse and schedule tile
     try
     {
       if(!sequentialParseAndSchedule(true))
       {
-        // If we've exhausted all slated tiles' markers or the codestream
+        // If we've exhausted all pending tiles' markers or the codestream
         // ran out of data (truncated image), stop gracefully.
-        if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()) ||
+        if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile) ||
            markerParser_.endOfCodeStream() || stream_->numBytesLeft() == 0)
           break;
         success_ = false;
@@ -470,6 +1167,11 @@ void CodeStreamDecompress::decompressSequential(void)
     {
       grklog.warn("Found invalid marker : 0x%.4x", ime.marker_);
       success_ = false;
+      break;
+    }
+    catch([[maybe_unused]] const DecodeUnknownMarkerAtEndOfTileException& e)
+    {
+      foundUnknownMarker = true;
       break;
     }
 
@@ -495,27 +1197,58 @@ void CodeStreamDecompress::decompressSequential(void)
     // check for corrupt Adobe files where 5 tile parts per tile are signalled
     // but there are actually 6.
     if(markerParser_.currId() == SOT &&
-       tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()) &&
+       tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile) &&
        markerParser_.checkForIllegalTilePart())
     {
       success_ = false;
       break;
     }
 
-    if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()))
+    if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles, firstUnparsedTile))
       break;
   }
+
+  // Best-effort: schedule incomplete tiles (those with some tile parts parsed
+  // but not all) for decompression with whatever data they have.
+  bool truncatedTiles = false;
+  for(auto tileIndex : pendingTiles)
+  {
+    auto cached = tileCache_->get(tileIndex);
+    if(cached && cached->processor() && !cached->processor()->scheduledForDecompression() &&
+       cached->processor()->hasUnparsedTileParts())
+    {
+      truncatedTiles = true;
+      cached->processor()->setTruncated();
+      cached->processor()->prepareForDecompression();
+      if(!cached->processor()->hasError())
+        schedule(cached->processor(), true);
+      else if(tileCompletion_)
+        tileCompletion_->complete(tileIndex);
+    }
+  }
+  endSequentialWalk(!success_ || foundUnknownMarker || truncatedTiles);
 
   // Mark tiles that were never parsed (missing from truncated codestream)
   // as complete so wait() doesn't hang.  Tiles that WERE parsed are still
   // being decompressed asynchronously and must not be completed here.
   if(tileCompletion_)
   {
-    for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
+    for(auto tileIndex : pendingTiles)
     {
       auto cached = tileCache_->get(tileIndex);
-      if(!cached || !cached->processor || !cached->processor->allSOTMarkersParsed())
+      auto proc = cached ? cached->processor() : nullptr;
+      if(!proc)
+      {
         tileCompletion_->complete(tileIndex);
+        continue;
+      }
+      if(!proc->hasUnparsedTileParts())
+        continue;
+      // failed stages skip their post callback, so best-effort tiles complete
+      // here. wait first: an early complete frees a tile its tasks still use
+      if(proc->scheduledForDecompression())
+        decompressTileFutureManager_.wait(tileIndex);
+      tileCompletion_->complete(tileIndex);
     }
   }
 }
@@ -549,9 +1282,12 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     }
     // Attempt to read next SOT marker. If we hit an invalid marker, we still try to
     // decompress the tile, as truncated.
+    const bool tilePartSkipped =
+        currTileIndex_ == -1 || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_);
     try
     {
-      if(!markerParser_.readId(false))
+      // a skipped tile-part is followed by SOT or EOC, as a parsed one is after its data
+      if(tilePartSkipped ? !markerParser_.readSOTafterSOD() : !markerParser_.readId(false))
         break;
     }
     catch(const t1_t2::InvalidMarkerException& ime)
@@ -571,13 +1307,16 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       uint32_t adjust = sotMarkerSegmentLen + sizeof(uint16_t);
       if(tpl < adjust)
         break;
-      bifurcatedStream = stream_->bifurcate();
       auto skip = (uint64_t)(tpl - adjust);
-      skip = std::min(skip, stream_->numBytesLeft());
-      if(!stream_->skip((int64_t)skip))
+      // memStreamSeek fails a seek to the stream end
+      if(skip < stream_->numBytesLeft())
       {
-        delete bifurcatedStream;
-        break;
+        bifurcatedStream = stream_->bifurcate();
+        if(!stream_->skip((int64_t)skip))
+        {
+          delete bifurcatedStream;
+          break;
+        }
       }
     }
     // parse tile part
@@ -610,9 +1349,16 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       batchTileScheduleHeadroomSequential_--;
       batchTileUnscheduledSequential_--;
     }
+    // the caller is blocked on a row whose tiles are not all scheduled yet
+    else if(batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
+    {
+      batchTileUnscheduledSequential_--;
+    }
     else
     {
       batchTileQueueSequential_.push(tileProcessor);
+      // queued tiles precede this one in parse order and may belong to a waited row
+      scheduleQueuedSequentialForWaitedRows();
       // Block the parser until the queue drains, preventing all compressed
       // tile data from being loaded into memory at once.
       // The queue drains when scheduleTileBatch() calls batchDequeueSequential().
@@ -636,14 +1382,41 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     return true;
   }
 
+  // Backpressure for strip-based band callback: block the parser thread if
+  // this tile's row is too far ahead of the row currently being drained.
+  // Without this, all tiles decompress into memory before any row is written.
+  // Use wait_for with a timeout so we periodically re-check success_ even if
+  // the Taskflow task graph skips the post callback on error.
+  // Tile parts can appear in any order, so a row whose tiles are not all scheduled
+  // yet can only be finished by parsing on, and waiting for it would never end.
+  if(ioBandCallback_ && tileCompletion_)
+  {
+    uint16_t numTileCols = tileCompletion_->getNumTileCols();
+    uint16_t tileY = tileProcessor->getIndex() / numTileCols;
+    std::unique_lock<std::mutex> lock(bandOrderMutex_);
+    while(!(tileY < nextBandTileY_ + 2 || !success_ || !bandRowFullyScheduled(nextBandTileY_)))
+      bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
+  }
+
   // schedule
-  return schedule(tileProcessor, multiTile);
+  schedule(tileProcessor, multiTile);
+  return true;
 }
 
 /// Single Tile ////////////////////////////////////////////////////
 
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
+  // Pin the global executor so a concurrent grk_initialize resize or
+  // grk_deinitialize cannot destroy it while this decode is in flight.
+  // A codec on its own executor never touches the global one, so it is not built for it.
+  auto pinnedExec = localExecutor_ ? nullptr : TFSingleton::acquire();
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // decoding (single-threaded mode only; no-op when localExecutor_ is null).
+  TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
+  // readSeek fails once an earlier decode on this codec reached the stream end
+  stream_->clearEndOfStream();
+
   multiTileComposite_->postReadHeader(&cp_);
 
   // 1. sanity check on tile index
@@ -659,8 +1432,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
   // 2. simply return tile image if it already exists and is not dirty
   // i.e. no differential decompression
   auto cacheEntry = tileCache_->get(tileIndex);
-  if(cacheEntry && cacheEntry->processor && cacheEntry->processor->getImage() &&
-     !cacheEntry->dirty_)
+  if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage() &&
+     !cacheEntry->dirty())
     return true;
 
   // 3. schedule / execute tile decompression
@@ -680,11 +1453,9 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       new GrkImage(), RefCountedDeleter<GrkImage>());
 
   auto cacheEntry = tileCache_->get(tileIndex);
-  if(cacheEntry && cacheEntry->processor && cacheEntry->processor->getImage())
+  if(cacheEntry && cacheEntry->processor() && cacheEntry->processor()->getImage())
   {
-    // if there are already processed packets, then this is a differential decompression
-    // so perform differential update and continue on to decompression
-    auto proc = cacheEntry->processor;
+    auto proc = cacheEntry->processor();
     if(proc->getNumProcessedPackets())
     {
       differentialUpdate(scratchImage_.get());
@@ -724,7 +1495,8 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
                   imageBounds.x0, imageBounds.y0, imageBounds.x1, imageBounds.y1, tileIndex);
       croppedImageBounds = imageBounds;
     }
-    activeImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
+    if(!activeImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
+      return false;
     activeImage_->postReadHeader(&cp_);
   }
 
@@ -732,49 +1504,73 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(!activateScratch(true, scratchImage_.get()))
     return false;
   scratchImage_->has_multiple_tiles = false;
+  const bool tilePartsParsed =
+      cacheEntry && cacheEntry->processor() && cacheEntry->processor()->allSOTMarkersParsed();
+  activateWalkedTLM(tilePartsParsed ? std::set<uint16_t>{} : std::set<uint16_t>{tileIndex});
   // decompress tile
   if(!cp_.hasTLM())
   {
     bool invalidMarker = false;
-    // a.parse remaining tile parts
-    auto tileProcessor = cacheEntry ? cacheEntry->processor : nullptr;
-    if(!tileProcessor || !tileProcessor->allSOTMarkersParsed())
+    auto tileProcessor = cacheEntry ? cacheEntry->processor() : nullptr;
+
+    if(tileProcessor && tileProcessor->allSOTMarkersParsed() &&
+       tileProcessor->getNumProcessedPackets() > 0)
     {
+      // (a) Fully parsed + packets ready → schedule T1/T2 directly
+      schedule(tileProcessor, false);
+    }
+    else if(tileProcessor && tileProcessor->allSOTMarkersParsed())
+    {
+      // (b) SOTs known from previous decode, packets not parsed →
+      //     direct-seek parse using cached tile-part offsets
+      if(!tileProcessor->decompressFromCachedTileParts())
+        return false;
+      schedule(tileProcessor, false);
+    }
+    else
+    {
+      // (c) No SOT info → full sequential parse (first decode)
       decompressSequentialPrepare();
       try
       {
         if(!sequentialParseAndSchedule(false))
+        {
+          endSequentialWalk(true);
           return false;
+        }
       }
       catch(const t1_t2::InvalidMarkerException& ime)
       {
         grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         invalidMarker = true;
       }
-    }
-    else
-    {
-      // c. schedule decompression
-      if(!schedule(tileProcessor, false))
-        return false;
-    }
-
-    // b. If not cached, check for corrupt Adobe images where a final tile part is not parsed
-    // due to incorrectly-signalled number of tile parts.
-    if(!invalidMarker && !cacheEntry)
-    {
-      try
+      catch([[maybe_unused]] const DecodeUnknownMarkerAtEndOfTileException& e)
       {
-        if(markerParser_.readSOTorEOC() && markerParser_.currId() == SOT)
+        endSequentialWalk(true);
+        return false;
+      }
+
+      // Check for corrupt Adobe images where a final tile part is not parsed
+      // due to incorrectly-signalled number of tile parts.
+      if(!invalidMarker && !cacheEntry)
+      {
+        try
         {
-          if(markerParser_.checkForIllegalTilePart())
-            return false;
+          if(markerParser_.readSOTorEOC() && markerParser_.currId() == SOT)
+          {
+            if(markerParser_.checkForIllegalTilePart())
+            {
+              endSequentialWalk(true);
+              return false;
+            }
+          }
+        }
+        catch(const t1_t2::InvalidMarkerException& ime)
+        {
+          grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         }
       }
-      catch(const t1_t2::InvalidMarkerException& ime)
-      {
-        grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
-      }
+      endSequentialWalk(invalidMarker);
     }
 
     return true;
@@ -788,14 +1584,14 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(fetchByTile(slated, headerImage_->getBounds(), generator))
     return true;
 
-  const auto tileProcessor = cacheEntry ? cacheEntry->processor : getTileProcessor(tileIndex);
+  const auto tileProcessor = cacheEntry ? cacheEntry->processor() : getTileProcessor(tileIndex);
   auto post = postSingleTile(tileProcessor);
   tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
   tilePartFetchFlat_->push_back(tileIndex, cp_.tlmMarkers_->getTileParts()[tileIndex]);
   try
   {
     if(!tileProcessor->decompressWithTLM(tilePartFetchFlat_, &coderPool_, headerImage_->getBounds(),
-                                         post, decompressTileFutureManager_))
+                                         scratchImage_.get(), post, decompressTileFutureManager_))
     {
       return false;
     }
@@ -814,6 +1610,8 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
 std::function<void()> CodeStreamDecompress::postSingleTile(ITileProcessor* tileProcessor)
 {
   return [this, tileProcessor]() {
+    if(tileProcessor->hasError())
+      return;
     auto rawActive = activeImage_.release();
     tileProcessor->post_decompressT2T1(scratchImage_.get());
     scratchImage_->transferDataTo(rawActive);
@@ -868,8 +1666,15 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
     }
     if(!cp_.codingParams_.dec_.skipAllocateComposite_)
     {
-      scratchImage_->transferDataTo(multiTileComposite_.get());
-      success_ = postProcess(multiTileComposite_.get());
+      // an empty scratch would replace the composite pixels with nulls: incremental band
+      // writes consumed the rows, and a repeat run with every tile cached never refilled it
+      bool scratchHoldsData = scratchImage_ && scratchImage_->comps && scratchImage_->comps[0].data;
+      if(!ioBandCallback_ && scratchHoldsData)
+      {
+        scratchImage_->transferDataTo(multiTileComposite_.get());
+        if(!postProcess(multiTileComposite_.get()))
+          success_ = false;
+      }
     }
   };
 }
@@ -902,41 +1707,83 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
         fetcher->notifyThrottleRelease();
     };
 
-    if(!success_)
+    if(tileProcessor->hasError())
     {
       releaseThrottle();
+      if(tileCompletion_)
+        tileCompletion_->complete(tileProcessor->getIndex());
+      return;
+    }
+    if(!success_ || !ensureScratchData())
+    {
+      success_ = false;
+      releaseThrottle();
+      // Always mark tile as complete so row callbacks can fire and
+      // backpressure unblocks, even when the decompress failed.
+      if(tileCompletion_)
+        tileCompletion_->complete(tileProcessor->getIndex());
       return;
     }
     tileProcessor->post_decompressT2T1(scratchImage_.get());
     tileProcessor->setBestEffortDecompressed();
     numTilesDecompressed_++;
+
+    // Release throttle early: decompression is done, free the slot for other tiles.
+    // This prevents deadlock when strip-based band callback blocks tiles from future rows.
+    releaseThrottle();
+
     auto tileImage = tileProcessor->getImage();
     if(!cp_.codingParams_.dec_.skipAllocateComposite_ && scratchImage_->has_multiple_tiles &&
        tileImage)
     {
-      success_ = scratchImage_->composite(tileImage);
+      // When using strip-based band callback, skip composite here;
+      // it will be done in the row callback after all tiles in the row are complete.
+      // only ever clear success_: the parse thread can fail the whole decode
+      // while this runs, and writing true here would erase that
+      if(!ioBandCallback_ && !scratchImage_->composite(tileImage))
+        success_ = false;
     }
     // complete tile
     auto tileIndex = tileProcessor->getIndex();
     if(cp_.decompressCallback_)
+    {
+      // the callback expects zero-filled data for components with no code blocks
+      if(tileImage)
+      {
+        for(uint16_t compno = 0; compno < tileImage->numcomps; ++compno)
+        {
+          auto comp = tileImage->comps + compno;
+          if(!comp->data && comp->w && comp->h)
+            GrkImage::allocData(comp, true);
+        }
+      }
       cp_.decompressCallback_(this, tileIndex, tileImage, cp_.codingParams_.dec_.reduce_,
                               cp_.decompressCallbackUserData_);
+    }
 
     if(tileCompletion_)
       tileCompletion_->complete(tileIndex);
     else
       tileProcessor->release();
-
-    releaseThrottle();
   };
 }
 
 //////////////////////////////////////////////////////////////////
 
+Rect32 CodeStreamDecompress::tileGridBounds(void) const
+{
+  // clip to UINT32_MAX so a grid extent wider than uint32_t does not wrap to 0
+  uint64_t x1 = (uint64_t)cp_.tx0_ + (uint64_t)cp_.t_grid_width_ * cp_.t_width_;
+  uint64_t y1 = (uint64_t)cp_.ty0_ + (uint64_t)cp_.t_grid_height_ * cp_.t_height_;
+
+  return Rect32(cp_.tx0_, cp_.ty0_, (uint32_t)std::min<uint64_t>(x1, UINT32_MAX),
+                (uint32_t)std::min<uint64_t>(y1, UINT32_MAX));
+}
+
 bool CodeStreamDecompress::setDecompressRegion(RectD region)
 {
+  compositeBoundsReduced_ = false;
   auto image = headerImage_;
-  auto imageBounds = headerImage_->getBounds();
 
   if(region != RectD(0, 0, 0, 0))
   {
@@ -955,6 +1802,23 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       region.y0 = (double)floor(val[1] * h);
       region.x1 = (double)ceil(val[2] * w);
       region.y1 = (double)ceil(val[3] * h);
+    }
+    else if(cp_.dw_reduced && cp_.codingParams_.dec_.reduce_ > 0)
+    {
+      // Caller passes coordinates in the reduced output space;
+      // scale up to full-resolution for internal processing.
+      uint32_t scale = 1u << cp_.codingParams_.dec_.reduce_;
+      region.x0 *= scale;
+      region.y0 *= scale;
+      region.x1 *= scale;
+      region.y1 *= scale;
+      // a rounded-up reduced image edge scales past the full image edge
+      auto w = double(image->x1 - image->x0);
+      auto h = double(image->y1 - image->y0);
+      if(region.x1 > w && region.x1 - w < scale)
+        region.x1 = w;
+      if(region.y1 > h && region.y1 - h < scale)
+        region.y1 = h;
     }
     Rect16 tilesToDecompress;
     auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,
@@ -1026,15 +1890,20 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       multiTileComposite_->y1 = canvasRegion.y1;
     }
     tilesToDecompress_.slate(tilesToDecompress);
+    // a cached tile holds the pixels of the window it was decoded at, so a new
+    // window has to decompress it again
+    if(region_ != Rect32() && region_ != canvasRegion)
+    {
+      tileCache_->discardTiles();
+      compositeDecompressed_ = false;
+    }
     region_ = canvasRegion;
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
       tileCompletion_ = std::make_unique<TileCompletion>(
-          tileCache_.get(), imageBounds, cp_.t_width_, cp_.t_height_,
-          [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
-            onRowCompleted(tileIndexBegin, tileIndexEnd);
-          },
+          tileCache_.get(), tileGridBounds(), cp_.t_width_, cp_.t_height_,
+          [this](uint16_t tileIndexBegin, uint16_t) { onRowCompleted(tileIndexBegin); },
           [this]() {
             scheduleTileBatch();
             // Wake the fetcher so it can re-check the row-based throttle
@@ -1043,6 +1912,8 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
               fetcher->notifyThrottleRelease();
           },
           tilesToDecompress);
+      // swath waits on a new TileCompletion return only for tiles a new decompress delivers
+      compositeDecompressed_ = false;
     }
     if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
       return false;
@@ -1069,7 +1940,10 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
 
 bool CodeStreamDecompress::doTileBatching(void)
 {
-  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_;
+  // single thread runs the producer inline; batching throttles against a
+  // consumer thread that does not exist, so disable it.
+  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_ &&
+         !TFSingleton::isSingleThreaded();
 }
 
 uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft)
@@ -1077,19 +1951,15 @@ uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint
   return std::min(uint16_t(tilesToDecompress_.getSlatedTileRect().width() * numRows), tilesLeft);
 }
 
-bool CodeStreamDecompress::batchDequeueSequential(void)
+void CodeStreamDecompress::batchDequeueSequential(void)
 {
   while((batchTileScheduleHeadroomSequential_ > 0) && !batchTileQueueSequential_.empty())
   {
-    auto t = batchTileQueueSequential_.front();
-    if(!schedule(t, true) && !success_)
-      return false;
+    schedule(batchTileQueueSequential_.front(), true);
     batchTileQueueSequential_.pop();
     batchTileScheduleHeadroomSequential_--;
     batchTileUnscheduledSequential_--;
   }
-
-  return true;
 }
 
 // Wait  //////////////////////////////////////////////
@@ -1132,7 +2002,7 @@ void CodeStreamDecompress::wait(uint16_t tile_index)
  *
  * **Swath-based (swath != nullptr, tileCompletion_ active):**
  * Returns as soon as the requested swath tiles are decompressed.
- * Tile data is available via entry->processor->getImage() for multi-tile
+ * Tile data is available via entry->processor()->getImage() for multi-tile
  * images (has_multiple_tiles=true), or in scratchImage_ for single-tile
  * images.  NOTE: postMulti_() does NOT run in this path, so
  * scratchImage_ data is raw (no postProcess).  Callers needing
@@ -1149,17 +2019,53 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
   // 1. Swath-based early return: tile data ready but NOT post-processed
   if(swath && tileCompletion_)
   {
-    bool rc = tileCompletion_->wait(swath);
+    // When caller passed reduced coordinates (dw_reduced), scale up to
+    // full-resolution for TileCompletion which uses unreduced tile grid.
+    grk_wait_swath fullResSwath = *swath;
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    if(cp_.dw_reduced && reduce > 0)
+    {
+      uint32_t scale = 1u << reduce;
+      fullResSwath.x0 *= scale;
+      fullResSwath.y0 *= scale;
+      fullResSwath.x1 *= scale;
+      fullResSwath.y1 *= scale;
+    }
+    bool rc = tileCompletion_->wait(&fullResSwath);
+    // Copy output tile indices back to caller's swath
+    swath->tile_x0 = fullResSwath.tile_x0;
+    swath->tile_y0 = fullResSwath.tile_y0;
+    swath->tile_x1 = fullResSwath.tile_x1;
+    swath->tile_y1 = fullResSwath.tile_y1;
+    swath->num_tile_cols = fullResSwath.num_tile_cols;
     if(!rc)
       return;
-    // When swath-based waiting is active the fetch/decompress pipeline
-    // completes progressively, driven by row releases.  Return after
-    // the swath tiles are ready — full cleanup happens on the final
-    // call (swath == null).
     return;
   }
 
-  // 2. wait for sequential parse
+  if(mercuryAsync_)
+  {
+    mercuryAsync_->finish();
+    return;
+  }
+
+  // 2a. Flush batch queues when using non-swath full wait.
+  // When tileCompletion_ is active but wait(nullptr) is called (not swath-based),
+  // the back-pressure logic in scheduleTileBatch() prevents scheduling queued tiles
+  // because lastCleared never advances (no swath consumer). Force-schedule all
+  // remaining tiles so the worker thread can exit.
+  // Also unblock the fetch throttle for selective fetch (fetchByTileSelective),
+  // which uses the row-based throttle even in synchronous mode.
+  if(tileCompletion_)
+  {
+    // Remove the scheduling limit so scheduleTileBatch can drain
+    batchTileScheduledRows_ = 0;
+    tileCompletion_->setLastClearedTileY(INT16_MAX);
+    if(doTileBatching())
+      scheduleRemainingTiles();
+  }
+
+  // 2b. wait for sequential parse
   if(decompressWorker_.joinable())
     decompressWorker_.join();
 
@@ -1231,6 +2137,56 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
   if(!swath || !buf || !buf->data || buf->prec == 0)
     return;
 
+  // a single-threaded executor has no workers to run copy tasks
+  const bool copyInline = TFSingleton::get().num_workers() == 0;
+
+  auto copyInRowBands = [&](const std::shared_ptr<std::vector<GrkImage*>>& tileImages) {
+    if(copyInline)
+    {
+      for(GrkImage* tileImg : *tileImages)
+        hwy_copy_tile_to_swath(tileImg, buf);
+      return;
+    }
+
+    // linux counts a fault on every thread whose first write lands on a page another thread is faulting in
+    const uint32_t swathRows = buf->y1 - buf->y0;
+    const auto numRowBands =
+        static_cast<uint32_t>(std::min<size_t>(TFSingleton::get().num_workers(), swathRows));
+    tf::Taskflow tf_copy;
+    for(uint32_t band = 0; band < numRowBands; ++band)
+    {
+      grk_swath_buffer rowBand = *buf;
+      rowBand.y0 = buf->y0 + swathRows * band / numRowBands;
+      rowBand.y1 = buf->y0 + swathRows * (band + 1) / numRowBands;
+      rowBand.data = static_cast<uint8_t*>(buf->data) +
+                     static_cast<int64_t>(rowBand.y0 - buf->y0) * buf->line_space;
+      tf_copy.emplace([tileImages, rowBand]() {
+        for(GrkImage* tileImg : *tileImages)
+          hwy_copy_tile_to_swath(tileImg, &rowBand);
+      });
+    }
+    const uint16_t firstTileIndex =
+        static_cast<uint16_t>(swath->tile_y0 * swath->num_tile_cols + swath->tile_x0);
+    swathCopyFutureManager_.add(firstTileIndex, TFSingleton::get().run(std::move(tf_copy)));
+  };
+
+  if(mercuryAsync_)
+  {
+    auto tileImages = std::make_shared<std::vector<GrkImage*>>();
+    for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
+      for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
+      {
+        const uint16_t tidx = static_cast<uint16_t>(ty * swath->num_tile_cols + tx);
+        const size_t before = tileImages->size();
+        mercuryAsync_->imagesForSwath(tidx, buf->y0, buf->y1, *tileImages);
+        if(tileImages->size() == before)
+          grklog.error("swath copy: tile %u has no decoded rows in the swath", (uint32_t)tidx);
+      }
+    copyInRowBands(tileImages);
+    return;
+  }
+
+  auto tileImages = std::make_shared<std::vector<GrkImage*>>();
   for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
   {
     for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
@@ -1241,27 +2197,28 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       auto* entry = tileCache_->get(tidx);
       if(entry)
       {
-        tileImg = entry->processor->getImage();
+        tileImg = entry->processor()->getImage();
         // Single-tile path: image_ is not set; data is in scratchImage_
         // after the swath-based wait (tileCompletion early return).
         // If wait(nullptr) has run instead, scratchImage_ will be empty
         // and callers must use getImage() / multiTileComposite_.
+        // after a full wait the single tile's pixels sit in the composite instead
         if(!tileImg)
-          tileImg = scratchImage_.get();
+        {
+          const bool scratchHasPixels =
+              scratchImage_ && scratchImage_->comps && scratchImage_->comps[0].data;
+          tileImg = scratchHasPixels ? scratchImage_.get() : multiTileComposite_.get();
+        }
       }
       else
         tileImg = multiTileComposite_.get();
 
-      if(!tileImg)
-        continue;
-
-      // Submit the copy+convert task to the shared Taskflow executor.
-      tf::Taskflow tf_copy;
-      tf_copy.emplace([tileImg, buf]() { hwy_copy_tile_to_swath(tileImg, buf); });
-
-      swathCopyFutureManager_.add(tidx, TFSingleton::get().run(std::move(tf_copy)));
+      if(tileImg)
+        tileImages->push_back(tileImg);
     }
   }
+
+  copyInRowBands(tileImages);
 }
 
 void CodeStreamDecompress::waitSwathCopy()
@@ -1269,7 +2226,7 @@ void CodeStreamDecompress::waitSwathCopy()
   swathCopyFutureManager_.waitAndClear();
 }
 
-void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd)
+void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin)
 {
   if(!doTileBatching())
     return;
@@ -1285,6 +2242,84 @@ void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tile
   }
 
   scheduleTileBatch();
+}
+
+bool CodeStreamDecompress::swathRowsFullyScheduled(int32_t lastClearedTileY, int32_t neededTileY1)
+{
+  // rows above the slated region are never scheduled, so they must stay out of the range
+  int32_t firstRow =
+      std::max(lastClearedTileY + 1, (int32_t)tilesToDecompress_.getSlatedTileRect().y0);
+  std::lock_guard<std::mutex> lock(bandOrderMutex_);
+  for(int32_t tileY = firstRow; tileY < neededTileY1; ++tileY)
+  {
+    if(!bandRowFullyScheduled((uint16_t)tileY))
+      return false;
+  }
+
+  return true;
+}
+
+bool CodeStreamDecompress::waitedRowsFullyScheduled(void)
+{
+  return !tileCompletion_ || swathRowsFullyScheduled(tileCompletion_->getLastClearedTileY(),
+                                                     tileCompletion_->getNeededTileY1());
+}
+
+// tile parts can appear in any order, so the tile that finishes a waited row may sit
+// past the window
+void CodeStreamDecompress::scheduleQueuedForWaitedRows(void)
+{
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    if(cp_.hasTLM())
+    {
+      while(!batchTileQueueTLM_.empty() && !waitedRowsFullyScheduled())
+      {
+        auto tileIndex = batchTileQueueTLM_.front();
+        batchTileQueueTLM_.pop();
+        schedule(getTileProcessor(tileIndex), true);
+      }
+    }
+    else
+    {
+      scheduleQueuedSequentialForWaitedRows();
+    }
+  }
+  batchTileQueueCondition_.notify_one();
+}
+
+void CodeStreamDecompress::scheduleQueuedSequentialForWaitedRows(void)
+{
+  while(!batchTileQueueSequential_.empty() && !waitedRowsFullyScheduled())
+  {
+    auto tileProcessor = batchTileQueueSequential_.front();
+    batchTileQueueSequential_.pop();
+    batchTileUnscheduledSequential_--;
+    schedule(tileProcessor, true);
+  }
+}
+
+// the last tile row can complete before the parser queues the last tiles
+void CodeStreamDecompress::scheduleRemainingTiles(void)
+{
+  {
+    std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
+    if(cp_.hasTLM())
+    {
+      while(!batchTileQueueTLM_.empty())
+      {
+        auto tileIndex = batchTileQueueTLM_.front();
+        batchTileQueueTLM_.pop();
+        schedule(getTileProcessor(tileIndex), true);
+      }
+    }
+    else
+    {
+      batchTileScheduleHeadroomSequential_ = batchTileUnscheduledSequential_;
+      batchDequeueSequential();
+    }
+  }
+  batchTileQueueCondition_.notify_one();
 }
 
 void CodeStreamDecompress::scheduleTileBatch()
@@ -1303,11 +2338,17 @@ void CodeStreamDecompress::scheduleTileBatch()
     if(neededRow > maxAllowedRow)
       maxAllowedRow = neededRow;
     if(batchTileScheduledRows_ >= maxAllowedRow)
+    {
+      scheduleQueuedForWaitedRows();
       return;
-    // Only schedule enough rows to fill the window, not the full batchTileNextRows_
-    int32_t rowsBudget = maxAllowedRow - batchTileScheduledRows_;
-    if(rowsBudget < rowsToSchedule)
-      rowsToSchedule = static_cast<uint16_t>(rowsBudget);
+    }
+    else
+    {
+      // Only schedule enough rows to fill the window, not the full batchTileNextRows_
+      int32_t rowsBudget = maxAllowedRow - batchTileScheduledRows_;
+      if(rowsBudget < rowsToSchedule)
+        rowsToSchedule = static_cast<uint16_t>(rowsBudget);
+    }
   }
 
   uint16_t numTileCols = tilesToDecompress_.getSlatedTileRect().width();
@@ -1322,12 +2363,7 @@ void CodeStreamDecompress::scheduleTileBatch()
       {
         auto tileIndex = batchTileQueueTLM_.front();
         batchTileQueueTLM_.pop();
-        if(!schedule(getTileProcessor(tileIndex), true))
-        {
-          lock.unlock();
-          batchTileQueueCondition_.notify_one();
-          return;
-        }
+        schedule(getTileProcessor(tileIndex), true);
       }
       if(numTileCols > 0)
         batchTileScheduledRows_ += rowsToSchedule;
@@ -1352,6 +2388,7 @@ void CodeStreamDecompress::startDecompressConsumer(uint16_t maxInFlight)
   maxDecompressInFlight_ = maxInFlight;
   decompressQueue_ = std::make_unique<ConcurrentQueue<std::function<void()>>>();
   decompressConsumer_ = std::thread([this]() {
+    TFSingleton::ScopedExecutor scopedExec(localExecutor_.get(), localNumThreads_);
     std::function<void()> task;
     while(decompressQueue_->pop(task))
     {
@@ -1381,36 +2418,16 @@ bool CodeStreamDecompress::fetchByTile(
   startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
                                    (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
 
-  // Back pressure: prevent the fetcher from scheduling more HTTP requests
-  // when either (a) too many tiles are in-flight for decompression, or
-  // (b) the fetcher is too far ahead of the consumer (swath-based release).
   auto numTileCols = cp_.t_grid_width_;
-  fetcher->setFetchThrottle([this, numTileCols]() {
-    // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
-    // the last row released by the consumer.
-    if(tileCompletion_)
-    {
-      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
-      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
-      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
-        return false;
-    }
-    // In-flight: don't overwhelm the decompress pipeline
-    uint16_t inFlight;
-    {
-      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
-      inFlight = decompressInFlight_;
-    }
-    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
-  });
+  installFetchThrottle(fetcher);
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
       [this, numTileCols, unreducedImageBounds, postGenerator](size_t requestIndex,
                                                                TileFetchContext* context) {
         auto& tilePart = (*context->requests_)[requestIndex];
-        tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
-            tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
+        tilePart->stream_ = std::unique_ptr<IStream>(
+            memStreamCreate(tilePart->data_.get(), tilePart->length_, stream_->getFormat(), true));
         auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
         if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
         {
@@ -1442,6 +2459,568 @@ bool CodeStreamDecompress::fetchByTile(
   return true;
 }
 
+void CodeStreamDecompress::enqueueTileForDecompress(
+    uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq, uint16_t numTileCols,
+    Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
+{
+  if(compressedChunkCache_)
+    compressedChunkCache_->put(tileIndex, decompressSeq);
+
+  int32_t tileRow = tileIndex / numTileCols;
+  int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
+  while(prev < tileRow && !maxFetchedTileRow_.compare_exchange_weak(
+                              prev, tileRow, std::memory_order_release, std::memory_order_acquire))
+  {
+  }
+  decompressQueue_->push([this, tileIndex, decompressSeq, unreducedImageBounds, postGenerator]() {
+    const auto tileProcessor = getTileProcessor(tileIndex);
+    auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
+    if(tp)
+      tp->setSelectiveFetch(true);
+    auto decompressTask =
+        genDecompressTileTLMTask(tileProcessor, decompressSeq, unreducedImageBounds, postGenerator);
+    decompressTask();
+  });
+}
+
+void CodeStreamDecompress::buildSelectiveTileParts(uint16_t tileIndex, const TileHeaderResult& hdr,
+                                                   const TPSEQ_VEC& allTileParts, uint8_t reduce)
+{
+  auto numComps = headerImage_->numcomps;
+  Rect32 imageBounds(headerImage_->x0, headerImage_->y0, headerImage_->x1, headerImage_->y1);
+  auto& srcParts = allTileParts[tileIndex];
+
+  auto copyFullTileParts = [&]() {
+    selectiveTileParts_[tileIndex] = std::make_unique<TPSeq>();
+    for(size_t i = 0; i < srcParts->size(); ++i)
+    {
+      auto& part = (*srcParts)[i];
+      selectiveTileParts_[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(),
+                                                part->offset_, (uint32_t)part->length_);
+    }
+  };
+
+  bool allValid = true;
+  for(auto& info : hdr.headerInfos)
+  {
+    if(!info.valid || info.pltLengths.empty())
+    {
+      allValid = false;
+      break;
+    }
+  }
+
+  if(!allValid)
+  {
+    copyFullTileParts();
+    return;
+  }
+
+  // Compute tile bounds
+  uint16_t tileX = tileIndex % cp_.t_grid_width_;
+  uint16_t tileY = tileIndex / cp_.t_grid_width_;
+  auto tileBounds = cp_.getTileBounds(imageBounds, tileX, tileY);
+
+  // Get coding params from default TCP (main header - tile TCPs aren't parsed yet)
+  auto tcp = defaultTcp_.get();
+
+  // Combine PLT lengths from all tile-parts
+  std::vector<uint32_t> allPltLengths;
+  for(auto& info : hdr.headerInfos)
+    allPltLengths.insert(allPltLengths.end(), info.pltLengths.begin(), info.pltLengths.end());
+
+  // Build TilePacketInfo
+  TilePacketInfo tpi;
+  tpi.progression = tcp->prg_;
+  tpi.numComponents = numComps;
+  tpi.numLayers = tcp->numLayers_;
+  tpi.numResolutions.resize(numComps);
+  tpi.precinctsPerRes.resize(numComps);
+  tpi.pltLengths = std::move(allPltLengths);
+
+  for(uint16_t compno = 0; compno < numComps; ++compno)
+  {
+    auto tccp = tcp->tccps_ + compno;
+    auto comp = headerImage_->comps + compno;
+    tpi.numResolutions[compno] = tccp->numresolutions_;
+
+    uint32_t tcx0 = (uint32_t)((tileBounds.x0 + comp->dx - 1) / comp->dx);
+    uint32_t tcy0 = (uint32_t)((tileBounds.y0 + comp->dy - 1) / comp->dy);
+    uint32_t tcx1 = (uint32_t)((tileBounds.x1 + comp->dx - 1) / comp->dx);
+    uint32_t tcy1 = (uint32_t)((tileBounds.y1 + comp->dy - 1) / comp->dy);
+
+    tpi.precinctsPerRes[compno].resize(tccp->numresolutions_);
+    for(uint8_t resno = 0; resno < tccp->numresolutions_; ++resno)
+    {
+      tpi.precinctsPerRes[compno][resno] =
+          computeNumPrecincts(tcx0, tcy0, tcx1, tcy1, tccp->numresolutions_, resno,
+                              tccp->precWidthExp_[resno], tccp->precHeightExp_[resno]);
+    }
+  }
+
+  // Compute target resolution count (total res - reduce)
+  uint8_t maxRes = 0;
+  for(uint16_t c = 0; c < numComps; ++c)
+    maxRes = std::max(maxRes, tpi.numResolutions[c]);
+  uint8_t targetRes = (maxRes > reduce) ? (maxRes - reduce) : 1;
+
+  auto ranges = computeSelectiveFetchRanges(tpi, targetRes);
+
+  if(ranges.empty())
+  {
+    copyFullTileParts();
+    return;
+  }
+
+  // Check if ranges are contiguous starting at offset 0 (RLCP/RPCL/single-layer LRCP)
+  bool contiguous = (ranges.size() == 1 && ranges[0].offset == 0);
+
+  selectiveTileParts_[tileIndex] = std::make_unique<TPSeq>();
+
+  if(contiguous)
+  {
+    // Contiguous case: single truncated fetch per tile-part
+    uint64_t neededDataBytes = ranges[0].length;
+    if(srcParts->size() == 1)
+    {
+      auto& part = (*srcParts)[0];
+      auto& headerInfo = hdr.headerInfos[0];
+      uint64_t truncatedLen = headerInfo.sodOffset + 2 + neededDataBytes;
+      truncatedLen = std::min<uint64_t>(truncatedLen, part->length_);
+      selectiveTileParts_[tileIndex]->push_back(0, 1, part->offset_, (uint32_t)truncatedLen);
+    }
+    else
+    {
+      // Multiple tile-parts: distribute needed bytes across tile-parts
+      uint64_t remainingNeeded = neededDataBytes;
+      for(size_t i = 0; i < srcParts->size(); ++i)
+      {
+        auto& part = (*srcParts)[i];
+        auto& headerInfo = hdr.headerInfos[i];
+        if(!headerInfo.valid)
+        {
+          selectiveTileParts_[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(),
+                                                    part->offset_, (uint32_t)part->length_);
+          continue;
+        }
+        uint64_t tpDataSize = part->length_ - headerInfo.sodOffset - 2;
+        if(remainingNeeded >= tpDataSize)
+        {
+          selectiveTileParts_[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(),
+                                                    part->offset_, (uint32_t)part->length_);
+          remainingNeeded -= tpDataSize;
+        }
+        else
+        {
+          uint64_t truncatedLen = headerInfo.sodOffset + 2 + remainingNeeded;
+          selectiveTileParts_[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(),
+                                                    part->offset_, (uint32_t)truncatedLen);
+          remainingNeeded = 0;
+        }
+      }
+    }
+  }
+  else
+  {
+    // Disjoint case: create synthetic entries for header + each data range
+    // Only supports single tile-part tiles
+    if(srcParts->size() != 1)
+    {
+      // Fallback: fetch full for multi-tile-part tiles with disjoint ranges
+      copyFullTileParts();
+      return;
+    }
+
+    auto& part = (*srcParts)[0];
+    auto& headerInfo = hdr.headerInfos[0];
+    uint8_t numEntries = (uint8_t)(1 + ranges.size()); // header + data ranges
+
+    // Entry 0: header (tile-part start to SOD+2)
+    uint32_t headerLen = (uint32_t)(headerInfo.sodOffset + 2);
+    selectiveTileParts_[tileIndex]->push_back(0, numEntries, part->offset_, headerLen);
+
+    // Entries 1..N: data ranges (offset relative to tile-part packet data start)
+    uint64_t dataStart = part->offset_ + headerInfo.sodOffset + 2;
+    for(size_t r = 0; r < ranges.size(); ++r)
+    {
+      uint64_t rangeFileOffset = dataStart + ranges[r].offset;
+      uint32_t rangeLen = (uint32_t)ranges[r].length;
+      selectiveTileParts_[tileIndex]->push_back((uint8_t)(1 + r), numEntries, rangeFileOffset,
+                                                rangeLen);
+    }
+  }
+}
+
+std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> CodeStreamDecompress::reusePhase1Data(
+    std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
+    const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
+    const TPSEQ_VEC& allTileParts)
+{
+  std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> prefetchedTiles;
+
+  for(auto it = selectiveFetchTiles->begin(); it != selectiveFetchTiles->end();)
+  {
+    auto tileIndex = *it;
+    auto& selParts = selectiveTileParts_[tileIndex];
+    auto headerIt = headerResults.find(tileIndex);
+    if(!selParts || headerIt == headerResults.end())
+    {
+      ++it;
+      continue;
+    }
+    auto& hdr = headerIt->second;
+    auto& srcParts = allTileParts[tileIndex];
+    bool isDjoint = (selParts->size() != srcParts->size());
+
+    // Check if all entries' data fits within Phase 1 buffers
+    bool allFit = true;
+    if(!isDjoint)
+    {
+      // Contiguous: each entry maps 1:1 to a tile-part's Phase 1 buffer
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        if(i >= hdr.headerSizes.size() || !hdr.headerData[i] ||
+           (*selParts)[i]->length_ > hdr.headerSizes[i])
+        {
+          allFit = false;
+          break;
+        }
+      }
+    }
+    else
+    {
+      // Disjoint (single tile-part only): entries are sub-ranges within the one buffer
+      if(srcParts->size() != 1 || hdr.headerSizes.empty() || !hdr.headerData[0])
+      {
+        allFit = false;
+      }
+      else
+      {
+        uint64_t baseOffset = (*srcParts)[0]->offset_;
+        uint32_t bufSize = hdr.headerSizes[0];
+        for(size_t i = 0; i < selParts->size(); ++i)
+        {
+          auto& entry = (*selParts)[i];
+          uint64_t relOff = entry->offset_ - baseOffset;
+          if(relOff + entry->length_ > bufSize)
+          {
+            allFit = false;
+            break;
+          }
+        }
+      }
+    }
+    if(!allFit)
+    {
+      ++it;
+      continue;
+    }
+
+    // Build decompression sequence from Phase 1 data
+    if(!isDjoint)
+    {
+      auto decompressSeq = std::make_shared<TPFetchSeq>();
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        auto& entry = (*selParts)[i];
+        auto fetch = std::make_shared<TPFetch>(entry->offset_, entry->length_, tileIndex);
+        fetch->data_ = std::make_unique<uint8_t[]>(entry->length_);
+        std::memcpy(fetch->data_.get(), hdr.headerData[i].get(), entry->length_);
+        fetch->stream_ = std::unique_ptr<IStream>(
+            memStreamCreate(fetch->data_.get(), fetch->length_, stream_->getFormat(), true));
+        decompressSeq->SharedPtrSeq<TPFetch>::push_back(fetch);
+      }
+      prefetchedTiles.push_back({tileIndex, decompressSeq});
+    }
+    else
+    {
+      // Disjoint: assemble header + data ranges into single contiguous buffer
+      uint64_t baseOffset = (*srcParts)[0]->offset_;
+      uint64_t totalSize = 0;
+      for(size_t i = 0; i < selParts->size(); ++i)
+        totalSize += (*selParts)[i]->length_;
+
+      auto assembled = std::make_unique<uint8_t[]>(totalSize);
+      uint64_t pos = 0;
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        auto& entry = (*selParts)[i];
+        uint64_t relOff = entry->offset_ - baseOffset;
+        std::memcpy(assembled.get() + pos, hdr.headerData[0].get() + relOff, entry->length_);
+        pos += entry->length_;
+      }
+
+      auto decompressSeq = std::make_shared<TPFetchSeq>();
+      auto assembledFetch = std::make_shared<TPFetch>(0, totalSize, tileIndex);
+      assembledFetch->data_ = std::move(assembled);
+      assembledFetch->stream_ = std::unique_ptr<IStream>(
+          memStreamCreate(assembledFetch->data_.get(), totalSize, stream_->getFormat(), true));
+      decompressSeq->SharedPtrSeq<TPFetch>::push_back(assembledFetch);
+      prefetchedTiles.push_back({tileIndex, decompressSeq});
+    }
+    it = selectiveFetchTiles->erase(it);
+  }
+
+  return prefetchedTiles;
+}
+
+void CodeStreamDecompress::installFetchThrottle(IFetcher* fetcher)
+{
+  fetcher->setFetchThrottle([this]() {
+    // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
+    // the last row released by the consumer.
+    if(tileCompletion_)
+    {
+      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
+      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
+        return false;
+    }
+    // In-flight: don't overwhelm the decompress pipeline
+    uint16_t inFlight;
+    {
+      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
+      inFlight = decompressInFlight_;
+    }
+    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
+  });
+}
+
+bool CodeStreamDecompress::fetchByTileSelective(
+    std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
+{
+  auto fetcher = stream_->getFetcher();
+  if(!fetcher)
+    return false;
+
+  const auto& allTileParts = cp_.tlmMarkers_->getTileParts();
+  uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+
+  // Determine if the progression order produces contiguous data from the start.
+  // For these cases, Phase 1 can speculatively fetch the estimated needed amount
+  // so that reusePhase1Data() can skip Phase 2 entirely.
+  auto tcp = defaultTcp_.get();
+  bool contiguousProgression = false;
+  switch(tcp->prg_)
+  {
+    case GRK_RLCP:
+    case GRK_RPCL:
+      contiguousProgression = true;
+      break;
+    case GRK_LRCP:
+      contiguousProgression = (tcp->numLayers_ == 1);
+      break;
+    default:
+      break;
+  }
+
+  // Phase 1: fetch tile-part headers (and possibly all needed data for contiguous cases)
+  constexpr uint32_t headerFetchSize = 4096;
+  grklog.debug("fetchByTileSelective: Phase 1 starting, %zu tiles, reduce=%u, contiguous=%d",
+               slated.size(), (unsigned)reduce, (int)contiguousProgression);
+
+  // Create modified tile-part info for Phase 1 fetch.
+  // For contiguous progressions, estimate the needed data size and fetch that
+  // directly, eliminating the need for a second round-trip in most cases.
+  double pixelRatio =
+      (contiguousProgression && reduce > 0) ? (1.0 / std::pow(4.0, reduce)) * 2.0 : 0.0;
+
+  TPSEQ_VEC headerTileParts(allTileParts.size());
+  for(auto tileIndex : slated)
+  {
+    if(tileIndex >= allTileParts.size() || !allTileParts[tileIndex])
+      continue;
+    auto& srcParts = allTileParts[tileIndex];
+    headerTileParts[tileIndex] = std::make_unique<TPSeq>();
+    for(size_t i = 0; i < srcParts->size(); ++i)
+    {
+      auto& part = (*srcParts)[i];
+      uint32_t fetchLen;
+      if(contiguousProgression && reduce > 0)
+      {
+        uint64_t estimated = std::max<uint64_t>(
+            headerFetchSize, (uint64_t)(static_cast<double>(part->length_) * pixelRatio));
+        fetchLen = (uint32_t)std::min<uint64_t>(estimated, part->length_);
+      }
+      else
+      {
+        fetchLen = std::min<uint32_t>((uint32_t)part->length_, headerFetchSize);
+      }
+      headerTileParts[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(), part->offset_,
+                                            fetchLen);
+    }
+  }
+
+  auto headerResults = std::make_shared<std::unordered_map<uint16_t, TileHeaderResult>>();
+  std::mutex headerMutex;
+  std::promise<bool> phase1Promise;
+  auto phase1Future = phase1Promise.get_future();
+  auto remainingTiles = std::make_shared<std::atomic<size_t>>(slated.size());
+
+  // Phase 1 fetch: get tile-part headers
+  fetcher->fetchTiles(headerTileParts, slated, nullptr,
+                      [&headerResults, &headerMutex, &remainingTiles,
+                       &phase1Promise](size_t requestIndex, TileFetchContext* context) {
+                        auto& tilePart = (*context->requests_)[requestIndex];
+                        auto tileIndex = tilePart->tileIndex_;
+
+                        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tileIndex];
+                        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+                        {
+                          // All tile-parts for this tile have arrived
+                          TileHeaderResult result;
+                          for(size_t i = 0; i < tilePartSeq->size(); ++i)
+                          {
+                            auto& tp = (*tilePartSeq)[i];
+                            // Parse PLT and SOD from the raw header bytes
+                            // Skip SOT marker (12 bytes) at start of tile-part data
+                            constexpr size_t sotLen = 12;
+                            if(tp->length_ > sotLen && tp->data_)
+                            {
+                              auto info = extractTilePartHeaderInfo(tp->data_.get() + sotLen,
+                                                                    (size_t)(tp->length_ - sotLen));
+                              // Adjust SOD offset to be relative to tile-part start
+                              if(info.valid)
+                                info.sodOffset += sotLen;
+                              result.headerInfos.push_back(std::move(info));
+                              result.headerData.push_back(std::move(tp->data_));
+                              result.headerSizes.push_back((uint32_t)tp->length_);
+                            }
+                            else
+                            {
+                              result.headerInfos.push_back(TilePartHeaderInfo{0, {}, false});
+                              result.headerData.push_back(nullptr);
+                              result.headerSizes.push_back(0);
+                            }
+                          }
+                          {
+                            std::lock_guard<std::mutex> lock(headerMutex);
+                            (*headerResults)[tileIndex] = std::move(result);
+                          }
+                          if(remainingTiles->fetch_sub(1) == 1)
+                            phase1Promise.set_value(true);
+                        }
+                      });
+
+  // Wait for Phase 1 to complete
+  grklog.debug("fetchByTileSelective: waiting for Phase 1...");
+  phase1Future.get();
+  grklog.debug("fetchByTileSelective: Phase 1 complete");
+
+  // Phase 2: Compute needed lengths and fetch truncated tile-parts
+  selectiveTileParts_.resize(allTileParts.size());
+  auto selectiveFetchTiles = std::make_shared<std::set<uint16_t>>();
+
+  for(auto tileIndex : slated)
+  {
+    auto it = headerResults->find(tileIndex);
+    if(it == headerResults->end())
+      continue;
+
+    buildSelectiveTileParts(tileIndex, it->second, allTileParts, reduce);
+    if(selectiveTileParts_[tileIndex])
+      selectiveFetchTiles->insert(tileIndex);
+  }
+
+  // Phase 1 data reuse: avoid re-fetching data that was already downloaded during the
+  // header probe. For small tiles or low target resolutions, the 4 KB header fetch often
+  // contains all the packets needed for the reduced decompress.
+  auto prefetchedTiles = reusePhase1Data(selectiveFetchTiles, *headerResults, allTileParts);
+  if(!prefetchedTiles.empty())
+    grklog.debug("fetchByTileSelective: %zu tiles reusing Phase 1 data", prefetchedTiles.size());
+
+  if(selectiveFetchTiles->empty() && prefetchedTiles.empty())
+    return false;
+  grklog.debug("fetchByTileSelective: %zu tiles to fetch", selectiveFetchTiles->size());
+
+  // Track which tiles have disjoint (sparse) fetch entries
+  auto disjointTiles = std::make_shared<std::set<uint16_t>>();
+  for(auto tileIndex : *selectiveFetchTiles)
+  {
+    auto& srcParts = allTileParts[tileIndex];
+    auto& selParts = selectiveTileParts_[tileIndex];
+    if(selParts && selParts->size() > srcParts->size())
+      disjointTiles->insert(tileIndex);
+  }
+
+  // Phase 2: Fetch truncated tile-parts through existing pipeline
+  maxFetchedTileRow_.store(-1, std::memory_order_release);
+
+  startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
+                                   (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
+
+  auto numTileCols = cp_.t_grid_width_;
+
+  // Queue pre-fetched tiles directly for decompression (reusing Phase 1 data)
+  for(auto& [tileIndex, decompressSeq] : prefetchedTiles)
+    enqueueTileForDecompress(tileIndex, decompressSeq, numTileCols, unreducedImageBounds,
+                             postGenerator);
+
+  if(!selectiveFetchTiles->empty())
+  {
+    installFetchThrottle(fetcher);
+
+    fetchByTileFutures_.push_back(fetcher->fetchTiles(
+        selectiveTileParts_, *selectiveFetchTiles, nullptr,
+        [this, numTileCols, unreducedImageBounds, postGenerator, selectiveFetchTiles,
+         disjointTiles](size_t requestIndex, TileFetchContext* context) {
+          auto& tilePart = (*context->requests_)[requestIndex];
+          auto tileIndex = tilePart->tileIndex_;
+          auto& tilePartSeq = (*context->tilePartFetchByTile_)[tileIndex];
+
+          if(!disjointTiles->count(tileIndex))
+          {
+            // Contiguous case: create MemStream per entry (standard path)
+            tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+                tilePart->data_.get(), tilePart->length_, stream_->getFormat(), true));
+          }
+
+          if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+          {
+            std::shared_ptr<TPFetchSeq> decompressSeq;
+
+            if(disjointTiles->count(tileIndex))
+            {
+              // Disjoint case: assemble header + data ranges into single buffer
+              // Entry 0 = header (with SOT), entries 1..N = data ranges
+              uint64_t totalSize = 0;
+              for(size_t i = 0; i < tilePartSeq->size(); ++i)
+                totalSize += (*tilePartSeq)[i]->length_;
+
+              auto assembled = std::make_unique<uint8_t[]>(totalSize);
+              uint64_t pos = 0;
+              for(size_t i = 0; i < tilePartSeq->size(); ++i)
+              {
+                auto& tp = (*tilePartSeq)[i];
+                if(tp->data_)
+                  std::memcpy(assembled.get() + pos, tp->data_.get(), tp->length_);
+                pos += tp->length_;
+              }
+
+              // Create single-entry TPFetchSeq with assembled data
+              decompressSeq = std::make_shared<TPFetchSeq>();
+              auto assembledFetch = std::make_shared<TPFetch>(0, totalSize, tileIndex);
+              assembledFetch->data_ = std::move(assembled);
+              assembledFetch->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+                  assembledFetch->data_.get(), totalSize, stream_->getFormat(), true));
+              decompressSeq->SharedPtrSeq<TPFetch>::push_back(assembledFetch);
+            }
+            else
+            {
+              decompressSeq = tilePartSeq;
+            }
+
+            enqueueTileForDecompress(tileIndex, decompressSeq, numTileCols, unreducedImageBounds,
+                                     postGenerator);
+          }
+        }));
+  } // if(!selectiveFetchTiles->empty())
+
+  return true;
+}
+
 /////////////////////////////////////////////////////////////////////
 
 void CodeStreamDecompress::initTilesToDecompress(Rect16 region)
@@ -1459,7 +3038,23 @@ bool CodeStreamDecompress::initDefaultTCP()
 
 bool CodeStreamDecompress::setProgressionState(grk_progression_state state)
 {
-  return tileCache_->setProgressionState(state);
+  auto cacheEntry = state.single_tile ? tileCache_->get(state.tile_index) : nullptr;
+  const uint16_t layersBefore = cacheEntry && cacheEntry->processor()
+                                    ? cacheEntry->processor()->getTCP()->layersToDecompress_
+                                    : 0;
+  bool markedDirty = false;
+  if(!tileCache_->setProgressionState(state, markedDirty))
+    return false;
+  // decompress() hands back the previous composite while this is set
+  if(markedDirty)
+  {
+    compositeDecompressed_ = false;
+    differentialDecodeAllowed_ =
+        layerBudget(cacheEntry->processor()->getTCP()->layersToDecompress_) >
+        layerBudget(layersBefore);
+  }
+
+  return true;
 }
 grk_progression_state CodeStreamDecompress::getProgressionState(uint16_t tileIndex)
 {
@@ -1477,22 +3072,125 @@ void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
   scratch->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
 }
 
+bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
+                            bool irreversibleInt16)
+{
+  for(uint16_t i = 0; i < image->numcomps; i++)
+  {
+    auto tccp = tcp->tccps_ + i;
+    uint8_t prec = image->comps[i].prec;
+    // int16 9/7 has no fraction bits left above 13 bit samples
+    bool forcedIrreversible = irreversibleInt16 && tccp->qmfbid_ == 0 && prec <= 13;
+    bool int16 =
+        forcedIrreversible || grk_get_data_type(false, prec, false, tccp->qmfbid_) == GRK_INT_16;
+    if(!int16 || tccp->usesPart2Transform())
+      return false;
+  }
+  return true;
+}
+
 bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
+  // Drop aliased pixels and their stride.
+  for(uint16_t i = 0; i < scratch->numcomps; i++)
+    GrkImage::setDataToNull(scratch->comps + i);
+  scratchDataPending_ = false;
+  scratchDataAllocated_ = false;
+  scratchBandRowHeights_.clear();
+
+  // The single 16-bit DWT eligibility decision for this decode. TileProcessor reads it back
+  // out of the coding params, so a tile can never decode into a sample type the composite
+  // buffer was not allocated for.
+  bool allEligible = wholeImageUses16BitDwt(defaultTcp_.get(), headerImage_,
+                                            cp_.codingParams_.dec_.irreversibleInt16_);
+  cp_.codingParams_.dec_.use16BitDwt_ = allEligible;
+
+  // Decide the composite sample type from the same inputs TileProcessor uses, and set it
+  // explicitly on every component. copyHeaderTo above may have carried a stale int16 type
+  // from the mercury fast path (it marks multiTileComposite_ int16, then can bail leaving the
+  // type mutated), so setting int32 here when in doubt is what keeps the composite type from
+  // disagreeing with a tile that decodes int32. a region decode takes the same type rule as a
+  // whole decode, matching TileProcessor's `can16Bit`.
+  bool useInt16Composite = allEligible && scratch->has_multiple_tiles;
+  for(uint16_t i = 0; i < scratch->numcomps; i++)
+    scratch->comps[i].data_type = useInt16Composite ? GRK_INT_16 : GRK_INT_32;
 
   // no need to allocate composite data if there is only one tile
-  // i.e. no compositing
-  if(singleTile || !headerImage_->has_multiple_tiles)
+  // i.e. no compositing — UNLESS band callback is active, which needs
+  // a destination buffer for compositing before writing.
+  if((singleTile || !headerImage_->has_multiple_tiles) && !ioBandCallback_)
     return true;
 
-  return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
+  // When band callback is active, allocate only a strip buffer (one tile-row height)
+  // instead of the full composite image. This dramatically reduces peak memory for large images.
+  if(ioBandCallback_)
+  {
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    auto slatedRect = tilesToDecompress_.getSlatedTileRect();
+    uint32_t unreducedRowY0 = cp_.ty0_ + (uint32_t)slatedRect.y0 * cp_.t_height_;
+    uint32_t unreducedTileY1 = std::min(unreducedRowY0 + cp_.t_height_, (uint32_t)scratch->y1);
+    uint32_t unreducedTileY0 = std::max(unreducedRowY0, (uint32_t)scratch->y0);
+    for(uint16_t i = 0; i < scratch->numcomps; i++)
+    {
+      auto comp = scratch->comps + i;
+      comp->y0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY0, comp->dy), reduce);
+      uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
+      // The drain loop advances comp->h to each later tile-row height without
+      // reallocating; a non-tile-aligned YTOsiz can make an interior row taller
+      // than the first, so size the buffer for the TALLEST reduced row.
+      uint32_t maxH = compY1 - comp->y0;
+      for(uint16_t ty = (uint16_t)(slatedRect.y0 + 1); ty < slatedRect.y1; ty++)
+      {
+        uint32_t uy0 = cp_.ty0_ + (uint32_t)ty * cp_.t_height_;
+        uint32_t uy1 = std::min(uy0 + cp_.t_height_, (uint32_t)scratch->y1);
+        if(uy0 >= uy1)
+          continue;
+        uint32_t ry0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(uy0, comp->dy), reduce);
+        uint32_t ry1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(uy1, comp->dy), reduce);
+        maxH = std::max(maxH, ry1 - ry0);
+      }
+      comp->h = maxH;
+    }
+    // comp->h stays at maxH so the deferred allocation sizes the buffer for the
+    // tallest row, and the first row height is applied once that buffer exists
+    scratchBandRowHeights_.resize(scratch->numcomps);
+    for(uint16_t i = 0; i < scratch->numcomps; i++)
+    {
+      auto comp = scratch->comps + i;
+      uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
+      scratchBandRowHeights_[i] = compY1 - comp->y0;
+    }
+    scratchDataPending_ = true;
+    return true;
+  }
+
+  scratchDataPending_ = !cp_.codingParams_.dec_.skipAllocateComposite_;
+  return true;
+}
+
+// the canvas geometry comes straight from the SIZ header, so allocating up front
+// lets a tiny header claim gigabytes before any tile data is read
+bool CodeStreamDecompress::ensureScratchData(void)
+{
+  std::lock_guard<std::mutex> lock(scratchDataMutex_);
+  if(scratchDataAllocated_ || !scratchDataPending_)
+    return true;
+  if(!scratchImage_->allocCompositeData())
+    return false;
+  if(!scratchBandRowHeights_.empty())
+  {
+    for(uint16_t i = 0; i < scratchImage_->numcomps; i++)
+      scratchImage_->comps[i].h = scratchBandRowHeights_[i];
+  }
+  scratchDataAllocated_ = true;
+  return true;
 }
 
 ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 {
   auto cached = tileCache_->get(tileIndex);
-  auto tileProcessor = cached ? cached->processor : nullptr;
+  auto tileProcessor = cached ? cached->processor() : nullptr;
   if(!tileProcessor)
   {
     auto tcp = new TileCodingParams(*defaultTcp_);
@@ -1511,23 +3209,49 @@ ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 
     tileProcessor =
         new TileProcessor(tileIndex, tcp, this, stream_, false, tileCache_->getStrategy());
-    tileCache_->put(tileIndex, tileProcessor);
+    if(!tileCache_->put(tileIndex, tileProcessor))
+      return nullptr;
   }
   return tileProcessor;
 }
 
 GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
 {
+  if(mercuryAsync_)
+  {
+    if(doWait)
+      mercuryAsync_->waitForTile(tile_index);
+    return mercuryAsync_->imageForTile(tile_index);
+  }
   if(doWait)
     wait(tile_index);
 
   auto entry = tileCache_->get(tile_index);
-  return entry ? entry->processor->getImage() : nullptr;
+  return entry ? entry->processor()->getImage() : nullptr;
 }
 GrkImage* CodeStreamDecompress::getImage()
 {
   wait(nullptr);
+  if(mercuryAsync_)
+    mercuryAsync_->fillComposite();
 
+  // Reduce image-level bounds to match component (output) coordinate space.
+  // Only when caller passed reduced coordinates (dw_reduced), the
+  // multiTileComposite_ still has unreduced canvas bounds that need reducing.
+  auto reduce = cp_.codingParams_.dec_.reduce_;
+  if(cp_.dw_reduced && reduce > 0 && !compositeBoundsReduced_)
+  {
+    multiTileComposite_->x0 = ceildivpow2<uint32_t>(multiTileComposite_->x0, reduce);
+    multiTileComposite_->y0 = ceildivpow2<uint32_t>(multiTileComposite_->y0, reduce);
+    multiTileComposite_->x1 = ceildivpow2<uint32_t>(multiTileComposite_->x1, reduce);
+    multiTileComposite_->y1 = ceildivpow2<uint32_t>(multiTileComposite_->y1, reduce);
+    compositeBoundsReduced_ = true;
+  }
+
+  return multiTileComposite_.get();
+}
+GrkImage* CodeStreamDecompress::getCompositeNoWait()
+{
   return multiTileComposite_.get();
 }
 

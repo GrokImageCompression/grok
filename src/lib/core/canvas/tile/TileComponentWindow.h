@@ -36,11 +36,55 @@ with "REL", to signify relative coordinates.
 #pragma once
 
 #include <algorithm>
+#include <type_traits>
 
 #include "ResWindow.h"
+#include "ISparseCanvas.h"
+#include "PostDecodeFilters.h"
+#include "PostDecodeFiltersOJPH.h"
 
 namespace grk
 {
+
+/**
+ * @brief Type-erased interface for tile component windows.
+ *
+ * Allows TileComponent to hold a single polymorphic pointer instead of
+ * separate TileComponentWindow<int32_t>* and TileComponentWindow<int16_t>* members.
+ * Methods that return typed data use void* — callers that need typed access
+ * can static_cast via the concrete TileComponentWindow<T>*.
+ */
+struct ITileComponentWindow
+{
+  virtual ~ITileComponentWindow() = default;
+
+  // Allocation
+  virtual bool alloc() = 0;
+
+  // Geometry
+  virtual Rect32 bounds() const = 0;
+  virtual Rect32 unreducedBounds() const = 0;
+  virtual const Rect32* getBandWindowPadded(uint8_t resno,
+                                            t1::eBandOrientation orientation) const = 0;
+  virtual void toRelativeCoordinates(uint8_t resno, t1::eBandOrientation orientation,
+                                     uint32_t& offsetx, uint32_t& offsety) const = 0;
+
+  // Data transfer (type-erased)
+  virtual void transferData(void** data, uint32_t* stride) = 0;
+  virtual void attachData(void* data, uint32_t stride) = 0;
+
+  // Buffer access (type-erased)
+  virtual uint32_t highestResStride() const = 0;
+  virtual uint64_t stridedArea() const = 0;
+
+  // Post-process: T1 always outputs int32_t.
+  // int32 window writes int32 to band buffers; int16 window narrows to int16.
+  // the region canvas sample type always equals the window sample type
+  virtual void postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
+                                ISparseCanvasBase* regionWindow) = 0;
+  virtual void postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride,
+                                  ISparseCanvasBase* regionWindow) = 0;
+};
 
 template<class T>
 constexpr T getFilterPad(bool lossless)
@@ -49,24 +93,33 @@ constexpr T getFilterPad(bool lossless)
 }
 
 template<typename T>
-struct TileComponentWindowBase
+struct TileComponentWindowBase : public ITileComponentWindow
 {
   TileComponentWindowBase(bool isCompressor, bool lossless, bool wholeTileDecompress,
                           Rect32 unreducedTileComp, Rect32 reducedTileComp,
                           Rect32 unreducedImageCompWindow, uint8_t numresolutions,
-                          uint8_t reducedNumResolutions)
-      : unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
-        wholeTileDecompress_(wholeTileDecompress)
+                          uint8_t reducedNumResolutions, const DecompositionSplit* splits,
+                          const uint8_t* horizontalDepth, const uint8_t* verticalDepth,
+                          std::pmr::memory_resource* arena)
+      : resWindows(arena), unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp),
+        resolution_(arena), compress_(isCompressor), wholeTileDecompress_(wholeTileDecompress)
   {
     assert(reducedNumResolutions > 0);
+    // the level whose split makes a resolution's bands, resolution 0 is the coarsest level's LL
+    auto levelOfResolution = [](uint8_t resolutionCount, uint8_t resno) -> uint8_t {
+      return resno == 0 ? (uint8_t)(resolutionCount - 1) : (uint8_t)(resolutionCount - resno);
+    };
     auto currentRes = unreducedTileComp;
     for(uint8_t i = 0; i < numresolutions; ++i)
     {
       bool finalResolution = i == numresolutions - 1;
-      ResSimple r(currentRes, finalResolution);
+      // resolution numresolutions - 1 - i is produced by level i + 1
+      auto split = finalResolution ? DecompositionSplit::both : splits[i + 1];
+      ResSimple r(currentRes, split, finalResolution);
       resolution_.push_back(r);
       if(!finalResolution)
-        currentRes = ResSimple::getBandWindow(1, 0, currentRes);
+        currentRes = ResSimple::getBandWindow(splitsHorizontally(split) ? 1 : 0,
+                                              splitsVertically(split) ? 1 : 0, 0, currentRes);
     }
     std::reverse(resolution_.begin(), resolution_.end());
 
@@ -83,10 +136,13 @@ struct TileComponentWindowBase
     auto tileCompAtLowerRes =
         reducedNumResolutions > 1 ? resolution_[reducedNumResolutions - 2] : ResSimple();
     // create resolution buffers
-    auto highestResWindow = new ResWindow<T>(
-        numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes,
-        tileCompAtLowerRes, bounds_, unreducedBounds_, unreducedTileComp,
-        wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
+    uint8_t highestResno = (uint8_t)(reducedNumResolutions - 1U);
+    uint8_t highestLevel = levelOfResolution(numresolutions, highestResno);
+    std::pmr::polymorphic_allocator<> allocator(arena);
+    auto highestResWindow = allocator.new_object<ResWindow<T>>(
+        highestResno, nullptr, tileCompAtRes, tileCompAtLowerRes, bounds_, unreducedBounds_,
+        unreducedTileComp, wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless),
+        splits[highestLevel], horizontalDepth[highestLevel], verticalDepth[highestLevel], arena);
     // setting top level prevents allocation of tileCompBandWindows buffers
     if(!useBandWindows())
       highestResWindow->disableBandWindowAllocation();
@@ -95,37 +151,43 @@ struct TileComponentWindowBase
     for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
     {
       // resolution window ==  LL band window of next highest resolution
-      auto resWindow =
-          ResSimple::getBandWindow((uint8_t)(numresolutions - 1 - resno), 0, unreducedBounds_);
-      resWindows.push_back(
-          new ResWindow<T>(numresolutions, resno,
-                           useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
-                           resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(),
-                           resWindow, unreducedBounds_, unreducedTileComp,
-                           wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
+      uint8_t levelsDone = (uint8_t)(numresolutions - 1 - resno);
+      uint8_t level = levelOfResolution(numresolutions, resno);
+      auto resWindow = ResSimple::getBandWindow(horizontalDepth[levelsDone],
+                                                verticalDepth[levelsDone], 0, unreducedBounds_);
+      resWindows.push_back(allocator.new_object<ResWindow<T>>(
+          resno, useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
+          resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
+          unreducedBounds_, unreducedTileComp,
+          wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless), splits[level],
+          horizontalDepth[level], verticalDepth[level], arena));
     }
     resWindows.push_back(highestResWindow);
   }
   virtual ~TileComponentWindowBase()
   {
+    std::pmr::polymorphic_allocator<> allocator(resWindows.get_allocator().resource());
     for(auto& b : this->resWindows)
-      delete b;
+      allocator.delete_object(b);
   }
   /**
    * Get bounds of tile component (canvas coordinates)
    * decompress: reduced canvas coordinates of window
    * compress: unreduced canvas coordinates of entire tile
    */
-  Rect32 bounds() const
+  Rect32 bounds() const override
   {
     return bounds_;
   }
-  Rect32 unreducedBounds() const
+  Rect32 unreducedBounds() const override
   {
     return unreducedBounds_;
   }
-  bool alloc()
+  bool alloc() override
   {
+    // a region decode keeps its band and split data in the sparse canvas
+    if(!wholeTileDecompress_)
+      return resWindows.back()->allocResWindowBuffer(!compress_);
     return std::all_of(resWindows.begin(), resWindows.end(),
                        [this](const auto& b) { return b->alloc(!compress_); });
   }
@@ -136,7 +198,7 @@ protected:
     return !this->wholeTileDecompress_;
   }
   // windowed bounds for windowed decompress, otherwise full bounds
-  std::vector<ResWindow<T>*> resWindows;
+  std::pmr::vector<ResWindow<T>*> resWindows;
   /******************************************************/
   // decompress: unreduced/reduced image component window
   // compress:  unreduced/reduced tile component
@@ -144,7 +206,7 @@ protected:
   Rect32 bounds_;
   /******************************************************/
 
-  std::vector<ResSimple> resolution_;
+  std::pmr::vector<ResSimple> resolution_;
   bool compress_;
   bool wholeTileDecompress_;
 };
@@ -156,10 +218,13 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
   TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
                       Rect32 unreducedTileComp, Rect32 reducedTileComp,
                       Rect32 unreducedImageCompWindow, uint8_t numresolutions,
-                      uint8_t reducedNumResolutions)
+                      uint8_t reducedNumResolutions, const DecompositionSplit* splits,
+                      const uint8_t* horizontalDepth, const uint8_t* verticalDepth,
+                      std::pmr::memory_resource* arena)
       : TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress, unreducedTileComp,
                                    reducedTileComp, unreducedImageCompWindow, numresolutions,
-                                   reducedNumResolutions)
+                                   reducedNumResolutions, splits, horizontalDepth, verticalDepth,
+                                   arena)
 
   {}
   ~TileComponentWindow() override = default;
@@ -179,7 +244,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    */
   void toRelativeCoordinates(uint8_t resno, t1::eBandOrientation orientation, uint32_t& offsetx,
-                             uint32_t& offsety) const
+                             uint32_t& offsety) const override
   {
     assert(resno < this->resolution_.size());
 
@@ -211,6 +276,16 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
     dst.copyFrom<F>(src, F(block));
   }
 
+  // Cross-type post-process: narrows wider source (e.g., int32_t) into T band buffer
+  template<typename SrcT, template<class> class SrcA, typename F>
+  void postProcessNarrow(Buffer2d<SrcT, SrcA>& src, uint8_t resno,
+                         t1::eBandOrientation bandOrientation, t1::DecompressBlockExec* block)
+  {
+    Buf2dAligned dst;
+    dst = getCodeBlockDestWindowREL(resno, bandOrientation);
+    dst.template copyFromNarrow<SrcT, SrcA, F>(&src, F(block));
+  }
+
   /**
    * Get padded band window buffer
    *
@@ -240,8 +315,8 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
    *
    */
-  const Buffer2dSimple<int32_t>
-      getBandWindowBufferPaddedSimple(uint8_t resno, t1::eBandOrientation orientation) const
+  const Buffer2dSimple<T> getBandWindowBufferPaddedSimple(uint8_t resno,
+                                                          t1::eBandOrientation orientation) const
   {
     assert(resno < this->resolution_.size());
     assert(resno > 0 || orientation == t1::BAND_ORIENT_LL);
@@ -279,7 +354,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
    *
    */
-  const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const
+  const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const override
   {
     return this->resWindows[resno]->getBandWindowPadded(orientation);
   }
@@ -299,8 +374,8 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    * @param orientation 0 for upper split window, and 1 for lower split window
    */
-  const Buffer2dSimple<int32_t> getResWindowBufferSplitSimple(uint8_t resno,
-                                                              eSplitOrientation orientation) const
+  const Buffer2dSimple<T> getResWindowBufferSplitSimple(uint8_t resno,
+                                                        eSplitOrientation orientation) const
   {
     return getResWindowBufferSplitREL(resno, orientation)->simple();
   }
@@ -332,7 +407,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * @param resno resolution number
    *
    */
-  const Buffer2dSimple<int32_t> getResWindowBufferSimple(uint8_t resno) const
+  const Buffer2dSimple<T> getResWindowBufferSimple(uint8_t resno) const
   {
     return getResWindowBufferREL(resno)->simple();
   }
@@ -362,7 +437,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    *
    */
-  Buffer2dSimple<int32_t> getResWindowBufferHighestSimple(void) const
+  Buffer2dSimple<T> getResWindowBufferHighestSimple(void) const
   {
     return getResWindowBufferHighestREL()->simple();
   }
@@ -374,11 +449,6 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
   Buffer2dSimple<float> getResWindowBufferHighestSimpleF(void) const
   {
     return getResWindowBufferHighestREL()->simpleF();
-  }
-  uint64_t stridedArea(void) const
-  {
-    auto win = getResWindowBufferHighestREL();
-    return (uint64_t)win->getStride() * win->height();
   }
 
   // set data to buf without owning it
@@ -392,25 +462,39 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
     getResWindowBufferHighestREL()->transfer(buffer, stride);
   }
 
+  // --- ITileComponentWindow virtual method overrides ---
+
+  void transferData(void** data, uint32_t* stride) override
+  {
+    T* typedData = nullptr;
+    transfer(&typedData, stride);
+    *data = typedData;
+  }
+  void attachData(void* data, uint32_t stride) override
+  {
+    attach(static_cast<T*>(data), stride);
+  }
+  uint32_t highestResStride() const override
+  {
+    return getResWindowBufferHighestStride();
+  }
+  uint64_t stridedArea() const override
+  {
+    auto win = getResWindowBufferHighestREL();
+    return (uint64_t)win->getStride() * win->height();
+  }
+  void postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
+                        ISparseCanvasBase* regionWindow) override;
+  void postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride,
+                          ISparseCanvasBase* regionWindow) override;
+
 private:
-  /**
-   * Get code block destination window
-   *
-   * @param resno resolution number
-   * @param orientation band orientation {LL,HL,LH,HH}
-   *
-   */
   const Buf2dAligned* getCodeBlockDestWindowREL(uint8_t resno,
                                                 t1::eBandOrientation orientation) const
   {
     return (useBufferCoordinatesForCodeblock()) ? getResWindowBufferHighestREL()
                                                 : getBandWindowBufferPaddedREL(resno, orientation);
   }
-  /**
-   * Get highest resolution window
-   *
-   *
-   */
   Buf2dAligned* getResWindowBufferHighestREL(void) const
   {
     return this->resWindows.back()->getResWindowBufferREL();
@@ -424,5 +508,256 @@ private:
     return resno > 0 ? (uint8_t)orientation - 1 : 0;
   }
 };
+
+// ---------- postProcessBlock / postProcessBlockHT out-of-class definitions ----------
+
+// writing over srcData is safe: the int16 write index always trails the int32 read index
+template<typename F>
+void narrowBlockInPlace(int32_t* srcData, uint32_t srcStride, uint32_t width, uint32_t height,
+                        t1::DecompressBlockExec* block)
+{
+  F filter(block);
+  copyRowsFiltered(filter, (int16_t*)srcData, width, srcData, srcStride, width, height);
+}
+
+template<typename T>
+void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBlockExec* block,
+                                              ISparseCanvasBase* regionWindow)
+{
+  auto cblk = block->cblk;
+  bool empty = cblk->dataChunksEmpty();
+  uint32_t x = block->x;
+  uint32_t y = block->y;
+  toRelativeCoordinates(block->resno, block->bandOrientation, x, y);
+  auto blockBounds = Rect32(x, y, x + cblk->width(), y + cblk->height());
+
+  if constexpr(std::is_same_v<T, int16_t>)
+  {
+    if(regionWindow)
+    {
+      if(!empty)
+      {
+        if(block->qmfbid == 0)
+        {
+          // irreversible 9/7: dequantize into the Q-format and narrow
+          if(block->roishift)
+            narrowBlockInPlace<t1::NarrowRoiScaleFilter16>(srcData, cblk->width(), cblk->width(),
+                                                           cblk->height(), block);
+          else
+            narrowBlockInPlace<t1::NarrowScaleFilter16>(srcData, cblk->width(), cblk->width(),
+                                                        cblk->height(), block);
+        }
+        else if(block->roishift)
+          narrowBlockInPlace<t1::NarrowRoiShiftFilter>(srcData, cblk->width(), cblk->width(),
+                                                       cblk->height(), block);
+        else
+          narrowBlockInPlace<t1::NarrowShiftFilter>(srcData, cblk->width(), cblk->width(),
+                                                    cblk->height(), block);
+      }
+      static_cast<ISparseCanvas<int16_t>*>(regionWindow)
+          ->write(blockBounds, empty ? nullptr : (int16_t*)srcData, 1, blockBounds.width());
+      return;
+    }
+    // 16-bit narrowing path: int32 T1 output -> int16 band buffers
+    auto src = Buffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(),
+                                                   (uint16_t)cblk->width(), cblk->height());
+    if(!empty)
+    {
+      src.setRect(blockBounds);
+      if(block->qmfbid == 0)
+      {
+        // Irreversible 9/7: dequantize and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowRoiScaleFilter16>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowScaleFilter16>(
+              src, block->resno, block->bandOrientation, block);
+      }
+      else
+      {
+        // Reversible 5/3: shift and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowRoiShiftFilter>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowShiftFilter>(
+              src, block->resno, block->bandOrientation, block);
+      }
+    }
+  }
+  else
+  {
+    // Standard int32 path
+    auto canvas = static_cast<ISparseCanvas<T>*>(regionWindow);
+    auto src = Buffer2d<T, AllocatorAligned>(srcData, false, cblk->width(), (uint16_t)cblk->width(),
+                                             cblk->height());
+    if(!empty)
+    {
+      if(regionWindow)
+      {
+        if(block->roishift)
+        {
+          if(block->qmfbid == 1)
+            src.template copyFrom<t1::RoiShiftFilter<T>>(src, t1::RoiShiftFilter<T>{block});
+          else
+            src.template copyFrom<t1::RoiScaleFilter<T>>(src, t1::RoiScaleFilter<T>{block});
+        }
+        else
+        {
+          if(block->qmfbid == 1)
+            src.template copyFrom<t1::ShiftFilter<T>>(src, t1::ShiftFilter<T>{block});
+          else
+            src.template copyFrom<t1::ScaleFilter<T>>(src, t1::ScaleFilter<T>{block});
+        }
+      }
+      else
+      {
+        src.setRect(blockBounds);
+        if(block->roishift)
+        {
+          if(block->qmfbid == 1)
+            postProcess<t1::RoiShiftFilter<T>>(src, block->resno, block->bandOrientation, block);
+          else
+            postProcess<t1::RoiScaleFilter<T>>(src, block->resno, block->bandOrientation, block);
+        }
+        else
+        {
+          if(block->qmfbid == 1)
+            postProcess<t1::ShiftFilter<T>>(src, block->resno, block->bandOrientation, block);
+          else
+            postProcess<t1::ScaleFilter<T>>(src, block->resno, block->bandOrientation, block);
+        }
+      }
+    }
+    if(canvas)
+      canvas->write(blockBounds, empty ? nullptr : srcData, 1, blockBounds.width());
+  }
+}
+
+template<typename T>
+void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::DecompressBlockExec* block,
+                                                uint16_t stride, ISparseCanvasBase* regionWindow)
+{
+  auto cblk = block->cblk;
+  bool empty = cblk->dataChunksEmpty();
+  uint32_t x = block->x;
+  uint32_t y = block->y;
+  toRelativeCoordinates(block->resno, block->bandOrientation, x, y);
+  auto blockBounds = Rect32(x, y, x + cblk->width(), y + cblk->height());
+
+  if constexpr(std::is_same_v<T, int16_t>)
+  {
+    if(regionWindow)
+    {
+      if(!empty)
+      {
+        if(block->qmfbid == 0)
+        {
+          // irreversible 9/7: dequantize into the Q-format and narrow
+          if(block->roishift)
+            narrowBlockInPlace<t1::ojph::NarrowRoiScaleOJPHFilter16>(srcData, stride, cblk->width(),
+                                                                     cblk->height(), block);
+          else
+            narrowBlockInPlace<t1::ojph::NarrowScaleOJPHFilter16>(srcData, stride, cblk->width(),
+                                                                  cblk->height(), block);
+        }
+        else if(block->roishift)
+          narrowBlockInPlace<t1::ojph::NarrowRoiShiftOJPHFilter>(srcData, stride, cblk->width(),
+                                                                 cblk->height(), block);
+        else
+          narrowBlockInPlace<t1::ojph::NarrowShiftOJPHFilter>(srcData, stride, cblk->width(),
+                                                              cblk->height(), block);
+      }
+      static_cast<ISparseCanvas<int16_t>*>(regionWindow)
+          ->write(blockBounds, empty ? nullptr : (int16_t*)srcData, 1, blockBounds.width());
+      return;
+    }
+    // 16-bit narrowing path: int32 T1 output -> int16 band buffers
+    auto src =
+        Buffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
+    if(!empty)
+    {
+      src.setRect(blockBounds);
+      if(block->qmfbid == 0)
+      {
+        // Irreversible 9/7: dequantize and narrow to int16 (OJPH sign-magnitude)
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowRoiScaleOJPHFilter16>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowScaleOJPHFilter16>(
+              src, block->resno, block->bandOrientation, block);
+      }
+      else
+      {
+        // Reversible 5/3: shift and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowRoiShiftOJPHFilter>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowShiftOJPHFilter>(
+              src, block->resno, block->bandOrientation, block);
+      }
+    }
+  }
+  else
+  {
+    // Standard int32 path
+    auto canvas = static_cast<ISparseCanvas<T>*>(regionWindow);
+    auto src = Buffer2d<T, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
+    if(!empty)
+    {
+      if(regionWindow)
+      {
+        if(block->roishift)
+        {
+          if(block->qmfbid == 1)
+            src.template copyFrom<t1::ojph::RoiShiftOJPHFilter<T>>(
+                src, t1::ojph::RoiShiftOJPHFilter<T>{block});
+          else
+            src.template copyFrom<t1::ojph::RoiScaleOJPHFilter<T>>(
+                src, t1::ojph::RoiScaleOJPHFilter<T>{block});
+        }
+        else
+        {
+          if(block->qmfbid == 1)
+            src.template copyFrom<t1::ojph::ShiftOJPHFilter>(src, t1::ojph::ShiftOJPHFilter{block});
+          else
+            src.template copyFrom<t1::ojph::ScaleOJPHFilter>(src, t1::ojph::ScaleOJPHFilter{block});
+        }
+      }
+      else
+      {
+        src.setRect(blockBounds);
+        if(block->roishift)
+        {
+          if(block->qmfbid == 1)
+            postProcess<t1::ojph::RoiShiftOJPHFilter<T>>(src, block->resno, block->bandOrientation,
+                                                         block);
+          else
+            postProcess<t1::ojph::RoiScaleOJPHFilter<T>>(src, block->resno, block->bandOrientation,
+                                                         block);
+        }
+        else
+        {
+          if(block->qmfbid == 1)
+            postProcess<t1::ojph::ShiftOJPHFilter>(src, block->resno, block->bandOrientation,
+                                                   block);
+          else
+            postProcess<t1::ojph::ScaleOJPHFilter>(src, block->resno, block->bandOrientation,
+                                                   block);
+        }
+      }
+    }
+    // the HT coder emits rows 8-aligned, not packed at the block width
+    if(canvas)
+      canvas->write(blockBounds, empty ? nullptr : srcData, 1, stride);
+  }
+}
 
 } // namespace grk

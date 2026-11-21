@@ -49,14 +49,25 @@ class PNMFormat : public ImageFormat
 {
 public:
   explicit PNMFormat(bool split);
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  ~PNMFormat() override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    // Split PGM files (forceSplit + single component) need the full image at once
+    if(forceSplit && image_ && image_->decompress_num_comps <= 1)
+      return false;
+    return true;
+  }
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   bool forceSplit;
+  grk::PlanarToInterleaved<int32_t>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
   bool hasAlpha(void);
   bool isOpacity(uint16_t compno);
   bool hasOpacity(void);
@@ -67,26 +78,34 @@ private:
   template<typename WT>
   bool encodeRows(uint32_t rows);
   template<typename WT>
-  bool readBytes(FILE* fp, grk_image* image, size_t area);
+  bool readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval);
   bool closeStream(void);
 
-  grk_image* decode(const grk_cparameters* parameters);
+  grk_image* readImage(const grk_cparameters* parameters);
   bool decodeHeader(struct pnm_header* ph);
 };
 
 template<typename T>
-PNMFormat<T>::PNMFormat(bool split) : forceSplit(split)
+PNMFormat<T>::PNMFormat(bool split)
+    : forceSplit(split), interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
 template<typename T>
-bool PNMFormat<T>::encodeHeader(void)
+PNMFormat<T>::~PNMFormat()
 {
-  if(isHeaderEncoded())
+  delete interleaver_;
+  delete interleaver16_;
+}
+
+template<typename T>
+bool PNMFormat<T>::writeHeader(void)
+{
+  if(isHeaderWritten())
     return true;
 
   if(!allComponentsSanityCheck(image_, true))
   {
-    spdlog::error("PNMFormat<T>::encodeHeader: image sanity check failed.");
+    spdlog::error("PNMFormat<T>::writeHeader: image sanity check failed.");
     return false;
   }
   if(!areAllComponentsSameSubsampling(image_))
@@ -95,7 +114,7 @@ bool PNMFormat<T>::encodeHeader(void)
   uint16_t ncomp = image_->decompress_num_comps;
   if(ncomp > 4)
   {
-    spdlog::error("PNMFormat<T>::encodeHeader: Number of components cannot be greater than 4; %u "
+    spdlog::error("PNMFormat<T>::writeHeader: Number of components cannot be greater than 4; %u "
                   "number of components not supported.",
                   image_->decompress_num_comps);
     return false;
@@ -118,7 +137,7 @@ bool PNMFormat<T>::encodeHeader(void)
     if(!writeHeader(false))
       return false;
   }
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
   return true;
 }
@@ -174,21 +193,21 @@ bool PNMFormat<T>::doNonSplitEncode(void)
  * application-orchestrated pixel encoding
  */
 template<typename T>
-bool PNMFormat<T>::encodePixels(void)
+bool PNMFormat<T>::writeImage(void)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
 
-  if(!isHeaderEncoded())
+  if(!isHeaderWritten())
   {
-    if(!encodeHeader())
+    if(!writeHeader())
       return false;
   }
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
     if(!image_->comps[i].data)
     {
-      spdlog::error("encodePixels: component {} has null data.", i);
+      spdlog::error("writeImage: component {} has null data.", i);
       return false;
     }
   }
@@ -198,12 +217,125 @@ bool PNMFormat<T>::encodePixels(void)
 }
 
 template<typename T>
-bool PNMFormat<T>::encodeFinish(void)
+bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  for(uint16_t i = 0U; i < image_->numcomps; ++i)
+  {
+    if(!image_->comps[i].data)
+    {
+      spdlog::error("writeImageBand: component {} has null data.", i);
+      return false;
+    }
+  }
+  // Split PGM files need the full image — fall back to writeImage for first band
+  if(forceSplit && image_->decompress_num_comps <= 1)
+  {
+    if(yBegin == 0 && yEnd == image_->decompress_height)
+      return writeImage();
+    spdlog::error("PNMFormat: split mode does not support band-by-band writing");
+    return false;
+  }
+  // Non-split (PPM/PAM) interleaved path
+  uint16_t decompress_num_comps = image_->decompress_num_comps;
+  constexpr uint16_t kMaxStackComps = 4;
+  GrkIOBuf packedBuf;
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
+  {
+    int16_t* stackPlanes16[kMaxStackComps];
+    std::unique_ptr<int16_t*[]> heapPlanes16;
+    int16_t** planes16;
+    if(decompress_num_comps <= kMaxStackComps)
+      planes16 = stackPlanes16;
+    else
+    {
+      heapPlanes16 = std::make_unique<int16_t*[]>(decompress_num_comps);
+      planes16 = heapPlanes16.get();
+    }
+    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+      planes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!interleaver16_)
+        return false;
+    }
+    uint32_t h = yBegin;
+    while(h < yEnd)
+    {
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+      interleaver16_->interleave(planes16, decompress_num_comps, packedBuf.data,
+                                 image_->decompress_width, image_->comps[0].stride,
+                                 image_->packed_row_bytes, stripRows, adjust16);
+      packedBuf.pooled = true;
+      packedBuf.offset = orchestrator.getOffset();
+      packedBuf.len = image_->packed_row_bytes * stripRows;
+      packedBuf.index = orchestrator.getNumPooledRequests();
+      if(!writeStripCore(0, packedBuf))
+      {
+        applicationOrchestratedReclaim(packedBuf);
+        return false;
+      }
+      h += stripRows;
+      applicationOrchestratedReclaim(packedBuf);
+    }
+  }
+  else
+  {
+    T* stackPlanes[kMaxStackComps];
+    std::unique_ptr<T*[]> heapPlanes;
+    T** planes;
+    if(decompress_num_comps <= kMaxStackComps)
+      planes = stackPlanes;
+    else
+    {
+      heapPlanes = std::make_unique<T*[]>(decompress_num_comps);
+      planes = heapPlanes.get();
+    }
+    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+      planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!interleaver_)
+        return false;
+    }
+    uint32_t h = yBegin;
+    while(h < yEnd)
+    {
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+      interleaver_->interleave(((T**)planes), decompress_num_comps, packedBuf.data,
+                               image_->decompress_width, image_->comps[0].stride,
+                               image_->packed_row_bytes, stripRows, adjust);
+      packedBuf.pooled = true;
+      packedBuf.offset = orchestrator.getOffset();
+      packedBuf.len = image_->packed_row_bytes * stripRows;
+      packedBuf.index = orchestrator.getNumPooledRequests();
+      if(!writeStripCore(0, packedBuf))
+      {
+        applicationOrchestratedReclaim(packedBuf);
+        return false;
+      }
+      h += stripRows;
+      applicationOrchestratedReclaim(packedBuf);
+    }
+  }
+  return true;
+}
+
+template<typename T>
+bool PNMFormat<T>::writeFinish(void)
+{
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
 
-  encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+  writeState_ |= IMAGE_FORMAT_PIXELS_WRITTEN;
 
   return orchestrator.close() && closeStream();
 }
@@ -223,38 +355,73 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
   if(doNonSplitEncode())
   {
     uint16_t decompress_num_comps = image_->decompress_num_comps;
-    auto planes = std::make_unique<T*[]>(decompress_num_comps);
-    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
-      planes[i] = (T*)image_->comps[i].data;
     uint32_t h = 0;
     GrkIOBuf packedBuf;
-    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-    auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
-        image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
-
-    if(!iter)
-      goto cleanup;
-    while(h < height)
+    bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+    if(isInt16)
     {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
-      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
-                       image_->decompress_width, image_->comps[0].stride, image_->packed_row_bytes,
-                       stripRows, adjust);
-      packedBuf.pooled = true;
-      packedBuf.offset = orchestrator.getOffset();
-      packedBuf.len = image_->packed_row_bytes * stripRows;
-      packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!encodePixelsCore(0, packedBuf))
-      {
-        delete iter;
-        applicationOrchestratedReclaim(packedBuf);
+      auto planes16 = std::make_unique<int16_t*[]>(decompress_num_comps);
+      for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+        planes16[i] = (int16_t*)image_->comps[i].data;
+      int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      auto iter16 = grk::InterleaverFactory<int16_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!iter16)
         goto cleanup;
+      while(h < height)
+      {
+        uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+        packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+        iter16->interleave(planes16.get(), decompress_num_comps, packedBuf.data,
+                           image_->decompress_width, image_->comps[0].stride,
+                           image_->packed_row_bytes, stripRows, adjust16);
+        packedBuf.pooled = true;
+        packedBuf.offset = orchestrator.getOffset();
+        packedBuf.len = image_->packed_row_bytes * stripRows;
+        packedBuf.index = orchestrator.getNumPooledRequests();
+        if(!writeStripCore(0, packedBuf))
+        {
+          delete iter16;
+          applicationOrchestratedReclaim(packedBuf);
+          goto cleanup;
+        }
+        h += stripRows;
+        applicationOrchestratedReclaim(packedBuf);
       }
-      h += stripRows;
-      applicationOrchestratedReclaim(packedBuf);
+      delete iter16;
     }
-    delete iter;
+    else
+    {
+      auto planes = std::make_unique<T*[]>(decompress_num_comps);
+      for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+        planes[i] = (T*)image_->comps[i].data;
+      T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!iter)
+        goto cleanup;
+      while(h < height)
+      {
+        uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+        packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+        iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
+                         image_->decompress_width, image_->comps[0].stride,
+                         image_->packed_row_bytes, stripRows, adjust);
+        packedBuf.pooled = true;
+        packedBuf.offset = orchestrator.getOffset();
+        packedBuf.len = image_->packed_row_bytes * stripRows;
+        packedBuf.index = orchestrator.getNumPooledRequests();
+        if(!writeStripCore(0, packedBuf))
+        {
+          delete iter;
+          applicationOrchestratedReclaim(packedBuf);
+          goto cleanup;
+        }
+        h += stripRows;
+        applicationOrchestratedReclaim(packedBuf);
+      }
+      delete iter;
+    }
 
     if(!orchestrator.close())
       goto cleanup;
@@ -336,35 +503,70 @@ bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno
   uint32_t width = image_->decompress_width;
   uint32_t stride_diff = image_->comps[0].stride - width;
   // all components have same sign and precision
-  T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-  T* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
   WT* outPtr = buf + *outCount;
   uint16_t start = singleComp ? compno : 0;
   uint16_t end = singleComp ? compno + 1 : ncomp;
-  for(uint16_t comp = start; comp < end; ++comp)
-    compPtr[comp] = (T*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
-  for(uint32_t j = 0; j < rows; ++j)
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
   {
-    for(uint32_t i = 0; i < width; ++i)
+    int16_t adjust16 = (int16_t)(image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    int16_t* compPtr16[4] = {nullptr, nullptr, nullptr, nullptr};
+    for(uint16_t comp = start; comp < end; ++comp)
+      compPtr16[comp] =
+          (int16_t*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
+    for(uint32_t j = 0; j < rows; ++j)
     {
-      for(uint16_t comp = start; comp < end; ++comp)
+      for(uint32_t i = 0; i < width; ++i)
       {
-        T v = *compPtr[comp]++ + adjust;
-        if(fileIO_->getFileHandle())
+        for(uint16_t comp = start; comp < end; ++comp)
         {
-          if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
-                                  fileIO_->getFileHandle()))
-            return false;
-        }
-        else
-        {
-          if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
-            return false;
+          int16_t v = *compPtr16[comp]++ + adjust16;
+          if(fileIO_->getFileHandle())
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
+                                    fileIO_->getFileHandle()))
+              return false;
+          }
+          else
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
+              return false;
+          }
         }
       }
+      for(uint16_t i = start; i < end; ++i)
+        compPtr16[i] += stride_diff;
     }
-    for(uint16_t i = start; i < end; ++i)
-      compPtr[i] += stride_diff;
+  }
+  else
+  {
+    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    T* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
+    for(uint16_t comp = start; comp < end; ++comp)
+      compPtr[comp] = (T*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
+    for(uint32_t j = 0; j < rows; ++j)
+    {
+      for(uint32_t i = 0; i < width; ++i)
+      {
+        for(uint16_t comp = start; comp < end; ++comp)
+        {
+          T v = *compPtr[comp]++ + adjust;
+          if(fileIO_->getFileHandle())
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
+                                    fileIO_->getFileHandle()))
+              return false;
+          }
+          else
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
+              return false;
+          }
+        }
+      }
+      for(uint16_t i = start; i < end; ++i)
+        compPtr[i] += stride_diff;
+    }
   }
 
   return true;
@@ -739,7 +941,7 @@ static inline uint32_t uint_floorlog2(uint32_t a)
 
 template<typename T>
 template<typename WT>
-bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
+bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval)
 {
   if(!fp || !image)
     return false;
@@ -764,8 +966,13 @@ bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
     WT* chunkPtr = chunk;
     for(size_t ct = 0; ct < bytesRead; ++ct)
     {
-      ((T*)image->comps[compno++].data)[index] =
-          sizeof(WT) > 1 ? grk::endian<WT>(*chunkPtr++, true) : *chunkPtr++;
+      WT val = sizeof(WT) > 1 ? grk::endian<WT>(*chunkPtr++, true) : *chunkPtr++;
+      if(val > maxval)
+      {
+        spdlog::error("PNM sample value {} exceeds maxval {}", val, maxval);
+        return false;
+      }
+      ((T*)image->comps[compno++].data)[index] = (T)val;
       if(compno == image->decompress_num_comps)
       {
         compno = 0;
@@ -790,7 +997,7 @@ bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
 }
 
 template<typename T>
-grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
+grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
 {
   uint8_t subsampling_dx = parameters->subsampling_dx;
   uint8_t subsampling_dy = parameters->subsampling_dy;
@@ -864,6 +1071,8 @@ grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
   {
     cmptparm[i].prec = prec;
     cmptparm[i].sgnd = false;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[i].data_type = GRK_INT_16;
     cmptparm[i].dx = subsampling_dx;
     cmptparm[i].dy = subsampling_dy;
     cmptparm[i].w = w;
@@ -899,7 +1108,7 @@ grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
       if(bytesRead == 0)
         break;
       auto chunkPtr = (const uint8_t*)chunk;
-      for(size_t ct = 0; ct < bytesRead; ++ct)
+      for(size_t ct = 0; ct < bytesRead && i < area; ++ct)
       {
         uint8_t c = *chunkPtr++;
         if(c != '\n' && c != ' ')
@@ -934,6 +1143,11 @@ grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
           spdlog::error("error reading ASCII PPM pixel data");
           goto cleanup;
         }
+        if(val > header_info.maxval)
+        {
+          spdlog::error("PNM sample value {} exceeds maxval {}", val, header_info.maxval);
+          goto cleanup;
+        }
         dest[i] = (T)val;
       }
       counter++;
@@ -951,9 +1165,9 @@ grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
   {
     bool rc = false;
     if(prec <= 8)
-      rc = readBytes<uint8_t>(fileIO_->getFileHandle(), image, area);
+      rc = readBytes<uint8_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
     else
-      rc = readBytes<uint16_t>(fileIO_->getFileHandle(), image, area);
+      rc = readBytes<uint16_t>(fileIO_->getFileHandle(), image, area, header_info.maxval);
     if(!rc)
       goto cleanup;
   }
@@ -1044,8 +1258,8 @@ cleanup:
 } /* pnmtoimage() */
 
 template<typename T>
-grk_image* PNMFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PNMFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   fileName_ = filename;
-  return decode(parameters);
+  return readImage(parameters);
 }

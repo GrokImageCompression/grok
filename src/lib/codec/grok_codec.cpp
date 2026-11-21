@@ -20,6 +20,7 @@
 #include "GrkDecompress.h"
 #include "GrkCompress.h"
 #include "GrkCompareImages.h"
+#include "GrkImageCanonDump.h"
 
 int grk_codec_dump(int argc, const char* argv[])
 {
@@ -36,4 +37,8 @@ int grk_codec_decompress(int argc, const char* argv[])
 int grk_codec_compare_images(int argc, const char* argv[])
 {
   return grk::GrkCompareImages().main(argc, argv);
+}
+int grk_codec_image_canon_dump(int argc, const char* argv[])
+{
+  return grk::GrkImageCanonDump().main(argc, argv);
 }

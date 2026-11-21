@@ -58,13 +58,28 @@ extern "C" {
 /**
  * @brief Environment variables
  *
- * @brief Set this environment variable to enable various levels of debug logging
- * levels: 1 - 5
- * level 1 provides only error logging
- * level 3 provides error, warning and information logging
- *
  * GRK_DEBUG
+ *   Enable debug logging at the given level (1-5):
+ *     1 — errors only
+ *     2 — errors + warnings
+ *     3 — errors + warnings + info
+ *     4 — adds debug output
+ *     5 — adds trace output
  *
+ * GRK_MERCURY
+ *   0 decodes with the classic pipeline, 1 decodes every eligible image with
+ *   the mercury pipeline. Unset, mercury decodes single-tile images only.
+ *
+ * GRK_NO_PLUGIN
+ *   When set (to any value), grk_initialize() skips grk_plugin_load(). This
+ *   forces the CPU codec for the whole process — useful for `make test` and
+ *   any context that wants to bypass the GPU/accelerator plugin without
+ *   changing call sites. Read once on first grk_initialize() call.
+ *
+ * GRK_PLUGIN_PATH
+ *   Directory holding the accelerator plugin library. Read by grk_plugin_load()
+ *   when the caller passes no plugin path, ahead of the working directory and
+ *   the executable's directory.
  */
 
 /**
@@ -78,7 +93,8 @@ typedef enum _GRK_PROG_ORDER
   GRK_RPCL = 2, /** resolution-precinct-component-layer order */
   GRK_PCRL = 3, /** precinct-component-resolution-layer order */
   GRK_CPRL = 4, /** component-precinct-resolution-layer order */
-  GRK_NUM_PROGRESSION_ORDERS = 5 /** number of possible progression orders */
+  GRK_PRCL = 5, /** precinct-resolution-component-layer order (Part 2) */
+  GRK_NUM_PROGRESSION_ORDERS = 6 /** number of possible progression orders */
 } GRK_PROG_ORDER;
 
 /**
@@ -294,6 +310,21 @@ typedef enum _GRK_RATE_CONTROL_ALGORITHM
 } GRK_RATE_CONTROL_ALGORITHM;
 
 /**
+ * @brief Metadata types written to JP2 UUID boxes during compression.
+ *
+ * Combine these values in @ref grk_cparameters::metadata_write_flags. Zero
+ * writes every type. GRK_METADATA_WRITE_NONE overrides the type flags.
+ */
+typedef enum _GRK_METADATA_WRITE_FLAG
+{
+  GRK_METADATA_WRITE_ALL = 0,
+  GRK_METADATA_WRITE_EXIF = 1U << 0,
+  GRK_METADATA_WRITE_IPTC = 1U << 1,
+  GRK_METADATA_WRITE_XMP = 1U << 2,
+  GRK_METADATA_WRITE_NONE = 1U << 3
+} GRK_METADATA_WRITE_FLAG;
+
+/**
  * @brief All Grok supported file formats
  */
 typedef enum _GRK_SUPPORTED_FILE_FMT
@@ -310,7 +341,6 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
   GRK_FMT_PNG, /* PNG */
   GRK_FMT_RAWL, /* RAW Little Endian */
   GRK_FMT_JPG, /* JPG */
-  GRK_FMT_YUV, /* YUV */
   GRK_FMT_MJ2 /* MJ2 */
 } GRK_SUPPORTED_FILE_FMT;
 
@@ -325,7 +355,7 @@ typedef enum _GRK_CODEC_FORMAT
   GRK_CODEC_MJ2 /** Motion JPEG 2000 */
 } GRK_CODEC_FORMAT;
 
-#define GRK_PATH_LEN 4096 /* Grok maximum supported filename size */
+#define GRK_PATH_LEN 1024 /* Grok maximum supported filename size */
 #define GRK_MAX_LAYERS 256 /* Grok maximum number of quality layers */
 
 /*
@@ -448,6 +478,22 @@ typedef struct _grk_precision
 } grk_precision;
 
 /**
+ * @struct grk_rescale
+ * @brief Linear value-range rescale:
+ *        out = round((in - src_min) * (dst_max - dst_min) / (src_max - src_min)) + dst_min,
+ *        clamped to [min(dst_min,dst_max), max(dst_min,dst_max)].
+ *        Applied per-component before any precision adjustment. Component prec/sgnd
+ *        are updated to fit the dst range.
+ */
+typedef struct _grk_rescale
+{
+  double src_min;
+  double src_max;
+  double dst_min;
+  double dst_max;
+} grk_rescale;
+
+/**
  * @struct grk_progression_state
  * @brief Stores progression state information
  * Note: limited to 256 components
@@ -538,6 +584,9 @@ typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, vo
  */
 typedef bool (*grk_stream_seek_fn)(uint64_t offset, void* user_data);
 
+typedef bool (*grk_stream_read_at_fn)(uint8_t* buffer, size_t numBytes, uint64_t offset,
+                                      void* user_data);
+
 /**
  * @brief Free user data callback
  * @param user_data user data
@@ -582,7 +631,10 @@ typedef struct _grk_stream_params
   char username[129]; /* AWS access key ID: max 128 chars + null */
   char password[129]; /* Secret access key: max 128 chars + null */
   char bearer_token[4097]; /* Session token: up to 4096 chars + null */
-  char custom_header[1024]; /* Single header: fits within 8KB total limit */
+#define GRK_MAX_CUSTOM_HEADERS 16
+  char custom_headers[GRK_MAX_CUSTOM_HEADERS][1024]; /* Custom HTTP headers */
+  uint8_t
+      num_custom_headers; /* Number of entries in custom_headers[] (0..GRK_MAX_CUSTOM_HEADERS) */
   char region[64]; /* Region code: max 50 chars + buffer */
 
   /* 5 S3 Endpoint Configuration (for S3-compatible services like MinIO) */
@@ -591,6 +643,66 @@ typedef struct _grk_stream_params
   int8_t s3_use_virtual_hosting; /* 0 = auto (default), 1 = virtual-hosted, -1 = path-style */
   bool s3_no_sign_request; /* true = skip authentication (public buckets) */
   bool s3_allow_insecure; /* true = disable SSL certificate verification */
+
+  /* 6 HTTP cookies */
+  char cookie[4096]; /* inline cookie string for CURLOPT_COOKIE
+                        (e.g. "name1=value1; name2=value2") */
+  char cookie_file[GRK_PATH_LEN]; /* path passed to CURLOPT_COOKIEFILE
+                                     (read cookies from a Netscape/HTTP file) */
+  char cookie_jar[GRK_PATH_LEN]; /* path passed to CURLOPT_COOKIEJAR
+                                    (write cookies on cleanup) */
+
+  /* 7 .netrc credentials */
+  bool netrc; /* true = enable .netrc lookup (CURLOPT_NETRC=REQUIRED) */
+  char netrc_file[GRK_PATH_LEN]; /* optional explicit .netrc path
+                                    (CURLOPT_NETRC_FILE) */
+
+  /* 8 Proxy */
+  char proxy[512]; /* proxy URL (e.g. "http://proxy:8080") */
+  char proxy_userpwd[256]; /* proxy credentials ("user:password") */
+
+  /* 9 Requester pays (S3) */
+  char request_payer[64]; /* e.g. "requester" for x-amz-request-payer header */
+
+  /* 10 User agent */
+  char user_agent[256]; /* custom User-Agent header string */
+
+  /* 11 Timeouts (seconds, 0 = use default) */
+  long timeout; /* overall request timeout (CURLOPT_TIMEOUT) */
+  long connect_timeout; /* connection timeout (CURLOPT_CONNECTTIMEOUT) */
+
+  /* 12 Retry configuration (0 = use default) */
+  uint32_t max_retry; /* maximum number of retries */
+  uint32_t retry_delay; /* delay between retries in seconds */
+
+  /* 13 Fetch concurrency (0 = use default of 30) */
+  uint32_t fetch_batch_size; /* max concurrent HTTP range requests */
+
+  /* 14 HTTP/2 multiplexing (default: disabled).
+   * When enabled, all concurrent range requests share a single TCP connection
+   * via CURLPIPE_MULTIPLEX + HTTP_VERSION_2TLS + PIPEWAIT.
+   *
+   * Trade-offs:
+   *  + Reduces connection overhead when issuing hundreds of small range requests
+   *  + Better for servers/CDNs with good HTTP/2 stream handling
+   *  - Single TCP connection means TCP-level head-of-line blocking: one packet
+   *    loss stalls ALL streams (vs. only one connection with HTTP/1.1)
+   *  - PIPEWAIT forces requests to queue behind the initial TLS handshake
+   *    instead of opening parallel connections immediately
+   *  - Some object stores (e.g. CloudFerro) process multiplexed range requests
+   *    sequentially, negating the concurrency benefit
+   *  - For a small number of range requests, the HTTP/2 framing and flow-control
+   *    overhead can make it 10-15% slower than parallel HTTP/1.1 connections
+   *
+   * Recommendation: leave disabled unless benchmarking shows a clear benefit
+   * for your specific server and workload. */
+  bool http2_multiplex;
+
+  /* 15 Positioned read for callback streaming (optional).
+   * Fills buffer with numBytes from absolute offset without moving the
+   * read_fn/seek_fn cursor, and returns true only if all numBytes were read.
+   * Grok calls it concurrently from many threads. */
+  grk_stream_read_at_fn read_at_fn;
 
 } grk_stream_params;
 
@@ -603,6 +715,17 @@ typedef struct _grk_stream_params
 #define GRK_TILE_CACHE_LRU 4 /* LRU: release decompressed data, keep processor */
 
 typedef struct _grk_image grk_image;
+
+/**
+ * @brief Callback invoked when a horizontal band of the decompressed image is ready for writing.
+ *
+ * @param yBegin first row (inclusive) of the completed band
+ * @param yEnd   one-past-last row (exclusive) of the completed band
+ * @param image  pointer to the image containing the completed band data
+ * @param user_data user data
+ */
+typedef bool (*grk_io_band_callback)(uint32_t yBegin, uint32_t yEnd, grk_image* image,
+                                     void* user_data);
 
 /**
  * @brief Callback called when decompression of a tile has completed
@@ -640,11 +763,15 @@ typedef struct _grk_decompress_core_params
    */
   uint16_t layers_to_decompress;
   uint32_t tile_cache_strategy; /* tile cache strategy */
+  uint16_t
+      max_active_tiles; /* max tiles with decompressed data (LRU eviction limit, 0 = unlimited) */
   uint32_t disable_random_access_flags; /* disable random access flags */
   bool skip_allocate_composite; /* skip allocate composite image data for multi-tile */
   grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
   void* io_user_data; /* IO user data */
   grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
+  grk_io_band_callback io_band_callback; /* band completion callback for incremental write */
+  void* io_band_user_data; /* band callback user data */
   /**
    * Array of 0-based component indices to decode.
    * Only these components will be fully decoded (T1, DWT, etc.).
@@ -654,6 +781,8 @@ typedef struct _grk_decompress_core_params
    */
   uint16_t* comps_to_decode;
   uint16_t num_comps_to_decode;
+  /* int16 9/7 up to 13 bits instead of 10, outside the T.803 tolerances above 10 bits */
+  bool irreversible_int16;
 } grk_decompress_core_params;
 
 /**
@@ -682,6 +811,7 @@ typedef struct _grk_decompress_params
   double dw_x1; /* decompress window right boundary*/
   double dw_y0; /* decompress window top boundary*/
   double dw_y1; /* decompress window bottom boundary*/
+  bool dw_reduced; /* if true, dw_x0..dw_y1 are in reduced (output) coordinate space */
   uint16_t tile_index; /* index of decompressed tile*/
 
   /***************************************************************************
@@ -691,9 +821,12 @@ typedef struct _grk_decompress_params
   */
   GRK_COLOR_SPACE color_space;
   bool force_rgb; /* force output to sRGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample components according to their dx and dy values*/
   grk_precision* precision; /* precision array */
   uint32_t num_precision; /* size of precision array*/
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* size of rescale array */
   bool split_by_component; /* split output components to different files for PNM */
   bool single_tile_decompress; /* single tile decompress */
   /************************************************************************** */
@@ -703,16 +836,23 @@ typedef struct _grk_decompress_params
   uint32_t compression_level; /* compression "quality" - meaning depends on output file format */
   uint32_t duration; /* duration of decompression in seconds */
   uint32_t repeats; /* number of repetitions */
-  uint32_t num_threads; /* number of CPU threads */
+  uint32_t num_threads; /* number of threads. 1 => the codec decompresses on its own
+                           inline executor instead of the global thread pool, so
+                           concurrent single-threaded decompresses are independent */
 
   uint32_t kernel_build_options; /* plugin OpenCL kernel build options */
   int32_t device_id; /* plugin device ID */
   void* user_data; /* plugin user data */
+  bool cpu_only; /* decompress on the CPU even when a plugin is loaded */
 } grk_decompress_parameters;
 
 /**
  * @brief Grok Data types
- * Used to specify the actual data type of Grok image components
+ * Used to specify the actual data type of Grok image components.
+ *
+ * Compression accepts GRK_INT_32 and GRK_INT_16 samples. GRK_INT_16 supports
+ * signed precision up to 16 bits and unsigned precision up to 15 bits.
+ * GRK_INT_8, GRK_FLOAT and GRK_DOUBLE are unused.
  *
  */
 typedef enum _grk_data_type
@@ -727,14 +867,22 @@ typedef enum _grk_data_type
 /**
  * @struct grk_image_comp
  * @brief Image component
+ *
+ * (x0, y0, w, h) is the authoritative description of the data rectangle
+ * in @ref data for all roles — compression input, full-image
+ * decompression output, and per-tile decompression output. For a
+ * per-tile image from a windowed decompress, it describes the cropped
+ * decode window (not the full tile), and disagrees with the enclosing
+ * grk_image's x0/y0/x1/y1. See the grk_image struct comment for the full
+ * breakdown.
  */
 typedef struct _grk_image_comp
 {
-  uint32_t x0; /* x offset relative to whole image */
-  uint32_t y0; /* y offset relative to whole image */
-  uint32_t w; /* width */
-  uint32_t stride; /* stride */
-  uint32_t h; /* height */
+  uint32_t x0; /* x offset on reference grid of the data rectangle */
+  uint32_t y0; /* y offset on reference grid of the data rectangle */
+  uint32_t w; /* width of data rectangle */
+  uint32_t stride; /* row pitch in samples (>= w; may be aligned) */
+  uint32_t h; /* height of data rectangle */
   uint8_t dx; /* horizontal separation of component samples with respect to reference grid  */
   uint8_t dy; /* vertical separation of component samples with respect to reference grid  */
   uint8_t prec; /* precision */
@@ -743,7 +891,7 @@ typedef struct _grk_image_comp
   GRK_CHANNEL_ASSOC association; /* channel association */
   uint16_t crg_x; /* component registration x coordinate */
   uint16_t crg_y; /* component registration y coordinate */
-  grk_data_type data_type;
+  grk_data_type data_type; /* GRK_INT_32 or eligible GRK_INT_16 samples */
   void* data; /* component data */
   bool owns_data; /* true if data is owned by component */
 } grk_image_comp;
@@ -791,10 +939,55 @@ typedef struct _grk_image_meta
  * @brief Grok image
  * Note: do not directly create a grk_image object. Instead use the @ref grk_image_new
  * API method to create a grk_image object, and clean it up with @ref grk_object_unref
+ *
+ * COORDINATE FRAMES:
+ *
+ * grk_image is used both as input to compression and as output from
+ * decompression. The interpretation of x0/y0/x1/y1 versus
+ * comps[i].x0/y0/w/h depends on which role the image is playing:
+ *
+ * 1. Compression input (caller-populated source image):
+ *      - x0/y0/x1/y1            = image bounds on the reference grid.
+ *      - comps[i].x0/y0 + (w,h) = the component's full extent, equal to
+ *                                 the image bounds (scaled by dx/dy for
+ *                                 subsampled components).
+ *      - comps[i].data_type     = GRK_INT_32 or eligible GRK_INT_16.
+ *      Both frames agree.
+ *
+ * 2. Full-image decompression output (from @ref grk_decompress_get_image):
+ *      - x0/y0/x1/y1            = reduced image bounds.
+ *      - comps[i].x0/y0 + (w,h) = the component's full decoded extent.
+ *      Both frames agree.
+ *
+ * 3. Per-tile decompression output
+ *    (from @ref grk_decompress_get_tile_image), windowed decompress
+ *    (dw_x0/dw_y0/dw_x1/dw_y1 set on grk_decompress_parameters):
+ *      - x0/y0/x1/y1            = the FULL tile rectangle on the canvas
+ *                                 (unreduced, non-windowed tile bounds).
+ *      - comps[i].x0/y0 + (w,h) = the cropped decode window — the
+ *                                 intersection of dw_* with this tile,
+ *                                 reduced if dw_reduced was set.
+ *      The two frames DISAGREE. The data layout — origin, width, height,
+ *      stride — is described entirely by comps[i]. Do NOT take origin
+ *      from image->x0/y0 and size from comps[i].w/h: that mixes frames
+ *      and yields a rectangle that misses the actual decoded pixels.
+ *
+ * Recommended access pattern (works in all three cases):
+ *     auto& c = img->comps[componentIndex];
+ *     // origin in canvas coords:    (c.x0, c.y0)
+ *     // valid data rectangle:       width c.w, height c.h
+ *     // row pitch in samples:       c.stride
+ *     // pixel at canvas (X, Y):     ((T*)c.data)[(Y - c.y0) * c.stride + (X - c.x0)]
+ *     // T is int16_t for GRK_INT_16, otherwise int32_t.
  */
 typedef struct _grk_image
 {
   grk_object obj; /* object */
+  /* x0/y0/x1/y1 describe the image bounds on the reference grid.
+   * Role-dependent — see the struct-level comment above:
+   *  - compression input / full-image decompress output: image bounds.
+   *  - per-tile decompress output: FULL tile bounds (NOT the decoded
+   *    window). Use comps[i].x0/y0/w/h for the data rectangle. */
   uint32_t x0; /* image horizontal offset from origin of reference grid */
   uint32_t y0; /* image vertical offset from origin of reference grid */
   uint32_t x1; /* image right boundary in reference grid*/
@@ -809,9 +1002,12 @@ typedef struct _grk_image
   double display_resolution[2]; /* display resolution */
   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
   bool force_rgb; /* force RGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* number of rescale entries */
   bool has_multiple_tiles; /* has multiple tiles */
   bool split_by_component; /* split by component */
   uint16_t decompress_num_comps; /* decompress number of components */
@@ -884,9 +1080,12 @@ typedef struct _grk_header_info
   GRK_COLOR_SPACE color_space;
   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
   bool force_rgb; /* force RGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* number of rescale entries */
   bool split_by_component; /* split by component */
   bool single_tile_decompress; /* single tile decompress */
 } grk_header_info;
@@ -970,9 +1169,11 @@ typedef struct grk_wait_swath
  */
 typedef struct _grk_plugin_pass
 {
+  uint16_t rate; /* rate up to and including this pass */
   double distortion_decrease; /* distortion decrease up to and including this pass */
-  size_t rate; /* rate up to and including this pass */
-  size_t length; /* stream length for this pass */
+  uint16_t length; /* stream length for this pass */
+  uint8_t term; /* nonzero if this pass terminates a segment */
+  uint16_t slope; /* ln(slope) in 8.8 fixed point */
 } grk_plugin_pass;
 
 /**
@@ -993,8 +1194,11 @@ typedef struct _grk_plugin_code_block
   uint32_t compressed_data_length; /* compressed data length */
   uint8_t num_bit_planes; /* number of bit planes */
   uint8_t num_passes; /* number of passes */
-  grk_plugin_pass passes[GRK_MAX_PASSES]; /* passes */
+  grk_plugin_pass* passes; /* passes */
   unsigned int sorted_index; /* sorted index */
+  uint32_t cleanup_length; /* HT cleanup segment bytes, at the start of compressed_data */
+  uint32_t refinement_length; /* HT refinement segment bytes, after the cleanup bytes */
+  uint8_t missing_msbs; /* HT missing most significant bit planes, placeholders included */
 } grk_plugin_code_block;
 
 /**
@@ -1017,6 +1221,7 @@ typedef struct _grk_plugin_band
   uint64_t num_precincts; /* number of precincts */
   grk_plugin_precinct** precincts; /* precincts */
   float stepsize; /* stepsize */
+  uint8_t num_bit_planes; /* band bit planes, used by HT */
 } grk_plugin_band;
 
 /**
@@ -1093,6 +1298,10 @@ GRK_API bool GRK_CALLCONV grk_detect_format(const char* file_path, GRK_CODEC_FOR
  * operations. Pass @p num_threads = 0 to use all available logical CPUs.
  * The thread pool persists for the lifetime of the process.
  *
+ * Calling again with a different @p num_threads resizes the pool by swapping
+ * in a new executor; codecs already in flight keep running on the executor
+ * they started with and release it when they finish.
+ *
  * @param plugin_path       path to an optional hardware-accelerator plugin .so;
  *                          pass NULL for CPU-only operation
  * @param num_threads       number of worker threads (0 = use all CPUs)
@@ -1101,6 +1310,15 @@ GRK_API bool GRK_CALLCONV grk_detect_format(const char* file_path, GRK_CODEC_FOR
  */
 GRK_API void GRK_CALLCONV grk_initialize(const char* plugin_path, uint32_t num_threads,
                                          bool* plugin_initialized);
+
+/**
+ * @brief Deinitialize the Grok library.
+ *
+ * Cleans up the plugin and thread pool. Call at the end of main()
+ * to ensure GPU resources are freed before CUDA runtime unloads.
+ * Codecs still in flight keep the thread pool alive until they finish.
+ */
+GRK_API void GRK_CALLCONV grk_deinitialize(void);
 
 /**
  * @brief Increments the reference count on a Grok object.
@@ -1150,9 +1368,12 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
  * Each entry in @p cmptparms specifies width, height, bit-depth, signedness,
  * and sub-sampling factors for one component.
  *
- * When @p alloc_data is true, a contiguous int32_t data block is allocated
- * for every component; when false, the component data pointers are NULL and
- * the caller must supply them before passing the image to grk_compress_init().
+ * When @p alloc_data is true, a contiguous buffer is allocated for every
+ * component (int32_t unless @p cmptparms[].data_type is GRK_INT_16).
+ * Compression input may use GRK_INT_32 or GRK_INT_16 within its supported
+ * precision. When @p alloc_data is false, the component data pointers are
+ * NULL and the caller must supply buffers matching data_type before passing
+ * the image to grk_compress_init().
  *
  * The returned image is reference-counted.  Release with grk_object_unref().
  *
@@ -1161,11 +1382,28 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
  *                   (see @ref grk_image_comp)
  * @param clrspc     image colour space (e.g. GRK_CLRSPC_SRGB, GRK_CLRSPC_GRAY
  *                   — see @ref GRK_COLOR_SPACE)
- * @param alloc_data if true, allocate int32_t data buffers for all components
+ * @param alloc_data if true, allocate data buffers for all components
  * @return pointer to newly allocated @ref grk_image, or NULL on failure
  */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
                                               GRK_COLOR_SPACE clrspc, bool alloc_data);
+
+/**
+ * @brief Determine the data type used by Grok for wavelet coefficients.
+ *
+ * Returns the type (GRK_INT_32 or GRK_INT_16) of the internal 16-bit DWT
+ * path, and of decompress output under standard conditions (whole-tile
+ * decoding, num_resolutions > 1). Compression also accepts eligible
+ * GRK_INT_16 source buffers. This return value reports the wavelet path.
+ *
+ * @param compress  true for compression, false for decompression
+ * @param prec      image component precision in bits
+ * @param is_mct    true if multi-component transform (MCT/RCT/ICT) is applied
+ * @param qmfbid    wavelet transform: 1 for reversible (5/3), 0 for irreversible (9/7)
+ * @return GRK_INT_16 if the 16-bit path will be used, GRK_INT_32 otherwise
+ */
+GRK_API grk_data_type GRK_CALLCONV grk_get_data_type(bool compress, uint8_t prec, bool is_mct,
+                                                     uint8_t qmfbid);
 
 /**
  * @brief Allocates an empty image metadata object.
@@ -1186,7 +1424,7 @@ GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
  *
  * @param meta   pointer to an existing grk_image_meta
  * @param field  which metadata field to set:
- *               "geotiff", "ipr", "xmp", "iptc", "exif"
+ *               "geotiff", "ipr", "xmp", "iptc", "exif", "xml"
  * @param data   pointer to source bytes (copied internally)
  * @param len    number of bytes to copy
  * @return true on success, false on invalid field name or OOM
@@ -1202,7 +1440,7 @@ GRK_API bool GRK_CALLCONV grk_image_meta_set_field(grk_image_meta* meta, const c
  *
  * @param meta      pointer to an existing grk_image_meta
  * @param field     which metadata field to get:
- *                  "geotiff", "ipr", "xmp", "iptc", "exif"
+ *                  "geotiff", "ipr", "xmp", "iptc", "exif", "xml"
  * @param[out] data set to internal buffer pointer (do not free)
  * @param[out] len  set to buffer length
  * @return true on success (even if data is NULL/empty), false on invalid field
@@ -1356,6 +1594,30 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
  * @return pointer to @ref grk_image
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
+
+/**
+ * @brief Set a band-completion callback on the decompressor.
+ *
+ * Must be called after grk_decompress_read_header() but before grk_decompress().
+ * When set, the decompressor invokes the callback as each tile row completes,
+ * enabling incremental writing of decompressed image bands.
+ *
+ * @param codec   decompressor object
+ * @param callback function to invoke per completed band
+ * @param user_data opaque pointer forwarded to the callback
+ */
+GRK_API void GRK_CALLCONV grk_decompress_set_band_callback(grk_object* codec,
+                                                           grk_io_band_callback callback,
+                                                           void* user_data);
+
+/**
+ * @brief Checks whether the image requires post-processing (palette, ICC, colour
+ * space conversion, precision override, or upsampling).
+ *
+ * @param image pointer to the decompressed image
+ * @return true if all post-processing steps are no-ops
+ */
+GRK_API bool GRK_CALLCONV grk_image_is_post_process_no_op(grk_image* image);
 
 /**
  * @brief Starts (or continues) decompression of the JPEG 2000 image.
@@ -1539,6 +1801,9 @@ typedef struct _grk_cparameters
   uint32_t cblockh_init; /* nominal code block height (default 64) */
   uint8_t cblk_sty; /* code block style */
   bool irreversible; /* true if irreversible compression enabled, default false */
+  /** JPEG style quality factor in [1..100] for irreversible compression, derives
+   *  visually weighted quantization step sizes. 0 disables it */
+  uint8_t qfactor;
   /** region of interest: affected component in [0..3];
    *  -1 indicates no ROI */
   int32_t roi_compno; /* ROI component number */
@@ -1589,7 +1854,9 @@ typedef struct _grk_cparameters
   bool apply_icc; /* apply ICC */
 
   GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm; /* rate control algorithm */
-  uint32_t num_threads; /* number of threads */
+  uint32_t num_threads; /* number of threads. 1 => the codec compresses on its own
+                           inline executor instead of the global thread pool, so
+                           concurrent single-threaded compresses are independent */
   int32_t device_id; /* device ID */
   uint32_t duration; /* duration seconds */
   uint32_t kernel_build_options; /* kernel build options */
@@ -1602,6 +1869,39 @@ typedef struct _grk_cparameters
   uint16_t rreq_standard_features[8]; /* standard features for rreq box */
   uint8_t num_rreq_standard_features; /* number of standard features */
   bool geoboxes_after_jp2c; /* write metadata boxes (UUID, asoc, XML) after codestream */
+  uint32_t metadata_write_flags; /* GRK_METADATA_WRITE_FLAG values, 0 writes all */
+
+  /**
+   * Enable progressive rate control during T1 encoding.
+   *
+   * When true, the encoder estimates the PCRD slope threshold progressively
+   * as code blocks complete, and terminates encoding of subsequent blocks early
+   * when their coding passes are predicted to be discarded by rate control.
+   *
+   * This provides significant speedup (20-40% for DCI/high-ratio compression)
+   * at the cost of non-bit-exact output compared to standard PCRD. Quality
+   * differences are negligible (within rounding error of the target rate).
+   *
+   * Default: false (standard full-encode + PCRD, bit-exact reproducible output).
+   */
+  bool progressive_rate_control;
+
+  /** Rate control slope threshold from a previous similar frame, see
+   *  grk_compress_get_slope_threshold(). Narrows the PCRD-opt search for a single
+   *  layer rate-distortion encode, block coding is unaffected. 0 for none */
+  uint16_t rate_control_slope_hint;
+
+  /** Multiplies every subband step by 2 to the power of this, so that many finest
+   *  bit planes are never coded. At most 8, irreversible only, ignored with qfactor.
+   *  Applied only when rate_control_slope_hint is nonzero, a zero hint means the
+   *  previous frame kept every pass and the shifted planes would be lost for nothing.
+   *  A shifted frame that reports a zero threshold should be encoded again without
+   *  the hint, as grk_compress does for a directory */
+  uint8_t quant_step_shift;
+
+  /** Fraction of a layer's byte budget rate control may leave unused, stopping
+   *  the search early. In [0, 0.5), 0 is an exact search */
+  double rate_control_tolerance;
 
   /* Transcode mode: rewrite JP2 boxes while copying the codestream verbatim.
    * Set transcode=true and populate transcode_src with the source stream.
@@ -1616,6 +1916,18 @@ typedef struct _grk_cparameters
   uint8_t max_res_transcode; /* max resolutions to keep (0 = all) */
   GRK_PROG_ORDER
   transcode_prog_order; /* reorder packets to this progression (GRK_PROG_UNKNOWN = keep) */
+
+  /**
+   * Apply Rec.709 RGB → DCI X'Y'Z' colour transform on the input image
+   * before compression. Uses SIMD-accelerated pipeline:
+   *   1. Rec.709 OETF⁻¹ (gamma → linear)
+   *   2. 3×3 matrix (linear RGB → linear CIE XYZ, D65)
+   *   3. DCI 2.6 gamma (linear → X'Y'Z')
+   * Only applied to images with ≥3 components.
+   */
+  bool apply_xyz_transform;
+  bool cpu_only; /* compress on the CPU even when a plugin is loaded */
+  bool strict_compression_ratios;
 } grk_cparameters;
 
 /**
@@ -1642,6 +1954,20 @@ typedef struct _grk_cparameters
  */
 GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters);
 
+GRK_API grk_data_type GRK_CALLCONV grk_compress_get_recommended_data_type(
+    const grk_cparameters* parameters, uint8_t precision, bool is_mct_component);
+
+/**
+ * @brief Apply Rec.709 RGB → DCI X'Y'Z' colour transform to an image in-place.
+ *
+ * Operates on planar int32 component buffers (comp[0..2].data).
+ * Pixel values are interpreted as unsigned integers in [0, (1<<prec)-1].
+ *
+ * @param image  Image with ≥3 components. Only components 0,1,2 are modified.
+ * @return true on success, false if image has <3 components.
+ */
+GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
+
 /**
  * @brief Creates and initializes a JPEG 2000 compressor.
  *
@@ -1651,8 +1977,10 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
  * layers, etc.) are taken from @p parameters — call
  * grk_compress_set_default_params() first to populate defaults.
  *
- * The @p image must remain valid until grk_compress() completes. The
- * returned codec object must be released with grk_object_unref().
+ * Each component of @p image must use GRK_INT_32, or GRK_INT_16 with signed
+ * precision up to 16 bits or unsigned precision up to 15 bits. The image must
+ * remain valid until grk_compress() completes. The returned codec object must
+ * be released with grk_object_unref().
  *
  * @param stream_params  output stream description (see @ref grk_stream_params)
  * @param parameters     compression settings (see @ref grk_cparameters)
@@ -1681,6 +2009,7 @@ GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* t
 /**
  * @brief Compresses an additional frame into a multi-frame container (MJ2).
  * For single-image formats (JP2, J2K) this returns 0 (unsupported).
+ * @p image must use a data type accepted by grk_compress_init().
  * @param codec compression codec (see @ref grk_object)
  * @param image Input image for this frame (see @ref grk_image)
  * @param tile	plugin tile (see @ref grk_plugin_tile)
@@ -1703,6 +2032,14 @@ GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
  * @return	compressed length in bytes, or 0 on failure
  */
 GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* codec);
+
+/**
+ * @brief Final PCRD-opt slope threshold of the last quality layer, minimum over
+ *        tiles, for grk_cparameters::rate_control_slope_hint on the next frame
+ * @param	codec	compression codec (see @ref grk_object)
+ * @return	log-domain slope threshold, 0 when rate control did not run
+ */
+GRK_API uint16_t GRK_CALLCONV grk_compress_get_slope_threshold(grk_object* codec);
 
 /**
  * @brief Transcodes a JPEG 2000 file by rewriting JP2 boxes while copying
@@ -1729,7 +2066,9 @@ GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* cod
  * @param parameters  compression / transcode settings
  *                    (see @ref grk_cparameters); box-level fields
  *                    (jpx_branding, write_rreq, geoboxes_after_jp2c,
- *                    resolution, etc.) are honoured
+ *                    resolution, etc.) are honoured; cod_format
+ *                    GRK_FMT_J2K writes a raw codestream with no boxes and
+ *                    is the only output a raw codestream source accepts
  * @param image       source image carrying component info and metadata
  *                    (see @ref grk_image)
  * @return number of bytes written to the destination stream, or 0 on failure
@@ -2078,6 +2417,18 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
  */
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
+/**
+ * @brief Returns the build info of the loaded plugin.
+ *
+ * The string names the GPU backend and the build target, for example
+ * "CUDA sm_86". It is valid until grk_plugin_cleanup().
+ *
+ * Returns NULL if no plugin is loaded.
+ *
+ * @return plugin build info string, or NULL
+ */
+GRK_API const char* GRK_CALLCONV grk_plugin_build_info(void);
+
 /*
  * @struct grk_plugin_init_info
  * @brief Plugin init info
@@ -2085,8 +2436,10 @@ GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 typedef struct _grk_plugin_init_info
 {
   int32_t device_id; /* device ID */
+  bool verbose; /* enable diagnostic logging */
   const char* license; /* license */
   const char* server; /* server */
+  uint32_t num_threads; /* threads for host-side plugin work, 0 means automatic */
 } grk_plugin_init_info;
 
 /**
@@ -2102,6 +2455,28 @@ typedef struct _grk_plugin_init_info
  *         false on invalid license, device unavailable, or no plugin loaded
  */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
+
+/**
+ * @brief Switches the initialised plugin in or out of grk_compress() and grk_decompress().
+ *
+ * Once grk_plugin_init() has succeeded, every grk_compress() and grk_decompress()
+ * whose parameters the plugin handles runs its T1 stage on the accelerator, with
+ * the host doing the header, rate allocation and packet work on the stream the
+ * codec was created with, memory buffer or file alike. Parameters the plugin does
+ * not handle (a reduced or windowed decode, tiling, a code block style, an
+ * unsupported precision) run on the CPU as before. A device failure fails the
+ * call. The plugin is on as soon as grk_plugin_init() succeeds.
+ *
+ * @param enabled  false sends every frame to the CPU while keeping the plugin loaded
+ *
+ * cpu_only in grk_cparameters and grk_decompress_parameters is the per-call switch.
+ */
+GRK_API void GRK_CALLCONV grk_plugin_set_enabled(bool enabled);
+
+/**
+ * @brief Number of grk_compress() and grk_decompress() calls the plugin has run so far.
+ */
+GRK_API uint64_t GRK_CALLCONV grk_plugin_accelerated_frames(void);
 
 /**
  * @struct grk_plugin_compress_user_callback_info
@@ -2186,6 +2561,280 @@ GRK_API void GRK_CALLCONV grk_plugin_wait_for_batch_complete(void);
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 
 /**
+ * @brief Called with the code stream of one frame of an in-memory plugin batch.
+ *
+ * @param user        the user pointer passed to grk_plugin_batch_memory_begin()
+ * @param frame       the frame_user pointer passed to grk_plugin_batch_memory_submit()
+ * @param codestream  the compressed frame, owned by grok until this returns
+ * @param length      compressed byte count, 0 when this frame failed
+ */
+typedef void (*GRK_PLUGIN_BATCH_FRAME_CALLBACK)(void* user, void* frame, const uint8_t* codestream,
+                                                size_t length);
+
+/**
+ * @enum GRK_SOURCE_FORMAT
+ * @brief How the frames of an in-memory plugin batch are laid out.
+ *
+ * GRK_SOURCE_PLANAR_RGB is the planar GRK_INT_32 frame grk_compress() takes.
+ * The two YUV formats are planar Y, Cb and Cr at the source precision, taken
+ * straight from a video decoder: grok hands the three planes to the plugin,
+ * which upsamples the chroma and converts to RGB on the device.
+ * GRK_SOURCE_RGB48LE is one interleaved 16-bit buffer.
+ */
+typedef enum _GRK_SOURCE_FORMAT
+{
+  GRK_SOURCE_PLANAR_RGB = 0, /* planar RGB, one int32_t per sample */
+  GRK_SOURCE_YUV420P = 1, /* planar YUV, chroma halved in both directions */
+  GRK_SOURCE_YUV422P = 2, /* planar YUV, chroma halved horizontally */
+  GRK_SOURCE_RGB48LE = 3 /* interleaved 16-bit little endian RGB */
+} GRK_SOURCE_FORMAT;
+
+/**
+ * @enum GRK_YUV_MATRIX
+ * @brief The matrix that turns a YUV source into RGB.
+ */
+typedef enum _GRK_YUV_MATRIX
+{
+  GRK_YUV_BT601 = 0, /* Rec. ITU-R BT.601 */
+  GRK_YUV_BT709 = 1, /* Rec. ITU-R BT.709 */
+  GRK_YUV_BT2020 = 2 /* Rec. ITU-R BT.2020 non constant luminance */
+} GRK_YUV_MATRIX;
+
+/**
+ * @brief Frame shape and callback for an in-memory plugin batch.
+ *
+ * A zero initialised struct describes a planar RGB batch at @p prec, which is
+ * what the batch took before the YUV formats existed.
+ */
+typedef struct grk_plugin_batch_memory_info
+{
+  grk_cparameters* compress_parameters; /* compress parameters */
+  uint32_t width; /* frame width */
+  uint32_t height; /* frame height */
+  uint16_t numcomps; /* components per frame */
+  uint8_t prec; /* bits per sample the code stream carries */
+  uint8_t source_prec; /* bits per sample of the submitted frames, 0 means prec */
+  GRK_PLUGIN_BATCH_FRAME_CALLBACK callback; /* per frame callback */
+  void* user; /* handed back to the callback */
+  bool* xyz_on_device; /* optional, set true when the device runs the colour transform */
+  GRK_SOURCE_FORMAT source_format; /* how a submitted frame is laid out */
+  GRK_YUV_MATRIX yuv_matrix; /* YUV source only: the matrix to RGB */
+  bool yuv_full_range; /* YUV source only: full range rather than studio range */
+} grk_plugin_batch_memory_info;
+
+/**
+ * @brief Starts a batch that compresses frames already held in memory.
+ *
+ * Every frame in the batch has the shape given here. Frames go in through
+ * grk_plugin_batch_memory_submit() and come back through @p info.callback,
+ * which runs on the plugin's threads and may run concurrently with itself.
+ * grk_plugin_batch_memory_end() drains the batch.
+ *
+ * Requires grk_plugin_init() to have succeeded. While the batch runs, an
+ * ordinary grk_compress() call compresses on the CPU.
+ *
+ * When compress_parameters->apply_xyz_transform is set, the device runs the
+ * Rec.709 RGB to DCI X'Y'Z' transform as part of its preprocess kernel for a
+ * three component 16-bit source encoded at 12 bits, and the host transform
+ * handles every other case. @p info.xyz_on_device, when given, says which one
+ * this batch got, and grk_plugin_batch_memory_submit() takes frames at
+ * @p info.source_prec either way.
+ *
+ * For a YUV @p info.source_format the device does the whole colour pipeline:
+ * chroma upsampling, YUV to RGB, then the X'Y'Z' transform when
+ * apply_xyz_transform is set. @p info.numcomps is 3, @p info.source_prec is 8
+ * or 10 and @p info.prec is 12. The chroma siting is the MPEG-2 and H.264
+ * default: chroma sample i is co-sited with luma column 2i, so an even luma
+ * column takes chroma i and an odd one the average of i and i+1, clamped at the
+ * right edge. For 4:2:0 chroma row j sits between luma rows 2j and 2j+1, so an
+ * even luma row takes three quarters of row j and a quarter of row j-1 and an
+ * odd luma row three quarters of row j and a quarter of row j+1, clamped at the
+ * bottom. 4:2:2 has no vertical interpolation. @p info.yuv_matrix picks the
+ * matrix and @p info.yuv_full_range says whether the samples fill the range:
+ * studio range puts luma black at 16 and white at 235 scaled to the source
+ * precision, full range spreads luma over the whole 0 to 2^source_prec - 1.
+ *
+ * A plugin that cannot take the frame shape makes this return 1, so a caller
+ * can find out whether a YUV format is taken with a begin and an end and no
+ * frame in between, before it starts its decoder.
+ *
+ * @param info  frame shape, compression parameters and callback
+ *              (see @ref grk_plugin_batch_memory_info)
+ * @return 0 when the batch is running, 1 when the plugin does not handle these
+ *         parameters (the caller compresses on the CPU), -1 on a device failure
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_memory_begin(grk_plugin_batch_memory_info info);
+
+/**
+ * @brief Submits one frame to a running in-memory batch.
+ *
+ * For GRK_SOURCE_PLANAR_RGB the frame must be planar GRK_INT_32 with the
+ * numcomps and dimensions the begin call declared.
+ *
+ * When the device runs the colour transform, every component must carry the
+ * source_prec the begin call declared and the frame reaches the device
+ * untouched. Otherwise apply_xyz_transform runs the transform on @p frame in
+ * place, the way grk_compress() consumes an image, and samples deeper than the
+ * batch precision are shifted down.
+ *
+ * For a YUV source_format, comps[0] is the luma plane, W by H with dx and dy 1.
+ * comps[1] and comps[2] are Cb and Cr with dx 2, dy 2 for 4:2:0 and dy 1 for
+ * 4:2:2, w (W+1)/2 and h (H+1)/2 for 4:2:0 or H for 4:2:2. Every component
+ * carries the batch's source_prec, data_type GRK_INT_8 at 8 bits and
+ * GRK_INT_16 at 10 bits, where a 16-bit container holds 0 to 1023 little
+ * endian, and stride is the row pitch in samples. grok checks that shape and
+ * hands the three plane pointers and their byte strides to the plugin without
+ * copying or converting a sample.
+ *
+ * For GRK_SOURCE_RGB48LE the frame is one interleaved buffer, the layout a
+ * chunky 16-bit TIFF row and ffmpeg's rgb48le output already have. Every
+ * component is W by H with dx and dy 1 and prec the batch's source_prec, 8 to
+ * 16 bits right justified in a 16-bit container, and data_type GRK_INT_16.
+ * comps[0].data points at the buffer and comps[0].stride is the row pitch in
+ * 16-bit samples, so 3 * W for an unpadded row. comps[1] and comps[2] carry the
+ * same w, h, dx, dy and prec and a null data pointer, which grok ignores. The
+ * device sees the same samples the planar path packs for it, so every plugin
+ * that takes GRK_SOURCE_PLANAR_RGB takes this one too, X'Y'Z' on or off.
+ *
+ * Blocks while the pipeline is full. The frame is copied before this returns,
+ * a YUV source's three planes included, so the caller may free or reuse them
+ * as soon as it comes back.
+ *
+ * @param frame       the frame to compress
+ * @param frame_user  handed to the callback as its @p frame argument
+ * @return true when the frame is queued
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_submit(grk_image* frame, void* frame_user);
+
+/**
+ * @brief Drains and shuts down the in-memory batch.
+ *
+ * Every submitted frame has reached the callback by the time this returns.
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_memory_end(void);
+
+/**
+ * @brief Called with one decoded frame of an in-memory plugin decompress batch.
+ *
+ * @param user   the user pointer passed to grk_plugin_batch_decompress_memory_begin()
+ * @param frame  the frame_user pointer the pull callback gave for this frame
+ * @param image  the decoded frame: planar GRK_INT_32 samples at the code stream's
+ *               precision, comps[i].stride the row pitch in samples, owned by the
+ *               plugin until this returns. NULL when this frame failed, which
+ *               includes a frame whose shape differs from the one the batch began with.
+ */
+typedef void (*GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK)(void* user, void* frame,
+                                                           const grk_image* image);
+
+/**
+ * @brief Asked by the batch's worker threads for the next code stream to decode.
+ *
+ * The workers pull frames the way the disk batch takes the next file, several
+ * threads at once, so this runs concurrently with itself and blocks when the
+ * caller has nothing ready. The bytes it hands over stay the caller's until the
+ * frame callback for @p frame_user returns; nothing is copied.
+ *
+ * @param user        the user pointer passed to grk_plugin_batch_decompress_memory_begin()
+ * @param codestream  set to the frame's code stream
+ * @param length      set to its byte count
+ * @param frame_user  handed to the frame callback as its @p frame argument
+ * @return true with a frame, false to end the calling worker: every pull returns
+ *         false once grk_plugin_batch_decompress_memory_end() has been called
+ */
+typedef bool (*GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK)(void* user, const uint8_t** codestream,
+                                                          size_t* length, void** frame_user);
+
+/**
+ * @brief A display transform the device runs on a 12 bit RGB frame before packing 8 bit RGB.
+ */
+typedef struct grk_plugin_display_transform
+{
+  const float* transfer; /* 4096 entries: each 12 bit code as display linear light, 1.0 at the
+                            display peak */
+  const float* matrix; /* 9 entries, row major, linear source RGB to linear display RGB; NULL for
+                          none */
+  const float* output_thresholds; /* 768 entries, 256 per channel in red, green, blue order: the
+                                     light at which each 8 bit code starts, NULL for the 2.2
+                                     gamma encode */
+} grk_plugin_display_transform;
+
+/**
+ * @brief One code stream's shape and the callbacks for an in-memory decompress batch.
+ */
+typedef struct grk_plugin_batch_decompress_memory_info
+{
+  const uint8_t* codestream; /* a code stream with the shape every frame in the batch has */
+  size_t codestream_length; /* its byte count */
+  GRK_PLUGIN_BATCH_DECOMPRESS_PULL_CALLBACK pull; /* hands the workers their next frame */
+  GRK_PLUGIN_BATCH_DECOMPRESS_FRAME_CALLBACK callback; /* per frame result */
+  void* user; /* handed back to both callbacks */
+  bool srgb8_output; /* ask for 8 bit sRGB frames instead of the code stream's planes */
+  const grk_plugin_display_transform*
+      display_transform; /* ask for 8 bit RGB through these tables, NULL for none */
+  bool* rgb8_on_device; /* optional, set true when the device packs 8 bit RGB */
+} grk_plugin_batch_decompress_memory_info;
+
+/**
+ * @brief Starts a batch that decompresses code streams pulled from memory.
+ *
+ * grok reads the header of @p info.codestream and the plugin builds its decode
+ * pipeline for that shape, the disk batch's pipeline fed by @p info.pull instead
+ * of a directory: every frame pulled has to be a single tile code stream of the
+ * same size, precision, component count and coding parameters, at full
+ * resolution. Frames come back through @p info.callback, which runs on the
+ * plugin's threads, may run concurrently with itself, and returns frames in no
+ * particular order. The pipeline enqueues one cluster of tiles ahead of the
+ * frames, so a pull that blocks holds up to that many finished frames back until
+ * it returns. grk_plugin_batch_decompress_memory_end() drains the batch.
+ *
+ * With @p info.srgb8_output set, a batch of three component unsigned 12 bit
+ * frames comes back as 8 bit sRGB: the device runs the DCI X'Y'Z' to sRGB
+ * display transform (SMPTE 428-1 2.6 gamma, 52.37 over 48 scale, the D65 XYZ to
+ * sRGB matrix, the sRGB curve) and packs interleaved RGB. The frame callback's
+ * image then has three components of prec 8 and comps[0].data holds the whole
+ * interleaved buffer, comps[0].stride its row pitch in bytes, comps[1] and
+ * comps[2] a null data pointer.
+ *
+ * @p info.display_transform asks for the same layout through the caller's own
+ * tables: each channel's 12 bit code becomes display linear light through
+ * @p transfer, then optionally goes through @p matrix, then becomes an 8 bit
+ * code: the largest code c in 0 to 255 whose threshold is at or below the
+ * light, 0 when none is. With @p output_thresholds NULL every channel's
+ * threshold for c is ((c * 16) / 4095) to the power 2.2, evaluated in single
+ * precision, the inverse of a 2.2 gamma at 12 bits with the low four bits
+ * dropped. Otherwise the threshold for c on channel k, 0 red, 1 green, 2 blue,
+ * is @p output_thresholds[k * 256 + c], and each channel's 256 values must not
+ * decrease: a monitor profile's per channel output curve. The @p transfer,
+ * @p matrix and @p output_thresholds memory only has to outlive this call.
+ * Setting @p info.srgb8_output and @p info.display_transform together, or
+ * thresholds that decrease or are NaN, returns -1.
+ *
+ * Either request needs the same shape, three component unsigned 12 bit;
+ * anything else comes back as planes as usual, and so does a display transform
+ * with @p output_thresholds on a device that only runs the 2.2 encode.
+ * @p info.rgb8_on_device, when given, says whether this batch got the 8 bit RGB
+ * layout.
+ *
+ * Requires grk_plugin_init() to have succeeded. While the batch runs, an ordinary
+ * grk_decompress() call decompresses on the CPU.
+ *
+ * @param info  the shape code stream and the callbacks
+ *              (see @ref grk_plugin_batch_decompress_memory_info)
+ * @return 0 when the batch is running, 1 when the plugin does not handle this
+ *         code stream (the caller decompresses on the CPU), -1 on a device failure
+ */
+GRK_API int32_t GRK_CALLCONV
+    grk_plugin_batch_decompress_memory_begin(grk_plugin_batch_decompress_memory_info info);
+
+/**
+ * @brief Drains and shuts down the in-memory decompress batch.
+ *
+ * The caller's pull has to return false from here on. Every frame it handed
+ * out has reached the frame callback by the time this returns.
+ */
+GRK_API bool GRK_CALLCONV grk_plugin_batch_decompress_memory_end(void);
+
+/**
  * @brief Plugin init decompressors
  */
 typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info* header_info, grk_image* image);
@@ -2215,6 +2864,11 @@ typedef struct _grk_plugin_decompress_callback_info
   uint32_t full_image_x0; /* full image x0 */
   uint32_t full_image_y0; /* full image y0 */
   void* user_data; /* user data */
+  void* format_private; /* format-specific private data */
+  const uint8_t*
+      codestream; /* in-memory batch frame: the code stream to read instead of input_file_name */
+  size_t codestream_length; /* its byte count */
+  void* frame_user; /* in-memory batch frame: the submit call's frame_user */
 } grk_plugin_decompress_callback_info;
 
 /**
@@ -2238,6 +2892,9 @@ typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
                                                    grk_plugin_decompress_callback callback);
+
+// 0 decoded, 1 the plugin cannot decode the tile and the caller decodes it on the CPU, -1 failure
+GRK_API int32_t GRK_CALLCONV grk_plugin_decompress_tile(grk_object* codec, grk_plugin_tile* tile);
 
 /**
  * @brief Initialises a batch plugin decompress operation but does not start it.
@@ -2278,6 +2935,43 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
  * wait for grk_plugin_wait_for_batch_complete() before accessing output.
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
+
+/*******************************************************************************
+ *  Thread-pool access
+ *
+ *  These functions expose the core library's TaskFlow thread pool so that
+ *  other libraries (e.g. the codec library) can submit work to the same
+ *  pool, avoiding thread contention.
+ *
+ *  The returned handle is only valid between grk_initialize() and
+ *  grk_deinitialize().  Internal C++ consumers should prefer the typed
+ *  wrappers in grk_thread_pool.h.
+ ******************************************************************************/
+
+/**
+ * @brief Returns an opaque handle to the core thread-pool executor.
+ *
+ * The handle is a pointer to the internal tf::Executor.  Cast it back
+ * with the helpers in grk_thread_pool.h (C++ only) or use
+ * grk_num_workers() / grk_worker_id() from C.
+ *
+ * @return opaque executor handle, or NULL if the library is not initialised
+ */
+GRK_API void* GRK_CALLCONV grk_thread_pool(void);
+
+/**
+ * @brief Returns the number of worker threads in the core thread pool.
+ *
+ * @return total number of threads (including the driver thread)
+ */
+GRK_API size_t GRK_CALLCONV grk_num_workers(void);
+
+/**
+ * @brief Returns the TaskFlow worker id of the calling thread.
+ *
+ * @return worker id if called from inside a TaskFlow task, 0 otherwise
+ */
+GRK_API uint32_t GRK_CALLCONV grk_worker_id(void);
 
 #ifndef SWIG
 #ifdef __cplusplus

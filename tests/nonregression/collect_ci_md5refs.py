@@ -26,11 +26,11 @@ SCRIPT_DIR = Path(__file__).parent
 # Platform keys follow CI matrix naming: <os>-<dynamic|static>
 # ubuntu-dynamic is canonical (md5refs.txt) — no platform override needed.
 ARTIFACT_PLATFORM_MAP = {
-    ("macos-latest",  "ON"):  "macos-dynamic",
-    ("macos-latest",  "OFF"): "macos-static",
-    ("windows-latest","ON"):  "windows-dynamic",
-    ("windows-latest","OFF"): "windows-static",
-    ("ubuntu-latest", "ON"):  None,   # canonical md5refs.txt — skip
+    ("macos-latest", "ON"): "macos-dynamic",
+    ("macos-latest", "OFF"): "macos-static",
+    ("windows-latest", "ON"): "windows-dynamic",
+    ("windows-latest", "OFF"): "windows-static",
+    ("ubuntu-latest", "ON"): None,  # canonical md5refs.txt — skip
     ("ubuntu-latest", "OFF"): "ubuntu-static",
 }
 
@@ -40,8 +40,21 @@ def run(cmd, **kwargs):
 
 
 def get_latest_run_id(repo):
-    result = run(["gh", "run", "list", "--repo", repo, "--workflow", "build.yml",
-                  "--limit", "1", "--json", "databaseId"])
+    result = run(
+        [
+            "gh",
+            "run",
+            "list",
+            "--repo",
+            repo,
+            "--workflow",
+            "build.yml",
+            "--limit",
+            "1",
+            "--json",
+            "databaseId",
+        ]
+    )
     runs = json.loads(result.stdout)
     if not runs:
         sys.exit("No completed runs found for build.yml")
@@ -51,30 +64,52 @@ def get_latest_run_id(repo):
 def list_artifacts(repo, run_id):
     result = run(["gh", "run", "view", run_id, "--repo", repo, "--json", "jobs"])
     # list artifacts via api
-    result = run(["gh", "api", f"repos/{repo}/actions/runs/{run_id}/artifacts",
-                  "--paginate"])
+    result = run(
+        ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/artifacts", "--paginate"]
+    )
     data = json.loads(result.stdout)
     return data.get("artifacts", [])
 
 
 def download_artifact(repo, artifact_id, dest_dir):
-    run(["gh", "api", f"repos/{repo}/actions/artifacts/{artifact_id}/zip",
-         "--header", "Accept: application/vnd.github+json",
-         "-H", "X-GitHub-Api-Version: 2022-11-28"],
-        **{"capture_output": False})  # won't work — need gh run download
+    run(
+        [
+            "gh",
+            "api",
+            f"repos/{repo}/actions/artifacts/{artifact_id}/zip",
+            "--header",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "X-GitHub-Api-Version: 2022-11-28",
+        ],
+        **{"capture_output": False},
+    )  # won't work — need gh run download
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--run-id", help="Specific GitHub Actions run ID (default: latest)")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--run-id", help="Specific GitHub Actions run ID (default: latest)"
+    )
     parser.add_argument("--repo", default=REPO)
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without modifying md5refs files")
-    parser.add_argument("--data-dir", metavar="DIR", action="append",
-                        help="Pass --data-dir to update_md5refs.py for lossy verification")
-    parser.add_argument("--no-verify", action="store_true",
-                        help="Pass --no-verify to update_md5refs.py to skip lossy check")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without modifying md5refs files",
+    )
+    parser.add_argument(
+        "--data-dir",
+        metavar="DIR",
+        action="append",
+        help="Pass --data-dir to update_md5refs.py for lossy verification",
+    )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Pass --no-verify to update_md5refs.py to skip lossy check",
+    )
     args = parser.parse_args()
 
     # Check gh is available
@@ -93,10 +128,20 @@ def main():
         # Download all test-results artifacts for this run
         print("\nDownloading artifacts...")
         try:
-            run(["gh", "run", "download", run_id,
-                 "--repo", args.repo,
-                 "--pattern", "test-results-*",
-                 "--dir", str(tmp)])
+            run(
+                [
+                    "gh",
+                    "run",
+                    "download",
+                    run_id,
+                    "--repo",
+                    args.repo,
+                    "--pattern",
+                    "test-results-*",
+                    "--dir",
+                    str(tmp),
+                ]
+            )
         except subprocess.CalledProcessError as e:
             sys.exit(f"Failed to download artifacts:\n{e.stderr}")
 
@@ -112,7 +157,9 @@ def main():
             prefix = "test-results-"
             if not name.startswith(prefix):
                 continue
-            rest = name[len(prefix):]  # e.g. "macos-latest-shared_ON" or "macos-latest-ON"
+            rest = name[
+                len(prefix) :
+            ]  # e.g. "macos-latest-shared_ON" or "macos-latest-ON"
 
             if "-shared_" in rest:
                 os_name, shared_part = rest.rsplit("-shared_", 1)
@@ -126,7 +173,9 @@ def main():
 
             platform_key = ARTIFACT_PLATFORM_MAP.get((os_name, shared_flag))
             if platform_key is None:
-                print(f"  Skipping {name} (canonical Linux refs — update md5refs.txt manually if needed)")
+                print(
+                    f"  Skipping {name} (canonical Linux refs — update md5refs.txt manually if needed)"
+                )
                 continue
 
             log_path = artifact_dir / "Testing" / "Temporary" / "LastTest.log"
@@ -135,8 +184,13 @@ def main():
                 continue
 
             print(f"\n--- {name} -> platform key: {platform_key} ---")
-            cmd = [sys.executable, str(SCRIPT_DIR / "update_md5refs.py"),
-                   "--platform", platform_key, str(log_path)]
+            cmd = [
+                sys.executable,
+                str(SCRIPT_DIR / "update_md5refs.py"),
+                "--platform",
+                platform_key,
+                str(log_path),
+            ]
             if args.data_dir:
                 for d in args.data_dir:
                     cmd.extend(["--data-dir", d])
@@ -156,7 +210,9 @@ def main():
         for key in sorted(set(v for v in ARTIFACT_PLATFORM_MAP.values() if v)):
             ref = SCRIPT_DIR / f"md5refs-{key}.txt"
             if ref.exists():
-                print(f"  git add {ref.relative_to(Path.cwd()) if ref.is_relative_to(Path.cwd()) else ref}")
+                print(
+                    f"  git add {ref.relative_to(Path.cwd()) if ref.is_relative_to(Path.cwd()) else ref}"
+                )
 
 
 if __name__ == "__main__":

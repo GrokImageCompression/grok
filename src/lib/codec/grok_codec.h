@@ -74,6 +74,15 @@ GRK_API int grk_codec_decompress(int argc, const char* argv[]);
  */
 GRK_API int grk_codec_compare_images(int argc, const char* argv[]);
 
+/**
+ * Write a canonical dump of a decoded image file (for stable checksums)
+ *
+ * Expects two arguments: input image path, output dump path
+ *
+ * return 0 if successful
+ */
+GRK_API int grk_codec_image_canon_dump(int argc, const char* argv[]);
+
 #ifdef __cplusplus
 }
 #endif

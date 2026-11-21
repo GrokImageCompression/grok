@@ -21,6 +21,8 @@
 #include <mutex>
 
 #include "PacketCache.h"
+#include "Part2.h"
+#include <map>
 
 namespace grk
 {
@@ -63,8 +65,46 @@ struct TileComponentCodingParams
   uint8_t cblkh_expn_;
   /** code-block mode */
   uint8_t cblkStyle_;
-  /** discrete wavelet transform identifier */
+  /** discrete wavelet transform identifier, 0 irreversible and 1 reversible */
   uint8_t qmfbid_;
+  /** Part 2 arbitrary transformation kernel index, 0 for the Part 1 kernels */
+  uint8_t atkIndex_;
+  /** Part 2 downsampling factor style index, 0 when every level splits both ways */
+  uint8_t dfsIndex_;
+  /** split of each decomposition level, level 1 is the finest */
+  DecompositionSplit splits_[GRK_MAXRLVLS];
+  /** horizontal and vertical decomposition counts after the given number of levels */
+  uint8_t horizontalDepth_[GRK_MAXRLVLS];
+  uint8_t verticalDepth_[GRK_MAXRLVLS];
+  /** index of the first step size of each resolution */
+  uint8_t bandOffset_[GRK_MAXRLVLS];
+  bool usesPart2Transform(void) const
+  {
+    return atkIndex_ != 0 || dfsIndex_ != 0;
+  }
+  DecompositionSplit splitOfResolution(uint8_t resno) const
+  {
+    // resolution 0 is the low band of the coarsest level, it has no level of its own
+    return splits_[resno == 0 ? numresolutions_ - 1U : numresolutions_ - resno];
+  }
+  uint8_t numBandsOfResolution(uint8_t resno) const
+  {
+    if(resno == 0)
+      return 1;
+    switch(splitOfResolution(resno))
+    {
+      case DecompositionSplit::both:
+        return 3;
+      case DecompositionSplit::none:
+        return 0;
+      default:
+        return 1;
+    }
+  }
+  uint8_t numStepSizesNeeded(void) const
+  {
+    return (uint8_t)(bandOffset_[numresolutions_ - 1] + numBandsOfResolution(numresolutions_ - 1));
+  }
   // true if quantization marker has been read for this component,
   // false otherwise
   bool quantizationMarkerSet_;
@@ -122,7 +162,7 @@ struct grk_simple_mcc_decorrelation_data
  */
 struct TileCodingParams
 {
-  TileCodingParams(CodingParams* cp);
+  explicit TileCodingParams(CodingParams* cp);
   TileCodingParams(const TileCodingParams& rhs);
   TileCodingParams& operator=(const TileCodingParams&) = delete;
   ~TileCodingParams();
@@ -152,7 +192,7 @@ struct TileCodingParams
    * @param headerSize size of header data
    * @return true if successful
    */
-  bool readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize);
+  bool readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize, bool fromCoc);
 
   /**
    * @brief Reads a SQcd or SQcc element, i.e. the quantization values of a band
@@ -248,11 +288,17 @@ struct TileCodingParams
   void updateLayersToDecompress(void);
 
   bool validateQuantization(void);
+  bool validateMct(void) const;
+  /** derives per level splits, depths, step size offsets and kernel reversibility from the
+   * DFS and ATK tables, and checks the Part 2 combinations this decoder handles */
+  bool resolvePart2(void);
 
   void setIsHT(bool ht, bool reversible, uint8_t guardBits);
   bool isHT(void);
   uint32_t getNumProgressions(void);
   bool hasPoc(void);
+  // volumes compare with their end bounds clamped to the layer, resolution and component counts
+  bool sameProgressions(TileCodingParams* other, uint16_t numComps);
   void finalizePocs(void);
 
   CodingParams* cp_ = nullptr;
@@ -271,8 +317,11 @@ struct TileCodingParams
   uint8_t mct_ = 0;
   /** rates of layers */
   double rates_[maxCompressLayersGRK];
-  /** number of progression order changes */
+  bool writeEmptyLayer_[maxCompressLayersGRK];
+  /** number of progression order changes, minus one, so it cannot tell one from none */
   uint32_t numpocs_ = 0;
+  /** set when a main header POC was read, so that a single one is not read as none */
+  bool hasPoc_ = false;
   /** progression order changes */
   grk_progression progressionOrderChange_[GRK_MAXRLVLS];
   /** number of ppt markers (reserved size) */
@@ -285,6 +334,7 @@ struct TileCodingParams
   uint8_t* pptBuffer_ = nullptr;
   /** size of ppt_data*/
   size_t pptLength_ = 0;
+  size_t pptBufferLength_ = 0;
   /** fixed_quality */
   double distortion_[maxCompressLayersGRK];
   // quantization style as read from main QCD marker
@@ -321,6 +371,8 @@ struct TileCodingParams
   uint32_t numMaxMccRecords_ = 0;
   /** If cod == true --> there was a COD marker for the present tile */
   uint32_t cod_ = 0;
+  /** true once a COC marker has been read (per-component coding style) */
+  bool sawCoc_ = false;
   /** If ppt == true --> there was a PPT marker for the present tile */
   bool ppt_ = false;
   Quantizer* qcd_ = nullptr;
@@ -353,6 +405,13 @@ struct EncodingParams
   bool writeTlm_;
   /* rate control algorithm */
   uint32_t rateControlAlgorithm_;
+  /* progressive rate control during T1 encoding */
+  bool progressiveRateControl_;
+  /* log domain slope threshold carried over from a previous frame, 0 for none */
+  uint16_t rateControlSlopeHint_;
+  /* fraction of the layer budget rate control may leave unused, 0 for an exact search */
+  double rateControlTolerance_;
+  bool failOnRateControlOvershoot_;
 };
 
 struct DecodingParams
@@ -365,6 +424,10 @@ struct DecodingParams
   uint16_t layersToDecompress_;
   uint32_t disableRandomAccessFlags_;
   bool skipAllocateComposite_;
+  bool irreversibleInt16_;
+  // decided in CodeStreamDecompress::activateScratch and read back by TileProcessor, so the
+  // tiles and the composite buffer can never pick different sample types
+  bool use16BitDwt_;
 };
 
 struct TLMMarker;
@@ -410,6 +473,8 @@ struct CodingParams
    * @return true if successful
    */
   bool readCom(uint8_t* headerData, uint16_t headerSize);
+  bool readDfs(uint8_t* headerData, uint16_t headerSize);
+  bool readAtk(uint8_t* headerData, uint16_t headerSize);
 
   /**
    * @brief Gets the number of tile parts for a given tile index from TLM marker
@@ -418,13 +483,30 @@ struct CodingParams
    */
   uint8_t getNumTilePartsFromTLM(uint16_t tileIndex) const noexcept;
 
+  /**
+   * @brief Number of tile parts the given progression of the given tile is written as
+   * (sets newTilePartProgressionPosition_)
+   * @param prog_iter_num index of the progression
+   * @param tileno        index of the tile
+   * @return number of tile parts
+   */
+  uint8_t numTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno);
+
   bool hasTLM(void) const noexcept;
 
-  void init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
+  uint8_t correctedNumTileParts(uint8_t signalledNumTileParts) const noexcept;
+
+  // some encoders signal TNsot one lower than the tile parts they write
+  uint8_t numTilePartsCorrection_ = 0;
+
+  // true when the layers or reduce changed
+  bool init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
 
   uint16_t rsiz_; /** Rsiz*/
   uint32_t pcap_; /* Pcap */
   uint16_t ccap_[32]; /* Ccap */
+  std::map<uint8_t, DecompositionStyle> decompositionStyles_; /* DFS markers by index */
+  std::map<uint8_t, TransformKernel> transformKernels_; /* ATK markers by index */
   uint32_t tx0_; /** XTOsiz */
   uint32_t ty0_; /** YTOsiz */
   uint32_t t_width_; /** XTsiz */
@@ -441,6 +523,7 @@ struct CodingParams
   double dw_x1 = 0; /* decompress window right boundary*/
   double dw_y0 = 0; /* decompress window top boundary*/
   double dw_y1 = 0; /* decompress window bottom boundary*/
+  bool dw_reduced = false; /* if true, dw_x0..dw_y1 are in reduced coordinate space */
   std::unique_ptr<PPMMarker> ppmMarkers_;
   TileCodingParamsPool tcps_; /** default tile coding parameters */
   union
@@ -465,8 +548,16 @@ struct CodingParams
     uint64_t precinctIndex;
     uint32_t totalLength; /* header + data */
     uint32_t headerLength; /* header only (for EPH injection) */
+    uint64_t positionX; /* precinct origin on the reference grid */
+    uint64_t positionY;
+    uint64_t srcOffset;
+    uint32_t srcTilePart;
+    uint8_t numResolutions;
+    bool missingFromStream;
+    std::vector<uint8_t> packedHeader;
   };
   bool recordPacketLengths_ = false;
+  bool recordMissingPackets_ = false;
   std::vector<std::vector<RecordedPacketInfo>> recordedPacketInfo_; /* [tileIndex] → packets */
 };
 

@@ -34,7 +34,7 @@ struct T2Decompress
    * @brief Constructs a T2Decompress object
    * @param tileProc @ref TileProcesor
    */
-  T2Decompress(ITileProcessor* tileProc);
+  explicit T2Decompress(ITileProcessor* tileProc);
 
   /**
    * @brief Destroys a T2Decompress object
@@ -50,6 +50,8 @@ struct T2Decompress
   bool parsePackets(uint16_t tileno, PacketCache* compressedPackets);
 
 private:
+  bool parseTilePackets(uint16_t tile_no, PacketCache* compressedPackets);
+  void recordMissingPackets(uint16_t tile_no);
   /**
    * @brief @ref ITileProcessor for this tile
    */

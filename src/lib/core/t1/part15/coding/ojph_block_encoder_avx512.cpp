@@ -56,7 +56,7 @@
   #define unlikely(x)     __builtin_expect((x), 0)
 #endif
 
-namespace  grk::t1::ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     /////////////////////////////////////////////////////////////////////////
@@ -1009,8 +1009,8 @@ using fn_proc_vlc_encode = void (*)(vlc_struct_avx512 *, ui32 *, ui32 *, ui32);
 void ojph_encode_codeblock_avx512(ui32* buf, ui32 missing_msbs,
                                   ui32 num_passes, ui32 _width, ui32 height,
                                   ui32 stride, ui32* lengths,
-                                  t1::ojph::mem_elastic_allocator *elastic,
-                                  t1::ojph::coded_lists *& coded)
+                                  grk::t1::ojph::mem_elastic_allocator *elastic,
+                                  grk::t1::ojph::coded_lists *& coded)
 {
     ojph_unused(num_passes);                      //currently not used
 
@@ -1213,6 +1213,6 @@ void ojph_encode_codeblock_avx512(ui32* buf, ui32 missing_msbs,
 }
 
 } /* namespace local */
-} /* namespace  grk::t1::ojph */
+} /* namespace grk::t1::ojph */
 
 #endif

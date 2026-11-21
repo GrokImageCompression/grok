@@ -27,6 +27,8 @@
 
 #include "ChunkBuffer.h"
 
+struct curl_slist;
+
 namespace grk
 {
 
@@ -43,7 +45,7 @@ struct FetchAuth
   std::string username_;
   std::string password_;
   std::string bearer_token_;
-  std::string custom_header_;
+  std::vector<std::string> custom_headers_;
   std::string region_;
   std::string session_token_; // Added for AWS_SESSION_TOKEN
   std::string s3_endpoint_; // Custom S3 endpoint URL (e.g. MinIO)
@@ -51,10 +53,45 @@ struct FetchAuth
   int8_t s3_use_virtual_hosting_ = 0; // 0 = auto, 1 = virtual-hosted, -1 = path-style
   bool s3_no_sign_request_ = false; // true = skip authentication
   bool s3_allow_insecure_ = false; // true = disable SSL certificate verification
+
+  // HTTP cookies (CURLOPT_COOKIE / COOKIEFILE / COOKIEJAR)
+  std::string cookie_; // inline cookie string ("name1=value1; name2=value2")
+  std::string cookie_file_; // file to read cookies from
+  std::string cookie_jar_; // file to write cookies to on cleanup
+
+  // .netrc credentials (CURLOPT_NETRC / CURLOPT_NETRC_FILE)
+  bool netrc_ = false; // enable .netrc lookup
+  std::string netrc_file_; // optional explicit .netrc path
+
+  // Proxy
+  std::string proxy_; // proxy URL
+  std::string proxy_userpwd_; // proxy credentials ("user:password")
+
+  // S3 requester pays
+  std::string request_payer_; // e.g. "requester"
+
+  // User agent
+  std::string user_agent_;
+
+  // Timeouts (seconds, 0 = use default)
+  long timeout_ = 0;
+  long connect_timeout_ = 0;
+
+  // Retry configuration (0 = use default)
+  uint32_t max_retry_ = 0;
+  uint32_t retry_delay_ = 0;
+
+  // Fetch concurrency (0 = use default of 30)
+  uint32_t fetch_batch_size_ = 0;
+
+  // HTTP/2 multiplexing (disabled by default)
+  bool http2_multiplex_ = false;
+
   FetchAuth() = default;
-  FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
-            const std::string& r = "", const std::string& st = "")
-      : username_(u), password_(p), bearer_token_(t), custom_header_(h), region_(r),
+  FetchAuth(const std::string& u, const std::string& p, const std::string& t,
+            const std::vector<std::string>& h = {}, const std::string& r = "",
+            const std::string& st = "")
+      : username_(u), password_(p), bearer_token_(t), custom_headers_(h), region_(r),
         session_token_(st)
   {}
 };
@@ -71,6 +108,9 @@ struct FetchResult
   long responseCode_ = 0;
   bool success_ = false;
   uint32_t retryCount_ = 0;
+  // curl only borrows the request headers, so they belong to the result the
+  // handle points at and are freed when that handle is cleaned up
+  curl_slist* headers_ = nullptr;
 };
 
 // Job struct for tile fetch queue

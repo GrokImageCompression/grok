@@ -17,9 +17,14 @@
 
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
-#include <stdexcept>
-#include <iostream>
+#include <memory_resource>
+#include <queue>
+#include <unordered_map>
 #include <vector>
 
 namespace grk
@@ -38,11 +43,11 @@ public:
    * @return a new tag tree if successful, otherwise nullptr
    */
 
-  TagTree(uint16_t leavesWidth, uint16_t leavesHeight)
-      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight)
+  TagTree(uint16_t leavesWidth, uint16_t leavesHeight, std::pmr::memory_resource* arena)
+      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), pageOffset_(arena),
+        sparsePageOffset_(arena), pool_(arena)
   {
-    buildTree();
-    reset();
+    buildLevels();
   }
 
   ~TagTree() = default;
@@ -57,14 +62,7 @@ public:
    */
   void reset()
   {
-    for(auto& n : nodes_)
-    {
-      n.value = getUninitializedValue();
-      n.low = 0;
-      n.known = false;
-    }
-    for(auto& v : leafCache_)
-      v = getUninitializedValue();
+    std::fill(pool_.begin(), pool_.end(), unusedNode());
   }
 
   /**
@@ -74,11 +72,14 @@ public:
    */
   void set(uint64_t leafno, T value)
   {
-    uint32_t node = static_cast<uint32_t>(leafno);
-    while(node != UINT32_MAX && nodes_[node].value > value)
+    uint32_t path[maxLevels];
+    pathToRoot(leafno, path);
+    for(uint8_t level = 0; level < numLevels_; ++level)
     {
-      nodes_[node].value = value;
-      node = parents_[node];
+      auto& n = nodeAt(path[level]);
+      if(n.value <= value)
+        break;
+      n.value = value;
     }
   }
 
@@ -91,19 +92,12 @@ public:
    */
   bool encode(t1_t2::BitIO* bio, uint64_t leafno, T threshold)
   {
-    // exact original encode logic, using flat indices
-    uint32_t nodeStack[16];
-    int stackPtr = 0;
-    uint32_t node = static_cast<uint32_t>(leafno);
-    while(parents_[node] != UINT32_MAX)
-    {
-      nodeStack[stackPtr++] = node;
-      node = parents_[node];
-    }
+    uint32_t path[maxLevels];
+    pathToRoot(leafno, path);
     T low = 0;
-    while(true)
+    for(auto level = numLevels_; level-- > 0;)
     {
-      auto& n = nodes_[node];
+      auto& n = nodeAt(path[level]);
       if(n.low < low)
         n.low = low;
       else
@@ -126,9 +120,6 @@ public:
         ++low;
       }
       n.low = low;
-      if(stackPtr == 0)
-        break;
-      node = nodeStack[--stackPtr];
     }
     return true;
   }
@@ -140,32 +131,38 @@ public:
    @param threshold Threshold to use when decoding value of the leaf
    @param value the node's value
    */
+  // a node reads bits only at its first leaf under a known parent, so other leaves are skipped
+  template<typename Visit>
+  void forEachLeafThatMayReadBits(Visit visit)
+  {
+    std::array<std::byte, 1024> pendingStorage;
+    std::pmr::monotonic_buffer_resource pendingResource(pendingStorage.data(),
+                                                        pendingStorage.size());
+    PendingLeaves pending(std::greater<uint64_t>{}, std::pmr::vector<uint64_t>(&pendingResource));
+    pending.push(0);
+    while(!pending.empty())
+    {
+      auto leafno = pending.top();
+      pending.pop();
+      visit(leafno);
+      pushChildFirstLeaves(leafno, pending);
+    }
+  }
   void decode(t1_t2::BitIO* bio, uint64_t leafno, T threshold, T* value)
   {
-    if(leafCache_[leafno] < threshold) [[likely]]
+    auto leafValue = nodeAt(static_cast<uint32_t>(leafno)).value;
+    if(leafValue < threshold) [[likely]]
     {
-      *value = leafCache_[leafno];
+      *value = leafValue;
       return;
     }
 
-    *value = getUninitializedValue();
-
-    uint32_t nodeStack[16];
-    int stackPtr = 0;
-    uint32_t node = static_cast<uint32_t>(leafno);
-
-    // climb to root (exact same path as encode)
-    while(parents_[node] != UINT32_MAX)
-    {
-      nodeStack[stackPtr++] = node;
-      node = parents_[node];
-    }
-
+    uint32_t path[maxLevels];
+    pathToRoot(leafno, path);
     T low = 0;
-    while(true)
+    for(auto level = numLevels_; level-- > 0;)
     {
-      auto& n = nodes_[node];
-
+      auto& n = nodeAt(path[level]);
       if(n.low < low)
         n.low = low;
       else
@@ -181,16 +178,8 @@ public:
         ++low;
       }
       n.low = low;
-
-      if(stackPtr == 0) [[unlikely]]
-        break;
-
-      node = nodeStack[--stackPtr]; // descend to child
     }
-
-    *value = nodes_[node].value; // now guaranteed to be the leaf node
-    if(*value < threshold)
-      leafCache_[leafno] = *value;
+    *value = nodeAt(static_cast<uint32_t>(leafno)).value;
   }
 
 private:
@@ -200,55 +189,118 @@ private:
     T low;
     bool known;
   };
+  using PendingLeaves =
+      std::priority_queue<uint64_t, std::pmr::vector<uint64_t>, std::greater<uint64_t>>;
 
-  void buildTree()
+  // 16 bit leaf dimensions give at most 16 halvings above the leaves
+  static constexpr uint8_t maxLevels = 17;
+  static constexpr uint8_t pageShift = 10;
+  static constexpr uint32_t pageSize = 1u << pageShift;
+  static constexpr uint8_t sparsePageShift = 4;
+  static constexpr uint32_t unallocatedPage = UINT32_MAX;
+
+  uint32_t nodeIndex(uint8_t level, uint32_t row, uint32_t column) const
   {
-    // same level calculation as original
-    uint16_t resW[16]{}, resH[16]{};
-    int8_t levels = 0;
-    resW[0] = leavesWidth_;
-    resH[0] = leavesHeight_;
-    uint64_t totalNodes = 0;
-    uint32_t nodesPerLevel;
-
-    do
+    return levelBase_[level] + row * levelWidth_[level] + column;
+  }
+  void pathToRoot(uint64_t leafno, uint32_t* path) const
+  {
+    uint32_t row = static_cast<uint32_t>(leafno) / leavesWidth_;
+    uint32_t column = static_cast<uint32_t>(leafno) % leavesWidth_;
+    for(uint8_t level = 0; level < numLevels_; ++level, row >>= 1, column >>= 1)
+      path[level] = nodeIndex(level, row, column);
+  }
+  uint64_t firstLeaf(uint8_t level, uint32_t row, uint32_t column) const
+  {
+    return (static_cast<uint64_t>(row) << level) * leavesWidth_ +
+           (static_cast<uint64_t>(column) << level);
+  }
+  void pushChildFirstLeaves(uint64_t leafno, PendingLeaves& pending)
+  {
+    uint32_t row = static_cast<uint32_t>(leafno) / leavesWidth_;
+    uint32_t column = static_cast<uint32_t>(leafno) % leavesWidth_;
+    for(uint8_t level = 0; level < numLevels_; ++level, row >>= 1, column >>= 1)
     {
-      nodesPerLevel = static_cast<uint32_t>(resW[levels]) * resH[levels];
-      resW[levels + 1] = (uint16_t)((resW[levels] + 1) >> 1);
-      resH[levels + 1] = (uint16_t)((resH[levels] + 1) >> 1);
-      totalNodes += nodesPerLevel;
-      ++levels;
-    } while(nodesPerLevel > 1);
-
-    nodes_.resize(totalNodes);
-    parents_.resize(totalNodes, UINT32_MAX);
-    leafCache_.resize(static_cast<uint64_t>(leavesWidth_) * leavesHeight_);
-
-    // build parents (exact same linking logic as original, but with indices)
-    uint64_t parentBase = static_cast<uint64_t>(leavesWidth_) * leavesHeight_;
-    uint64_t cur = 0;
-
-    for(int8_t lvl = 0; lvl < levels - 1; ++lvl)
-    {
-      uint32_t w = resW[lvl];
-      uint32_t h = resH[lvl];
-      for(uint32_t j = 0; j < h; ++j)
+      if(firstLeaf(level, row, column) != leafno)
+        break;
+      if(level == 0 || nodeAt(nodeIndex(level, row, column)).value == getUninitializedValue())
+        continue;
+      uint8_t childLevel = level - 1;
+      uint32_t childRowEnd = std::min<uint32_t>(2 * row + 2, levelHeight_[childLevel]);
+      uint32_t childColumnEnd = std::min<uint32_t>(2 * column + 2, levelWidth_[childLevel]);
+      for(uint32_t childRow = 2 * row; childRow < childRowEnd; ++childRow)
       {
-        for(uint32_t k = 0; k < w; ++k)
+        for(uint32_t childColumn = 2 * column; childColumn < childColumnEnd; ++childColumn)
         {
-          parents_[cur] = static_cast<uint32_t>(parentBase + (j >> 1) * resW[lvl + 1] + (k >> 1));
-          ++cur;
+          bool topLeftChild = childRow == 2 * row && childColumn == 2 * column;
+          if(!topLeftChild)
+            pending.push(firstLeaf(childLevel, childRow, childColumn));
         }
       }
-      parentBase += static_cast<uint64_t>(resW[lvl + 1]) * resH[lvl + 1];
     }
+  }
+  // a huge precinct with a short header must not allocate every node
+  Node& nodeAt(uint32_t index)
+  {
+    if(totalNodes_ <= pageSize) [[likely]]
+      return pool_[index];
+    if(pageOffset_.empty())
+      return nodeInPage(
+          sparsePageOffset_.try_emplace(index >> sparsePageShift, unallocatedPage).first->second,
+          index, sparsePageShift);
+    return nodeInPage(pageOffset_[index >> pageShift], index, pageShift);
+  }
+  Node& nodeInPage(uint32_t& pageOffset, uint32_t index, uint8_t shift)
+  {
+    uint32_t pageNodes = 1u << shift;
+    if(pageOffset == unallocatedPage) [[unlikely]]
+    {
+      pageOffset = static_cast<uint32_t>(pool_.size());
+      uint32_t firstNode = index & ~(pageNodes - 1);
+      pool_.resize(pool_.size() + std::min(pageNodes, totalNodes_ - firstNode), unusedNode());
+    }
+    return pool_[pageOffset + (index & (pageNodes - 1))];
+  }
+  Node unusedNode() const
+  {
+    return Node{getUninitializedValue(), 0, false};
+  }
+  void buildLevels()
+  {
+    uint16_t width = leavesWidth_;
+    uint16_t height = leavesHeight_;
+    totalNodes_ = 0;
+    uint32_t nodesInLevel;
+    numLevels_ = 0;
+    do
+    {
+      nodesInLevel = static_cast<uint32_t>(width) * height;
+      levelWidth_[numLevels_] = width;
+      levelHeight_[numLevels_] = height;
+      levelBase_[numLevels_] = totalNodes_;
+      numLevels_++;
+      totalNodes_ += nodesInLevel;
+      width = (uint16_t)((width + 1) >> 1);
+      height = (uint16_t)((height + 1) >> 1);
+    } while(nodesInLevel > 1);
+    constexpr size_t maxDensePageTableBytes = 4096;
+    uint32_t numPages = (totalNodes_ + pageSize - 1) >> pageShift;
+    if(totalNodes_ <= pageSize)
+      pool_.assign(totalNodes_, unusedNode());
+    else if(numPages * sizeof(uint32_t) <= maxDensePageTableBytes)
+      pageOffset_.assign(numPages, unallocatedPage);
   }
 
   uint16_t leavesWidth_;
   uint16_t leavesHeight_;
-  std::vector<Node> nodes_;
-  std::vector<uint32_t> parents_; // UINT32_MAX = root
-  std::vector<T> leafCache_;
+  uint8_t numLevels_;
+  uint32_t totalNodes_;
+  std::array<uint16_t, maxLevels> levelWidth_;
+  std::array<uint16_t, maxLevels> levelHeight_;
+  std::array<uint32_t, maxLevels> levelBase_;
+  std::pmr::vector<uint32_t> pageOffset_;
+  std::pmr::unordered_map<uint32_t, uint32_t> sparsePageOffset_;
+  std::pmr::vector<Node> pool_;
 };
 
 using TagTreeU8 = TagTree<uint8_t>;

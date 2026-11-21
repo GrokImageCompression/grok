@@ -178,6 +178,16 @@ Example:
 
 Clip all components of a 16 bit RGB image to 8 bits.
 
+`-S, --rescale [src_min,src_max,dst_min,dst_max[;src_min,src_max,dst_min,dst_max...]]`
+
+Linear value rescale, applied per component before any `-p` precision adjustment. Each entry maps the source range `[src_min, src_max]` to the destination range `[dst_min, dst_max]` via `out = round((in - src_min) * (dst_max - dst_min) / (src_max - src_min)) + dst_min`, clamped to the destination range. Multiple entries are separated by `;`; if there are fewer entries than components, the last entry is used for the remaining components. Component precision/signedness are updated to fit the destination range.
+
+Example:
+
+     -S 1000,5000,0,255
+
+Linearly rescale all components from input range `[1000, 5000]` to `[0, 255]`.
+
 `-f, --force-rgb`
 
 Force output image color space to `RGB`. For `TIF/TIFF` or `PNG` output formats, the ICC profile will be applied in this case - default behaviour is to stored the profile in the output file, if supported.

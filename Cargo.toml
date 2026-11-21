@@ -1,0 +1,2 @@
+[workspace]
+members = ["bindings/rust", "bindings/rust/codec"]

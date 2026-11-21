@@ -67,11 +67,9 @@ struct ITileProcessorCompress;
 #include "mct.h"
 
 #include "TileProcessor.h"
-#include "SchedulerFactory.h"
 #include "T2Decompress.h"
 #include "plugin_bridge.h"
 #include "DecompressScheduler.h"
-#include "DecompressSchedulerExcalibur.h"
 
 namespace grk
 {
@@ -80,20 +78,22 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
     : headerImage_(codeStream->getHeaderImage()),
       current_plugin_tile_(codeStream->getCurrentPluginTile()), cp_(codeStream->getCodingParams()),
       packetLengthCache_(std::make_shared<PacketLengthCache<uint32_t>>(cp_)),
-      tile_(new Tile(headerImage_->numcomps)), tileIndex_(tile_index), tcp_(tcp),
+      tileArenaChunks_(codeStream->getTileArenaChunks()),
+      tile_(new Tile(headerImage_->numcomps, tileArenaChunks_)), tileIndex_(tile_index), tcp_(tcp),
       mct_(new Mct(tile_, headerImage_, tcp_)),
       markerParser_(isCompressor ? nullptr : new MarkerParser()), truncated_(false),
-      image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy)
+      image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy),
+      waveletPoolData_(codeStream->getWaveletPoolData())
 {
-  setStream(stream, false);
-  setProcessors(markerParser_);
+  TileProcessor::setStream(stream, false);
+  TileProcessor::setProcessors(markerParser_);
   if(!isCompressor_)
     tcp_->packets_ = new PacketCache();
   threadTilePart_.resize(TFSingleton::num_threads());
 }
 TileProcessor::~TileProcessor()
 {
-  release(GRK_TILE_CACHE_NONE);
+  TileProcessor::release(GRK_TILE_CACHE_NONE);
   delete scheduler_;
   delete mct_;
   if(!isCompressor_)
@@ -154,6 +154,40 @@ void TileProcessor::setProcessors(MarkerParser* parser)
                  MCO, [this](uint8_t* data, uint16_t len) { return tcp_->readMco(data, len); })}});
 }
 
+// the plugin decodes the cleanup bytes followed by the refinement bytes, as T1OJPH does
+static void synchPluginBlockHT(t1::CodeblockDecompress* cblk, grk_plugin_code_block* plugin_cblk,
+                               uint8_t bandBitPlanes)
+{
+  if(cblk->isPart1Block())
+  {
+    grklog.info("Plugin does not handle Part 1 code blocks in an HT tile. "
+                "Image will be decompressed on CPU.");
+    throw PluginDecodeUnsupportedException();
+  }
+  auto layout = cblk->htSetLayout();
+  auto cleanupLength = layout.cleanup ? layout.cleanup->getDataChunksLength() : 0;
+  auto refinementLength = layout.refinement ? layout.refinement->getDataChunksLength() : 0;
+  auto length = cleanupLength + refinementLength;
+  auto blockStream = cblk->getCompressedStream();
+  if(length)
+  {
+    if(!blockStream->alloc(length))
+      throw std::bad_alloc();
+    layout.cleanup->copyDataChunksToContiguous(blockStream->buf());
+    if(refinementLength)
+      layout.refinement->copyDataChunksToContiguous(blockStream->buf() + cleanupLength);
+  }
+  plugin_cblk->compressed_data = length ? blockStream->buf() : nullptr;
+  plugin_cblk->compressed_data_length = (uint32_t)length;
+  plugin_cblk->cleanup_length = (uint32_t)cleanupLength;
+  plugin_cblk->refinement_length = (uint32_t)refinementLength;
+  plugin_cblk->num_bit_planes = cblk->numbps();
+  plugin_cblk->num_passes =
+      cleanupLength ? (uint8_t)(1 + (refinementLength ? layout.refinement->totalPasses_ : 0)) : 0;
+  plugin_cblk->missing_msbs =
+      (uint8_t)(bandBitPlanes - cblk->numbps() + cblk->htPlaceholderBitPlanes());
+}
+
 // Performed after T2, just before plugin decompress is triggered
 // note: only support single segment at the moment
 void TileProcessor::decompress_synch_plugin_with_host(void)
@@ -166,6 +200,17 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
     {
       auto tilec = &tile->comps_[compno];
       auto plugin_tilec = plugin_tile->tile_components[compno];
+      if(tcp_->tccps_[compno].usesPart2Transform())
+      {
+        grklog.info("Plugin does not handle Part 2 transforms. Image will be decompressed on CPU.");
+        throw PluginDecodeUnsupportedException();
+      }
+      if(tcp_->isHT() && tcp_->tccps_[compno].roishift_)
+      {
+        grklog.info("Plugin does not handle region of interest shifts in HT code blocks. "
+                    "Image will be decompressed on CPU.");
+        throw PluginDecodeUnsupportedException();
+      }
       assert(tilec->num_resolutions_ == plugin_tilec->numresolutions);
       for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
       {
@@ -179,9 +224,10 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
           assert(plugin_band->num_precincts == res->precinctGrid_.area());
           //!!!! plugin still uses stepsize/2
           plugin_band->stepsize = band->stepsize_ / 2;
-          for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+          plugin_band->num_bit_planes = band->maxBitPlanes_;
+          for(auto prc : band->precincts_)
           {
-            auto prc = band->precincts_[vectorIndex];
+            auto precinctIndex = prc->precinctIndex_;
             auto plugin_prc = plugin_band->precincts[precinctIndex];
             assert(plugin_prc->num_blocks == prc->getNumCblks());
             for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
@@ -189,6 +235,11 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
               auto cblk = prc->getDecompressBlock(cblkno);
               if(!cblk->getNumDataParsedSegments())
                 continue;
+              if(tcp_->isHT())
+              {
+                synchPluginBlockHT(cblk, plugin_prc->blocks[cblkno], band->maxBitPlanes_);
+                continue;
+              }
               // sanity check
               if(cblk->getNumDataParsedSegments() != 1)
               {
@@ -196,8 +247,9 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
                             "segments. Image will be decompressed on CPU.");
                 throw PluginDecodeUnsupportedException();
               }
+              // the plugin's decode buffers hold prec + GRK_BIBO_EXTRA_BITS bit planes
               uint32_t maxPasses =
-                  3 * (uint32_t)((headerImage_->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2);
+                  3 * (uint32_t)(headerImage_->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2;
               if(cblk->getSegment(0)->totalPasses_ > maxPasses)
               {
                 grklog.info("Number of passes %u in segment exceeds BIBO maximum %u. "
@@ -208,14 +260,23 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
 
               auto plugin_cblk = plugin_prc->blocks[cblkno];
 
-              // copy segments into plugin codeblock buffer, and point host code block
-              // data to plugin data buffer
-              plugin_cblk->compressed_data_length = (uint32_t)cblk->getDataChunksLength();
-              cblk->copyDataChunksToContiguous(plugin_cblk->compressed_data);
+              // the plugin reads the block bytes from grok memory, one chunk is used in place
+              auto length = cblk->getDataChunksLength();
               auto blockStream = cblk->getCompressedStream();
-              blockStream->set_buf(plugin_cblk->compressed_data,
-                                   plugin_cblk->compressed_data_length);
-              blockStream->set_owns_data(false);
+              auto& chunks = cblk->getSegment(0)->data_chunks_;
+              if(chunks.size() == 1)
+              {
+                blockStream->set_buf(chunks[0].data, length);
+                blockStream->set_owns_data(false);
+              }
+              else if(length)
+              {
+                if(!blockStream->alloc(length))
+                  throw std::bad_alloc();
+                cblk->copyDataChunksToContiguous(blockStream->buf());
+              }
+              plugin_cblk->compressed_data = length ? blockStream->buf() : nullptr;
+              plugin_cblk->compressed_data_length = (uint32_t)length;
               plugin_cblk->num_bit_planes = cblk->numbps();
               plugin_cblk->num_passes = cblk->getSegment(0)->totalPasses_;
             }
@@ -256,10 +317,18 @@ void TileProcessor::setBestEffortDecompressed(void)
   bestEffortDecompressed_ = true;
 }
 
+bool TileProcessor::scheduledForDecompression(void)
+{
+  return scheduledForDecompression_;
+}
+
 void TileProcessor::resetSOTParsing()
 {
   numSOTsParsed_ = 0;
   tcp_->tilePartCounter_ = 0;
+  scheduledForDecompression_ = false;
+  tilePartSeq_.reset();
+  packetDataRanges_.clear();
 }
 
 bool TileProcessor::reinitForReDecompress()
@@ -268,9 +337,21 @@ bool TileProcessor::reinitForReDecompress()
   if(tile_)
     return true;
 
+  // the parsers cached against the code blocks that are about to be replaced
+  tcp_->packets_->discardParsers();
+  bestEffortDecompressed_ = false;
+
   // Recreate tile structure
-  tile_ = new Tile(headerImage_->numcomps);
+  tile_ = new Tile(headerImage_->numcomps, tileArenaChunks_);
+  // mct_ holds a non-owning Tile*; re-point it at the new tile so the inverse
+  // MCT pass does not dereference the previously freed Tile.
+  if(mct_)
+    mct_->setTile(tile_);
   initialized_ = false;
+  scheduledForDecompression_ = false;
+  // T2 keys its packet parsers and its truncation check on these counts
+  numProcessedPackets_ = 0;
+  numReadDataPackets_ = 0;
 
   // Re-run init to set up bounds, resolutions, precincts, code blocks
   if(!init())
@@ -316,11 +397,20 @@ bool TileProcessor::init(void)
     // all in canvas coordinates (with subsampling)
     auto tccp = tcp_->tccps_ + compno;
     auto numres = tccp->numresolutions_;
+    if(!isCompressor() && tccp->usesPart2Transform() &&
+       (!tcp_->wholeTileDecompress_ || cp_->codingParams_.dec_.reduce_))
+    {
+      grklog.error("Part 2 transforms (DFS, ATK) only support whole tile decompression at full "
+                   "resolution");
+      return false;
+    }
     auto resolutions = new Resolution[numres];
     for(auto resno = 0U; resno < numres; ++resno)
     {
       auto res = resolutions + resno;
-      res->setRect(ResSimple::getBandWindow((uint8_t)(numres - (resno + 1)), t1::BAND_ORIENT_LL,
+      uint8_t levelsDone = (uint8_t)(numres - (resno + 1));
+      res->setRect(ResSimple::getBandWindow(tccp->horizontalDepth_[levelsDone],
+                                            tccp->verticalDepth_[levelsDone], t1::BAND_ORIENT_LL,
                                             unreducedTileComp));
 
       /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -329,7 +419,7 @@ bool TileProcessor::init(void)
       /* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
       res->precinctPartition_ = Resolution::genPrecinctPartition(*res, precWidthExp, precHeightExp);
       res->precinctGrid_ = res->precinctPartition_.scaleDownPow2(precWidthExp, precHeightExp);
-      res->numBands_ = (resno == 0) ? 1 : 3;
+      res->numBands_ = tccp->numBandsOfResolution((uint8_t)resno);
       if(DEBUG_TILE_COMPONENT)
       {
         std::cout << "res: " << resno << " ";
@@ -341,14 +431,26 @@ bool TileProcessor::init(void)
     for(uint8_t resno = 0U; resno < numres; ++resno)
     {
       auto res = resolutions + resno;
+      // level that produced this resolution, the lowest resolution is its level's low band
+      uint8_t level = (resno == 0) ? (uint8_t)(numres - 1U) : (uint8_t)(numres - resno);
+      auto split = tccp->splitOfResolution(resno);
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
-        t1::eBandOrientation orientation =
-            (resno == 0) ? t1::BAND_ORIENT_LL : (t1::eBandOrientation)(bandIndex + 1);
+        t1::eBandOrientation orientation = t1::BAND_ORIENT_LL;
+        if(resno != 0)
+        {
+          if(split == DecompositionSplit::horizontal)
+            orientation = t1::BAND_ORIENT_HL;
+          else if(split == DecompositionSplit::vertical)
+            orientation = t1::BAND_ORIENT_LH;
+          else
+            orientation = (t1::eBandOrientation)(bandIndex + 1);
+        }
         band->orientation_ = orientation;
-        uint8_t numDecomps = (resno == 0) ? (uint8_t)(numres - 1U) : (uint8_t)(numres - resno);
-        band->setRect(ResSimple::getBandWindow(numDecomps, band->orientation_, unreducedTileComp));
+        band->setRect(ResSimple::getBandWindow(tccp->horizontalDepth_[level],
+                                               tccp->verticalDepth_[level], band->orientation_,
+                                               unreducedTileComp));
 
         /* Table E-1 - Sub-band gains */
         /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
@@ -359,8 +461,15 @@ bool TileProcessor::init(void)
                                    : (band->orientation_ == 3)             ? 2
                                                                            : 1;
         uint32_t numbps = imageComp->prec + log2_gain;
-        auto offset = (resno == 0) ? 0 : 3 * resno - 2;
-        auto step_size = tccp->stepsizes_ + offset + bandIndex;
+        auto step_size = tccp->stepsizes_ + tccp->bandOffset_[resno] + bandIndex;
+        grk_stepsize derived;
+        if(tccp->qntsty_ == CCP_QNTSTY_SIQNT && tccp->dfsIndex_)
+        {
+          // scalar derived steps follow the band's own level, equation E-5
+          derived.expn = (uint8_t)(tccp->stepsizes_->expn - (numres - 1) + level);
+          derived.mant = tccp->stepsizes_->mant;
+          step_size = &derived;
+        }
         band->stepsize_ = (float)(((1.0 + step_size->mant / 2048.0) *
                                    pow(2.0, (int32_t)(numbps - step_size->expn))));
         // printf("res=%u, band=%u, mant=%u,expn=%u, numbps=%u, step size=
@@ -371,7 +480,13 @@ bool TileProcessor::init(void)
         band->maxBitPlanes_ =
             tccp->roishift_ +
             (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits_ - 1U));
-        // assert(band->numbps <= maxBitPlanesJ2K);
+        if(tcp_->isHT() && band->maxBitPlanes_ > maxBitPlanesHT)
+        {
+          grklog.error("Band has %u bit planes, but the HT block coder supports at most %u",
+                       band->maxBitPlanes_, maxBitPlanesHT);
+          delete[] resolutions;
+          return false;
+        }
       }
       // initialize precincts and code blocks
       if(!res->init(current_plugin_tile_, isCompressor_, tcp_->numLayers_, this, tccp, resno))
@@ -407,6 +522,9 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
 {
   if(allSOTMarkersParsed())
     return true;
+  // the sequential walk reads only the SOTs of tiles outside its window
+  if(numSOTsParsed_ != 0)
+    resetSOTParsing();
 
   for(const auto& tp : *tilePartFetchSeq)
   {
@@ -432,12 +550,22 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       truncated_ = true;
       continue;
     }
+    // corrupt TLM offsets can land on markers other than SOT
+    if(markerParser_->currId() != SOT)
+    {
+      truncated_ = true;
+      continue;
+    }
 
-    // process marker (expected SOT, but corrupt streams may yield other markers
-    // since readSOTorEOC warns and continues on unexpected marker IDs)
     auto [processed, length] = markerParser_->processMarker();
     if(!processed)
       return false;
+    // A.4.2: a Psot of zero leaves the tile-part length to the TLM entry
+    if(tilePartInfo_.tilePartLength_ == 0 && tp->length_ >= sotMarkerSegmentLen)
+    {
+      tilePartInfo_.tilePartLength_ = (uint32_t)tp->length_;
+      tilePartInfo_.remainingTilePartBytes_ = tp->length_ - sotMarkerSegmentLen;
+    }
 
     // read next tile part header marker
     try
@@ -452,6 +580,16 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
     }
 
     // parse tile part
+    if(selectiveFetch_)
+    {
+      // Override tile-part length to match actual stream size
+      // (selective fetch provides only needed data)
+      tilePartInfo_.tilePartLength_ = (uint32_t)tp->length_;
+      tilePartInfo_.remainingTilePartBytes_ =
+          tilePartInfo_.tilePartLength_ >= sotMarkerSegmentLen
+              ? tilePartInfo_.tilePartLength_ - sotMarkerSegmentLen
+              : 0;
+    }
     if(!parseTilePart(nullptr, nullptr, markerParser_->currId(), tilePartInfo_))
       return false;
 
@@ -459,18 +597,26 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
     uint64_t actualTilePartLength = getStream()->tell() - (tp->stream_ ? 0 : tp->offset_);
     if(actualTilePartLength > tp->length_)
     {
-      grklog.error("Tile %u: TLM marker tile part length %u differs from actual"
-                   " tile part length %u:\n"
-                   "     last sot position: %u, current position : %u.",
-                   tileIndex_, tp->length_, actualTilePartLength, tp->offset_, getStream()->tell());
-      throw CorruptTLMException();
+      if(!selectiveFetch_)
+      {
+        grklog.error("Tile %u: TLM marker tile part length %u differs from actual"
+                     " tile part length %u:\n"
+                     "     last sot position: %u, current position : %u.",
+                     tileIndex_, tp->length_, actualTilePartLength, tp->offset_,
+                     getStream()->tell());
+        throw CorruptTLMException();
+      }
     }
     else if(actualTilePartLength < tp->length_)
     {
-      grklog.warn("Tile %u: TLM marker tile part length %u differs from actual"
-                  " tile part length %u:\n"
-                  "     last sot position: %u, current position : %u",
-                  tileIndex_, tp->length_, actualTilePartLength, tp->offset_, getStream()->tell());
+      if(!selectiveFetch_)
+      {
+        grklog.warn("Tile %u: TLM marker tile part length %u differs from actual"
+                    " tile part length %u:\n"
+                    "     last sot position: %u, current position : %u",
+                    tileIndex_, tp->length_, actualTilePartLength, tp->offset_,
+                    getStream()->tell());
+      }
       truncated_ = true;
     }
   }
@@ -479,18 +625,81 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
 
   prepareForDecompression();
 
+  if(selectiveFetch_ && tcp_ && tcp_->packets_)
+    tcp_->packets_->setSelectiveFetch(true);
+
   return true;
 }
 
 bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
                                       CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                      std::function<void()> post, TileFutureManager& futures)
+                                      GrkImage* output, std::function<void()> post,
+                                      TileFutureManager& futures)
 {
-  if(!decompressPrepareWithTLM(tilePartFetchSeq))
+  bool prepared;
+  try
+  {
+    prepared = decompressPrepareWithTLM(tilePartFetchSeq);
+  }
+  catch(const CorruptTLMException&)
+  {
+    success_ = false;
+    throw;
+  }
+  catch(const CorruptSOTMarkerException&)
+  {
+    success_ = false;
+    throw;
+  }
+  if(!prepared)
+  {
+    success_ = false;
     return false;
+  }
 
-  scheduleAndRunDecompress(coderPool, unreducedImageBounds, post, futures);
+  scheduleAndRunDecompress(coderPool, unreducedImageBounds, output, post, futures);
 
+  return true;
+}
+
+bool TileProcessor::readPacketData(IStream* stream, uint8_t tilePart, uint64_t length)
+{
+  uint8_t* buff = nullptr;
+  auto zeroCopy = stream->supportsZeroCopy();
+  if(!zeroCopy)
+  {
+    try
+    {
+      buff = new uint8_t[length];
+    }
+    catch([[maybe_unused]] const std::bad_alloc& ex)
+    {
+      grklog.error("Not enough memory to allocate segment");
+      return false;
+    }
+  }
+  stream->read(buff, &buff, length);
+  tcp_->packets_->push(tilePart, buff, length, !zeroCopy);
+  return true;
+}
+
+bool TileProcessor::decompressFromCachedTileParts()
+{
+  for(size_t i = 0; i < packetDataRanges_.size(); ++i)
+  {
+    const auto& range = *packetDataRanges_[i];
+    if(!range.read)
+      continue;
+    if(range.length == 0)
+    {
+      tcp_->packets_->push(i, nullptr, 0, false);
+      continue;
+    }
+    if(!getStream()->seek(range.offset) || !readPacketData(getStream(), (uint8_t)i, range.length))
+      return false;
+  }
+
+  prepareForDecompression();
   return true;
 }
 
@@ -521,13 +730,9 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
 
   uint8_t numTileParts;
   grk_read(&headerData, &numTileParts);
+  numTileParts = cp_->correctedNumTileParts(numTileParts);
 
-  if(numTileParts && (tilePartInfo.tilePart_ >= numTileParts))
-  {
-    grklog.error("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
-                 tileIndex_, tilePartInfo.tilePart_, numTileParts);
-    throw CorruptSOTMarkerException();
-  }
+  validateTilePartIndex(tileIndex_, tilePartInfo.tilePart_, numTileParts);
 
   startPos_ = stream->tell() - sotMarkerSegmentLen;
   auto tcp = getTCP();
@@ -609,6 +814,7 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
   if(!tilePartSeq_.push_back(tilePartInfo.tilePart_, numTileParts, startPos_,
                              tilePartInfo.tilePartLength_))
     return false;
+  packetDataRanges_.push_back(std::make_unique<PacketDataRange>());
 
   assert(!tcp_->signalledNumTileParts_ || numSOTsParsed_ <= tcp_->signalledNumTileParts_);
   tilePartInfo_ = tilePartInfo;
@@ -622,30 +828,37 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 {
   bool concurrent = parsers && bifurcatedStream;
   std::shared_ptr<IStream> streamGuard;
-  std::shared_ptr<bool> owned_by_parser;
+  std::shared_ptr<std::atomic<bool>> owned_by_parser;
   if(concurrent)
   {
-    owned_by_parser = std::make_shared<bool>(false);
+    owned_by_parser = std::make_shared<std::atomic<bool>>(false);
     streamGuard = std::shared_ptr<IStream>(bifurcatedStream, [owned_by_parser](IStream* p) {
-      if(!*owned_by_parser)
+      if(!owned_by_parser->load())
         delete p;
     });
   }
+  auto packetDataRange = packetDataRanges_[tilePartInfo.tilePart_].get();
   auto parseHeader = [this, parsers, bifurcatedStream, concurrent, mainMarkerId, tilePartInfo,
-                      streamGuard, owned_by_parser]() {
+                      streamGuard, owned_by_parser, packetDataRange]() {
     if(hasError())
       return;
     auto tpi = tilePartInfo;
     auto parser = markerParser_;
     auto id = TFSingleton::workerId();
-    threadTilePart_[id] = tpi.tilePart_;
     if(concurrent)
     {
+      // A bifurcated tile-part stream must be parsed by exactly one parser.
+      // Claim ownership atomically: if this task is ever dispatched more than
+      // once, only the first runner takes the stream; any duplicate is a no-op.
+      // This prevents two parsers owning (and later double-freeing) one stream.
+      bool expected = false;
+      if(!owned_by_parser->compare_exchange_strong(expected, true))
+        return;
       parser = (*parsers)[id].get();
       setProcessors(parser);
       parser->setStream(bifurcatedStream, true);
-      *owned_by_parser = true;
     }
+    threadTilePart_[id] = tpi.tilePart_;
     parser->synch(mainMarkerId);
 
     // 1. read tile markers from stream until SOD or EOC
@@ -707,6 +920,10 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 
     if(!tpi.remainingTilePartBytes_)
     {
+      // a tile part with no packet data still has to claim its slot, or every tile part
+      // after it reads as absent
+      tcp_->packets_->push(tpi.tilePart_, nullptr, 0, false);
+      *packetDataRange = {0, 0, true};
       return;
     }
 
@@ -730,27 +947,16 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 
       // sanitize tilePartInfo.remainingTilePartBytes_
       tpi.remainingTilePartBytes_ = bytesLeftInStream <= UINT_MAX ? (uint32_t)bytesLeftInStream : 0;
-      std::atomic_ref<bool> ref(truncated_);
-      ref = true;
+      truncated_ = true;
     }
     // now cache the packets
-    uint8_t* buff = nullptr;
-    auto zeroCopy = stream->supportsZeroCopy();
-    if(!zeroCopy)
+    const uint64_t packetDataOffset = stream->tell();
+    if(!readPacketData(stream, tpi.tilePart_, tpi.remainingTilePartBytes_))
     {
-      try
-      {
-        buff = new uint8_t[tpi.remainingTilePartBytes_];
-      }
-      catch([[maybe_unused]] const std::bad_alloc& ex)
-      {
-        grklog.error("Not enough memory to allocate segment");
-        success_ = false;
-        return;
-      }
+      success_ = false;
+      return;
     }
-    stream->read(buff, &buff, tpi.remainingTilePartBytes_);
-    tcp_->packets_->push(tpi.tilePart_, buff, tpi.remainingTilePartBytes_, !zeroCopy);
+    *packetDataRange = {packetDataOffset, tpi.remainingTilePartBytes_, true};
   };
   if(concurrent)
   {
@@ -774,6 +980,12 @@ void TileProcessor::setTruncated(void)
 bool TileProcessor::allSOTMarkersParsed(void)
 {
   return truncated_ || (numSOTsParsed_ == tcp_->signalledNumTileParts_);
+}
+
+bool TileProcessor::hasUnparsedTileParts(void)
+{
+  return !truncated_ && tcp_->signalledNumTileParts_ > 0 &&
+         numSOTsParsed_ < tcp_->signalledNumTileParts_;
 }
 
 void TileProcessor::prepareConcurrentParsing(void)
@@ -802,21 +1014,27 @@ void TileProcessor::prepareConcurrentParsing(void)
 
 void TileProcessor::prepareForDecompression(void)
 {
+  scheduledForDecompression_ = true;
   auto prep = [this]() {
     if(hasError())
       return;
     // now we can get ready to decompress this tile
-    if(!tcp_->validateQuantization())
+    if(!tcp_->resolvePart2() || !tcp_->validateQuantization() || !tcp_->validateMct())
+    {
+      success_ = false;
       return;
+    }
 
     if(!tcp_->mergePpt())
     {
       grklog.error("Failed to merge PPT data");
+      success_ = false;
       return;
     }
     if(!init())
     {
       grklog.error("Cannot decompress tile %u", tileIndex_);
+      success_ = false;
       return;
     }
 
@@ -839,28 +1057,23 @@ void TileProcessor::release(uint32_t strategy)
   if((strategy & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL)
     return;
 
-  // LRU strategy: release decompressed data but keep processor alive
-  // for re-decompression from cached compressed data
-  if(strategy & GRK_TILE_CACHE_LRU)
-  {
-    delete tile_;
-    tile_ = nullptr;
-    // Keep image_ and tilePartFetchSeq_ for re-decompression
-    return;
-  }
+  // delete tile components
+  delete tile_;
+  tile_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
 
   // delete image in absence of tile cache strategy
   if(strategy == GRK_TILE_CACHE_NONE)
   {
     grk_unref(image_);
     image_ = nullptr;
+    if(!isCompressor_)
+      tcp_->packets_->discardPacketData();
   }
 
-  // delete tile components
-  delete tile_;
-  tile_ = nullptr;
-
-  if(tilePartFetchSeq_ && strategy != GRK_TILE_CACHE_ALL)
+  if(tilePartFetchSeq_ && !(strategy & GRK_TILE_CACHE_LRU))
   {
     for(const auto& tpfs : *tilePartFetchSeq_)
     {
@@ -868,6 +1081,26 @@ void TileProcessor::release(uint32_t strategy)
       tpfs->stream_.reset();
     }
   }
+}
+void TileProcessor::releaseForSwath()
+{
+  // Only release the image when tile caching is not enabled;
+  // per-band reads may revisit this tile for subsequent bands
+  if(!(tileCacheStrategy_ & GRK_TILE_CACHE_IMAGE))
+  {
+    grk_unref(image_);
+    image_ = nullptr;
+  }
+
+  delete tile_;
+  tile_ = nullptr;
+  delete scheduler_;
+  scheduler_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
+  if(tileCacheStrategy_ == GRK_TILE_CACHE_NONE)
+    tcp_->packets_->discardPacketData();
 }
 void TileProcessor::release(void)
 {
@@ -914,17 +1147,46 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
 {
   if(!initialized_)
     return false;
+  // All components of every tile share one sample type, decided once for the whole decode in
+  // CodeStreamDecompress::activateScratch: the interleaved image writers (TIFF/PNG/...) select
+  // the element type from component 0 and apply it to every plane, inverse MCT requires a
+  // uniform type across its components, and the composite buffer is allocated from the same
+  // decision.
+  bool can16Bit = cp_->codingParams_.dec_.use16BitDwt_;
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
     if(imageComp->dx == 0 || imageComp->dy == 0)
       return false;
     auto tileComp = tile_->comps_ + compno;
+    if(can16Bit)
+      tileComp->setUse16BitDwt(true);
+  }
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+  {
+    auto imageComp = headerImage_->comps + compno;
+    auto tileComp = tile_->comps_ + compno;
+    // Q-format fractional bits for the int16 9/7 path: coefficients are dequantized
+    // left-shifted by qShift and shifted back at the synthesis output, retaining
+    // sub-LSB precision through the fixed-point lifting.
+    //
+    // sample peak at 2^12 leaves 3 bits for lifting intermediates that reach ~4x
+    // the peak, and 5 fractional bits at 8 bits, which the conformance tolerances need
+    // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
+    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec <= 13 &&
+       tileComp->num_resolutions_ > 1)
+      tileComp->setQShift((uint8_t)(13 - imageComp->prec));
+    else
+      tileComp->setQShift(0);
     auto unreducedImageCompWindow =
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))
       return false;
-    tileComp->createWindow(unreducedImageCompWindow);
+    std::pmr::memory_resource* windowArena =
+        (tileCacheStrategy_ & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL
+            ? std::pmr::new_delete_resource()
+            : &tile_->arena_;
+    tileComp->createWindow(unreducedImageCompWindow, windowArena);
   }
 
   return true;
@@ -1029,35 +1291,161 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   {
     if(tile_)
     {
-      if(scratch->has_multiple_tiles)
+      if(componentsTransferred_)
+      {
+        auto destination = scratch->has_multiple_tiles ? image_ : scratch;
+        for(uint16_t componentNumber = 0; componentNumber < destination->numcomps;
+            ++componentNumber)
+        {
+          auto component = destination->comps + componentNumber;
+          if(!component->data && component->w && component->h &&
+             !GrkImage::allocData(component, true))
+          {
+            success_ = false;
+            break;
+          }
+        }
+        if(scratch->has_multiple_tiles && cp_->dw_reduced && cp_->codingParams_.dec_.reduce_ > 0)
+        {
+          uint8_t reduce = cp_->codingParams_.dec_.reduce_;
+          image_->x0 = ceildivpow2<uint32_t>(image_->x0, reduce);
+          image_->y0 = ceildivpow2<uint32_t>(image_->y0, reduce);
+          image_->x1 = ceildivpow2<uint32_t>(image_->x1, reduce);
+          image_->y1 = ceildivpow2<uint32_t>(image_->y1, reduce);
+        }
+      }
+      else if(scratch->has_multiple_tiles)
       {
         grk_unref(image_);
         image_ = scratch->extractFrom(tile_);
+        // extractFrom() sets image x0/y0/x1/y1 from unreduced tile canvas
+        // coordinates.  When caller passed reduced coordinates (dw_reduced),
+        // reduce them to match the output coordinate space.
+        uint8_t reduce = cp_->codingParams_.dec_.reduce_;
+        if(cp_->dw_reduced && reduce > 0)
+        {
+          image_->x0 = ceildivpow2<uint32_t>(image_->x0, reduce);
+          image_->y0 = ceildivpow2<uint32_t>(image_->y0, reduce);
+          image_->x1 = ceildivpow2<uint32_t>(image_->x1, reduce);
+          image_->y1 = ceildivpow2<uint32_t>(image_->y1, reduce);
+        }
       }
       else
       {
         scratch->transferDataFrom(tile_);
+        // callers expect zero-filled data for components with no code blocks
+        for(uint16_t compno = 0; compno < scratch->numcomps; ++compno)
+        {
+          auto comp = scratch->comps + compno;
+          if(!comp->data && comp->w && comp->h && !GrkImage::allocData(comp, true))
+          {
+            success_ = false;
+            break;
+          }
+        }
       }
       deallocBuffers();
+      // linux reloads released file pages from the page cache on the next read
+      for(size_t i = 0; i < tilePartSeq_.size(); ++i)
+        getStream()->memAdvise(tilePartSeq_[i]->offset_, tilePartSeq_[i]->length_,
+                               GrkAccessPattern::ACCESS_DONTNEED);
     }
   }
 }
 
-void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                             std::function<void()> post, TileFutureManager& futures)
+bool TileProcessor::transferDecompressedComponent(uint16_t componentNumber)
 {
+  if(!decompressionOutput_ || !tile_ || componentNumber >= tile_->numcomps_)
+    return false;
+
+  auto destination = decompressionOutput_;
+  if(decompressionOutput_->has_multiple_tiles)
+  {
+    if(!componentsTransferred_)
+    {
+      grk_unref(image_);
+      image_ = headerImage_->createTileImage(tile_);
+    }
+    destination = image_;
+  }
+  destination->transferComponentDataFrom(tile_, componentNumber);
+  tile_->comps_[componentNumber].dealloc();
+  componentsTransferred_ = true;
+
+  return destination->comps[componentNumber].data != nullptr;
+}
+
+void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+                                             GrkImage* output, std::function<void()> post,
+                                             TileFutureManager& futures)
+{
+  // GPU plugin T2-only fast path: run T2 parsing inline without task graph overhead
+  if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
+  {
+    unreducedImageWindow_ = unreducedImageBounds;
+    if(tile_ && !tcp_->packets_->empty())
+    {
+      tcp_->packets_->rewind();
+      packetLengthCache_->rewind();
+      numProcessedPackets_ = 0;
+      numReadDataPackets_ = 0;
+      getStream()->memAdvise(startPos_, tilePartInfo_.tilePartLength_,
+                             GrkAccessPattern::ACCESS_SEQUENTIAL);
+      for(uint16_t compno = 0; compno < headerImage_->numcomps; ++compno)
+      {
+        auto tilec = tile_->comps_ + compno;
+        for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
+        {
+          auto res = tilec->resolutions_ + resno;
+          res->packetParser_->clearPrecinctParsers();
+        }
+      }
+      if(createDecompressTileComponentWindows())
+      {
+        auto t2 = std::make_unique<T2Decompress>(this);
+        truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+        if(truncated_ && numProcessedPackets_ == 0)
+        {
+          grklog.error("Tile %u is corrupt: no packets could be parsed", tileIndex_);
+          success_ = false;
+          post();
+          return;
+        }
+        decompress_synch_plugin_with_host();
+        // parse packet data
+        for(uint16_t compno = 0; compno < headerImage_->numcomps; ++compno)
+        {
+          auto tilec = tile_->comps_ + compno;
+          for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
+          {
+            auto res = tilec->resolutions_ + resno;
+            for(auto& pp : res->packetParser_->allLayerPrecinctParsers_)
+            {
+              auto parser = pp.second.parserQueue_.pop();
+              while(parser != std::nullopt)
+              {
+                parser.value()->parsePacketData();
+                parser = pp.second.parserQueue_.pop();
+              }
+            }
+          }
+        }
+      }
+    }
+    post();
+    return;
+  }
+
   futures.waitAndClear(tileIndex_);
   staleParsing_.clear();
   unreducedImageWindow_ = unreducedImageBounds;
+  decompressionOutput_ = output;
+  componentsTransferred_ = false;
 
   if(!scheduler_)
   {
-    if(Scheduling::isExcalibur())
-      scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
-                                                    headerImage_->comps->prec, coderPool);
-    else
-      scheduler_ =
-          new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
+    scheduler_ = new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec,
+                                         coderPool, waveletPoolData_);
   }
   else
   {
@@ -1071,8 +1459,6 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       return;
     if(!tile_)
       return;
-    // synch plugin with T2 data
-    // decompress_synch_plugin_with_host(this);
 
     if(tcp_->packets_->empty())
     {
@@ -1104,6 +1490,15 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
     auto t2 = std::make_unique<T2Decompress>(this);
     truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+    if(truncated_ && numProcessedPackets_ == 0)
+    {
+      grklog.error("Tile %u is corrupt: no packets could be parsed", tileIndex_);
+      success_ = false;
+      return;
+    }
+
+    // synch plugin with T2 data (must be AFTER T2 parsing)
+    decompress_synch_plugin_with_host();
 
     // 1. count parsers
     auto tile = getTile();
@@ -1126,14 +1521,13 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
         for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
         {
           auto res = tilec->resolutions_ + resno;
-          for(const auto& pp : res->packetParser_->allLayerPrecinctParsers_)
+          for(auto& pp : res->packetParser_->allLayerPrecinctParsers_)
           {
-            const auto& ppair = pp;
-            auto parser = ppair.second->parserQueue_.pop();
+            auto parser = pp.second.parserQueue_.pop();
             while(parser != std::nullopt)
             {
               parser.value()->parsePacketData();
-              parser = ppair.second->parserQueue_.pop();
+              parser = pp.second.parserQueue_.pop();
             }
           }
         }
@@ -1149,44 +1543,10 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
     // skip T1/wavelet/MCT when only recording packet lengths (transcode PLT)
     if(cp_->recordPacketLengths_)
       return;
-    for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
-    {
-      // skip allocation for components not selected for decoding
-      if(!shouldDecodeComponent(compno))
-        continue;
-
-      auto tilec = tile_->comps_ + compno;
-
-      if(Scheduling::isExcalibur())
-      {
-      }
-      else
-      {
-        if(!tcp_->wholeTileDecompress_)
-        {
-          try
-          {
-            tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
-                                     truncated_);
-          }
-          catch([[maybe_unused]] const std::runtime_error& ex)
-          {
-            continue;
-          }
-          catch([[maybe_unused]] const std::bad_alloc& baex)
-          {
-            success_ = false;
-            return;
-          }
-        }
-        if(!tilec->getWindow()->alloc())
-        {
-          grklog.error("Not enough memory for tile data");
-          success_ = false;
-          return;
-        }
-      }
-    }
+    // GPU plugin T2-only: skip T1/DWT when GPU handles T1 decode
+    if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
+      return;
+    // scheduleT1 allocates window buffers per component with code blocks
     if(!scheduler_->scheduleT1(this))
       success_ = false;
   };
@@ -1204,27 +1564,46 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   // Build task graph: parse → prepare → t2 → alloc → scheduler → post
   rootFlow_ = std::make_unique<FlowComponent>();
-  scheduler_->addTo(*rootFlow_);
 
   std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
+
+  // swath waits hang on a tile that fails without reaching post
+  auto onError = postDecompressFlow_.get();
+  postDecompressFlow_->addTo(*rootFlow_);
+
+  // scheduler is a FlowComponent in the DAG
+  scheduler_->addTo(*rootFlow_);
   allocAndScheduleFlow_->addTo(*rootFlow_);
-  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, condition_lambda);
+  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, onError,
+                                             condition_lambda);
+
+  scheduler_->precede(*postDecompressFlow_);
 
   t2ParseFlow_->addTo(*rootFlow_);
-  t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), condition_lambda);
+  t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), onError,
+                                    condition_lambda);
 
   if(tileHeaderParseFlow_ && prepareFlow_)
   {
     prepareFlow_->addTo(*rootFlow_);
-    prepareFlow_->conditional_precede(rootFlow_.get(), t2ParseFlow_.get(), condition_lambda);
+    prepareFlow_->conditional_precede(rootFlow_.get(), t2ParseFlow_.get(), onError,
+                                      condition_lambda);
 
     tileHeaderParseFlow_->addTo(*rootFlow_);
-    tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(),
+    tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(), onError,
                                               condition_lambda);
-  }
 
-  postDecompressFlow_->addTo(*rootFlow_);
-  scheduler_->precede(*postDecompressFlow_);
+    // The parse/prepare flows carry one-shot tasks (parseHeader, TileComponent::init)
+    // populated for THIS submission only.  Consume them now by moving them into the
+    // in-flight holding pen: they stay alive there for the run below and are freed by
+    // the next submission's waitAndClear() + staleParsing_.clear().  This guarantees a
+    // second submission of the same tile that does not re-parse cannot compose and
+    // re-run these already-completed tasks — which previously double-executed
+    // parseHeader / TileComponent::init, causing double-free / use-after-free.
+    // (prepareConcurrentParsing() recreates fresh empty flows on the next parse.)
+    staleParsing_.push_back(std::move(tileHeaderParseFlow_));
+    staleParsing_.push_back(std::move(prepareFlow_));
+  }
 
   concurrentFlowsStale_ = true;
   futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));
@@ -1252,10 +1631,6 @@ Rect32 TileProcessor::getUnreducedTileWindow(void)
   return unreducedImageWindow_.clip(tile_);
 }
 
-uint64_t TileProcessor::getNumReadDataPackets(void)
-{
-  return numReadDataPackets_;
-}
 void TileProcessor::incNumReadDataPackets(void)
 {
   numReadDataPackets_++;

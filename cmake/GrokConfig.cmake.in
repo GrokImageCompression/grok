@@ -36,6 +36,16 @@ else()
         "Ensure Grok is built and installed correctly.")
 endif()
 
+# Tools are an optional component, the binaries may be packaged separately
+set(_grok_decompress_path "@PACKAGE_CMAKE_INSTALL_BINDIR@/grk_decompress${CMAKE_EXECUTABLE_SUFFIX}")
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/GrokToolsTargets.cmake" AND EXISTS "${_grok_decompress_path}")
+    include("${CMAKE_CURRENT_LIST_DIR}/GrokToolsTargets.cmake")
+    set(Grok_Applications_FOUND TRUE)
+else()
+    set(Grok_Applications_FOUND FALSE)
+endif()
+unset(_grok_decompress_path)
+
 # Backward compatibility
 set(Grok_FOUND TRUE)
 

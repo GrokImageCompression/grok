@@ -25,3 +25,6 @@ issue476.jp2 #kdu_jp2info ok
 issue475.jp2 #kdu_jp2info ok
 issue413.jp2 #kdu_jp2info ok
 issue725.jp2
+security_ht_segments_overflow.j2k
+security_marker_cod_levels.j2k
+security_marker_com_underflow.j2k

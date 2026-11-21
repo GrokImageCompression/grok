@@ -19,7 +19,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <cinttypes>
-#include <string>
 
 #ifdef _WIN32
 #define strcasecmp _stricmp
@@ -78,6 +77,11 @@ static GRK_PROG_ORDER parseProgOrder(const char* str)
   return GRK_PROG_UNKNOWN;
 }
 
+static void printLibraryError(const char* message, [[maybe_unused]] void* userData)
+{
+  fprintf(stderr, "Error: %s\n", message);
+}
+
 template<size_t N>
 static void safe_strcpy(char (&dest)[N], const char* src)
 {
@@ -116,145 +120,6 @@ static TranscodeFormat formatFromExtension(const char* path)
   if(strcasecmp(dot, "j2k") == 0 || strcasecmp(dot, "j2c") == 0 || strcasecmp(dot, "jpc") == 0)
     return TFMT_CODESTREAM;
   return TFMT_UNKNOWN;
-}
-
-static uint32_t readU32BE(FILE* f)
-{
-  uint8_t buf[4];
-  if(fread(buf, 1, 4, f) != 4)
-    return 0;
-  return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) | ((uint32_t)buf[2] << 8) | buf[3];
-}
-
-static uint64_t readU64BE(FILE* f)
-{
-  uint8_t buf[8];
-  if(fread(buf, 1, 8, f) != 8)
-    return 0;
-  return ((uint64_t)buf[0] << 56) | ((uint64_t)buf[1] << 48) | ((uint64_t)buf[2] << 40) |
-         ((uint64_t)buf[3] << 32) | ((uint64_t)buf[4] << 24) | ((uint64_t)buf[5] << 16) |
-         ((uint64_t)buf[6] << 8) | buf[7];
-}
-
-/* Extract the raw codestream from a JP2/JPH container file.
- * Scans ISO BMFF boxes for the jp2c box and copies its contents. */
-static uint64_t extractCodestream(const char* jp2Path, const char* j2kPath)
-{
-  FILE* in = fopen(jp2Path, "rb");
-  if(!in)
-  {
-    fprintf(stderr, "Error: cannot open '%s' for reading\n", jp2Path);
-    return 0;
-  }
-
-  fseek(in, 0, SEEK_END);
-  long fileSizeSigned = ftell(in);
-  fseek(in, 0, SEEK_SET);
-  if(fileSizeSigned <= 0)
-  {
-    fprintf(stderr, "Error: cannot determine size of '%s'\n", jp2Path);
-    fclose(in);
-    return 0;
-  }
-  uint64_t fileSize = (uint64_t)fileSizeSigned;
-
-  uint64_t csOffset = 0, csLength = 0;
-  bool found = false;
-
-  while(!found)
-  {
-    long pos = ftell(in);
-    if(pos < 0 || (uint64_t)pos >= fileSize)
-      break;
-
-    uint32_t lbox = readU32BE(in);
-    uint32_t tbox = readU32BE(in);
-    if(feof(in))
-      break;
-
-    uint64_t boxLength;
-    uint32_t headerSize = 8;
-    if(lbox == 1)
-    {
-      boxLength = readU64BE(in);
-      headerSize = 16;
-    }
-    else if(lbox == 0)
-    {
-      boxLength = fileSize - (uint64_t)pos;
-    }
-    else
-    {
-      boxLength = lbox;
-    }
-
-    if(tbox == 0x6a703263) /* JP2C */
-    {
-      csOffset = (uint64_t)pos + headerSize;
-      csLength = boxLength - headerSize;
-      found = true;
-    }
-    else
-    {
-      uint64_t skip = boxLength - headerSize;
-      if(fseek(in, (long)skip, SEEK_CUR) != 0)
-        break;
-    }
-  }
-
-  if(!found)
-  {
-    fprintf(stderr, "Error: no codestream box (jp2c) found in '%s'\n", jp2Path);
-    fclose(in);
-    return 0;
-  }
-
-  fseek(in, (long)csOffset, SEEK_SET);
-
-  FILE* out = fopen(j2kPath, "wb");
-  if(!out)
-  {
-    fprintf(stderr, "Error: cannot open '%s' for writing\n", j2kPath);
-    fclose(in);
-    return 0;
-  }
-
-  const size_t bufSize = 1024 * 1024;
-  auto* buf = new uint8_t[bufSize];
-  uint64_t remaining = csLength;
-  uint64_t totalWritten = 0;
-  bool ok = true;
-
-  while(remaining > 0)
-  {
-    size_t toRead = (remaining > bufSize) ? bufSize : (size_t)remaining;
-    size_t bytesRead = fread(buf, 1, toRead, in);
-    if(bytesRead == 0)
-    {
-      ok = false;
-      break;
-    }
-    size_t bytesWritten = fwrite(buf, 1, bytesRead, out);
-    if(bytesWritten != bytesRead)
-    {
-      ok = false;
-      break;
-    }
-    totalWritten += bytesWritten;
-    remaining -= bytesRead;
-  }
-
-  delete[] buf;
-  fclose(in);
-  fclose(out);
-
-  if(!ok)
-  {
-    fprintf(stderr, "Error: I/O error during codestream extraction\n");
-    return 0;
-  }
-
-  return totalWritten;
 }
 
 int main(int argc, char* argv[])
@@ -343,99 +208,14 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  bool hasModifications = writeTlm || writePlt || writeSop || writeEph || maxLayers > 0 ||
-                          maxRes > 0 || progOrder != GRK_PROG_UNKNOWN;
-
-  /* JP2/JPH -> J2K: strip boxes, output raw codestream */
   if(inputFmt == TFMT_CONTAINER && outputFmt == TFMT_CODESTREAM)
-  {
     fprintf(stderr, "Warning: converting to raw codestream — all JP2/JPH box\n"
                     "metadata (XMP, ICC profile, GeoTIFF UUID, etc.) will be discarded.\n");
 
-    if(!hasModifications)
-    {
-      /* No codestream modifications: extract directly from input */
-      uint64_t written = extractCodestream(inputFile, outputFile);
-      if(written == 0)
-        return 1;
-
-      fprintf(stdout, "Extracted codestream %s -> %s (%" PRIu64 " bytes)\n", inputFile, outputFile,
-              written);
-      return 0;
-    }
-
-    /* Codestream modifications requested: transcode to temp JP2, then extract */
-    grk_initialize(nullptr, 0, nullptr);
-
-    grk_stream_params srcStreamParams{};
-    safe_strcpy(srcStreamParams.file, inputFile);
-
-    grk_decompress_parameters dparams{};
-    auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
-    if(!decCodec)
-    {
-      fprintf(stderr, "Error: failed to init decompressor for '%s'\n", inputFile);
-      return 1;
-    }
-
-    grk_header_info srcHeader{};
-    if(!grk_decompress_read_header(decCodec, &srcHeader))
-    {
-      fprintf(stderr, "Error: failed to read header from '%s'\n", inputFile);
-      grk_object_unref(decCodec);
-      return 1;
-    }
-
-    auto* srcImage = grk_decompress_get_image(decCodec);
-    if(!srcImage)
-    {
-      fprintf(stderr, "Error: failed to get image from '%s'\n", inputFile);
-      grk_object_unref(decCodec);
-      return 1;
-    }
-
-    std::string tmpPath = std::string(outputFile) + ".tmp.jp2";
-
-    grk_cparameters cparams{};
-    grk_compress_set_default_params(&cparams);
-    cparams.cod_format = GRK_FMT_JP2;
-    cparams.write_tlm = writeTlm;
-    cparams.write_plt = writePlt;
-    cparams.write_sop = writeSop;
-    cparams.write_eph = writeEph;
-    cparams.max_layers_transcode = maxLayers;
-    cparams.max_res_transcode = maxRes;
-    cparams.transcode_prog_order = progOrder;
-
-    grk_stream_params dstStreamParams{};
-    safe_strcpy(dstStreamParams.file, tmpPath.c_str());
-
-    grk_stream_params transSrcStreamParams{};
-    safe_strcpy(transSrcStreamParams.file, inputFile);
-
-    uint64_t tmpWritten =
-        grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
-    grk_object_unref(decCodec);
-
-    if(tmpWritten == 0)
-    {
-      fprintf(stderr, "Error: transcode failed\n");
-      remove(tmpPath.c_str());
-      return 1;
-    }
-
-    uint64_t written = extractCodestream(tmpPath.c_str(), outputFile);
-    remove(tmpPath.c_str());
-
-    if(written == 0)
-      return 1;
-
-    fprintf(stdout, "Transcoded %s -> %s (%" PRIu64 " bytes)\n", inputFile, outputFile, written);
-    return 0;
-  }
-
-  /* Container-to-container or J2K-to-J2K: use grk_transcode API */
   grk_initialize(nullptr, 0, nullptr);
+  grk_msg_handlers handlers{};
+  handlers.error_callback = printLibraryError;
+  grk_set_msg_handlers(handlers);
 
   /* Step 1: Decompress header from source to get image info */
   grk_stream_params srcStreamParams{};
@@ -471,7 +251,7 @@ int main(int argc, char* argv[])
   /* Step 2: Set up transcode parameters */
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
-  cparams.cod_format = GRK_FMT_JP2;
+  cparams.cod_format = outputFmt == TFMT_CODESTREAM ? GRK_FMT_J2K : GRK_FMT_JP2;
   cparams.write_tlm = writeTlm;
   cparams.write_plt = writePlt;
   cparams.write_sop = writeSop;

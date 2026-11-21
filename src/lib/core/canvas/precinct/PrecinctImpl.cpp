@@ -1,3 +1,4 @@
+#include <new>
 /*
  *    Copyright (C) 2016-2026 Grok Image Compression Inc.
  *
@@ -18,7 +19,7 @@
 #include "geometry.h"
 #include "BitIO.h"
 #include "TagTree.h"
-#include "SparseCache.h"
+#include "BlockCache.h"
 #include "CodeblockDecompress.h"
 #include "CodeblockCompress.h"
 #include "Precinct.h"
@@ -27,8 +28,9 @@
 namespace grk
 {
 
-PrecinctImpl::PrecinctImpl(Precinct* prec)
-    : enc_(nullptr), dec_(nullptr), prec_(prec), incltree_(nullptr), imsbtree_(nullptr)
+PrecinctImpl::PrecinctImpl(Precinct* prec, std::pmr::memory_resource* arena)
+    : enc_(nullptr), numEnc_(0), dec_(nullptr), blockStorage_(nullptr), prec_(prec), arena_(arena),
+      incltree_(nullptr), imsbtree_(nullptr)
 {
   if(!genCodeBlockGrid())
     throw std::runtime_error("PrecinctImpl: unable to generate code block grid");
@@ -36,8 +38,12 @@ PrecinctImpl::PrecinctImpl(Precinct* prec)
 PrecinctImpl::~PrecinctImpl()
 {
   deleteTagTrees();
-  delete enc_;
-  delete dec_;
+  for(uint32_t cblkno = 0; cblkno < numEnc_; ++cblkno)
+    enc_[cblkno].~CodeblockCompress();
+  ::operator delete(enc_, std::align_val_t(alignof(t1::CodeblockCompress)));
+  if(dec_)
+    std::pmr::polymorphic_allocator<>(arena_).delete_object(dec_);
+  delete blockStorage_;
 }
 bool PrecinctImpl::genCodeBlockGrid(void)
 {
@@ -61,8 +67,14 @@ Rect32_16 PrecinctImpl::getCodeBlockBounds(uint32_t cblkno)
   return cblk_bounds.intersection(prec_);
 }
 
-template<typename T>
-void PrecinctImpl::initCodeBlock(T* block, uint32_t cblkno)
+void PrecinctImpl::initCodeBlock(t1::CodeblockCompress* block, uint32_t cblkno)
+{
+  if(!block->empty())
+    return;
+  block->init(blockStorage_, cblkno);
+  block->setRect(getCodeBlockBounds(cblkno));
+}
+void PrecinctImpl::initCodeBlock(t1::CodeblockDecompress* block, uint32_t cblkno)
 {
   if(!block->empty())
     return;
@@ -71,9 +83,12 @@ void PrecinctImpl::initCodeBlock(T* block, uint32_t cblkno)
 }
 void PrecinctImpl::deleteTagTrees()
 {
-  delete incltree_;
+  std::pmr::polymorphic_allocator<> allocator(arena_);
+  if(incltree_)
+    allocator.delete_object(incltree_);
   incltree_ = nullptr;
-  delete imsbtree_;
+  if(imsbtree_)
+    allocator.delete_object(imsbtree_);
   imsbtree_ = nullptr;
 }
 bool PrecinctImpl::hasCodeBlocks(void)
@@ -90,7 +105,8 @@ TagTreeU16* PrecinctImpl::getIncludeTagTree(void)
     return incltree_;
   try
   {
-    incltree_ = new TagTreeU16(cblk_grid_.width(), cblk_grid_.height());
+    incltree_ = std::pmr::polymorphic_allocator<>(arena_).new_object<TagTreeU16>(
+        cblk_grid_.width(), cblk_grid_.height(), arena_);
   }
   catch([[maybe_unused]] const std::exception& e)
   {
@@ -109,7 +125,8 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
     return imsbtree_;
   try
   {
-    imsbtree_ = new TagTreeU8(cblk_grid_.width(), cblk_grid_.height());
+    imsbtree_ = std::pmr::polymorphic_allocator<>(arena_).new_object<TagTreeU8>(
+        cblk_grid_.width(), cblk_grid_.height(), arena_);
   }
   catch([[maybe_unused]] const std::exception& e)
   {
@@ -120,21 +137,35 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
   return imsbtree_;
 }
 
-PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers) : PrecinctImpl(prec)
+PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers, uint8_t maxPasses)
+    : PrecinctImpl(prec, std::pmr::new_delete_resource())
 {
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
-    enc_ = new BlockCache<t1::CodeblockCompress, PrecinctImpl>(numLayers, num_blocks, this);
+    blockStorage_ = new t1::PrecinctCodeblockStorage((uint32_t)num_blocks, numLayers,
+                                                     prec->getNominalBlockSize(), maxPasses);
+    enc_ = static_cast<t1::CodeblockCompress*>(
+        ::operator new(sizeof(t1::CodeblockCompress) * num_blocks,
+                       std::align_val_t(alignof(t1::CodeblockCompress))));
+    for(uint32_t cblkno = 0; cblkno < num_blocks; ++cblkno)
+    {
+      new(enc_ + cblkno) t1::CodeblockCompress(numLayers);
+      numEnc_ = cblkno + 1;
+      initCodeBlock(enc_ + cblkno, cblkno);
+    }
   }
 }
-PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayers)
-    : PrecinctImpl(prec)
+PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayers,
+                                               std::pmr::memory_resource* arena)
+    : PrecinctImpl(prec, arena)
 {
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
-    dec_ = new BlockCache<t1::CodeblockDecompress, PrecinctImpl>(numLayers, num_blocks, this);
+    dec_ = std::pmr::polymorphic_allocator<>(arena_)
+               .new_object<BlockCache<t1::CodeblockDecompress, PrecinctImpl>>(
+                   numLayers, cblk_grid_.width(), cblk_grid_.height(), this, arena_);
   }
 }
 

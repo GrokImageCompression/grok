@@ -15,6 +15,7 @@
  *
  */
 
+#include <algorithm>
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -69,7 +70,7 @@ T2Compress::T2Compress(ITileProcessorCompress* tileProc) : tileProcessor(tilePro
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
                                          uint32_t* allPacketBytes, uint32_t maxBytes,
                                          uint8_t newTilePartProgressionPosition, PLMarker* markers,
-                                         bool isFinal, bool debug)
+                                         bool isFinal, bool debug, uint64_t* tilePartBytes)
 {
   assert(allPacketBytes);
   auto cp = tileProcessor->getCodingParams();
@@ -77,10 +78,17 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
   auto tcp = tileProcessor->getTCP();
   uint32_t pocno = (cp->rsiz_ == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 
-  // Cinema profile has CPRL progression and maximum component size specification,
-  // so in this case, we set max_comp to the number of components, so we can ensure that
-  // each component length meets spec. Otherwise, set to 1.
+  // each enable call walks one tile part, so walk them all or the budget
+  // check only sees the first component
+  uint32_t numTileParts = 1;
+  if(PacketIter::walksOneTilePart(cp, THRESH_CALC))
+  {
+    for(uint32_t poc = 0; poc < pocno; ++poc)
+      numTileParts = std::max<uint32_t>(numTileParts, cp->numTilePartsForProgression(poc, tile_no));
+  }
+  // under the cinema per component cap each tile part is one component
   uint32_t max_comp = cp->codingParams_.enc_.maxComponentRate_ > 0 ? image->numcomps : 1;
+  max_comp = std::max(max_comp, numTileParts);
 
   PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
   *allPacketBytes = 0;
@@ -121,12 +129,16 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
             maxBytes -= bytesInLayer;
           }
           *allPacketBytes += bytesInLayer;
-          if(cp->codingParams_.enc_.maxComponentRate_ &&
+          // a caller counting the parts applies the component cap itself
+          if(!tilePartBytes && cp->codingParams_.enc_.maxComponentRate_ &&
              componentBytes > cp->codingParams_.enc_.maxComponentRate_)
             return false;
         }
       }
     }
+    // the caller's array has one slot per component
+    if(tilePartBytes && compno < image->numcomps)
+      tilePartBytes[compno] = componentBytes;
   }
 
   return true;
@@ -280,14 +292,14 @@ bool T2Compress::compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t lay
       {
         auto cblk = prc->getCompressBlock(cblkno);
         cblk->setNumPassesInLayer(0, 0);
-        assert(band->maxBitPlanes_ >= cblk->numbps());
         if(cblk->numbps() > band->maxBitPlanes_)
         {
-          grklog.warn("Code block %u bps %u greater than band bps %u. Skipping.", cblkno,
-                      cblk->numbps(), band->maxBitPlanes_);
+          grklog.error("Code block %u has %u bit planes, exceeding band maximum %u: "
+                       "image samples exceed declared precision.",
+                       cblkno, cblk->numbps(), band->maxBitPlanes_);
+          return false;
         }
-        else
-          prc->getImsbTree()->set(cblkno, band->maxBitPlanes_ - cblk->numbps());
+        prc->getImsbTree()->set(cblkno, band->maxBitPlanes_ - cblk->numbps());
       }
     }
   }

@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <memory_resource>
+#include <vector>
 
 namespace grk
 {
@@ -99,7 +100,8 @@ struct Subband : public Rect32
    */
   Precinct* createPrecinct(bool isCompressor, uint16_t numLayers, uint64_t precinctIndex,
                            Rect32 bandPrecinctPartition, Point8 bandPrecinctExpn,
-                           uint32_t precinctGridWidth, Point8 cblk_expn);
+                           uint32_t precinctGridWidth, Point8 cblk_expn,
+                           std::pmr::memory_resource* tileArena);
 
   /**
    * @brief band orientation
@@ -108,16 +110,10 @@ struct Subband : public Rect32
   t1::eBandOrientation orientation_ = t1::BAND_ORIENT_LL;
 
   /**
-   * @brief flat vector of precincts
+   * @brief created precincts, sorted by precinct index
    *
    */
   std::vector<Precinct*> precincts_;
-
-  /**
-   * @brief maps global precinct index to precincts vector index
-   *
-   */
-  std::unordered_map<uint64_t, uint64_t> precinctMap_;
 
   /**
    * @brief band max number of bit planes

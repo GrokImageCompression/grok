@@ -37,20 +37,27 @@
 
 namespace grk
 {
-template<typename T>
-class ISparseCanvas
+// untyped handle for owning a canvas without naming its sample type
+class ISparseCanvasBase
 {
 public:
-  virtual ~ISparseCanvas() = default;
+  virtual ~ISparseCanvasBase() = default;
+};
+
+template<typename T>
+class ISparseCanvas : public ISparseCanvasBase
+{
+public:
+  ~ISparseCanvas() override = default;
   /**
    * Read window of data into dest buffer.
    */
-  virtual bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
+  virtual bool read(Rect32 window, T* dest, const uint32_t destChunkY,
                     const uint32_t destChunkX) = 0;
   /**
    * Write window of data from src buffer
    */
-  virtual bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
+  virtual bool write(Rect32 window, const T* src, const uint32_t srcChunkY,
                      const uint32_t srcChunkX) = 0;
 
   virtual bool alloc(Rect32 window, bool zeroOutBuffer) = 0;

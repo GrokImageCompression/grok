@@ -28,8 +28,8 @@ struct FileOrchestratorIO
 {
   FileOrchestratorIO(void);
   void setMaxPooledRequests(uint32_t maxRequests);
-  void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                  void* user_data);
+  void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                               void* user_data);
   grk_io_callback getIOReclaimCallback(void);
   void* getIOReclaimUserData(void);
 #ifndef _WIN32

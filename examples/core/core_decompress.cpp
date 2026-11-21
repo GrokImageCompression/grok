@@ -28,7 +28,7 @@ Complex example demonstrating a variety of options for decompression
 #include <iostream>
 #include <cstdlib>
 #include <regex>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok.h"
 #include "grk_examples_config.h"
@@ -307,7 +307,7 @@ bool write(grk_image* image, std::string fileName)
       for(uint16_t c = 0; c < image->numcomps; ++c)
       {
         uint64_t index = (j * width + i);
-        maximum = std::max(maximum, srcPtrs[c][index]);
+        maximum = std::max(maximum, (int32_t)srcPtrs[c][index]);
       }
     }
   }
@@ -402,7 +402,7 @@ static void wait_tile_range(grk_object* codec, const grk_header_info* headerInfo
   }
 }
 
-static bool decompress(grk_object* codec, grk_header_info* headerInfo,
+static bool decompress(grk_object* codec, const grk_header_info* headerInfo,
                        [[maybe_unused]] grk_decompress_parameters* decompressParams,
                        bool decompressTile, uint16_t tileIndex, grk_image** image)
 {
@@ -425,27 +425,28 @@ static bool decompress(grk_object* codec, grk_header_info* headerInfo,
     }
   }
 
-  if(image && *image && decompressParams->asynchronous)
-  {
-    if(decompressParams->dw_x1 == 0 && !decompressTile)
-    {
-      grk_wait_swath swath = {};
-      swath.x0 = (*image)->x0;
-      swath.y0 = (*image)->y0;
-      swath.x1 = (*image)->x1;
-      swath.y1 = (*image)->y1;
-      grk_decompress_wait(codec, &swath);
-    }
-  }
-
   // retrieve image that will store uncompressed image data
   if(!decompressTile)
   {
     wait_tile_range(codec, headerInfo, 0, headerInfo->t_grid_width * headerInfo->t_grid_height);
   }
 
-  *image = decompressTile ? grk_decompress_get_tile_image(codec, tileIndex, true)
-                          : grk_decompress_get_image(codec);
+  if(decompressTile)
+  {
+    *image = grk_decompress_get_tile_image(codec, tileIndex, true);
+  }
+  else if(!decompressParams->core.skip_allocate_composite)
+  {
+    // grk_decompress_get_image() triggers wait(nullptr) which force-schedules
+    // all remaining tiles.  Only call it when we actually need the composite.
+    *image = grk_decompress_get_image(codec);
+  }
+  else
+  {
+    // When skip_allocate_composite is set, the composite has no pixel data.
+    // Use the header image for dimension info without triggering wait(nullptr).
+    *image = const_cast<grk_image*>(&headerInfo->header_image);
+  }
   if(!*image)
   {
     fprintf(stderr, "Failed to retrieve image \n");
@@ -481,7 +482,19 @@ static std::pair<grk_object*, bool> decompress(const std::string& filename, bool
     return {c, false};
   if(image && !filename.empty())
   {
-    rc = write<int32_t>(*image, filename);
+    switch((*image)->comps[0].data_type)
+    {
+      case GRK_INT_16:
+        rc = write<int16_t>(*image, filename);
+        break;
+      case GRK_INT_32:
+        rc = write<int32_t>(*image, filename);
+        break;
+      default:
+        fprintf(stderr, "Unsupported component data type %d\n", (int)(*image)->comps[0].data_type);
+        rc = false;
+        break;
+    }
   }
   return {c, rc};
 }
@@ -506,7 +519,7 @@ static const char* prog_order_to_string(GRK_PROG_ORDER order)
   }
 }
 
-bool isNetwork(std::string& f)
+bool isNetwork(const std::string& f)
 {
   std::string_view file{f};
   return file.starts_with("http://") || file.starts_with("https://") || file.starts_with("/vsis3/");
@@ -647,7 +660,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 // #define TEST_FUZZER
 #ifdef TEST_FUZZER
   {
-    grk_header_info headerInfo = {};
+    grk_header_info fuzzHeaderInfo = {};
     grk_decompress_parameters parameters = {};
     parameters.dw_x1 = 1024;
     parameters.dw_y1 = 1024;
@@ -714,7 +727,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       cleanup();
       return -1;
     }
-    if(!grk_decompress_read_header(codec, &headerInfo))
+    if(!grk_decompress_read_header(codec, &fuzzHeaderInfo))
     {
       cleanup();
       return -1;

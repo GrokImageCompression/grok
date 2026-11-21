@@ -20,7 +20,9 @@
 #include <unordered_map>
 #include <functional>
 
+#include "grok.h"
 #include "CodingParams.h"
+#include "TileArena.h"
 
 namespace grk
 {
@@ -35,6 +37,11 @@ const uint32_t sotMarkerSegmentLen = 12U;
 const uint32_t SPCodSPCocLen = 5U;
 const uint32_t codSocLen = 5U;
 const uint32_t tlmMarkerBytesPerTilePart = 6;
+// TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
+const uint32_t tlm_marker_start_bytes = 6;
+// Ltlm is 16 bits and excludes the 2 byte marker id
+const uint32_t maxTilePartsPerTlmSegment =
+    (UINT16_MAX - (tlm_marker_start_bytes - 2)) / tlmMarkerBytesPerTilePart;
 
 const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKW = 64;
 const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKH = 64;
@@ -74,6 +81,9 @@ const uint16_t CBD = 0xff78; /** CBD marker */
 const uint16_t MCC = 0xff75; /** MCC marker */
 const uint16_t MCT = 0xff74; /** MCT marker */
 const uint16_t MCO = 0xff77; /** MCO marker */
+const uint16_t PRF = 0xff56; /** PRF marker (Part 2 profile) */
+const uint16_t DFS = 0xff72; /** DFS marker (Part 2 downsampling factor styles) */
+const uint16_t ATK = 0xff79; /** ATK marker (Part 2 arbitrary transformation kernels) */
 const uint16_t UNK = 0; /** UNKNOWN marker */
 
 // number of bytes needed to store marker
@@ -102,17 +112,34 @@ const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
 typedef std::function<bool(void)> PROCEDURE_FUNC;
 
 class TileCache;
+class WaveletPoolData;
 
 class CodeStream
 {
 public:
-  CodeStream(IStream* stream);
+  explicit CodeStream(IStream* stream);
   virtual ~CodeStream();
 
   IStream* getStream();
   GrkImage* getHeaderImage(void);
   grk_plugin_tile* getCurrentPluginTile();
+  TileArenaChunkPool* getTileArenaChunks()
+  {
+    return &tileArenaChunks_;
+  }
   CodingParams* getCodingParams(void);
+  virtual grk_io_band_callback getBandCallback() const
+  {
+    return nullptr;
+  }
+  virtual void* getBandUserData() const
+  {
+    return nullptr;
+  }
+  virtual WaveletPoolData* getWaveletPoolData()
+  {
+    return nullptr;
+  }
 
 protected:
   bool exec(std::vector<PROCEDURE_FUNC>& procedureList);
@@ -125,6 +152,7 @@ protected:
   IStream* stream_;
   std::unordered_map<uint32_t, ITileProcessor*> processors_;
   grk_plugin_tile* current_plugin_tile;
+  TileArenaChunkPool tileArenaChunks_;
 };
 
 } // namespace grk

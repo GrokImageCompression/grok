@@ -21,7 +21,7 @@
 namespace grk
 {
 Quantizer::Quantizer(bool reversible, uint8_t guard_bits)
-    : Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible)
+    : Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible), stepScale(1.0)
 {
   memset(u8_SPqcd, 0, GRK_MAXBANDS);
   memset(u16_SPqcd, 0, GRK_MAXBANDS * sizeof(short));
@@ -62,6 +62,10 @@ void Quantizer::pull(grk_stepsize* stepptr)
     }
   }
 }
+void Quantizer::setStepScale(double scale)
+{
+  stepScale = scale;
+}
 void Quantizer::push(grk_stepsize* stepptr)
 {
   uint32_t numbands = 3 * num_decomps + 1;
@@ -91,7 +95,7 @@ void Quantizer::generate(uint8_t decomps, uint8_t max_bit_depth,
 
     double stepsize = 1.0;
     if(!isReversible)
-      stepsize = (1 << (gain)) / t1::BlockCoder::getnorm(level, orient, false);
+      stepsize = stepScale * (1 << (gain)) / t1::BlockCoder::getnorm(level, orient, false);
     uint32_t step = (uint32_t)floor(stepsize * 8192.0);
     int32_t p, n;
     p = floorlog2(step) - 13;

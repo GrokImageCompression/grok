@@ -35,6 +35,12 @@ modifications (TLM, PLT, SOP, EPH, etc.) are applied before extraction.
 Converting from raw codestream to container (J2K -> JP2) is not supported;
 use **grk_compress** to create a container from scratch.
 
+`-L`, `-S`, `-E`, `-n`, `-R` and `-p` write packed packet headers (PPM, PPT markers)
+inline in the packets. `-R` fails on a multi-tile image whose tile size is not a
+multiple of the removed scale, on Part 2 DFS markers, and when a component has fewer
+resolutions than `-R` removes from the component with the most. `-p RPCL` and `-p PCRL` fail when a
+component subsampling factor is not a power of two.
+
 The input format is detected automatically from file content (magic bytes),
 not the file extension.
 

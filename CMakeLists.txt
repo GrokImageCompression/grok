@@ -16,7 +16,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GROK
-  VERSION 20.2.6
+  VERSION 21.0.0
   LANGUAGES C CXX)
 
 #######################################
@@ -30,7 +30,7 @@ set(PACKAGE_VERSION "${PROJECT_VERSION}")
 # As autotools does not support X.Y notation for SOVERSION, we have to use
 # two different versions, one for Grok itself and one for its .so
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 1)
+  set(GROK_SOVERSION 2)
 endif()
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}"
@@ -81,10 +81,22 @@ if(CMAKE_CXX_LINK_PIE_SUPPORTED)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+# AddressSanitizer support
+option(GRK_ENABLE_ASAN "Enable AddressSanitizer (ASan) for detecting memory errors" OFF)
+if(GRK_ENABLE_ASAN)
+  if(MSVC)
+    add_compile_options(/fsanitize=address)
+    # MSVC ASan does not require link flags; the runtime is linked automatically.
+  else()
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+  endif()
+endif()
+
 add_compile_options(
   $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:-fno-omit-frame-pointer>)
 add_link_options(
-  $<$<CONFIG:RelWithDebInfo>:LINKER:--build-id>)
+  $<$<AND:$<CONFIG:RelWithDebInfo>,$<NOT:$<PLATFORM_ID:Darwin>>>:LINKER:--build-id>)
 
 
 # Path to additional CMake modules
@@ -100,12 +112,6 @@ set(GROK_INSTALL_SUBDIR "grok-${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}")
 set(GROK_INSTALL_PACKAGE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${GROK_INSTALL_SUBDIR}")
 if (APPLE)
 	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_FULL_LIBDIR}")
-endif()
-
-# Big endian test:
-include(TestBigEndian)
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-  test_big_endian(GROK_BIG_ENDIAN)
 endif()
 
 # Grok build configuration options.
@@ -199,19 +205,6 @@ option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
 option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 
-# GPU plugin: install the shared library alongside grok binaries
-option(GRK_GPU_PLUGIN_INSTALL "Install grok-gpu-plugin shared library" OFF)
-set(GROK_GPU_PLUGIN_DIR "" CACHE PATH "Path to grok-gpu-plugin build-shared directory")
-if(GRK_GPU_PLUGIN_INSTALL AND GROK_GPU_PLUGIN_DIR)
-    find_package(GrokGPUPlugin)
-    if(GrokGPUPlugin_FOUND)
-        install(FILES ${GrokGPUPlugin_LIBRARY}
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            RENAME libgrokj2k_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
-        )
-    endif()
-endif()
-
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -223,6 +216,46 @@ add_subdirectory(src/include/spdlog)
 set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
 
 add_subdirectory(src/lib/core)
+
+# Build GPU plugin from submodule (extern/grok-gpu-plugin).
+# The submodule is private and marked `update = none` in .gitmodules, so
+# `git submodule update --init --recursive` skips it on CI. Users who have
+# access init it explicitly: `git submodule update --init extern/grok-gpu-plugin`.
+# Must come after src/lib/core so plugin detects existing hwy target.
+if(GRK_BUILD_PLUGIN_LOADER)
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/grok-gpu-plugin/CMakeLists.txt")
+    message(FATAL_ERROR
+      "GRK_BUILD_PLUGIN_LOADER=ON but extern/grok-gpu-plugin is not checked out. "
+      "Run: git submodule update --init extern/grok-gpu-plugin")
+  endif()
+  set(GPUP_BUILD_SHARED ON CACHE BOOL "" FORCE)
+  set(GPUP_BUILD_TESTS OFF CACHE BOOL "Build grok-gpu-plugin tests")
+  set(GPUP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  if(DEFINED GRK_CUDA_ARCH AND NOT GRK_CUDA_ARCH STREQUAL "")
+    set(GPUP_CUDA_ARCH "${GRK_CUDA_ARCH}" CACHE STRING "" FORCE)
+  endif()
+  add_subdirectory(extern/grok-gpu-plugin)
+  # Rename output to match what grok's minpf loader expects
+  set_target_properties(gpup PROPERTIES
+    OUTPUT_NAME "${GROK_PLUGIN_NAME}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+    ${GROK_LIBRARY_PROPERTIES}
+  )
+  # Copy .metallib to the binary output directory so the plugin can find it at runtime
+  if(APPLE AND TARGET grok_metallib)
+    set(_metallib_src "${CMAKE_CURRENT_BINARY_DIR}/extern/grok-gpu-plugin/grok_kernels.metallib")
+    set(_metallib_dst "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/grok_kernels.metallib")
+    add_custom_command(
+      OUTPUT "${_metallib_dst}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_metallib_src}" "${_metallib_dst}"
+      DEPENDS "${_metallib_src}"
+      COMMENT "Copying grok_kernels.metallib to output directory"
+    )
+    add_custom_target(copy_metallib ALL DEPENDS "${_metallib_dst}")
+    add_dependencies(copy_metallib grok_metallib)
+  endif()
+endif()
 
 # Build codec library before SWIG bindings (codec bindings link against it)
 if(GRK_BUILD_CODEC)
@@ -410,13 +443,20 @@ if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
           DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
           NAMESPACE GROK::)
 
+  # tools get their own export so a distro can ship them as a separate package
+  if(GRK_BUILD_CODEC)
+    install(EXPORT GrokToolsTargets
+            DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
+            NAMESPACE GROK::)
+  endif()
+
   # Generate the GrokConfig.cmake file
   include(CMakePackageConfigHelpers)
   configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GrokConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
     INSTALL_DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
-    PATH_VARS CMAKE_INSTALL_INCLUDEDIR)
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_BINDIR)
 
   # Generate the version file
   write_basic_package_version_file(

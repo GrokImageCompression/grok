@@ -19,15 +19,20 @@
 #include "../part15/common/ojph_arch.h"
 #include "../part15/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
+#include "HTBlockDecoder.h"
 #include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"
 #include "CoderOJPH.h"
+#include "Coder.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
+// 16 bytes: the SIMD HT MagSgn forward reader (frwd_read) issues 16-byte vector
+// loads that may run up to 16 bytes past the end of the code-block data, so the
+// trailing pad must be at least that wide.
+const uint8_t grk_cblk_dec_compressed_data_pad_ht = 16;
 
 // Function pointer types for SIMD-dispatched block coding
 using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
@@ -47,7 +52,7 @@ static decode_cb_t dispatch_decoder()
 #if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
 #ifndef OJPH_DISABLE_AVX2
   if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
-    return ojph_decode_codeblock_avx2;
+    return grk::t1::ht::local::ht_decode_codeblock_avx2;
 #endif
 #ifndef OJPH_DISABLE_SSSE3
   if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_SSSE3)
@@ -94,8 +99,8 @@ T1OJPH::T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
     : coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
       coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
       unencoded_data_size(((maxCblkW + 7u) & ~7u) * maxCblkH),
-      unencoded_data(new int32_t[unencoded_data_size]), allocator(new mem_fixed_allocator),
-      elastic_alloc(new mem_elastic_allocator(1048576))
+      unencoded_data(new int32_t[unencoded_data_size]), maxCblkW_(maxCblkW), maxCblkH_(maxCblkH),
+      allocator(new mem_fixed_allocator), elastic_alloc(new mem_elastic_allocator(1048576))
 {
   if(!isCompressor)
     memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
@@ -104,8 +109,15 @@ T1OJPH::~T1OJPH()
 {
   delete[] coded_data;
   delete[] unencoded_data;
+  delete part1Coder_;
   delete allocator;
   delete elastic_alloc;
+}
+ICoder* T1OJPH::part1Coder()
+{
+  if(!part1Coder_)
+    part1Coder_ = new part1::Coder(false, (uint16_t)maxCblkW_, (uint16_t)maxCblkH_, 0);
+  return part1Coder_;
 }
 bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
 {
@@ -122,36 +134,52 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
   // convert to sign-magnitude
   if(block->qmfbid == 1)
   {
-    auto tiledp = block->tiledp;
-    for(auto j = 0U; j < h; ++j)
+    if(block->uses16BitBuffer)
     {
-      for(auto i = 0U; i < w; ++i)
+      auto tileData = static_cast<const int16_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
       {
-        int32_t temp = *tiledp++;
-        int32_t val = temp >= 0 ? temp : -temp;
-        int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
-        int32_t res = sign | (val << shift);
-        unencoded_data[cblk_index] = res;
-        cblk_index++;
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t value = *tileData++;
+          uint32_t magnitude = value >= 0 ? (uint32_t)value : -(uint32_t)value;
+          uint32_t sign = value >= 0 ? 0U : 0x80000000U;
+          unencoded_data[cblk_index++] = (int32_t)(sign | (magnitude << shift));
+        }
+        tileData += tileLineAdvance;
       }
-      tiledp += tileLineAdvance;
+    }
+    else
+    {
+      auto tileData = static_cast<const int32_t*>(block->tileData);
+      for(auto row = 0U; row < h; ++row)
+      {
+        for(auto column = 0U; column < w; ++column)
+        {
+          int32_t value = *tileData++;
+          uint32_t magnitude = value >= 0 ? (uint32_t)value : -(uint32_t)value;
+          uint32_t sign = value >= 0 ? 0U : 0x80000000U;
+          unencoded_data[cblk_index++] = (int32_t)(sign | (magnitude << shift));
+        }
+        tileData += tileLineAdvance;
+      }
     }
   }
   else
   {
-    auto tiledp = (float*)block->tiledp;
+    auto tileData = static_cast<const float*>(block->tileData);
     for(auto j = 0U; j < h; ++j)
     {
       for(auto i = 0U; i < w; ++i)
       {
-        int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
-        int32_t val = t >= 0 ? t : -t;
-        int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
-        int32_t res = sign | val;
+        int32_t t = (int32_t)((float)*tileData++ * block->inv_step_ht * (float)(1 << shift));
+        uint32_t val = t >= 0 ? (uint32_t)t : -(uint32_t)t;
+        uint32_t sign = t >= 0 ? 0U : 0x80000000U;
+        int32_t res = (int32_t)(sign | val);
         unencoded_data[cblk_index] = res;
         cblk_index++;
       }
-      tiledp += tileLineAdvance;
+      tileData += tileLineAdvance;
     }
   }
   return true;
@@ -187,39 +215,43 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
   auto cblk = block->cblk;
   if(!cblk->area())
     return true;
+  if(cblk->isPart1Block())
+    return part1Coder()->decompress(block);
   uint16_t stride = (uint16_t)((cblk->width() + 7u) & ~7u);
-  if(!cblk->dataChunksEmpty())
+  auto layout = cblk->htSetLayout();
+  if(!layout.cleanup)
   {
-    size_t total_seg_len = 2 * grk_cblk_dec_compressed_data_pad_ht + cblk->getDataChunksLength();
-    if(coded_data_size < total_seg_len)
+    memset(unencoded_data, 0, stride * cblk->height() * sizeof(int32_t));
+  }
+  else
+  {
+    if(layout.placeholderPasses % 3)
+    {
+      grk::grklog.error("HT code block has %u placeholder passes, expected a multiple of 3",
+                        layout.placeholderPasses);
+      return false;
+    }
+    size_t cleanupLength = layout.cleanup->getDataChunksLength();
+    size_t refinementLength = layout.refinement ? layout.refinement->getDataChunksLength() : 0;
+    uint32_t numPasses = 1 + (refinementLength ? layout.refinement->totalPasses_ : 0);
+    size_t totalLength = cleanupLength + refinementLength;
+    size_t paddedLength = 2 * grk_cblk_dec_compressed_data_pad_ht + totalLength;
+    if(coded_data_size < paddedLength)
     {
       delete[] coded_data;
-      coded_data = new uint8_t[total_seg_len];
-      coded_data_size = (uint32_t)total_seg_len;
+      coded_data = new uint8_t[paddedLength];
+      coded_data_size = (uint32_t)paddedLength;
       memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
     }
-    memset(coded_data + grk_cblk_dec_compressed_data_pad_ht + cblk->getDataChunksLength(), 0,
-           grk_cblk_dec_compressed_data_pad_ht);
     uint8_t* actual_coded_data = coded_data + grk_cblk_dec_compressed_data_pad_ht;
-    cblk->copyDataChunksToContiguous(actual_coded_data);
-    size_t num_passes = 0;
-    for(uint16_t i = 0; i < cblk->getNumDataParsedSegments(); ++i)
-    {
-      auto seg = cblk->getSegment(i);
-      num_passes += seg->totalPasses_;
-    }
-
-    bool rc = false;
-    if(num_passes && cblk->getDataChunksLength())
-    {
-      rc = g_decode_cb(actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs,
-                       (uint32_t)num_passes, (uint32_t)cblk->getDataChunksLength(), 0,
-                       cblk->width(), cblk->height(), stride, false);
-    }
-    else
-    {
-      memset(unencoded_data, 0, stride * cblk->height() * sizeof(int32_t));
-    }
+    layout.cleanup->copyDataChunksToContiguous(actual_coded_data);
+    if(refinementLength)
+      layout.refinement->copyDataChunksToContiguous(actual_coded_data + cleanupLength);
+    memset(actual_coded_data + totalLength, 0, grk_cblk_dec_compressed_data_pad_ht);
+    bool stripeCausal = (block->cblk_sty & GRK_CBLKSTY_VSC) != 0;
+    bool rc = g_decode_cb(actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs, numPasses,
+                          (uint32_t)cleanupLength, (uint32_t)refinementLength, cblk->width(),
+                          cblk->height(), stride, stripeCausal);
     if(!rc)
     {
       grk::grklog.error("Error in HT block coder");

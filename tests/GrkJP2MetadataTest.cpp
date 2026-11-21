@@ -15,11 +15,13 @@
  *
  */
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include "grok.h"
@@ -34,12 +36,22 @@ static void safe_strcpy(char (&dest)[N], const char* src)
   dest[len] = '\0';
 }
 
+static int32_t readPixel(const grk_image_comp& comp, uint32_t index)
+{
+  uint64_t offset = (uint64_t)(index / comp.w) * comp.stride + index % comp.w;
+  if(comp.data_type == GRK_INT_16)
+    return static_cast<int16_t*>(comp.data)[offset];
+  return static_cast<int32_t*>(comp.data)[offset];
+}
+
 namespace grk
 {
 
 // Compress a 16x16 gray JP2 with optional metadata, then decompress and verify round-trip.
 // Returns 0 on success, 1 on failure.
-static bool compressWithMeta(const std::string& path, grk_image_meta* meta)
+static bool compressWithMeta(const std::string& path, grk_image_meta* meta,
+                             uint32_t metadataWriteFlags = GRK_METADATA_WRITE_ALL,
+                             std::optional<double> resolution = std::nullopt)
 {
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
@@ -47,6 +59,17 @@ static bool compressWithMeta(const std::string& path, grk_image_meta* meta)
   cparams.irreversible = false;
   cparams.numlayers = 1;
   cparams.layer_rate[0] = 0;
+  cparams.metadata_write_flags = metadataWriteFlags;
+  if(resolution)
+  {
+    cparams.write_capture_resolution = true;
+    cparams.write_display_resolution = true;
+    for(int i = 0; i < 2; ++i)
+    {
+      cparams.capture_resolution[i] = *resolution;
+      cparams.display_resolution[i] = *resolution;
+    }
+  }
 
   grk_image_comp comp{};
   comp.dx = 1;
@@ -137,6 +160,133 @@ static bool decompressAndReadHeader(const std::string& path, grk_header_info* he
   return true;
 }
 
+// Read the main-header COD marker from a JP2 file and return its Scod byte and
+// SGcod_Progress byte. Scans the raw file for the JP2C box payload, skips SOC,
+// then walks the segmented markers (SIZ, COD, ...) until COD (0xFF52) is hit.
+// Returns true on success.
+static bool readMainHeaderCOD(const std::string& path, uint8_t* outScod, uint8_t* outProg)
+{
+  FILE* fp = fopen(path.c_str(), "rb");
+  if(!fp)
+    return false;
+
+  // Read the entire file — these test JP2s are tiny (well under 100 KB)
+  fseek(fp, 0, SEEK_END);
+  long fileSize = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  if(fileSize <= 0)
+  {
+    fclose(fp);
+    return false;
+  }
+  std::vector<uint8_t> buf((size_t)fileSize);
+  if(fread(buf.data(), 1, (size_t)fileSize, fp) != (size_t)fileSize)
+  {
+    fclose(fp);
+    return false;
+  }
+  fclose(fp);
+
+  // Find SOC (0xFF 0x4F) marking the start of the codestream
+  size_t csStart = 0;
+  bool foundSOC = false;
+  for(size_t i = 0; i + 1 < buf.size(); ++i)
+  {
+    if(buf[i] == 0xFF && buf[i + 1] == 0x4F)
+    {
+      csStart = i;
+      foundSOC = true;
+      break;
+    }
+  }
+  if(!foundSOC)
+    return false;
+
+  // Walk markers starting right after SOC
+  size_t p = csStart + 2;
+  while(p + 4 <= buf.size())
+  {
+    if(buf[p] != 0xFF)
+      return false;
+    uint8_t m = buf[p + 1];
+    // Delimiting markers (SOC, SOT, SOD, EOC, EPH, SOP) are the ones without
+    // a length field, but by the time we get to SOT we've left the main header.
+    if(m == 0x90 /* SOT */ || m == 0x93 /* SOD */ || m == 0xD9 /* EOC */)
+      return false;
+    uint16_t segLen = (uint16_t)((buf[p + 2] << 8) | buf[p + 3]);
+    if(segLen < 2 || p + 2 + segLen > buf.size())
+      return false;
+    if(m == 0x52 /* COD */)
+    {
+      // COD layout (after marker + Lcod): Scod(1) + SGcod(4: prog, layers*2, MCT) + SPcod(...)
+      if(segLen < 1 + 2 + 4)
+        return false;
+      *outScod = buf[p + 4];
+      *outProg = buf[p + 5];
+      return true;
+    }
+    p += 2 + segLen;
+  }
+  return false;
+}
+
+// Check whether the main-header of a JP2 file contains a TLM marker (0xFF55).
+// Uses the same raw-scan approach as readMainHeaderCOD.
+static bool mainHeaderHasTLM(const std::string& path)
+{
+  FILE* fp = fopen(path.c_str(), "rb");
+  if(!fp)
+    return false;
+
+  fseek(fp, 0, SEEK_END);
+  long fileSize = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  if(fileSize <= 0)
+  {
+    fclose(fp);
+    return false;
+  }
+  std::vector<uint8_t> buf((size_t)fileSize);
+  if(fread(buf.data(), 1, (size_t)fileSize, fp) != (size_t)fileSize)
+  {
+    fclose(fp);
+    return false;
+  }
+  fclose(fp);
+
+  // Find SOC (0xFF 0x4F)
+  size_t csStart = 0;
+  bool foundSOC = false;
+  for(size_t i = 0; i + 1 < buf.size(); ++i)
+  {
+    if(buf[i] == 0xFF && buf[i + 1] == 0x4F)
+    {
+      csStart = i;
+      foundSOC = true;
+      break;
+    }
+  }
+  if(!foundSOC)
+    return false;
+
+  size_t p = csStart + 2;
+  while(p + 4 <= buf.size())
+  {
+    if(buf[p] != 0xFF)
+      return false;
+    uint8_t m = buf[p + 1];
+    if(m == 0x90 /* SOT */ || m == 0x93 /* SOD */ || m == 0xD9 /* EOC */)
+      return false;
+    uint16_t segLen = (uint16_t)((buf[p + 2] << 8) | buf[p + 3]);
+    if(segLen < 2 || p + 2 + segLen > buf.size())
+      return false;
+    if(m == 0x55 /* TLM */)
+      return true;
+    p += 2 + segLen;
+  }
+  return false;
+}
+
 //==============================================================================
 // Test 1: GeoTIFF UUID round-trip
 //==============================================================================
@@ -196,6 +346,31 @@ static int testGeoTiffUUID(const std::string& tmpDir)
 
   grk_object_unref(codec);
   grk_object_unref(&meta->obj);
+  return ok ? 0 : 1;
+}
+
+static int testResolution(const std::string& tmpDir)
+{
+  constexpr double resolution = 3000;
+  auto* meta = grk_image_meta_new();
+  std::string path = tmpDir + "/resolution_test.jp2";
+  bool compressed = compressWithMeta(path, meta, GRK_METADATA_WRITE_ALL, resolution);
+  grk_object_unref(&meta->obj);
+  grk_header_info header{};
+  grk_image* image = nullptr;
+  grk_object* codec = nullptr;
+  if(!compressed || !decompressAndReadHeader(path, &header, &image, &codec))
+    return 1;
+  bool ok = image->has_capture_resolution && image->has_display_resolution &&
+            std::abs(image->capture_resolution[0] - resolution) < 1 &&
+            std::abs(image->display_resolution[0] - resolution) < 1;
+  if(ok)
+    spdlog::info("resolution: PASSED");
+  else
+    spdlog::error("resolution: has capture {} display {}, capture {} display {}",
+                  image->has_capture_resolution, image->has_display_resolution,
+                  image->capture_resolution[0], image->display_resolution[0]);
+  grk_object_unref(codec);
   return ok ? 0 : 1;
 }
 
@@ -566,6 +741,12 @@ static int testCombinedMetadata(const std::string& tmpDir)
   memcpy(meta->iptc_buf, iptcData, strlen(iptcData));
   meta->iptc_len = strlen(iptcData);
 
+  // EXIF
+  const char* exifData = "EXIF-TEST-DATA";
+  meta->exif_buf = new uint8_t[strlen(exifData)];
+  memcpy(meta->exif_buf, exifData, strlen(exifData));
+  meta->exif_len = strlen(exifData);
+
   std::string path = tmpDir + "/combined_test.jp2";
   if(!compressWithMeta(path, meta))
   {
@@ -617,10 +798,112 @@ static int testCombinedMetadata(const std::string& tmpDir)
     ok = false;
   }
 
+  // Verify EXIF
+  if(!image->meta || !image->meta->exif_buf || image->meta->exif_len != strlen(exifData) ||
+     memcmp(image->meta->exif_buf, exifData, strlen(exifData)) != 0)
+  {
+    spdlog::error("Combined: EXIF mismatch");
+    ok = false;
+  }
+
   if(ok)
     spdlog::info("Combined metadata: PASSED");
 
   grk_object_unref(codec);
+  grk_object_unref(&meta->obj);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
+// Test 6b: metadata_write_flags selects which UUID boxes are written
+//==============================================================================
+
+static void setMetaBuffer(uint8_t*& buf, size_t& len, const char* data)
+{
+  len = strlen(data);
+  buf = new uint8_t[len];
+  memcpy(buf, data, len);
+}
+
+static bool metaBufferEquals(const uint8_t* buf, size_t len, const char* data)
+{
+  return buf && len == strlen(data) && memcmp(buf, data, len) == 0;
+}
+
+static bool checkMetadataSelection(const std::string& path, grk_image_meta* meta,
+                                   uint32_t metadataWriteFlags, bool expectExif, bool expectIptc,
+                                   bool expectXmp, const char* exifData, const char* iptcData,
+                                   const char* xmpData, const char* geotiffData)
+{
+  if(!compressWithMeta(path, meta, metadataWriteFlags))
+    return false;
+
+  grk_header_info header{};
+  grk_image* image = nullptr;
+  grk_object* codec = nullptr;
+  if(!decompressAndReadHeader(path, &header, &image, &codec))
+    return false;
+
+  bool ok = image->meta != nullptr;
+  if(ok)
+  {
+    bool exifOk = expectExif
+                      ? metaBufferEquals(image->meta->exif_buf, image->meta->exif_len, exifData)
+                      : image->meta->exif_buf == nullptr;
+    bool iptcOk = expectIptc
+                      ? metaBufferEquals(image->meta->iptc_buf, image->meta->iptc_len, iptcData)
+                      : image->meta->iptc_buf == nullptr;
+    bool xmpOk = expectXmp ? metaBufferEquals(image->meta->xmp_buf, image->meta->xmp_len, xmpData)
+                           : image->meta->xmp_buf == nullptr;
+    bool geotiffOk =
+        metaBufferEquals(image->meta->geotiff_buf, image->meta->geotiff_len, geotiffData);
+    ok = exifOk && iptcOk && xmpOk && geotiffOk;
+  }
+  if(!ok)
+    spdlog::error("Metadata selection: flags {} wrote the wrong set of UUID boxes",
+                  metadataWriteFlags);
+
+  grk_object_unref(codec);
+  return ok;
+}
+
+static int testMetadataSelection(const std::string& tmpDir)
+{
+  auto* meta = grk_image_meta_new();
+  const char* exifData = "EXIF-SELECTION";
+  const char* iptcData = "IPTC-SELECTION";
+  const char* xmpData = "XMP-SELECTION";
+  const char* geotiffData = "GEOTIFF-ALWAYS-WRITTEN";
+  setMetaBuffer(meta->exif_buf, meta->exif_len, exifData);
+  setMetaBuffer(meta->iptc_buf, meta->iptc_len, iptcData);
+  setMetaBuffer(meta->xmp_buf, meta->xmp_len, xmpData);
+  setMetaBuffer(meta->geotiff_buf, meta->geotiff_len, geotiffData);
+
+  struct Case
+  {
+    const char* name;
+    uint32_t flags;
+    bool exif, iptc, xmp;
+  };
+  const Case cases[] = {
+      {"all", GRK_METADATA_WRITE_ALL, true, true, true},
+      {"exif", GRK_METADATA_WRITE_EXIF, true, false, false},
+      {"iptc_xmp", GRK_METADATA_WRITE_IPTC | GRK_METADATA_WRITE_XMP, false, true, true},
+      {"none", GRK_METADATA_WRITE_NONE, false, false, false},
+      {"none_overrides", GRK_METADATA_WRITE_NONE | GRK_METADATA_WRITE_EXIF, false, false, false},
+  };
+
+  bool ok = true;
+  for(const auto& c : cases)
+  {
+    std::string path = tmpDir + "/metadata_selection_" + c.name + ".jp2";
+    if(!checkMetadataSelection(path, meta, c.flags, c.exif, c.iptc, c.xmp, exifData, iptcData,
+                               xmpData, geotiffData))
+      ok = false;
+  }
+  if(ok)
+    spdlog::info("Metadata selection: PASSED");
+
   grk_object_unref(&meta->obj);
   return ok ? 0 : 1;
 }
@@ -959,14 +1242,13 @@ static int testTranscode(const std::string& tmpDir)
   // Verify pixel data is preserved (codestream copied verbatim)
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     bool pixelsOk = true;
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         pixelsOk = false;
         break;
       }
@@ -1130,13 +1412,12 @@ static int testTranscodeWithTLM(const std::string& tmpDir)
   // Verify pixel data
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode TLM: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1304,13 +1585,12 @@ static int testTranscodeWithPLT(const std::string& tmpDir)
   // Verify pixel data
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode PLT: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1377,7 +1657,10 @@ static int testTranscodeWithSOP(const std::string& tmpDir)
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
   cparams.cod_format = GRK_FMT_JP2;
-  cparams.write_tlm = true;
+  // Deliberately do NOT set write_tlm — we want to exercise the isolated
+  // SOP-only code path. A previous version of this test set write_tlm=true
+  // which masked a gating bug where non-TLM marker mutations fell through
+  // to a verbatim codestream copy.
   cparams.write_sop = true;
 
   grk_stream_params dstStreamParams{};
@@ -1424,6 +1707,29 @@ static int testTranscodeWithSOP(const std::string& tmpDir)
     return 1;
   }
 
+  // Verify the main-header COD Scod byte has the SOP bit (0x02) set. Without
+  // this the raw-byte scan above could false-positive on packet body data.
+  {
+    uint8_t scod = 0, prog = 0;
+    if(!readMainHeaderCOD(dstPath, &scod, &prog))
+    {
+      spdlog::error("Transcode SOP: failed to read main-header COD from output");
+      return 1;
+    }
+    if((scod & 0x02) == 0)
+    {
+      spdlog::error("Transcode SOP: COD Scod=0x{:02x} does not have SOP bit (0x02) set", scod);
+      return 1;
+    }
+  }
+
+  // TLM must NOT be present when only SOP was requested
+  if(mainHeaderHasTLM(dstPath))
+  {
+    spdlog::error("Transcode SOP: TLM marker unexpectedly present in output (only SOP requested)");
+    return 1;
+  }
+
   // Decompress and verify pixel data
   grk_stream_params dstReadStreamParams{};
   safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
@@ -1462,13 +1768,12 @@ static int testTranscodeWithSOP(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode SOP: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1534,7 +1839,8 @@ static int testTranscodeWithEPH(const std::string& tmpDir)
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
   cparams.cod_format = GRK_FMT_JP2;
-  cparams.write_tlm = true;
+  // Deliberately do NOT set write_tlm — we want to exercise the isolated
+  // EPH-only code path (see comment in testTranscodeWithSOP).
   cparams.write_eph = true;
 
   grk_stream_params dstStreamParams{};
@@ -1581,6 +1887,28 @@ static int testTranscodeWithEPH(const std::string& tmpDir)
     return 1;
   }
 
+  // Verify the main-header COD Scod byte has the EPH bit (0x04) set.
+  {
+    uint8_t scod = 0, prog = 0;
+    if(!readMainHeaderCOD(dstPath, &scod, &prog))
+    {
+      spdlog::error("Transcode EPH: failed to read main-header COD from output");
+      return 1;
+    }
+    if((scod & 0x04) == 0)
+    {
+      spdlog::error("Transcode EPH: COD Scod=0x{:02x} does not have EPH bit (0x04) set", scod);
+      return 1;
+    }
+  }
+
+  // TLM must NOT be present when only EPH was requested
+  if(mainHeaderHasTLM(dstPath))
+  {
+    spdlog::error("Transcode EPH: TLM marker unexpectedly present in output (only EPH requested)");
+    return 1;
+  }
+
   // Decompress and verify pixel data
   grk_stream_params dstReadStreamParams{};
   safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
@@ -1619,13 +1947,12 @@ static int testTranscodeWithEPH(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode EPH: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1691,8 +2018,8 @@ static int testTranscodeProgressionReorder(const std::string& tmpDir)
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
   cparams.cod_format = GRK_FMT_JP2;
-  cparams.write_tlm = true;
-  cparams.write_plt = true;
+  // Deliberately do NOT set write_tlm / write_plt — we want to exercise the
+  // isolated progression-reorder code path (see comment in testTranscodeWithSOP).
   cparams.transcode_prog_order = GRK_RLCP;
 
   grk_stream_params dstStreamParams{};
@@ -1708,6 +2035,24 @@ static int testTranscodeProgressionReorder(const std::string& tmpDir)
   {
     spdlog::error("Transcode ProgReorder: grk_transcode returned 0");
     return 1;
+  }
+
+  // Verify the main-header COD SGcod_Progress byte was actually rewritten
+  // to GRK_RLCP (1). The source was compressed with the default LRCP (0),
+  // so a verbatim copy would leave this as 0 and fail this check.
+  {
+    uint8_t scod = 0, prog = 0;
+    if(!readMainHeaderCOD(dstPath, &scod, &prog))
+    {
+      spdlog::error("Transcode ProgReorder: failed to read main-header COD from output");
+      return 1;
+    }
+    if(prog != (uint8_t)GRK_RLCP)
+    {
+      spdlog::error("Transcode ProgReorder: COD SGcod_Progress=0x{:02x}, expected 0x{:02x} (RLCP)",
+                    prog, (uint8_t)GRK_RLCP);
+      return 1;
+    }
   }
 
   // Decompress and verify pixel data still correct
@@ -1748,13 +2093,12 @@ static int testTranscodeProgressionReorder(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode ProgReorder: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1930,13 +2274,12 @@ static int testTranscodeCombined(const std::string& tmpDir)
 
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode Combined: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -2196,13 +2539,12 @@ static int testTranscodeJP2ToJ2K(const std::string& tmpDir)
   // Verify pixel data preserved
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("JP2->J2K: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -2243,10 +2585,12 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   int failures = 0;
   failures += testGeoTiffUUID(tmpDir.string());
   failures += testIPR(tmpDir.string());
+  failures += testResolution(tmpDir.string());
   failures += testMultipleXmlBoxes(tmpDir.string());
   failures += testIPRFlagInIHDR(tmpDir.string());
   failures += testXmlBoxPlacement(tmpDir.string());
   failures += testCombinedMetadata(tmpDir.string());
+  failures += testMetadataSelection(tmpDir.string());
   failures += testAsocBoxes(tmpDir.string());
   failures += testTranscode(tmpDir.string());
   failures += testTranscodeWithTLM(tmpDir.string());

@@ -60,17 +60,18 @@ def make_ppm(path, width=128, height=128):
     pixels = bytearray()
     for y in range(height):
         for x in range(width):
-            pixels.append((x + y) % 256)       # R
-            pixels.append((x * 2 + y) % 256)   # G
-            pixels.append((x + y * 2) % 256)   # B
+            pixels.append((x + y) % 256)  # R
+            pixels.append((x * 2 + y) % 256)  # G
+            pixels.append((x + y * 2) % 256)  # B
     with open(path, "wb") as f:
         f.write(f"P6\n{width} {height}\n255\n".encode())
         f.write(bytes(pixels))
     return path
 
 
-def make_jp2(tmp_path, filename="test.jp2", extra_args=None, width=128, height=128,
-             rgb=False):
+def make_jp2(
+    tmp_path, filename="test.jp2", extra_args=None, width=128, height=128, rgb=False
+):
     """Create a test JP2 file via grk_codec_compress."""
     if rgb:
         input_path = str(tmp_path / "input.ppm")
@@ -125,7 +126,7 @@ def async_decompress_swath(jp2_path, swath_height=0, window=None):
 
     num_tiles = header_info.t_grid_width * header_info.t_grid_height
     num_comps = header_info.header_image.numcomps
-    single_tile = (num_tiles == 1)
+    single_tile = num_tiles == 1
 
     if single_tile:
         params.core.skip_allocate_composite = False
@@ -233,9 +234,7 @@ ASYNC_CONFIGS = [
 ]
 
 
-@pytest.fixture(
-    scope="module", params=ASYNC_CONFIGS, ids=[c[0] for c in ASYNC_CONFIGS]
-)
+@pytest.fixture(scope="module", params=ASYNC_CONFIGS, ids=[c[0] for c in ASYNC_CONFIGS])
 def jp2_file(request, tmp_path_factory):
     """Create a JP2 file with the given tile/TLM configuration."""
     desc, extra_args, multi_tile = request.param
@@ -257,9 +256,9 @@ class TestAsyncDecompress:
         tiles, full_w, full_h, num_tiles, _ = async_decompress_swath(jp2_path)
         tile_indices = {t[0] for t in tiles}
         expected = set(range(num_tiles))
-        assert tile_indices == expected, (
-            f"{desc}: expected tiles {expected}, got {tile_indices}"
-        )
+        assert (
+            tile_indices == expected
+        ), f"{desc}: expected tiles {expected}, got {tile_indices}"
 
     def test_async_tile_dimensions_valid(self, jp2_file):
         """Each retrieved tile has valid non-zero dimensions."""
@@ -269,7 +268,9 @@ class TestAsyncDecompress:
             assert w > 0, f"{desc}: tile {tidx} has zero width"
             assert h > 0, f"{desc}: tile {tidx} has zero height"
             assert w <= full_w, f"{desc}: tile {tidx} width {w} > image width {full_w}"
-            assert h <= full_h, f"{desc}: tile {tidx} height {h} > image height {full_h}"
+            assert (
+                h <= full_h
+            ), f"{desc}: tile {tidx} height {h} > image height {full_h}"
 
     def test_async_matches_sync(self, jp2_file, tmp_path):
         """Async decompress produces same output as synchronous decompress."""
@@ -286,9 +287,7 @@ class TestAsyncDecompress:
         tiles, full_w, full_h, num_tiles, _ = async_decompress_swath(jp2_path)
         tile_indices = {t[0] for t in tiles}
         expected = set(range(num_tiles))
-        assert tile_indices == expected, (
-            f"{desc}: async didn't retrieve all tiles"
-        )
+        assert tile_indices == expected, f"{desc}: async didn't retrieve all tiles"
 
 
 # ---------------------------------------------------------------------------
@@ -352,9 +351,7 @@ SWATH_CONFIGS = [
 ]
 
 
-@pytest.fixture(
-    scope="module", params=SWATH_CONFIGS, ids=[c[0] for c in SWATH_CONFIGS]
-)
+@pytest.fixture(scope="module", params=SWATH_CONFIGS, ids=[c[0] for c in SWATH_CONFIGS])
 def jp2_file_swath(request, tmp_path_factory):
     """Create JP2 and return with custom swath height."""
     desc, extra_args, swath_h = request.param
@@ -380,9 +377,9 @@ class TestAsyncNonAlignedSwath:
         )
         tile_indices = {t[0] for t in tiles}
         expected = set(range(num_tiles))
-        assert tile_indices == expected, (
-            f"{desc}: expected tiles {expected}, got {tile_indices}"
-        )
+        assert (
+            tile_indices == expected
+        ), f"{desc}: expected tiles {expected}, got {tile_indices}"
 
 
 # ---------------------------------------------------------------------------
@@ -393,8 +390,9 @@ class TestDecompressTileByIndex:
     def multi_tile_jp2(self, tmp_path_factory):
         """Create a multi-tile JP2 (4 tiles: 64x64 in 128x128)."""
         tmp_path = tmp_path_factory.mktemp("tile_by_index")
-        return make_jp2(tmp_path, filename="multi.jp2",
-                        extra_args=["-t", "64,64", "-X"])
+        return make_jp2(
+            tmp_path, filename="multi.jp2", extra_args=["-t", "64,64", "-X"]
+        )
 
     def test_decompress_tile_0(self, multi_tile_jp2):
         """Decompress tile 0 by index."""
@@ -428,15 +426,14 @@ RGB_CONFIGS = [
 ]
 
 
-@pytest.fixture(
-    scope="module", params=RGB_CONFIGS, ids=[c[0] for c in RGB_CONFIGS]
-)
+@pytest.fixture(scope="module", params=RGB_CONFIGS, ids=[c[0] for c in RGB_CONFIGS])
 def rgb_jp2_file(request, tmp_path_factory):
     """Create an RGB JP2 file."""
     desc, extra_args, multi_tile = request.param
     tmp_path = tmp_path_factory.mktemp(desc)
-    jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2",
-                        extra_args=extra_args, rgb=True)
+    jp2_path = make_jp2(
+        tmp_path, filename=f"{desc}.jp2", extra_args=extra_args, rgb=True
+    )
     return desc, jp2_path, multi_tile
 
 
@@ -486,8 +483,9 @@ def large_grid_jp2(request, tmp_path_factory):
     """Create a 256x256 JP2 with 32x32 tiles (64 tiles)."""
     desc, extra_args = request.param
     tmp_path = tmp_path_factory.mktemp(desc)
-    jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2",
-                        extra_args=extra_args, width=256, height=256)
+    jp2_path = make_jp2(
+        tmp_path, filename=f"{desc}.jp2", extra_args=extra_args, width=256, height=256
+    )
     return desc, jp2_path
 
 
@@ -526,6 +524,7 @@ class TestAsyncLargeGrid:
 # ---------------------------------------------------------------------------
 # Swath buffer copy: grk_decompress_schedule_swath_copy + grk_decompress_wait_swath_copy
 # ---------------------------------------------------------------------------
+
 
 def async_decompress_with_swath_buf(jp2_path, swath_height=0, prec=8):
     """Perform async decompress and collect output via scheduled swath buffer copies.
@@ -635,12 +634,27 @@ SWATH_BUF_CONFIGS = [
     ("sbuf_multi_tile_no_tlm_16bit", ["-t", "64,64"], True, 16),
 ]
 
+SWATH_BUF_16BIT_CONFIGS = [c for c in SWATH_BUF_CONFIGS if c[3] == 16]
+
 
 @pytest.fixture(
     scope="module", params=SWATH_BUF_CONFIGS, ids=[c[0] for c in SWATH_BUF_CONFIGS]
 )
 def swath_buf_jp2(request, tmp_path_factory):
     """Create a JP2 and return descriptor for swath buffer tests."""
+    desc, extra_args, multi_tile, prec = request.param
+    tmp_path = tmp_path_factory.mktemp(desc)
+    jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2", extra_args=extra_args)
+    return desc, jp2_path, multi_tile, prec
+
+
+@pytest.fixture(
+    scope="module",
+    params=SWATH_BUF_16BIT_CONFIGS,
+    ids=[c[0] for c in SWATH_BUF_16BIT_CONFIGS],
+)
+def swath_buf_16bit_jp2(request, tmp_path_factory):
+    """Create a 16-bit JP2 and return descriptor for 16-bit swath buffer tests."""
     desc, extra_args, multi_tile, prec = request.param
     tmp_path = tmp_path_factory.mktemp(desc)
     jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2", extra_args=extra_args)
@@ -671,9 +685,9 @@ class TestSwathBufCopy:
         elem_size = 2 if prec > 8 else 1
         # BSQ: numcomps planes, each full_width × swath_height
         expected_min = numcomps * fw * fh * elem_size
-        assert total_elem >= expected_min, (
-            f"{desc}: total buf bytes {total_elem} < expected {expected_min}"
-        )
+        assert (
+            total_elem >= expected_min
+        ), f"{desc}: total buf bytes {total_elem} < expected {expected_min}"
 
     def test_swath_buf_non_zero_data(self, swath_buf_jp2):
         """Swath buffer output is not all zeros (data was actually copied)."""
@@ -684,9 +698,9 @@ class TestSwathBufCopy:
         combined = bytearray()
         for b in swath_bufs:
             combined.extend(b)
-        assert any(v != 0 for v in combined), (
-            f"{desc}: swath buffer is all zeros — no data was copied"
-        )
+        assert any(
+            v != 0 for v in combined
+        ), f"{desc}: swath buffer is all zeros — no data was copied"
 
     def test_swath_buf_non_aligned_swath(self, swath_buf_jp2):
         """Swath buffer copy works with non-tile-aligned swath height."""
@@ -696,24 +710,26 @@ class TestSwathBufCopy:
         )
         assert len(swath_bufs) > 0, f"{desc}: no swath buffers"
 
-    def test_swath_buf_16bit_larger_than_8bit(self, swath_buf_jp2):
+    def test_swath_buf_16bit_larger_than_8bit(self, swath_buf_16bit_jp2):
         """16-bit swath buffer is exactly twice the size of 8-bit."""
-        desc, jp2_path, multi_tile, prec = swath_buf_jp2
-        if prec != 16:
-            pytest.skip("Only relevant for 16-bit prec configs")
+        desc, jp2_path, multi_tile, prec = swath_buf_16bit_jp2
 
         bufs8, fw, fh, _, nc = async_decompress_with_swath_buf(jp2_path, prec=8)
         bufs16, _, _, _, _ = async_decompress_with_swath_buf(jp2_path, prec=16)
         total8 = sum(len(b) for b in bufs8)
         total16 = sum(len(b) for b in bufs16)
-        assert total16 == total8 * 2, (
-            f"{desc}: 16-bit buf ({total16}B) != 2 × 8-bit buf ({total8}B)"
-        )
+        assert (
+            total16 == total8 * 2
+        ), f"{desc}: 16-bit buf ({total16}B) != 2 × 8-bit buf ({total8}B)"
 
     def test_swath_buf_rgb_copies_all_components(self, tmp_path):
         """RGB image: all 3 component planes in the swath buffer are populated."""
-        jp2_path = make_jp2(tmp_path, filename="rgb_swath.jp2",
-                            extra_args=["-t", "64,64", "-X"], rgb=True)
+        jp2_path = make_jp2(
+            tmp_path,
+            filename="rgb_swath.jp2",
+            extra_args=["-t", "64,64", "-X"],
+            rgb=True,
+        )
 
         swath_bufs, fw, fh, num_tiles, numcomps = async_decompress_with_swath_buf(
             jp2_path
@@ -729,9 +745,9 @@ class TestSwathBufCopy:
                 plane_start = c * swath_h * fw
                 plane_end = plane_start + swath_h * fw
                 plane = raw[plane_start:plane_end]
-                assert any(v != 0 for v in plane), (
-                    f"Swath {swath_idx} component {c} plane is all zeros"
-                )
+                assert any(
+                    v != 0 for v in plane
+                ), f"Swath {swath_idx} component {c} plane is all zeros"
 
     def test_swath_buf_consistent_with_tile_images(self, tmp_path):
         """Swath buffer pixel values match those from direct tile image access."""
@@ -779,7 +795,9 @@ class TestSwathBufCopy:
         # --- swath buffer path ---
         full_w = img_x1 - img_x0
         full_h = img_y1 - img_y0
-        swath_bufs, _, _, _, numcomps = async_decompress_with_swath_buf(jp2_path, prec=8)
+        swath_bufs, _, _, _, numcomps = async_decompress_with_swath_buf(
+            jp2_path, prec=8
+        )
 
         # The swath buffer first byte corresponds to component 0, pixel (0,0)
         assert len(swath_bufs) > 0 and len(swath_bufs[0]) > 0, "Empty swath buffer"
@@ -890,7 +908,7 @@ class TestSwathBufTypedOutput:
 
     def test_uint16_output_non_zero(self, gray_jp2_multi):
         raw, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 16, False)
-        vals = [_struct.unpack_from('<H', raw, i)[0] for i in range(0, len(raw), 2)]
+        vals = [_struct.unpack_from("<H", raw, i)[0] for i in range(0, len(raw), 2)]
         assert any(v != 0 for v in vals), "All-zero uint16 output"
         assert all(0 <= v <= 65535 for v in vals)
 
@@ -901,19 +919,23 @@ class TestSwathBufTypedOutput:
     def test_int16_output_non_negative_for_unsigned_source(self, gray_jp2_multi):
         """Source is unsigned 8-bit PGM; int16 output values must be in [0, 255]."""
         raw, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 16, True)
-        vals = [_struct.unpack_from('<h', raw, i)[0] for i in range(0, len(raw), 2)]
+        vals = [_struct.unpack_from("<h", raw, i)[0] for i in range(0, len(raw), 2)]
         assert any(v != 0 for v in vals), "All-zero int16 output"
-        assert all(0 <= v <= 255 for v in vals), (
-            f"int16 values out of [0,255] for unsigned source: min={min(vals)}, max={max(vals)}"
-        )
+        assert all(
+            0 <= v <= 255 for v in vals
+        ), f"int16 values out of [0,255] for unsigned source: min={min(vals)}, max={max(vals)}"
 
     def test_uint8_equals_int16_values(self, gray_jp2_multi):
         """uint8 and int16 outputs carry the same pixel values for 8-bit source."""
         raw8, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 8, False)
         raw16, _, _, _ = _decompress_single_swath_typed(gray_jp2_multi, 16, True)
         vals8 = list(raw8)
-        vals16 = [_struct.unpack_from('<h', raw16, i)[0] for i in range(0, len(raw16), 2)]
-        assert vals8 == vals16, "uint8 and int16 output values differ for same 8-bit source"
+        vals16 = [
+            _struct.unpack_from("<h", raw16, i)[0] for i in range(0, len(raw16), 2)
+        ]
+        assert (
+            vals8 == vals16
+        ), "uint8 and int16 output values differ for same 8-bit source"
 
     def test_int32_output_size(self, gray_jp2_multi):
         raw, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 32, True)
@@ -921,11 +943,11 @@ class TestSwathBufTypedOutput:
 
     def test_int32_output_non_negative_for_unsigned_source(self, gray_jp2_multi):
         raw, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 32, True)
-        vals = [_struct.unpack_from('<i', raw, i)[0] for i in range(0, len(raw), 4)]
+        vals = [_struct.unpack_from("<i", raw, i)[0] for i in range(0, len(raw), 4)]
         assert any(v != 0 for v in vals), "All-zero int32 output"
-        assert all(0 <= v <= 255 for v in vals), (
-            f"int32 values out of [0,255] for unsigned source: min={min(vals)}, max={max(vals)}"
-        )
+        assert all(
+            0 <= v <= 255 for v in vals
+        ), f"int32 values out of [0,255] for unsigned source: min={min(vals)}, max={max(vals)}"
 
     def test_uint32_output_size(self, gray_jp2_multi):
         raw, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 32, False)
@@ -935,14 +957,19 @@ class TestSwathBufTypedOutput:
         """For non-negative source values uint32 == int32."""
         raw_s, fw, fh, nc = _decompress_single_swath_typed(gray_jp2_multi, 32, True)
         raw_u, _, _, _ = _decompress_single_swath_typed(gray_jp2_multi, 32, False)
-        vals_s = [_struct.unpack_from('<i', raw_s, i)[0] for i in range(0, len(raw_s), 4)]
-        vals_u = [_struct.unpack_from('<I', raw_u, i)[0] for i in range(0, len(raw_u), 4)]
+        vals_s = [
+            _struct.unpack_from("<i", raw_s, i)[0] for i in range(0, len(raw_s), 4)
+        ]
+        vals_u = [
+            _struct.unpack_from("<I", raw_u, i)[0] for i in range(0, len(raw_u), 4)
+        ]
         assert vals_s == vals_u, "int32 and uint32 differ for non-negative source"
 
 
 # ---------------------------------------------------------------------------
 # Band map remapping
 # ---------------------------------------------------------------------------
+
 
 class TestSwathBufBandMap:
     """Tests for band_map re-ordering (1-based GDAL convention)."""
@@ -951,8 +978,9 @@ class TestSwathBufBandMap:
     def rgb_jp2_multi(self, tmp_path_factory):
         """RGB 128x128 JP2 with 64x64 tiles."""
         tmp_path = tmp_path_factory.mktemp("band_map")
-        return make_jp2(tmp_path, "band_map.jp2",
-                        extra_args=["-t", "64,64", "-X"], rgb=True)
+        return make_jp2(
+            tmp_path, "band_map.jp2", extra_args=["-t", "64,64", "-X"], rgb=True
+        )
 
     def _decompress_with_band_map(self, jp2_path, band_map):
         """Decompress into 3-band BSQ using the given 1-based band_map list."""
@@ -1000,7 +1028,7 @@ class TestSwathBufBandMap:
         swath_buf.x1 = img_x1
         swath_buf.y1 = img_y1
         swath_buf.promote_alpha = -1
-        swath_buf.set_band_map(band_map)   # sets numcomps too
+        swath_buf.set_band_map(band_map)  # sets numcomps too
         swath_buf.set_bsq_layout(fw, fh)
         swath_buf.set_data(raw_buf)
 
@@ -1013,7 +1041,9 @@ class TestSwathBufBandMap:
         """band_map=[1,2,3] produces same output as no band_map."""
         raw_identity, fw, fh = self._decompress_with_band_map(rgb_jp2_multi, [1, 2, 3])
         raw_default, _, _, nc = _decompress_single_swath_typed(rgb_jp2_multi, 8, False)
-        assert raw_identity == raw_default, "Identity band_map differs from default output"
+        assert (
+            raw_identity == raw_default
+        ), "Identity band_map differs from default output"
 
     def test_reversed_band_map(self, rgb_jp2_multi):
         """band_map=[3,2,1] swaps R and B planes."""
@@ -1021,25 +1051,25 @@ class TestSwathBufBandMap:
         raw_rev, _, _ = self._decompress_with_band_map(rgb_jp2_multi, [3, 2, 1])
         plane_size = fw * fh
         # Output comp 0 in reversed == source comp 2 == output comp 2 in forward
-        assert raw_rev[:plane_size] == raw_fwd[2*plane_size:3*plane_size], (
-            "Reversed[0] != Forward[2]"
-        )
+        assert (
+            raw_rev[:plane_size] == raw_fwd[2 * plane_size : 3 * plane_size]
+        ), "Reversed[0] != Forward[2]"
         # Middle band (G) is unchanged
-        assert raw_rev[plane_size:2*plane_size] == raw_fwd[plane_size:2*plane_size], (
-            "Reversed[1] (G) != Forward[1] (G)"
-        )
+        assert (
+            raw_rev[plane_size : 2 * plane_size] == raw_fwd[plane_size : 2 * plane_size]
+        ), "Reversed[1] (G) != Forward[1] (G)"
         # Output comp 2 in reversed == source comp 0 == output comp 0 in forward
-        assert raw_rev[2*plane_size:] == raw_fwd[:plane_size], (
-            "Reversed[2] != Forward[0]"
-        )
+        assert (
+            raw_rev[2 * plane_size :] == raw_fwd[:plane_size]
+        ), "Reversed[2] != Forward[0]"
 
     def test_duplicate_band_map(self, rgb_jp2_multi):
         """band_map=[1,1,1] produces three identical planes from source comp 0."""
         raw, fw, fh = self._decompress_with_band_map(rgb_jp2_multi, [1, 1, 1])
         plane_size = fw * fh
         p0 = raw[:plane_size]
-        p1 = raw[plane_size:2*plane_size]
-        p2 = raw[2*plane_size:]
+        p1 = raw[plane_size : 2 * plane_size]
+        p2 = raw[2 * plane_size :]
         assert p0 == p1 == p2, "Duplicated band planes differ"
         assert any(v != 0 for v in p0), "Duplicated band is all zeros"
 
@@ -1048,13 +1078,14 @@ class TestSwathBufBandMap:
         raw_single, fw, fh = self._decompress_with_band_map(rgb_jp2_multi, [2])
         raw_full, _, _, _ = _decompress_single_swath_typed(rgb_jp2_multi, 8, False)
         plane_size = fw * fh
-        g_plane = raw_full[plane_size:2*plane_size]
+        g_plane = raw_full[plane_size : 2 * plane_size]
         assert raw_single == g_plane, "Single-band extraction of G plane differs"
 
 
 # ---------------------------------------------------------------------------
 # Alpha promotion
 # ---------------------------------------------------------------------------
+
 
 class TestSwathBufAlphaPromotion:
     """Tests for promote_alpha: 0/1 source values → 0/255 output."""
@@ -1083,7 +1114,7 @@ class TestSwathBufAlphaPromotion:
         assert grok_core.grk_decompress_read_header(codec, header_info)
 
         num_tiles = header_info.t_grid_width * header_info.t_grid_height
-        params.core.skip_allocate_composite = (num_tiles != 1)
+        params.core.skip_allocate_composite = num_tiles != 1
         assert grok_core.grk_decompress_update(params, codec)
         assert grok_core.grk_decompress(codec, None)
 
@@ -1130,17 +1161,17 @@ class TestSwathBufAlphaPromotion:
         """With promote_alpha=0, every output byte is either 0 or 255."""
         raw, fw, fh = self._decompress_with_promote(gray_jp2, 0)
         for i, v in enumerate(raw):
-            assert v == 0 or v == 255, (
-                f"Promoted pixel at index {i} is {v}, expected 0 or 255"
-            )
+            assert (
+                v == 0 or v == 255
+            ), f"Promoted pixel at index {i} is {v}, expected 0 or 255"
 
     def test_promotion_differs_from_no_promotion(self, gray_jp2):
         """Promoted output differs from non-promoted output for this gradient image."""
         raw_promo, _, _ = self._decompress_with_promote(gray_jp2, 0)
         raw_no, _, _ = self._decompress_with_promote(gray_jp2, -1)
-        assert raw_promo != raw_no, (
-            "promote_alpha=0 produced same output as promote_alpha=-1"
-        )
+        assert (
+            raw_promo != raw_no
+        ), "promote_alpha=0 produced same output as promote_alpha=-1"
 
     def test_promotion_zeros_preserved(self, gray_jp2):
         """Pixels that were 0 in the source remain 0 after promotion."""
@@ -1149,4 +1180,3 @@ class TestSwathBufAlphaPromotion:
         for i, (p, n) in enumerate(zip(raw_promo, raw_no)):
             if n == 0:
                 assert p == 0, f"Zero source pixel at {i} became {p} after promotion"
-

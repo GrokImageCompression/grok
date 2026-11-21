@@ -18,22 +18,22 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 
 #include "t1_common.h"
 #include "CodeblockCompress.h"
 #include "CodeblockDecompress.h"
 #include "ICoder.h"
-#include "IOpenable.h"
 
 namespace grk::t1
 {
 
-struct BlockExec : public exc::IOpenable
+struct BlockExec
 {
-  using IOpenable::open;
-
   BlockExec() = default;
-  virtual ~BlockExec() override = default;
+  BlockExec(BlockExec&&) = default;
+  BlockExec& operator=(BlockExec&&) = default;
+  virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
   uint8_t bandIndex = 0;
   uint8_t bandNumbps = 0;
@@ -41,6 +41,10 @@ struct BlockExec : public exc::IOpenable
   float stepsize = 0;
   uint8_t cblk_sty = 0;
   uint8_t qmfbid = 0;
+  // Fractional left-shift applied when dequantizing into the int16 fixed-point
+  // (Q-format) DWT path; 0 for the int32/float path.  See WaveletReverse97_16.cpp
+  // and the headroom analysis in grk_get_data_type.
+  uint8_t qShift = 0;
   /* code block offset in buffer coordinates*/
   uint32_t x = 0;
   uint32_t y = 0;
@@ -63,34 +67,17 @@ using DecompressBlockPostProcessor =
 struct DecompressBlockExec : public BlockExec
 {
   DecompressBlockExec(bool cacheCoder) : shouldCacheCoder_(cacheCoder) {}
-  ~DecompressBlockExec() override
-  {
-    delete cachedCoder_;
-  }
-  void setOpen(std::function<void()>& open)
-  {
-    open_ = open;
-  }
-  void open(void) override
-  {
-    if(open_)
-      open_();
-  }
-  void close(void) override
-  {
-    delete cachedCoder_;
-    cachedCoder_ = nullptr;
-    if(cblk)
-      cblk->release();
-  }
+  DecompressBlockExec(DecompressBlockExec&&) = default;
+  DecompressBlockExec& operator=(DecompressBlockExec&&) = default;
+  ~DecompressBlockExec() override = default;
   bool open(ICoder* coder) override
   {
-    auto activeCoder = cachedCoder_ ? cachedCoder_ : coder;
+    auto activeCoder = cachedCoder_ ? cachedCoder_.get() : coder;
     if(!activeCoder)
       return false;
     bool rc = activeCoder->decompress(this);
     if(needsCachedCoder())
-      cachedCoder_ = coder;
+      cachedCoder_.reset(coder);
 
     return rc;
   }
@@ -107,20 +94,17 @@ struct DecompressBlockExec : public BlockExec
 
   void clearCachedCoder(void)
   {
-    delete cachedCoder_;
-    cachedCoder_ = nullptr;
+    cachedCoder_.reset();
   }
   DecompressBlockPostProcessor<int32_t> postProcessor_;
   CodeblockDecompress* cblk = nullptr;
   uint8_t resno = 0;
   uint8_t roishift = 0;
-  ICoder* cachedCoder_ = nullptr;
+  std::unique_ptr<ICoder> cachedCoder_;
   bool shouldCacheCoder_ = false;
   bool finalLayer_ = false;
 
 private:
-  std::function<void()> open_;
-
   // Delete copy constructor and assignment operator
   DecompressBlockExec(const DecompressBlockExec&) = delete;
   DecompressBlockExec& operator=(const DecompressBlockExec&) = delete;
@@ -129,9 +113,6 @@ struct CompressBlockExec : public BlockExec
 {
   CompressBlockExec() = default;
   ~CompressBlockExec() override = default;
-
-  void open(void) override {}
-  void close(void) override {}
 
   bool open(ICoder* coder) override
   {
@@ -142,7 +123,7 @@ struct CompressBlockExec : public BlockExec
   uint32_t tile_width = 0;
   bool doRateControl = false;
   double distortion = 0;
-  int32_t* tiledp = nullptr;
+  void* tileData = nullptr;
   uint16_t compno = 0;
   uint8_t resno = 0;
   uint8_t level = 0;
@@ -153,6 +134,19 @@ struct CompressBlockExec : public BlockExec
   int32_t* unencodedData = nullptr;
 #endif
   uint16_t mct_numcomps = 0;
+  bool uses16BitBuffer = false;
+
+  /**
+   * @brief Progressive early-stop slope threshold (log-domain, uint16_t).
+   *
+   * When non-zero, the block encoder may terminate encoding after a
+   * complete bit-plane if the incremental slope of that bit-plane falls
+   * below this threshold. This value is set by the ProgressiveSlopeEstimator
+   * based on statistics from previously-completed blocks in the same tile.
+   *
+   * A value of 0 means "no early termination" — encode all bit-planes.
+   */
+  uint16_t earlyStopSlope = 0;
 
   // Delete copy constructor and assignment operator
   CompressBlockExec(const CompressBlockExec&) = delete;

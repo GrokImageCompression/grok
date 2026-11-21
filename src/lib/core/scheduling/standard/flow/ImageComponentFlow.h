@@ -120,7 +120,7 @@ public:
    *
    * @param numresolutions number of resolutions for this component
    */
-  ImageComponentFlow(uint8_t numresolutions);
+  explicit ImageComponentFlow(uint8_t numresolutions);
   /**
    * @brief Destroy the ImageComponentFlow object
    *
@@ -133,11 +133,7 @@ public:
   void setRegionDecompression(void);
   /**
    * @brief Generates block flow task name
-   *
-   * @param resFlowNo resolution flow number
-   * @return std::string name of block flow task
    */
-  std::string genBlockFlowTaskName(uint8_t resFlowNo);
   /**
    * @brief Gets the Resflow object
    *

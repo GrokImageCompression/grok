@@ -37,17 +37,17 @@ public:
    * @brief Constructs a SchedulerStandard
    * @param numComps number of components
    */
-  SchedulerStandard(uint16_t numComps);
+  explicit SchedulerStandard(uint16_t numComps);
 
   /**
    * @brief Destroys a SchedulerStandard
    */
-  virtual ~SchedulerStandard();
+  ~SchedulerStandard() override;
 
   /**
    * @brief Releases flow components
    */
-  virtual void release(void) override;
+  void release(void) override;
 
   /**
    * @brief Gets @ref ImageComponentFlow for component

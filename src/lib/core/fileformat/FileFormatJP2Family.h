@@ -121,7 +121,7 @@ struct AsocBox : Box, Buffer8
 {
   ~AsocBox() override
   {
-    dealloc();
+    AsocBox::dealloc();
   }
   void dealloc() override
   {
@@ -153,7 +153,7 @@ protected:
   bool readHeader(grk_header_info* header_info, GrkImage* headerImage);
   virtual GrkImage* getHeaderImage(void) = 0;
   grk_color* getColour(void);
-  std::string getBoxName(Box box);
+  std::string getBoxName(const Box& box);
   /**
    * @brief Finds the BOX_FUNC related to given box id.
    *
@@ -164,7 +164,7 @@ protected:
   const FindHandlerInfo img_find_handler(uint32_t id);
 
   uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
-                     uint32_t asocSize);
+                     uint32_t asocSize, uint32_t depth = 0);
   bool read_asoc(uint8_t* header_data, uint32_t header_data_size);
   void serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, uint32_t* num_asocs, uint32_t level);
   /***
@@ -230,6 +230,10 @@ protected:
 
   bool headerError_;
   bool headerRead_;
+
+  // contiguous code stream box extent, both zero until the box is read
+  uint64_t codestreamOffset_;
+  uint64_t codestreamLength_;
 
   std::stack<Box> superBoxes_;
 

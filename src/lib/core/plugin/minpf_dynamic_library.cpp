@@ -118,14 +118,15 @@ minpf_dynamic_library* minpf_load_dynamic_library([[maybe_unused]] const char* p
   handle = LoadLibrary(path);
   if(handle == nullptr)
   {
-    // TODO report error
+    fprintf(stderr, "[plugin] Failed to load library '%s': %s\n", path,
+            GetLastErrorAsString().c_str());
     return nullptr;
   }
 #else
   handle = dlopen(path, RTLD_NOW);
   if(!handle)
   {
-    // TODO report error
+    fprintf(stderr, "[plugin] Failed to load library '%s': %s\n", path, dlerror());
     return nullptr;
   }
 

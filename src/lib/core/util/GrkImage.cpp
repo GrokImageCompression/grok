@@ -153,7 +153,7 @@ bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool c
   return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
           dest->stride == src->stride && dest->h == src->h && dest->x0 == src->x0 &&
           dest->y0 == src->y0 && dest->crg_x == src->crg_x && dest->crg_y == src->crg_y &&
-          dest->sgnd == src->sgnd && dest->type == src->type);
+          dest->sgnd == src->sgnd);
 }
 GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
                            GRK_COLOR_SPACE clrspc, bool doAllocation)
@@ -176,9 +176,12 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
   {
     image->decompress_fmt = src->decompress_fmt;
     image->force_rgb = src->force_rgb;
+    image->apply_palette = src->apply_palette;
     image->upsample = src->upsample;
     image->precision = src->precision;
     image->num_precision = src->num_precision;
+    image->rescale = src->rescale;
+    image->num_rescale = src->num_rescale;
     image->rows_per_strip = src->rows_per_strip;
     image->packed_row_bytes = src->packed_row_bytes;
   }
@@ -201,6 +204,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
     comp->y0 = params->y0;
     comp->prec = params->prec;
     comp->sgnd = params->sgnd;
+    comp->data_type = params->data_type;
     if(doAllocation && !allocData(comp))
     {
       grk::grklog.error("Unable to allocate memory for image.");
@@ -248,14 +252,17 @@ void GrkImage::all_components_data_free()
  */
 bool GrkImage::needsConversionToRGB(void) const
 {
+  // PGX carries no colour space, so converting would only destroy the decoded components
   return ((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
            color_space == GRK_CLRSPC_CMYK) &&
-          (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF)) ||
+          (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF &&
+           decompress_fmt != GRK_FMT_PGX)) ||
          force_rgb;
 }
 
 bool GrkImage::subsampleAndReduce(uint8_t reduce)
 {
+  uint16_t emptyComponents = 0;
   for(uint16_t compno = 0; compno < numcomps; ++compno)
   {
     auto comp = comps + compno;
@@ -273,38 +280,35 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
 
     uint32_t comp_x1 = ceildiv<uint32_t>(x1, comp->dx);
     comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
-    if(comp_x1 <= c.x0)
-    {
-      grklog.error("subsampleAndReduce: component %u: x1 (%u) is <= x0 (%u). Subsampled and "
-                   "reduced image is invalid",
-                   compno, comp_x1, c.x0);
-      return false;
-    }
-    uint32_t w = (uint32_t)(comp_x1 - c.x0);
-    assert(w);
     uint32_t comp_y1 = ceildiv<uint32_t>(y1, comp->dy);
     comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
-    if(comp_y1 <= comp->y0)
-    {
-      grklog.error("subsampleAndReduce: component %u: y1 (%u) is <= y0 (%u).  Subsampled and "
-                   "reduced image is invalid",
-                   compno, comp_y1, comp->y0);
-      return false;
-    }
-    uint32_t h = (uint32_t)(comp_y1 - c.y0);
-    assert(h);
+    // subsampled component with no samples in the window keeps a zero size
+    uint32_t w = (comp_x1 > c.x0) ? (uint32_t)(comp_x1 - c.x0) : 0;
+    uint32_t h = (comp_y1 > c.y0) ? (uint32_t)(comp_y1 - c.y0) : 0;
     bool needsAlloc = (comp->w != w || comp->h != h);
     comp->x0 = c.x0;
     comp->y0 = c.y0;
     comp->w = w;
     comp->h = h;
+    if(w == 0 || h == 0)
+    {
+      single_component_data_free(comp);
+      emptyComponents++;
+      continue;
+    }
     if(comp->data)
     {
       if(needsAlloc)
         allocData(comp);
       else
-        memset(comp->data, 0, comp->stride * comp->h * sizeOfDataType(comp->data_type));
+        memset(comp->data, 0, (size_t)comp->stride * comp->h * sizeOfDataType(comp->data_type));
     }
+  }
+  if(numcomps && emptyComponents == numcomps)
+  {
+    grklog.error("Decompress window (%u,%u,%u,%u) has no samples at reduction %u", x0, y0, x1, y1,
+                 reduce);
+    return false;
   }
 
   return true;
@@ -353,11 +357,13 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->color_space = color_space;
   if(has_capture_resolution)
   {
+    dest->has_capture_resolution = true;
     dest->capture_resolution[0] = capture_resolution[0];
     dest->capture_resolution[1] = capture_resolution[1];
   }
   if(has_display_resolution)
   {
+    dest->has_display_resolution = true;
     dest->display_resolution[0] = display_resolution[0];
     dest->display_resolution[1] = display_resolution[1];
   }
@@ -380,10 +386,13 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->decompress_prec = decompress_prec;
   dest->decompress_colour_space = decompress_colour_space;
   dest->force_rgb = force_rgb;
+  dest->apply_palette = apply_palette;
   dest->upsample = upsample;
   dest->precision = precision;
   dest->has_multiple_tiles = has_multiple_tiles;
   dest->num_precision = num_precision;
+  dest->rescale = rescale;
+  dest->num_rescale = num_rescale;
   dest->rows_per_strip = rows_per_strip;
   dest->packed_row_bytes = packed_row_bytes;
 }
@@ -395,14 +404,25 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 {
   if(!comp || comp->w == 0 || comp->h == 0)
     return false;
+  // SIMD requires aligned stride stored in uint32_t. Reject up front when
+  // aligning would overflow — otherwise grk_make_aligned_width wraps to 0
+  // and grk_aligned_malloc fails with a misleading "0 x h" message.
+  if(!grk_aligned_width_fits(comp->w))
+  {
+    grk::grklog.error(
+        "Cannot allocate buffer for width %u: SIMD-aligned stride would exceed uint32_t (max %u)",
+        comp->w, UINT32_MAX - grk_max_align_elements + 1);
+    return false;
+  }
   single_component_data_free(comp);
-  uint32_t stride = grk_make_aligned_width<int32_t>(comp->w);
+  uint32_t stride = (comp->data_type == GRK_INT_16) ? grk_make_aligned_width<int16_t>(comp->w)
+                                                    : grk_make_aligned_width<int32_t>(comp->w);
   size_t dataSize = (uint64_t)stride * comp->h * sizeOfDataType(comp->data_type);
-  auto data = (int32_t*)grk_aligned_malloc(dataSize);
+  auto data = grk_aligned_malloc(dataSize);
   if(!data)
   {
-    grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u",
-                      comp->stride, comp->h);
+    grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u (%zu bytes)",
+                      stride, comp->h, dataSize);
     return false;
   }
   if(clear)
@@ -442,17 +462,114 @@ bool GrkImage::isOpacity(uint16_t compno) const
   return (comp->type == GRK_CHANNEL_TYPE_OPACITY ||
           comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
 }
+bool GrkImage::isPostProcessNoOp(void) const
+{
+  // applyColour: palette requires processing; channel_definition only blocks
+  // if it needs component data swaps (type-only metadata is applied early)
+  if(meta && meta->color.palette && apply_palette)
+    return false;
+  if(needsChannelDefinitionSwap())
+    return false;
+  // applyColourManagement: ICC profile that must be applied
+  if(meta && meta->color.icc_profile_buf)
+  {
+    bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
+    bool canStoreCIE = decompress_fmt == GRK_FMT_TIF && color_space == GRK_CLRSPC_DEFAULT_CIE;
+    bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
+                        decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
+    bool shouldApply =
+        force_rgb || (decompress_fmt != GRK_FMT_UNK && ((isCIE && !canStoreCIE) || !canStoreICC));
+    if(shouldApply)
+      return false;
+  }
+  // convertToRGB: SYCC/EYCC/CMYK conversion
+  if(needsConversionToRGB())
+    return false;
+  // greyToRGB
+  if(force_rgb && numcomps < 3)
+    return false;
+  // convertPrecision
+  if(precision)
+    return false;
+  if(decompress_fmt == GRK_FMT_JPG)
+  {
+    uint8_t prec = comps[0].prec;
+    if(prec < 8 && numcomps > 1)
+      return false;
+    if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
+      return false;
+  }
+  if(decompress_fmt == GRK_FMT_PNG)
+  {
+    uint8_t prec = comps[0].prec;
+    uint16_t nr_comp = numcomps > 4 ? 4 : numcomps;
+    if(prec > 8 && prec < 16)
+      return false;
+    if(prec < 8 && nr_comp > 1)
+      return false;
+    if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
+      return false;
+  }
+  // execUpsample
+  if(upsample || force_rgb)
+  {
+    for(uint16_t compno = 0; compno < numcomps; ++compno)
+    {
+      if(comps[compno].dx > 1U || comps[compno].dy > 1U)
+        return false;
+    }
+  }
+  // subsampled non-YCbCr images: format may reject header (e.g. TIFF only
+  // supports subsampled writing for SYCC/EYCC colour spaces)
+  if(isSubsampled() && color_space != GRK_CLRSPC_SYCC && color_space != GRK_CLRSPC_EYCC)
+    return false;
+  return true;
+}
 void GrkImage::postReadHeader(CodingParams* cp)
 {
+  // Apply channel definition types (e.g. alpha) early so format writers
+  // can emit correct metadata (TIFF EXTRASAMPLES, etc.) before strip-based
+  // decompress starts.  Component data swaps are deferred to postProcess.
+  applyChannelDefinitionTypes();
+
+  // Auto-promote apply_palette when output format cannot store the palette as-is.
+  // Default behaviour: TIFF and BMP preserve the palette + index channel; all other
+  // formats expand to colour channels.  force_rgb always forces expansion.
+  if(meta && meta->color.palette && meta->color.palette->component_mapping)
+  {
+    auto pal = meta->color.palette;
+    if(force_rgb)
+      apply_palette = true;
+    else if(decompress_fmt != GRK_FMT_TIF && decompress_fmt != GRK_FMT_BMP &&
+            decompress_fmt != GRK_FMT_UNK)
+      apply_palette = true;
+    else if(decompress_fmt == GRK_FMT_TIF && pal->num_channels != 3 && pal->num_channels != 1)
+      apply_palette = true; // TIFF PHOTOMETRIC_PALETTE only supports 1- or 3-channel LUT
+    else if(decompress_fmt == GRK_FMT_BMP)
+    {
+      bool over8 = false;
+      for(uint8_t i = 0; i < pal->num_channels; ++i)
+      {
+        if(pal->channel_prec[i] > 8)
+        {
+          over8 = true;
+          break;
+        }
+      }
+      if(over8 || pal->num_channels > 3 || comps[0].prec > 8)
+        apply_palette = true;
+    }
+  }
+
   uint8_t prec = comps[0].prec;
   if(precision)
     prec = precision->prec;
   bool isGAorRGBA = (decompress_num_comps == 4 || decompress_num_comps == 2) &&
                     isOpacity(decompress_num_comps - 1);
-  if(meta && meta->color.palette)
+  if(meta && meta->color.palette && apply_palette)
     decompress_num_comps = meta->color.palette->num_channels;
   else
-    decompress_num_comps = (force_rgb && numcomps < 3) ? 3 : numcomps;
+    decompress_num_comps = (force_rgb && numcomps < 3) ? numcomps + 2 : numcomps;
   if(decompress_fmt == GRK_FMT_PXM && decompress_num_comps == 4 && !isGAorRGBA)
     decompress_num_comps = 3;
   uint16_t ncmp = decompress_num_comps;
@@ -479,23 +596,15 @@ void GrkImage::postReadHeader(CodingParams* cp)
         (uint64_t)((((uint64_t)decompress_width * chroma_subsample_y + units * 2U) * prec + 7U) /
                    8U);
     rows_per_strip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packed_row_bytes);
+    // a subsampled strip holds whole clump rows, so a strip height that is not a
+    // multiple of the vertical subsampling would size the strip buffer short
+    rows_per_strip = (rows_per_strip / chroma_subsample_y) * chroma_subsample_y;
+    if(rows_per_strip == 0)
+      rows_per_strip = chroma_subsample_y;
   }
   else
   {
-    switch(decompress_fmt)
-    {
-      case GRK_FMT_BMP:
-        packed_row_bytes = (((uint64_t)ncmp * decompress_width + 3) >> 2) << 2;
-        break;
-      case GRK_FMT_PXM:
-        packed_row_bytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width,
-                                                                             prec > 8 ? 16 : 8);
-        break;
-      default:
-        packed_row_bytes =
-            grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width, prec);
-        break;
-    }
+    packed_row_bytes = grk::packedRowBytes(decompress_fmt, ncmp, decompress_width, prec);
     rows_per_strip = has_multiple_tiles ? ceildivpow2(cp->t_height_, cp->codingParams_.dec_.reduce_)
                                         : singleTileRowsPerStrip;
   }
@@ -503,7 +612,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
     rows_per_strip = height();
 
   if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
-     decompress_fmt == GRK_FMT_PNG)
+     decompress_fmt == GRK_FMT_PNG && !meta->color.icc_profile_name)
   {
     // extract the description tag from the ICC header,
     // and use this tag as the profile name
@@ -534,6 +643,44 @@ void GrkImage::postReadHeader(CodingParams* cp)
 void GrkImage::allocPalette(uint8_t num_channels, uint16_t num_entries)
 {
   ((GrkImageMeta*)meta)->allocPalette(num_channels, num_entries);
+}
+
+bool GrkImage::needsChannelDefinitionSwap() const
+{
+  if(!meta || !meta->color.channel_definition)
+    return false;
+  auto info = meta->color.channel_definition->descriptions;
+  uint16_t n = meta->color.channel_definition->num_channel_descriptions;
+  for(uint16_t i = 0; i < n; ++i)
+  {
+    if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR)
+      continue;
+    if(info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
+      continue;
+    uint16_t channel = info[i].channel;
+    uint16_t asoc = info[i].asoc;
+    if(channel >= numcomps || asoc > numcomps)
+      continue;
+    uint16_t asoc_index = (uint16_t)(asoc - 1);
+    if(channel != asoc_index)
+      return true;
+  }
+  return false;
+}
+
+void GrkImage::applyChannelDefinitionTypes()
+{
+  if(!meta || !meta->color.channel_definition)
+    return;
+  auto info = meta->color.channel_definition->descriptions;
+  uint16_t n = meta->color.channel_definition->num_channel_descriptions;
+  for(uint16_t i = 0; i < n; ++i)
+  {
+    uint16_t channel = info[i].channel;
+    if(channel >= numcomps)
+      continue;
+    comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
+  }
 }
 
 void GrkImage::apply_channel_definition()
@@ -618,11 +765,6 @@ bool GrkImage::check_color(uint16_t signalledNumComps)
       if(info[i].asoc == 0 || info[i].asoc == GRK_CHANNEL_ASSOC_UNASSOCIATED)
         continue;
       uint16_t ascMinusOne = (uint16_t)(info[i].asoc - 1);
-      if(ascMinusOne > 2)
-      {
-        grklog.error("Illegal channel association %u ", info[i].asoc);
-        return false;
-      }
       if(hasPalette && ascMinusOne >= num_channels)
       {
         grklog.error("Invalid channel association %u for number of palette channels %u.",
@@ -763,12 +905,9 @@ bool GrkImage::allocCompositeData(void)
   for(uint16_t i = 0; i < numcomps; i++)
   {
     auto destComp = comps + i;
+    // subsampled component with no samples in the window
     if(destComp->w == 0 || destComp->h == 0)
-    {
-      grklog.error("Output component %u has invalid dimensions %u x %u", i, destComp->w,
-                   destComp->h);
-      return false;
-    }
+      continue;
     if(!destComp->data || !destComp->owns_data)
     {
       if(!GrkImage::allocData(destComp, true))
@@ -799,6 +938,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 
     single_component_data_free(destComp);
     destComp->data = srcComp->data;
+    destComp->data_type = srcComp->data_type;
     destComp->owns_data = srcComp->owns_data;
     if(srcComp->stride)
     {
@@ -836,26 +976,6 @@ void GrkImage::filterComponents(const std::vector<uint16_t>& compsToKeep)
   decompress_num_comps = newNumComps;
 }
 
-GrkImage* GrkImage::duplicate(void) const
-{
-  auto destImage = new GrkImage();
-  copyHeaderTo(destImage);
-  for(uint16_t compno = 0; compno < numcomps; ++compno)
-  {
-    auto compDest = destImage->comps + compno;
-    auto compSrc = comps + compno;
-    GrkImage::allocData(compDest);
-    assert(compSrc->stride <= compDest->stride);
-    compDest->stride = compSrc->stride;
-    assert(compSrc->w == compDest->w);
-    std::memcpy(compDest->data, compSrc->data,
-                (size_t)compSrc->stride * compSrc->h * sizeOfDataType(compSrc->data_type));
-    assert(componentsEqual(compSrc, compDest, true));
-  }
-
-  return destImage;
-}
-
 /**
  * Create new image and transfer tile buffer data
  *
@@ -866,36 +986,50 @@ GrkImage* GrkImage::duplicate(void) const
  */
 GrkImage* GrkImage::extractFrom(const Tile* src) const
 {
-  auto destImage = new GrkImage();
-  copyHeaderTo(destImage);
-  destImage->x0 = src->x0;
-  destImage->y0 = src->y0;
-  destImage->x1 = src->x1;
-  destImage->y1 = src->y1;
-
-  for(uint16_t compno = 0; compno < src->numcomps_; ++compno)
-  {
-    auto srcComp = src->comps_ + compno;
-    auto src_buffer = srcComp->getWindow();
-    auto src_bounds = src_buffer->bounds();
-
-    auto destComp = destImage->comps + compno;
-    destComp->x0 = src_bounds.x0;
-    destComp->y0 = src_bounds.y0;
-    destComp->w = src_bounds.width();
-    destComp->h = src_bounds.height();
-  }
-
-  // stride is set here
+  auto destImage = createTileImage(src);
   destImage->transferDataFrom(src);
 
   return destImage;
 }
 
+GrkImage* GrkImage::createTileImage(const Tile* sourceTile) const
+{
+  auto destinationImage = new GrkImage();
+  copyHeaderTo(destinationImage);
+  destinationImage->x0 = sourceTile->x0;
+  destinationImage->y0 = sourceTile->y0;
+  destinationImage->x1 = sourceTile->x1;
+  destinationImage->y1 = sourceTile->y1;
+
+  for(uint16_t componentNumber = 0; componentNumber < sourceTile->numcomps_; ++componentNumber)
+  {
+    auto sourceComponent = sourceTile->comps_ + componentNumber;
+    auto sourceBounds = sourceComponent->windowBounds();
+    auto destinationComponent = destinationImage->comps + componentNumber;
+    destinationComponent->x0 = sourceBounds.x0;
+    destinationComponent->y0 = sourceBounds.y0;
+    destinationComponent->w = sourceBounds.width();
+    destinationComponent->h = sourceBounds.height();
+    destinationComponent->data_type = sourceComponent->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
+  }
+
+  return destinationImage;
+}
+
 bool GrkImage::composite(const GrkImage* srcImg)
 {
-  return interleaved_data.data ? compositeInterleaved<int32_t>(srcImg->numcomps, srcImg->comps)
-                               : compositePlanar<int32_t>(srcImg->numcomps, srcImg->comps);
+  if(interleaved_data.data)
+    return compositeInterleaved<int32_t>(srcImg->numcomps, srcImg->comps);
+  // Use source data_type since source tiles have the authoritative type.
+  auto dt = srcImg->comps[0].data_type;
+  switch(dt)
+  {
+    case GRK_INT_16:
+      return compositePlanar<int16_t>(srcImg->numcomps, srcImg->comps);
+    case GRK_INT_32:
+    default:
+      return compositePlanar<int32_t>(srcImg->numcomps, srcImg->comps);
+  }
 }
 
 /***
@@ -905,9 +1039,13 @@ bool GrkImage::composite(const GrkImage* srcImg)
 bool GrkImage::generateCompositeBounds(const Rect32& src, uint16_t destCompno, Rect32* destWin)
 {
   auto destComp = comps + destCompno;
-  *destWin = src.intersection(Rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
-                                     destComp->y0 + destComp->h))
-                 .pan(-(int64_t)destComp->x0, -(int64_t)destComp->y0);
+  Rect32 destBounds(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
+                    destComp->y0 + destComp->h);
+  // intersection doesn't clamp, so a source lying outside the destination yields
+  // x1 < x0 and width()/height() wrap to ~4e9, which the copy loops would run on
+  if(!src.nonEmptyIntersection(&destBounds))
+    return false;
+  *destWin = src.intersection(destBounds).pan(-(int64_t)destComp->x0, -(int64_t)destComp->y0);
   return true;
 }
 /***
@@ -957,7 +1095,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
   }
   if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
   {
-    grklog.warn("component 0 precision %d is not supported.", 0, comp0->prec);
+    grklog.warn("component 0 precision %d is not supported.", comp0->prec);
     return false;
   }
 
@@ -965,7 +1103,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
   {
     auto compi = comps + i;
 
-    if(!comp0->data)
+    if(!compi->data)
     {
       grklog.warn("component %d : data is null.", i);
       return false;
@@ -988,21 +1126,21 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision) const
     {
       grklog.warn("width %d of component %d"
                   " differs from width %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->w, i, comp0->w);
       return false;
     }
     if(comp0->stride != compi->stride)
     {
       grklog.warn("stride %d of component %d"
                   " differs from stride %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->stride, i, comp0->stride);
       return false;
     }
     if(comp0->h != compi->h)
     {
       grklog.warn("height %d of component %d"
                   " differs from height %d of component 0.",
-                  compi->sgnd, i, comp0->sgnd);
+                  compi->h, i, comp0->h);
       return false;
     }
   }
@@ -1221,75 +1359,14 @@ bool GrkImage::validateICC(void)
 /**
  * Convert to sRGB
  */
-bool GrkImage::applyColourManagement(void)
-{
-  if(!meta || !meta->color.icc_profile_buf)
-    return true;
-
-  bool isTiff = decompress_fmt == GRK_FMT_TIF;
-  bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
-  bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
-  // A TIFF,PNG, BMP or JPEG image can store the ICC profile,
-  // so no need to apply it in this case,
-  // (unless we are forcing to RGB).
-  // Otherwise, we apply the profile
-  bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
-                      decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
-
-  bool shouldApplyColourManagement =
-      force_rgb || (decompress_fmt != GRK_FMT_UNK && meta->color.icc_profile_buf &&
-                    ((isCIE && !canStoreCIE) || !canStoreICC));
-  if(!shouldApplyColourManagement)
-    return true;
-
-  if(isCIE)
-  {
-    if(!force_rgb)
-      grklog.warn(" Input image is in CIE colour space,\n"
-                  "but the codec is unable to store this information in the "
-                  "output file .\n"
-                  "The output image will therefore be converted to sRGB before saving.");
-    if(!cieLabToRGB<int32_t>())
-    {
-      grklog.error("Unable to convert L*a*b image to sRGB");
-      return false;
-    }
-  }
-  else
-  {
-    if(validateICC())
-    {
-      if(!force_rgb)
-      {
-        grklog.warn("");
-        grklog.warn("The input image contains an ICC profile");
-        grklog.warn("but the codec is unable to store this profile"
-                    " in the output file.");
-        grklog.warn("The profile will therefore be applied to the output"
-                    " image before saving.");
-        grklog.warn("");
-      }
-      if(!applyICC<int32_t>())
-      {
-        grklog.warn("Unable to apply ICC profile");
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 bool GrkImage::greyToRGB(void)
 {
-  if(numcomps != 1)
+  if(!force_rgb || numcomps > 2)
     return true;
 
-  if(!force_rgb || color_space != GRK_CLRSPC_GRAY)
-    return true;
-
-  auto new_components = new grk_image_comp[3];
-  memset(new_components, 0, 3 * sizeof(grk_image_comp));
+  uint16_t newNumComps = numcomps + 2;
+  auto new_components = new grk_image_comp[newNumComps];
+  memset(new_components, 0, newNumComps * sizeof(grk_image_comp));
   for(uint16_t i = 0; i < 3; ++i)
   {
     auto dest = new_components + i;
@@ -1302,8 +1379,13 @@ bool GrkImage::greyToRGB(void)
         delete[] new_components;
         return false;
       }
-      size_t dataSize = (uint64_t)comps->stride * comps->h * sizeOfDataType(dest->data_type);
-      memcpy(dest->data, comps->data, dataSize);
+      size_t elementSize = sizeOfDataType(dest->data_type);
+      size_t rowBytes = (size_t)comps->w * elementSize;
+      auto sourceBytes = static_cast<const uint8_t*>(comps->data);
+      auto destBytes = static_cast<uint8_t*>(dest->data);
+      for(uint32_t row = 0; row < comps->h; ++row)
+        memcpy(destBytes + (size_t)row * dest->stride * elementSize,
+               sourceBytes + (size_t)row * comps->stride * elementSize, rowBytes);
     }
   }
 
@@ -1313,10 +1395,16 @@ bool GrkImage::greyToRGB(void)
   new_components->stride = comps->stride;
   comps->data = nullptr;
   comps->owns_data = false;
+  if(numcomps == 2)
+  {
+    new_components[3] = comps[1];
+    comps[1].data = nullptr;
+    comps[1].owns_data = false;
+  }
   all_components_data_free();
   delete[] comps;
   comps = new_components;
-  numcomps = 3;
+  numcomps = newNumComps;
   color_space = GRK_CLRSPC_SRGB;
 
   return true;
@@ -1330,9 +1418,14 @@ void GrkImage::transferDataFrom_T(const Tile* tile_src_data)
     auto srcComp = tile_src_data->comps_ + compno;
     auto destComp = comps + compno;
 
-    // transfer memory from tile component to output image
+    // transfer memory from tile component to output image via type-erased interface
     single_component_data_free(destComp);
-    srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
+    uint32_t stride = 0;
+    void* data = nullptr;
+    srcComp->transferWindowData(&data, &stride);
+    destComp->data = data;
+    destComp->stride = stride;
+    destComp->data_type = srcComp->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
     destComp->owns_data = true;
   }
 }
@@ -1341,6 +1434,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
   switch(comps->data_type)
   {
     case GRK_INT_32:
+    case GRK_INT_16:
       transferDataFrom_T<int32_t>(tile_src_data);
       break;
     // case GRK_INT_16:
@@ -1358,6 +1452,23 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
     default:
       break;
   }
+}
+
+void GrkImage::transferComponentDataFrom(const Tile* sourceTile, uint16_t componentNumber)
+{
+  if(!sourceTile || componentNumber >= numcomps || componentNumber >= sourceTile->numcomps_)
+    return;
+
+  auto sourceComponent = sourceTile->comps_ + componentNumber;
+  auto destinationComponent = comps + componentNumber;
+  single_component_data_free(destinationComponent);
+  uint32_t stride = 0;
+  void* data = nullptr;
+  sourceComponent->transferWindowData(&data, &stride);
+  destinationComponent->data = data;
+  destinationComponent->stride = stride;
+  destinationComponent->data_type = sourceComponent->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
+  destinationComponent->owns_data = true;
 }
 
 } // namespace grk

@@ -61,11 +61,17 @@ public:
   void deleteMarkers(void);
 
   /**
-   * @brief Gets next packet info
-   * @param packetInfoPtr pointer to @ref Length which will
-   * hold the packet length
+   * @brief Reads the next packet length
+   * @param packetLength set to the packet length, or 0 if packet lengths are not in use
+   * @return false if packet lengths are in use but none remain
    */
-  T next(void);
+  bool readNextPacketLength(T& packetLength);
+
+  bool readPacketLengths(uint64_t numberOfPackets, uint64_t& totalLength);
+
+  bool usesPacketLengths(void) const;
+
+  bool hasPacketLengthError(void) const;
 
   /**
    * @brief rewinds state to be ready to read packet lengths from beginning
@@ -83,10 +89,13 @@ private:
    * @brief pointer to @ref CodingParams
    */
   CodingParams* cp_;
+
+  bool packetLengthError_;
 };
 
 template<typename T>
-PacketLengthCache<T>::PacketLengthCache(CodingParams* cp) : plMarkers_(nullptr), cp_(cp)
+PacketLengthCache<T>::PacketLengthCache(CodingParams* cp)
+    : plMarkers_(nullptr), cp_(cp), packetLengthError_(false)
 {}
 template<typename T>
 PacketLengthCache<T>::~PacketLengthCache()
@@ -114,27 +123,55 @@ void PacketLengthCache<T>::deleteMarkers(void)
 {
   delete plMarkers_;
   plMarkers_ = nullptr;
+  packetLengthError_ = false;
 }
 
 template<typename T>
-T PacketLengthCache<T>::next()
+bool PacketLengthCache<T>::usesPacketLengths(void) const
 {
-  // we don't currently support PLM markers,
-  // so we disable packet length markers if we have both PLT and PLM
-  bool usePlt = plMarkers_ && !cp_->plmMarkers_ && plMarkers_->isEnabled();
-  if(usePlt)
+  return plMarkers_ && !cp_->plmMarkers_ && plMarkers_->isEnabled();
+}
+
+template<typename T>
+bool PacketLengthCache<T>::readNextPacketLength(T& packetLength)
+{
+  packetLength = 0;
+  if(!usesPacketLengths())
+    return true;
+
+  packetLength = plMarkers_->pop();
+  if(packetLength)
+    return true;
+
+  packetLengthError_ = true;
+  grklog.error("PLT marker: missing packet length.");
+  return false;
+}
+
+template<typename T>
+bool PacketLengthCache<T>::readPacketLengths(uint64_t numberOfPackets, uint64_t& totalLength)
+{
+  totalLength = 0;
+  for(uint64_t packetIndex = 0; packetIndex < numberOfPackets; ++packetIndex)
   {
-    T len = plMarkers_->pop();
-    if(len == 0)
-      grklog.error("PLT marker: missing packet lengths.");
-    return len;
+    T packetLength;
+    if(!readNextPacketLength(packetLength))
+      return false;
+    totalLength += packetLength;
   }
-  return 0;
+  return true;
+}
+
+template<typename T>
+bool PacketLengthCache<T>::hasPacketLengthError(void) const
+{
+  return packetLengthError_;
 }
 
 template<typename T>
 void PacketLengthCache<T>::rewind(void)
 {
+  packetLengthError_ = false;
   // we don't currently support PLM markers,
   // so we disable packet length markers if we have both PLT and PLM
   if(plMarkers_ && !cp_->plmMarkers_)

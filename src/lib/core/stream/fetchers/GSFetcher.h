@@ -30,6 +30,12 @@ namespace grk
 
 class GSFetcher : public CurlFetcher
 {
+public:
+  ~GSFetcher() override
+  {
+    stopWorker();
+  }
+
 protected:
   void parse(const std::string& path) override
   {
@@ -64,7 +70,7 @@ protected:
 
   void auth(CURL* curl) override
   {
-    // Apply parent auth settings (e.g., SSL verification)
+    // Apply parent auth settings (e.g., SSL verification, proxy, cookies)
     CurlFetcher::auth(curl);
 
     // Check environment variables for access key and secret
@@ -88,12 +94,15 @@ protected:
       }
     }
 
-    // Apply authentication if both access key and secret are available
+    // GCS HMAC interop mode uses AWS SigV4-compatible signing
     if(!access_key.empty() && !secret_key.empty())
     {
       curl_easy_setopt(curl, CURLOPT_USERNAME, access_key.c_str());
       curl_easy_setopt(curl, CURLOPT_PASSWORD, secret_key.c_str());
-      grklog.debug("Applied GS authentication for access key: %s", access_key.c_str());
+      std::string sigv4 = "aws:amz:auto:s3";
+      curl_easy_setopt(curl, CURLOPT_AWS_SIGV4, sigv4.c_str());
+      grklog.debug("Applied GCS HMAC interop authentication (SigV4) for access key: %s",
+                   access_key.c_str());
     }
     else
     {

@@ -206,8 +206,8 @@ struct mj2_tk
 class FileFormatMJ2 : public FileFormatJP2Family
 {
 public:
-  FileFormatMJ2(IStream* stream);
-  virtual ~FileFormatMJ2();
+  explicit FileFormatMJ2(IStream* stream);
+  ~FileFormatMJ2() override;
 
 protected:
   GrkImage* getHeaderImage(void) override;

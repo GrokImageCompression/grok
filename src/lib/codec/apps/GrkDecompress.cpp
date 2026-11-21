@@ -16,6 +16,7 @@
  */
 
 #include <filesystem>
+#include <cinttypes>
 #ifndef _WIN32
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -40,7 +41,6 @@
 #include "decompress_help.h"
 #include "spdlogwrapper.h"
 #include "RAWFormat.h"
-#include "YUVFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "BMPFormat.h"
@@ -56,6 +56,7 @@
 #include "grk_string.h"
 #include "GrkDecompress.h"
 #include "codestream/CodeStreamLimits.h"
+#include "Messenger.h"
 
 namespace grk
 {
@@ -108,7 +109,11 @@ static void decompress_help_display(void)
           grk_version());
   fputs(decompress_help_text, stdout);
 }
-GrkDecompress::GrkDecompress() : storeToDisk(true), imageFormat(nullptr) {}
+GrkDecompress::GrkDecompress()
+    : storeToDisk(true), incrementalWriteActive_(false), incrementalBandFormat_(nullptr),
+      incrementalBandRowsWritten_(0), incrementalBandRowsExpected_(0), imageFormat(nullptr),
+      messenger_(nullptr)
+{}
 GrkDecompress::~GrkDecompress(void)
 {
   delete imageFormat;
@@ -241,6 +246,55 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
   return result;
 }
 
+bool GrkDecompress::parseRescale(const char* option, grk_decompress_parameters* parameters)
+{
+  if(parameters->rescale)
+  {
+    free(parameters->rescale);
+    parameters->rescale = nullptr;
+  }
+  parameters->num_rescale = 0U;
+
+  const char* remaining = option;
+  while(true)
+  {
+    double sm, sM, dm, dM;
+    int consumed = 0;
+    int n = sscanf(remaining, "%lf,%lf,%lf,%lf%n", &sm, &sM, &dm, &dM, &consumed);
+    if(n != 4)
+    {
+      spdlog::error("Could not parse rescale option {}", option);
+      return false;
+    }
+    if(sm == sM)
+    {
+      spdlog::error("Rescale src_min == src_max in option {}", option);
+      return false;
+    }
+    uint32_t new_size = parameters->num_rescale + 1U;
+    auto new_arr = (grk_rescale*)realloc(parameters->rescale, new_size * sizeof(grk_rescale));
+    if(!new_arr)
+    {
+      spdlog::error("Could not allocate memory for rescale option");
+      return false;
+    }
+    parameters->rescale = new_arr;
+    parameters->rescale[parameters->num_rescale] = {sm, sM, dm, dM};
+    parameters->num_rescale = new_size;
+
+    const char* sep = remaining + consumed;
+    if(*sep == '\0')
+      break;
+    if(*sep != ';')
+    {
+      spdlog::error("Invalid separator '{}' in rescale option {}", *sep, option);
+      return false;
+    }
+    remaining = sep + 1;
+  }
+  return true;
+}
+
 char GrkDecompress::nextFile(const std::string& inputFile, const grk_img_fol* inputFolder,
                              const grk_img_fol* outFolder, grk_decompress_parameters* parameters)
 {
@@ -341,7 +395,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   CLI::App cmd("grk_decompress command line", grk_version());
 
   std::string outDir, compression, decodeRegion, pluginPathStr, inputFile, outputFile, outFor,
-      precision, logfile, inDir, components;
+      precision, rescale, logfile, inDir, components;
   auto& compIndices = initParams->compIndices;
   uint32_t repetitions = 0, numThreads = 0, kernelBuildOptions = 0,
            compressionLevel = std::numeric_limits<uint32_t>::max(), disableRandomAccess = 0,
@@ -349,7 +403,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   uint8_t reduce = 0;
   uint16_t layer = 0;
   int32_t deviceId = 0;
-  bool forceRgb = false, splitPnm = false, upsample = false, xml = false;
+  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, applyPalette = false,
+       irreversibleInt16 = false;
 
   auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output directory");
   auto compressionOpt = cmd.add_option("-c,--compression", compression, "Output compression type");
@@ -359,10 +414,17 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
                      "Number of decompress repetitions, for either a folder or a single file");
   auto forceRgbOpt =
       cmd.add_flag("-f,--force-rgb", forceRgb, "Force sRGB colour format for output");
+  auto applyPaletteOpt =
+      cmd.add_flag("--apply-palette", applyPalette,
+                   "Apply palette LUT and expand index channel to colour channels (default: "
+                   "preserve palette + index for TIFF/BMP output where supported)");
   auto pluginPathOpt = cmd.add_option("-g,--plugin-path", pluginPathStr, "Plugin path");
   auto deviceIdOpt = cmd.add_option("-G,--device-id", deviceId, "Device ID");
   auto numThreadsOpt = cmd.add_option("-H,--num-threads", numThreads, "Number of threads");
   auto inputFileOpt = cmd.add_option("-i,--in-file", inputFile, "Input file");
+  cmd.add_flag("--irreversible-int16", irreversibleInt16,
+               "Decode irreversible 9/7 on int16 fixed point up to 13 bit precision instead of 10. "
+               "Faster, but above 10 bits the rounding exceeds the T.803 conformance tolerances");
   auto kernelBuildOptionsOpt =
       cmd.add_option("-k,--kernel-build", kernelBuildOptions, "Kernel build options");
   auto layerOpt = cmd.add_option("-l,--layers", layer, "Number of layers to decompress")
@@ -377,6 +439,11 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto outputFileOpt = cmd.add_option("-o,--out-file", outputFile, "Output file");
   auto outForOpt = cmd.add_option("-O,--out-fmt", outFor, "Output Format");
   auto precisionOpt = cmd.add_option("-p,--precision", precision, "Force precision");
+  auto rescaleOpt =
+      cmd.add_option("-S,--rescale", rescale,
+                     "Linear value rescale per component: "
+                     "src_min,src_max,dst_min,dst_max[;src_min,src_max,dst_min,dst_max...]. "
+                     "Last entry applies to remaining components. Runs before -p.");
   auto reduceOpt = cmd.add_option("-r,--reduce", reduce, "Number of final resolutions to skip")
                        ->check(CLI::Range(0, GRK_MAXRLVLS - 1));
   auto splitPnmOpt = cmd.add_flag("-s,--split-pnm", splitPnm, "Split PNM");
@@ -388,6 +455,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto durationOpt = cmd.add_option("-z,--duration", duration, "Duration in seconds");
 
   cmd.set_help_flag("-h", "Show abreviated usage");
+  cmd.set_version_flag("-v,--version", grk_version(), "Show version");
   cmd.add_flag("--help", "Show detailed usage");
   // Hidden completion generator
   cmd.add_flag("--generate-completion", "Generate Bash completion script")->group("");
@@ -431,6 +499,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
 
   parameters->io_xml = xmlOpt->count() > 0;
   parameters->force_rgb = forceRgbOpt->count() > 0;
+  parameters->apply_palette = applyPaletteOpt->count() > 0;
   if(upsampleOpt->count() > 0)
   {
     if(reduceOpt->count() > 0)
@@ -487,15 +556,12 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       case GRK_FMT_RAWL:
         inputFolder->out_format = "rawl";
         break;
-      case GRK_FMT_YUV:
-        inputFolder->out_format = "yuv";
-        break;
       case GRK_FMT_PNG:
         inputFolder->out_format = "png";
         break;
       default:
         spdlog::error("Unknown output format image {} [only *.png, *.pnm, *.pgm, "
-                      "*.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.yuv, *.raw or *.rawl]",
+                      "*.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw or *.rawl]",
                       outformat);
         return GrkRCParseArgsFailed;
     }
@@ -512,13 +578,12 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       case GRK_FMT_TIF:
       case GRK_FMT_RAW:
       case GRK_FMT_RAWL:
-      case GRK_FMT_YUV:
       case GRK_FMT_PNG:
       case GRK_FMT_JPG:
         break;
       default:
         spdlog::error("Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, "
-                      "*.bmp, *.tif, *.tiff, *jpg, *jpeg, *.yuv, *.raw or *rawl]",
+                      "*.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw or *rawl]",
                       outfile);
         return GrkRCParseArgsFailed;
     }
@@ -557,8 +622,21 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
 
   if(inDirOpt->count() > 0)
   {
-    if(!validateDirectory(inDir))
-      return GrkRCFail;
+    // detect SHM batch mode: batch-src has 6+ comma-separated values
+    std::stringstream ss(inDir);
+    uint32_t count = 0;
+    while(ss.good())
+    {
+      std::string substr;
+      std::getline(ss, substr, ',');
+      count++;
+    }
+    bool isShmBatch = (count >= 6);
+    if(!isShmBatch)
+    {
+      if(!validateDirectory(inDir))
+        return GrkRCFail;
+    }
     inputFolder->imgdirpath = (char*)malloc(strlen(inDir.c_str()) + 1);
     strcpy(inputFolder->imgdirpath, inDir.c_str());
     inputFolder->set_imgdir = true;
@@ -598,10 +676,13 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   }
   if(randomAccessOpt->count() > 0)
     parameters->core.disable_random_access_flags = disableRandomAccess;
+  parameters->core.irreversible_int16 = irreversibleInt16;
   parameters->single_tile_decompress = tileOpt->count() > 0;
   if(tileOpt->count() > 0)
     parameters->tile_index = (uint16_t)tile;
   if(precisionOpt->count() > 0 && !parsePrecision(precision.c_str(), parameters))
+    return GrkRCParseArgsFailed;
+  if(rescaleOpt->count() > 0 && !parseRescale(rescale.c_str(), parameters))
     return GrkRCParseArgsFailed;
   if(numThreadsOpt->count() > 0)
     parameters->num_threads = numThreads;
@@ -627,11 +708,19 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   if(kernelBuildOptionsOpt->count() > 0)
     parameters->kernel_build_options = kernelBuildOptions;
   if(deviceIdOpt->count() > 0)
+  {
     parameters->device_id = deviceId;
+    initParams->usePlugin = (deviceId != -2);
+    parameters->cpu_only = deviceId == -2;
+  }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
 
   /* check for possible errors */
+  // detect SHM mode for validation bypass
+  bool isShmMode = inputFolder->imgdirpath &&
+                   std::string(inputFolder->imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0;
+
   if(inputFolder->set_imgdir)
   {
     if(!(parameters->infile[0] == 0))
@@ -639,7 +728,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       spdlog::error("options --batch-src and -i cannot be used together.");
       return GrkRCParseArgsFailed;
     }
-    if(!inputFolder->set_out_format)
+    if(!isShmMode && !inputFolder->set_out_format)
     {
       spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used.");
       spdlog::error("Only one format allowed.\n"
@@ -710,15 +799,6 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
   info.user_data = this;
   info.cod_format =
       info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
-  info.header_info.decompress_fmt = info.cod_format;
-
-  info.header_info.color_space = info.decompressor_parameters->color_space;
-  info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
-  info.header_info.upsample = info.decompressor_parameters->upsample;
-  info.header_info.precision = info.decompressor_parameters->precision;
-  info.header_info.num_precision = info.decompressor_parameters->num_precision;
-  info.header_info.split_by_component = info.decompressor_parameters->split_by_component;
-  info.header_info.single_tile_decompress = info.decompressor_parameters->single_tile_decompress;
 
   if(preProcess(&info))
   {
@@ -752,6 +832,21 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
   pngSetVerboseFlag(true);
 #endif
   initParams->initialized = true;
+
+  // SHM batch mode: skip plugin, initialize for CPU, and let main() handle
+  if(initParams->inputFolder.imgdirpath &&
+     std::string(initParams->inputFolder.imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
+
+  // skip GPU plugin when -G is -2 (CPU only)
+  if(!initParams->usePlugin)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
   // loads plugin but does not actually create codec
   bool pluginInitialised = false;
   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads, &pluginInitialised);
@@ -762,7 +857,12 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
 
   // create codec
   grk_plugin_init_info initInfo;
+  memset(&initInfo, 0, sizeof(initInfo));
   initInfo.device_id = initParams->parameters.device_id;
+  {
+    const char* debug_env = std::getenv("GRK_DEBUG");
+    initInfo.verbose = debug_env && std::atoi(debug_env) >= 3;
+  }
   if(!grk_plugin_init(initInfo))
     goto cleanup;
   initParams->parameters.user_data = this;
@@ -784,7 +884,6 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
     {
       grk_plugin_wait_for_batch_complete();
       grk_plugin_stop_batch_decompress();
-      rc = GrkRCSuccess;
     }
     else
     {
@@ -796,8 +895,19 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
     start = std::chrono::high_resolution_clock::now();
     if(!initParams->inputFolder.set_imgdir)
     {
-      if(grk_plugin_decompress(&initParams->parameters, decompress_callback))
-        goto cleanup;
+      uint32_t repeats = std::max(initParams->parameters.repeats, 1u);
+      for(uint32_t i = 0; i < repeats; ++i)
+      {
+        if(grk_plugin_decompress(&initParams->parameters, decompress_callback))
+          goto cleanup;
+      }
+      if(repeats > 1)
+      {
+        auto elapsed = std::chrono::high_resolution_clock::now() - start;
+        std::chrono::duration<double> secs = elapsed;
+        spdlog::info("decompress time: {} ms/image ({} FPS)",
+                     (secs.count() * 1000) / (double)repeats, (double)repeats / secs.count());
+      }
     }
     else
     {
@@ -867,33 +977,50 @@ static void cleanUpFile(const char* outfile)
     free(p);
 }
 
-static void grkSerializeRegisterClientCallback(grk_io_init io_init,
-                                               grk_io_callback reclaim_callback, void* io_user_data,
-                                               void* reclaim_user_data)
+static void grkRegisterReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                                       void* io_user_data, void* reclaim_user_data)
 {
   if(!io_user_data || !reclaim_user_data)
     return;
   auto imageFormat = (IImageFormat*)io_user_data;
 
-  imageFormat->registerGrkReclaimCallback(io_init, reclaim_callback, reclaim_user_data);
+  imageFormat->registerReclaimCallback(io_init, reclaim_callback, reclaim_user_data);
 }
 
-static bool grkSerializeBufferCallback(uint32_t workerId, grk_io_buf buffer, void* user_data)
+static bool grkWriteStripCallback(uint32_t workerId, grk_io_buf buffer, void* user_data)
 {
   if(!user_data)
     return false;
   auto imageFormat = (IImageFormat*)user_data;
 
-  return imageFormat->encodePixels(workerId, buffer);
+  return imageFormat->writeStrip(workerId, buffer);
 }
 
-bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
+bool GrkDecompress::writeBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image,
+                                      void* userData)
+{
+  if(!userData || !image)
+    return false;
+  auto self = (GrkDecompress*)userData;
+  auto fmt = self->incrementalBandFormat_;
+  if(!fmt)
+    return false;
+  fmt->setImage(image);
+  if(!fmt->writeImageBand(yBegin, yEnd))
+    return false;
+  self->incrementalBandRowsWritten_ += yEnd - yBegin;
+
+  return true;
+}
+
+bool GrkDecompress::writeHeader(grk_plugin_decompress_callback_info* info)
 {
   if(!storeToDisk)
     return true;
-  if(!encodeInit(info))
+  if(!writeInit(info))
     return false;
-  if(!imageFormat->encodeHeader())
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  if(!fmt->writeHeader())
   {
     spdlog::error("Encode header failed.");
     return false;
@@ -902,7 +1029,7 @@ bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
   return true;
 }
 
-bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
+bool GrkDecompress::writeInit(grk_plugin_decompress_callback_info* info)
 {
   if(!storeToDisk)
     return true;
@@ -917,10 +1044,11 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
     compression_level = parameters->compression;
   else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
     compression_level = parameters->compression_level;
-  if(!imageFormat->encodeInit(info->image, outfileStr, compression_level,
-                              info->decompressor_parameters->num_threads
-                                  ? info->decompressor_parameters->num_threads
-                                  : std::thread::hardware_concurrency()))
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  if(!fmt->writeInit(info->image, outfileStr, compression_level,
+                     info->decompressor_parameters->num_threads
+                         ? info->decompressor_parameters->num_threads
+                         : std::thread::hardware_concurrency()))
   {
     spdlog::error("Outfile {} not generated", outfileStr);
     return false;
@@ -930,79 +1058,86 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
 }
 
 // return: 0 for success, non-zero for failure
+static IImageFormat* newImageFormat(GRK_SUPPORTED_FILE_FMT format,
+                                    const grk_decompress_parameters* parameters)
+{
+  switch(format)
+  {
+    case GRK_FMT_PXM:
+      return new PNMFormat<int32_t>(parameters->split_by_component);
+    case GRK_FMT_PGX:
+      return new PGXFormat<int32_t>();
+    case GRK_FMT_BMP:
+      return new BMPFormat<int32_t>();
+    case GRK_FMT_TIF:
+#ifdef GROK_HAVE_LIBTIFF
+      return new TIFFFormat<int32_t>();
+#else
+      spdlog::error("libtiff is missing");
+      return nullptr;
+#endif
+    case GRK_FMT_RAW:
+      return new RAWFormat<int32_t>(true);
+    case GRK_FMT_RAWL:
+      return new RAWFormat<int32_t>(false);
+    case GRK_FMT_JPG:
+#ifdef GROK_HAVE_LIBJPEG
+      return new JPEGFormat<int32_t>();
+#else
+      spdlog::error("libjpeg is missing");
+      return nullptr;
+#endif
+    case GRK_FMT_PNG:
+#ifdef GROK_HAVE_LIBPNG
+      return new PNGFormat<int32_t>();
+#else
+      spdlog::error("libpng is missing");
+      return nullptr;
+#endif
+    default:
+      spdlog::error("Unsupported output format {}", convertFileFmtToString(format));
+      return nullptr;
+  }
+}
+
 int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 {
   if(!info)
-    return 1;
+    return -1;
   bool failed = true;
+  bool pluginTileUnsupported = false;
   // bool useMemoryBuffer = false;
   auto parameters = info->decompressor_parameters;
   if(!parameters)
-    return 1;
+    return -1;
   auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
   const char* outfile = info->decompressor_parameters->outfile[0]
                             ? info->decompressor_parameters->outfile
                             : info->output_file_name;
   auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
-  switch(cod_format)
+  // the gpu batch runs several frames through here at once, so the format is per call
+  auto fmt = (IImageFormat*)info->format_private;
+  if(!fmt)
   {
-    case GRK_FMT_PXM:
-      imageFormat = new PNMFormat<int32_t>(parameters->split_by_component);
-      break;
-    case GRK_FMT_PGX:
-      imageFormat = new PGXFormat<int32_t>();
-      break;
-    case GRK_FMT_BMP:
-      imageFormat = new BMPFormat<int32_t>();
-      break;
-    case GRK_FMT_TIF:
-#ifdef GROK_HAVE_LIBTIFF
-      imageFormat = new TIFFFormat<int32_t>();
-#else
-      spdlog::error("libtiff is missing");
+    fmt = newImageFormat(cod_format, parameters);
+    if(!fmt)
       goto cleanup;
-#endif
-      break;
-    case GRK_FMT_RAW:
-      imageFormat = new RAWFormat<int32_t>(true);
-      break;
-    case GRK_FMT_RAWL:
-      imageFormat = new RAWFormat<int32_t>(false);
-      break;
-    case GRK_FMT_YUV:
-      imageFormat = new YUVFormat();
-      break;
-    case GRK_FMT_JPG:
-#ifdef GROK_HAVE_LIBJPEG
-      imageFormat = new JPEGFormat<int32_t>();
-#else
-      spdlog::error("libjpeg is missing");
-      goto cleanup;
-#endif
-      break;
-    case GRK_FMT_PNG:
-#ifdef GROK_HAVE_LIBPNG
-      imageFormat = new PNGFormat<int32_t>();
-#else
-      spdlog::error("libpng is missing");
-      goto cleanup;
-#endif
-      break;
-    default:
-      spdlog::error("Unsupported output format {}", convertFileFmtToString(info->cod_format));
-      goto cleanup;
-      break;
+    info->format_private = fmt;
+    if(!info->init_decompressors_func)
+      imageFormat = fmt;
   }
-  parameters->core.io_buffer_callback = grkSerializeBufferCallback;
-  parameters->core.io_user_data = imageFormat;
-  parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
 
   // 1. initialize
   if(!info->codec)
   {
     grk_stream_params stream_params{};
     safe_strcpy(stream_params.file, infile);
-    info->codec = grk_decompress_init(&stream_params, parameters);
+    // the shared parameters are read by every frame, so the callbacks go on a copy
+    auto frameParameters = *parameters;
+    frameParameters.core.io_buffer_callback = grkWriteStripCallback;
+    frameParameters.core.io_user_data = fmt;
+    frameParameters.core.io_register_client_callback = grkRegisterReclaimCallback;
+    info->codec = grk_decompress_init(&stream_params, &frameParameters);
     if(!info->codec)
     {
       spdlog::error("grk_decompress: failed to set up the decompressor");
@@ -1012,6 +1147,16 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   // 2. read header
   if(info->decompress_flags & GRK_DECODE_HEADER)
   {
+    // the plugin's header info has no output options
+    info->header_info.decompress_fmt = cod_format;
+    info->header_info.color_space = parameters->color_space;
+    info->header_info.force_rgb = parameters->force_rgb;
+    info->header_info.apply_palette = parameters->apply_palette;
+    info->header_info.upsample = parameters->upsample;
+    info->header_info.precision = parameters->precision;
+    info->header_info.num_precision = parameters->num_precision;
+    info->header_info.split_by_component = parameters->split_by_component;
+    info->header_info.single_tile_decompress = parameters->single_tile_decompress;
     // Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
     if(!grk_decompress_read_header(info->codec, &info->header_info))
     {
@@ -1021,7 +1166,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     info->image = grk_decompress_get_image(info->codec);
 
     if(info->init_decompressors_func)
+    {
       return info->init_decompressors_func(&info->header_info, info->image);
+    }
   }
   // header-only decompress
   if(info->decompress_flags == GRK_DECODE_HEADER)
@@ -1067,10 +1214,34 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
       goto cleanup;
     }
   }
-  if(!encodeInit(info))
-    return false;
-
-  // decompress one particular tile
+  // 3a. initialize writer before decompress so it's ready for incremental output.
+  // Only call writeInit early when postProcess is a no-op, so we can write header
+  // and enable incremental band writes.  When post-processing is needed, defer
+  // writeInit until after decompress (postProcess) so that the library's
+  // io_buffer_callback (strip write) doesn't write raw/unprocessed strips
+  // during decompress.
+  incrementalWriteActive_ = false;
+  incrementalBandFormat_ = nullptr;
+  incrementalBandRowsWritten_ = 0;
+  incrementalBandRowsExpected_ = 0;
+  if(storeToDisk && !parameters->single_tile_decompress && !info->init_decompressors_func &&
+     grk_image_is_post_process_no_op(info->image) && parameters->dw_y1 == 0)
+  {
+    if(!writeInit(info))
+      goto cleanup;
+    // write header early — metadata is already final since postProcess is a no-op
+    if(!writeHeader(info))
+      goto cleanup;
+    if(fmt->supportsIncrementalBandWrite())
+    {
+      incrementalBandFormat_ = fmt;
+      // the header already committed this height, so anything short of it is a truncated file
+      incrementalBandRowsExpected_ = info->image->decompress_height;
+      grk_decompress_set_band_callback(info->codec, writeBandCallback, this);
+      incrementalWriteActive_ = true;
+    }
+  }
+  // 3b. decompress one particular tile
   if(parameters->single_tile_decompress)
   {
     if(!grk_decompress_tile(info->codec, parameters->tile_index))
@@ -1081,24 +1252,47 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     info->image = grk_decompress_get_tile_image(info->codec, parameters->tile_index, true);
   }
   // or, decompress all tiles
-  else
+  else if(info->tile)
   {
-    if(!(grk_decompress(info->codec, info->tile)))
+    auto pluginRc = grk_plugin_decompress_tile(info->codec, info->tile);
+    pluginTileUnsupported = pluginRc == 1;
+    if(pluginRc)
       goto cleanup;
   }
-  if(!encodeHeader(info))
+  else if(!grk_decompress(info->codec, nullptr))
+  {
     goto cleanup;
+  }
+  // GPU path: during T2, grk_plugin_decompress_tile does packet parsing and feeds codeblock
+  // data to the GPU plugin. The image is not populated yet (POST_T1 handles that).
+  if(info->init_decompressors_func)
+  {
+    failed = false;
+    goto cleanup;
+  }
   failed = false;
 cleanup:
   if(failed)
   {
-    cleanUpFile(outfile);
     info->image = nullptr;
-    delete imageFormat;
-    imageFormat = nullptr;
+    if(info->format_private)
+    {
+      delete(IImageFormat*)info->format_private;
+      info->format_private = nullptr;
+      imageFormat = nullptr;
+    }
+    else
+    {
+      delete imageFormat;
+      imageFormat = nullptr;
+    }
+    // windows can't remove a file that is still open
+    cleanUpFile(outfile);
   }
 
-  return failed ? 1 : 0;
+  if(!failed)
+    return 0;
+  return pluginTileUnsupported ? 1 : -1;
 }
 
 /*
@@ -1108,6 +1302,15 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 {
   if(!info)
     return -1;
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  // GPU mono POST_T1: format was deleted after previous file — create fresh one
+  if(!fmt && (info->decompress_flags & GRK_DECODE_POST_T1))
+  {
+    auto parameters = info->decompressor_parameters;
+    auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
+    fmt = newImageFormat(cod_format, parameters);
+    info->format_private = fmt;
+  }
   bool failed = true;
   bool imageNeedsDestroy = false;
   const char* infile = nullptr;
@@ -1148,13 +1351,66 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   }
   if(storeToDisk)
   {
-    auto outfileStr = outfile ? std::string(outfile) : "";
-    if(!imageFormat->encodePixels())
+    // Update the format's image pointer in case it changed (e.g. single tile decompress
+    // replaces info->image after writeInit was called in preProcess)
+    fmt->setImage(image);
+    // Initialize the format if not already done.  writeInit is deferred to postProcess
+    // when post-processing is needed, so the library's io_buffer_callback (strip write)
+    // doesn't write raw/unprocessed strips during decompress.
+    if(fmt->getWriteState() == IMAGE_FORMAT_UNWRITTEN)
     {
-      spdlog::error("Outfile {} not generated", outfileStr);
-      goto cleanup;
+      if(info->decompress_flags & GRK_DECODE_POST_T1)
+      {
+        // GPU decode path: set decompress output fields on the bridge image
+        if(image->numcomps > 0)
+        {
+          if(image->decompress_prec == 0)
+          {
+            image->decompress_prec = image->comps[0].prec;
+            image->decompress_width = image->comps[0].w;
+            image->decompress_height = image->comps[0].h;
+            image->decompress_num_comps = image->numcomps;
+            image->decompress_colour_space = image->color_space;
+          }
+          if(image->packed_row_bytes == 0)
+            image->packed_row_bytes =
+                grk::packedRowBytes(info->decompressor_parameters->cod_format, image->numcomps,
+                                    image->comps[0].w, image->comps[0].prec);
+          if(image->rows_per_strip == 0)
+            image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
+        }
+      }
+      if(!writeInit(info))
+      {
+        spdlog::error("Outfile {} not generated", outfile ? std::string(outfile) : "");
+        goto cleanup;
+      }
     }
-    if(!imageFormat->encodeFinish())
+    auto outfileStr = outfile ? std::string(outfile) : "";
+    if(incrementalWriteActive_)
+    {
+      // bands already written during decompress; just finalize
+      if(incrementalBandRowsWritten_ < incrementalBandRowsExpected_)
+      {
+        spdlog::error("Outfile {} not generated: only {} of {} image rows were decompressed",
+                      outfileStr, incrementalBandRowsWritten_, incrementalBandRowsExpected_);
+        goto cleanup;
+      }
+    }
+    else
+    {
+      if(!(fmt->getWriteState() & IMAGE_FORMAT_HEADER_WRITTEN) && !fmt->writeHeader())
+      {
+        spdlog::error("Encode header failed for {}", outfileStr);
+        goto cleanup;
+      }
+      if(!fmt->writeImage())
+      {
+        spdlog::error("Outfile {} not generated", outfileStr);
+        goto cleanup;
+      }
+    }
+    if(!fmt->writeFinish())
     {
       spdlog::error("Outfile {} not generated", outfileStr);
       goto cleanup;
@@ -1162,6 +1418,17 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   }
   failed = false;
 cleanup:
+  // GPU decode path: component data pointers were replaced with pool buffer pointers
+  // in deviceToHostMapped. Null them to prevent TileCache from freeing pool memory.
+  // GRK_DECODE_POST_T1 is also set for normal CPU decodes (GRK_DECODE_ALL), so only
+  // null buffers the image does NOT own: GPU pool buffers are owns_data==false, while
+  // image-owned heap buffers (e.g. palette expansion) must be freed by the destructor.
+  if(info->decompress_flags & GRK_DECODE_POST_T1 && info->image)
+  {
+    for(uint32_t i = 0; i < info->image->numcomps; ++i)
+      if(!info->image->comps[i].owns_data)
+        info->image->comps[i].data = nullptr;
+  }
   grk_object_unref(info->codec);
   info->codec = nullptr;
   if(image && imageNeedsDestroy)
@@ -1169,8 +1436,17 @@ cleanup:
     grk_object_unref(&image->obj);
     info->image = nullptr;
   }
-  delete imageFormat;
-  imageFormat = nullptr;
+  if(info->format_private)
+  {
+    delete(IImageFormat*)info->format_private;
+    info->format_private = nullptr;
+    imageFormat = nullptr;
+  }
+  else
+  {
+    delete imageFormat;
+    imageFormat = nullptr;
+  }
   if(failed)
     cleanUpFile(outfile);
 
@@ -1201,6 +1477,14 @@ int GrkDecompress::main(int argc, const char* argv[])
       goto cleanup;
     }
 
+    // CPU shared memory batch decompress
+    if(initParams.inputFolder.imgdirpath &&
+       std::string(initParams.inputFolder.imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0)
+    {
+      rc = shmBatchDecompress(&initParams);
+      goto cleanup;
+    }
+
     // MJ2 multi-frame decompress: single .mj2 → numbered output images
     if(!initParams.inputFolder.set_imgdir && initParams.parameters.infile[0])
     {
@@ -1222,6 +1506,7 @@ int GrkDecompress::main(int argc, const char* argv[])
 
         grk_header_info headerInfo{};
         headerInfo.force_rgb = initParams.parameters.force_rgb;
+        headerInfo.apply_palette = initParams.parameters.apply_palette;
         headerInfo.upsample = initParams.parameters.upsample;
         if(!grk_decompress_read_header(codec, &headerInfo))
         {
@@ -1297,9 +1582,6 @@ int GrkDecompress::main(int argc, const char* argv[])
             case GRK_FMT_RAWL:
               fmt = new RAWFormat<int32_t>(false);
               break;
-            case GRK_FMT_YUV:
-              fmt = new YUVFormat();
-              break;
 #ifdef GROK_HAVE_LIBJPEG
             case GRK_FMT_JPG:
               fmt = new JPEGFormat<int32_t>();
@@ -1317,8 +1599,8 @@ int GrkDecompress::main(int argc, const char* argv[])
               goto cleanup;
           }
 
-          if(!fmt->encodeInit(img, outFilePath, initParams.parameters.compression_level, 1) ||
-             !fmt->encodeHeader() || !fmt->encodePixels() || !fmt->encodeFinish())
+          if(!fmt->writeInit(img, outFilePath, initParams.parameters.compression_level, 1) ||
+             !fmt->writeHeader() || !fmt->writeImage() || !fmt->writeFinish())
           {
             spdlog::error("MJ2 decompress: failed to save sample {} to {}", s, outFilePath);
             delete fmt;
@@ -1382,6 +1664,188 @@ int GrkDecompress::main(int argc, const char* argv[])
 cleanup:
   destoryParams(&initParams.parameters);
   return rc;
+}
+
+int GrkDecompress::shmBatchDecompress(DecompressInitParams* initParams)
+{
+  using namespace grk_plugin;
+
+  setUpSignalHandler();
+
+  // parse "GRK_MSGR_BATCH_IMAGE,width,stride,height,spp,depth" from batch_src
+  std::string batchSrc(initParams->inputFolder.imgdirpath);
+  Msg batchMsg(batchSrc);
+  auto tag = batchMsg.next();
+  if(tag != GRK_MSGR_BATCH_IMAGE)
+  {
+    spdlog::error("shmBatchDecompress: expected {} tag, got '{}'", GRK_MSGR_BATCH_IMAGE, tag);
+    return 1;
+  }
+  uint32_t imgWidth = batchMsg.nextUint();
+  uint32_t imgStride = batchMsg.nextUint();
+  (void)imgStride;
+  uint32_t imgHeight = batchMsg.nextUint();
+  uint32_t imgSpp = batchMsg.nextUint();
+  uint32_t imgDepth = batchMsg.nextUint();
+
+  size_t uncompressedFrameSize = Messenger::uncompressedFrameSize(imgWidth, imgHeight, imgSpp);
+  // conservative upper bound for compressed frame size
+  size_t compressedFrameSize = (size_t)imgWidth * imgHeight * imgSpp * ((imgDepth + 7) / 8) * 3 / 2;
+  if(compressedFrameSize < 4096)
+    compressedFrameSize = 4096;
+  const size_t numFrames = 8;
+
+  setMessengerLogger(new MessengerLogger("[SHM-CPU-D] "));
+
+  // shared state for flush synchronization
+  std::atomic<uint32_t> framesProcessed{0};
+  std::atomic<uint32_t> flushTarget{0};
+  std::atomic<bool> flushRequested{false};
+  std::mutex flushMutex;
+  std::condition_variable flushCv;
+
+  auto processor = [&](std::string message) {
+    Msg msg(message);
+    auto msgTag = msg.next();
+
+    if(msgTag == GRK_MSGR_BATCH_SUBMIT_COMPRESSED)
+    {
+      auto clientFrameId = msg.nextUint();
+      auto compressedFrameId = msg.nextUint();
+      auto compressedLength = msg.nextUint();
+      uint8_t* compressedPtr = messenger_->getCompressedFrame(compressedFrameId);
+      if(!compressedPtr || !compressedLength)
+      {
+        spdlog::error("shmBatchDecompress: null compressed frame {}", compressedFrameId);
+        return;
+      }
+
+      // decompress from memory buffer
+      grk_decompress_parameters dparams{};
+      grk_stream_params streamParams{};
+      streamParams.buf = compressedPtr;
+      streamParams.buf_len = compressedLength;
+      streamParams.is_read_stream = true;
+
+      grk_object* codec = grk_decompress_init(&streamParams, &dparams);
+      if(!codec)
+      {
+        spdlog::error("shmBatchDecompress: grk_decompress_init failed for frame {}", clientFrameId);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      grk_header_info headerInfo{};
+      if(!grk_decompress_read_header(codec, &headerInfo))
+      {
+        spdlog::error("shmBatchDecompress: read_header failed for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      if(!grk_decompress(codec, nullptr))
+      {
+        spdlog::error("shmBatchDecompress: decompress failed for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      grk_image* image = grk_decompress_get_image(codec);
+      if(!image)
+      {
+        spdlog::error("shmBatchDecompress: get_image returned null for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+
+      // done reading compressed buffer — release it back to client
+      messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+
+      // get an uncompressed buffer slot from the server queue
+      BufferSrc uncompressedSlot;
+      if(!messenger_->availableBuffers_.waitAndPop(uncompressedSlot))
+      {
+        spdlog::error("shmBatchDecompress: no uncompressed buffer available");
+        grk_object_unref(codec);
+        return;
+      }
+
+      // copy decompressed pixels (planar int16_t or int32_t → interleaved 16-bit)
+      auto* dst16 = reinterpret_cast<uint16_t*>(uncompressedSlot.framePtr_);
+      for(uint32_t y = 0; y < imgHeight; ++y)
+      {
+        for(uint32_t x = 0; x < imgWidth; ++x)
+        {
+          for(uint32_t c = 0; c < imgSpp; ++c)
+          {
+            auto& comp = image->comps[c];
+            size_t index = (size_t)y * comp.stride + x;
+            dst16[(y * imgWidth + x) * imgSpp + c] =
+                comp.data_type == GRK_INT_16 ? (uint16_t)static_cast<int16_t*>(comp.data)[index]
+                                             : (uint16_t)static_cast<int32_t*>(comp.data)[index];
+          }
+        }
+      }
+      grk_object_unref(codec);
+
+      messenger_->send(GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED, clientFrameId,
+                       uncompressedSlot.frameId_);
+
+      uint32_t count = ++framesProcessed;
+      if(flushRequested.load() && count >= flushTarget.load())
+      {
+        std::lock_guard<std::mutex> lk(flushMutex);
+        flushCv.notify_all();
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_FLUSH)
+    {
+      auto enqueuedCount = msg.nextUint();
+      flushTarget.store(enqueuedCount);
+      flushRequested.store(true);
+      {
+        std::unique_lock<std::mutex> lk(flushMutex);
+        flushCv.wait(lk, [&] { return framesProcessed.load() >= enqueuedCount; });
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_SHUTDOWN)
+    {
+      messenger_->running = false;
+    }
+  };
+
+  uint32_t num_threads = std::thread::hardware_concurrency();
+  if(num_threads == 0)
+    num_threads = 4;
+
+  MessengerInit init(false, // server
+                     grokToClientMessageBuf, grokSentSynch, clientReceiveReadySynch,
+                     clientToGrokMessageBuf, clientSentSynch, grokReceiveReadySynch, processor,
+                     num_threads, uncompressedFrameSize, compressedFrameSize, numFrames);
+
+  messenger_ = new Messenger(init);
+
+  // for decompress: server manages uncompressed output buffers, not compressed
+  {
+    BufferSrc dummy;
+    while(messenger_->availableBuffers_.pop(dummy))
+      ;
+    for(size_t i = 0; i < numFrames; ++i)
+      messenger_->availableBuffers_.push(BufferSrc(0, i, messenger_->getUncompressedFrame(i)));
+  }
+
+  // tell client the buffer layout (using DECOMPRESS_INIT so client fills compressed buffers)
+  messenger_->send(GRK_MSGR_BATCH_DECOMPRESS_INIT, imgWidth, imgStride, imgHeight, imgSpp, imgDepth,
+                   compressedFrameSize, numFrames);
+
+  // wait until shutdown
+  while(messenger_->running)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  delete messenger_;
+  messenger_ = nullptr;
+
+  return 0;
 }
 
 } // namespace grk

@@ -21,6 +21,11 @@
 #include "CLI/CLI.hpp"
 #include <vector>
 
+namespace grk_plugin
+{
+struct Messenger;
+}
+
 namespace grk
 {
 struct DecompressInitParams
@@ -38,6 +43,7 @@ struct DecompressInitParams
     free(outFolder.imgdirpath);
   }
   bool initialized;
+  bool usePlugin = true;
   grk_decompress_parameters parameters;
   std::vector<uint16_t> compIndices;
   char pluginPath[GRK_PATH_LEN];
@@ -58,12 +64,14 @@ public:
 
 private:
   static void generateCompletion(const CLI::App& app);
-  bool encodeHeader(grk_plugin_decompress_callback_info* info);
-  bool encodeInit(grk_plugin_decompress_callback_info* info);
+  static bool writeBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image, void* userData);
+  bool writeHeader(grk_plugin_decompress_callback_info* info);
+  bool writeInit(grk_plugin_decompress_callback_info* info);
   // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
   int decompress(const std::string& fileName, DecompressInitParams* initParams);
   GrkRC pluginMain(int argc, const char* argv[], DecompressInitParams* initParams);
   bool parsePrecision(const char* option, grk_decompress_parameters* parameters);
+  bool parseRescale(const char* option, grk_decompress_parameters* parameters);
   char nextFile(const std::string& file_name, const grk_img_fol* inputFolder,
                 const grk_img_fol* outFolder, grk_decompress_parameters* parameters);
   GrkRC parseCommandLine(int argc, const char* argv[], DecompressInitParams* initParams);
@@ -71,9 +79,15 @@ private:
   void setDefaultParams(grk_decompress_parameters* parameters);
   void destoryParams(grk_decompress_parameters* parameters);
   void printTiming(uint32_t num_images, std::chrono::duration<double> elapsed);
+  int shmBatchDecompress(DecompressInitParams* initParams);
 
   bool storeToDisk;
+  bool incrementalWriteActive_;
+  IImageFormat* incrementalBandFormat_;
+  uint32_t incrementalBandRowsWritten_;
+  uint32_t incrementalBandRowsExpected_;
   IImageFormat* imageFormat;
+  grk_plugin::Messenger* messenger_;
 };
 
 } // namespace grk

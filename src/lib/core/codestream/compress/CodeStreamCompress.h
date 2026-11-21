@@ -17,14 +17,18 @@
 
 #pragma once
 
+#include <memory>
+#include <optional>
+
 namespace grk
 {
+struct TileProcessorCompress;
 
 class CodeStreamCompress : public CodeStream, public ICompressor
 {
 public:
-  CodeStreamCompress(IStream* stream);
-  virtual ~CodeStreamCompress() = default;
+  explicit CodeStreamCompress(IStream* stream);
+  ~CodeStreamCompress() override;
 
   static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
   static uint16_t getPocSize(uint16_t num_components, uint32_t l_nb_poc);
@@ -32,8 +36,30 @@ public:
   bool start(void) override;
   bool init(grk_cparameters* param, GrkImage* image) override;
   uint64_t compress(grk_plugin_tile* tile) override;
+  uint16_t getSlopeThreshold(void) const override;
+  bool prepareNextFrame(uint16_t rateControlSlopeHint) override;
 
 private:
+  void recordSlopeThreshold(uint16_t tileThreshold);
+  std::atomic<uint16_t> slopeThreshold_{0};
+  // the parameters the plugin compresses with, copied at init
+  std::unique_ptr<grk_cparameters> pluginParameters_;
+  uint64_t headerStartPosition_ = 0;
+  uint64_t headerEndPosition_ = 0;
+  struct MercuryEncodeSettings
+  {
+    double layerRate;
+    uint64_t maxCodestreamSize;
+  };
+  // set unless GRK_MERCURY_ENCODE=0, when mercury writes the same codestream as classic
+  std::optional<MercuryEncodeSettings> mercuryEncode_;
+  // RGB depth of a frame whose XYZ transform mercury runs
+  std::optional<uint8_t> mercuryXyzSourcePrecision_;
+  bool deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image);
+  // runs the deferred XYZ transform when mercury turns the frame down
+  bool selectMercuryEncode(const grk_cparameters* parameters);
+  uint64_t compressWithMercury(void);
+  std::unique_ptr<TileProcessorCompress> singleTileProcessor_;
   bool init_header_writing(void);
   bool end(void);
   bool writeTilePart(ITileProcessorCompress* tileProcessor);
@@ -122,10 +148,10 @@ private:
   bool write_qcc(uint16_t comp_no);
 
   /**
-   * Writes the POC marker (Progression Order Change)
-   *
+   * Writes the POC marker (Progression Order Change) for one tile's progression list
+   * @param tileIndex tile whose list is serialized; the main header uses tile 0
    */
-  bool writePoc();
+  bool writePoc(uint16_t tileIndex);
 
   /**
    * End writing the updated tlm.
@@ -278,18 +304,6 @@ private:
   bool getNumTileParts(uint32_t* p_nb_tile_parts, GrkImage* image);
 
   /**
-   * Gets the number of tile parts used for the given change of progression (if any) and the given
-   * tile.
-   *
-   * @param               prog_iter_num            the offset of the given poc (i.e. its position in
-   * the coding parameter).
-   * @param               tileno          the given tile.
-   *
-   * @return              the number of tile parts.
-   */
-  uint8_t getNumTilePartsForProgression(uint32_t prog_iter_num, uint16_t tileno);
-
-  /**
    * Validate progression orders
    *
    * @param       progressions          progression orders.
@@ -306,10 +320,22 @@ private:
   bool init_mct_encoding(TileCodingParams* tcp, GrkImage* image);
 
   uint32_t totalTileParts_;
-  mutable std::mutex heapMutex_;
-  void handleTileProcessor(ITileProcessorCompress* proc,
-                           MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
-                           std::atomic<bool>& success);
+
+  /**
+   * @brief Per-codec inline executor, owned only in single-threaded mode
+   * (cparameters num_threads == 1, or a single-threaded global pool).
+   *
+   * When set, the compress runs on this executor (activated via
+   * TFSingleton::ScopedExecutor for the duration of compress()) instead of
+   * the process-global singleton, so concurrent single-threaded compresses
+   * are independent and lock-free.  Null in multi-threaded mode.
+   */
+  std::unique_ptr<tf::Executor> localExecutor_;
+
+  /**
+   * @brief Worker count of localExecutor_, reported to TFSingleton while it is active.
+   */
+  size_t localNumThreads_ = 1;
 };
 
 } // namespace grk
