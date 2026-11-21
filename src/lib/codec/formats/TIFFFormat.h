@@ -36,8 +36,12 @@
 #include "common.h"
 #include <algorithm>
 #include <atomic>
+#include <condition_variable>
 #include <cstdio>
 #include <cstring>
+#include <deque>
+#include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -685,6 +689,10 @@ private:
 
   template<typename T>
   bool readSamples(grk_image* image);
+
+  template<typename T>
+  bool readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
+                      uint16_t tiPC, uint16_t tiPhoto);
 
   template<typename T>
   bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
@@ -1605,30 +1613,198 @@ static inline bool convertRowTIFF(const uint8_t* datau8, T* buffer32s, size_t pi
 }
 
 template<typename T>
+bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
+                                uint16_t tiPC, uint16_t tiPhoto)
+{
+  bool separatePlanes = tiPC == PLANARCONFIG_SEPARATE;
+  if(separatePlanes)
+    tiSpp = 1U;
+  uint16_t targetPlanes = (tiSpp == 1) ? (uint16_t)1 : numcomps;
+  uint32_t width = comps[0].w;
+  uint32_t height = comps[0].h;
+  uint8_t prec = comps[0].prec;
+  bool sgnd = comps[0].sgnd;
+  bool invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
+  size_t pixelCount = (size_t)width * tiSpp;
+  auto rowStride = (tsize_t)(((uint64_t)width * tiSpp * prec + 7U) / 8U);
+  tsize_t stripSize = TIFFStripSize(tif);
+  uint32_t rowsPerStrip = height;
+  TIFFGetFieldDefaulted(tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+  rowsPerStrip = (std::min)(rowsPerStrip, height);
+  uint32_t stripsPerPlane = (height + rowsPerStrip - 1) / rowsPerStrip;
+  uint32_t numStrips = (std::min)(separatePlanes ? stripsPerPlane * numcomps : stripsPerPlane,
+                                  (uint32_t)TIFFNumberOfStrips(tif));
+
+  struct StripBuffer
+  {
+    std::unique_ptr<uint8_t[]> bytes;
+    uint32_t chunksLeft = 0;
+  };
+  struct RowChunk
+  {
+    StripBuffer* strip;
+    uint32_t plane;
+    uint32_t stripFirstRow;
+    uint32_t beginRow;
+    uint32_t endRow;
+  };
+  uint32_t numThreads = (std::max)(1U, std::thread::hardware_concurrency());
+  // linux zeroes a 2 MiB huge page once for every thread that first writes to it at the same time
+  constexpr size_t hugePageBytes = 2 * 1024 * 1024;
+  constexpr uint32_t claimsPerThread = 4;
+  uint32_t rowsPerHugePage =
+      (uint32_t)(std::max)((size_t)1, hugePageBytes / ((size_t)width * sizeof(T)));
+  uint32_t rowsPerThread = (height + numThreads - 1) / numThreads;
+  uint32_t rowsPerClaim =
+      (std::min)((std::max)(height / (numThreads * claimsPerThread), rowsPerHugePage),
+                 rowsPerThread);
+  uint32_t stripsPerClaim = (std::max)(1U, rowsPerClaim / rowsPerStrip);
+  std::mutex mutex;
+  std::condition_variable workAvailable;
+  std::vector<std::unique_ptr<StripBuffer>> buffers;
+  std::vector<StripBuffer*> freeBuffers;
+  std::deque<RowChunk> chunks;
+  uint32_t nextStrip = 0;
+  uint32_t stripsBeingRead = 0;
+  bool success = true;
+
+  auto convertRows = [&](const RowChunk& chunk, std::vector<T>& rowBuffer, T** rowPlanes) {
+    rowBuffer.resize(pixelCount);
+    for(uint32_t r = chunk.beginRow; r < chunk.endRow; ++r)
+    {
+      if(!convertRowTIFF<T>(chunk.strip->bytes.get() + (size_t)r * (size_t)rowStride,
+                            rowBuffer.data(), pixelCount, prec, sgnd, invert))
+        return false;
+      for(uint16_t k = 0; k < targetPlanes; ++k)
+      {
+        auto comp = comps + chunk.plane + k;
+        rowPlanes[k] = (T*)comp->data + (size_t)(chunk.stripFirstRow + r) * comp->stride;
+      }
+      grk::hwy_deinterleave(rowBuffer.data(), rowPlanes, width, targetPlanes);
+    }
+    return true;
+  };
+
+  auto worker = [&](uint32_t threadIndex) {
+    TIFF* handle = threadIndex == 0 ? tif : nullptr;
+    std::vector<T> rowBuffer;
+    std::vector<T*> rowPlanes(targetPlanes);
+    std::unique_lock<std::mutex> lock(mutex);
+    while(success)
+    {
+      if(!chunks.empty())
+      {
+        auto chunk = chunks.front();
+        chunks.pop_front();
+        lock.unlock();
+        bool converted = convertRows(chunk, rowBuffer, rowPlanes.data());
+        lock.lock();
+        success = success && converted;
+        if(--chunk.strip->chunksLeft == 0)
+          freeBuffers.push_back(chunk.strip);
+        continue;
+      }
+      if(nextStrip < numStrips)
+      {
+        uint32_t firstStrip = nextStrip;
+        uint32_t lastStrip = (std::min)(numStrips, firstStrip + stripsPerClaim);
+        nextStrip = lastStrip;
+        ++stripsBeingRead;
+        for(uint32_t strip = firstStrip; success && strip < lastStrip; ++strip)
+        {
+          if(freeBuffers.empty())
+          {
+            buffers.push_back(std::make_unique<StripBuffer>());
+            buffers.back()->bytes.reset(new uint8_t[(size_t)stripSize]);
+            freeBuffers.push_back(buffers.back().get());
+          }
+          auto buffer = freeBuffers.back();
+          freeBuffers.pop_back();
+          lock.unlock();
+          // libtiff handles are not thread safe
+          if(!handle)
+            handle = TIFFOpen(fileName_.c_str(), "r");
+          tsize_t ssize =
+              handle ? TIFFReadEncodedStrip(handle, strip, buffer->bytes.get(), stripSize) : -1;
+          lock.lock();
+          if(ssize < 1 || ssize > stripSize)
+          {
+            spdlog::error("tiftoimage: Bad value for ssize({}) vs. strip_size({}).",
+                          (long long)ssize, (long long)stripSize);
+            success = false;
+            break;
+          }
+          uint32_t stripFirstRow = (strip % stripsPerPlane) * rowsPerStrip;
+          RowChunk wholeStrip{buffer, strip / stripsPerPlane, stripFirstRow, 0,
+                              (std::min)((uint32_t)(ssize / rowStride), height - stripFirstRow)};
+          uint32_t stripsLeft = numStrips - strip;
+          uint32_t chunksPerStrip = (numThreads + stripsLeft - 1) / stripsLeft;
+          if(chunksPerStrip == 1)
+          {
+            lock.unlock();
+            bool converted = convertRows(wholeStrip, rowBuffer, rowPlanes.data());
+            lock.lock();
+            success = success && converted;
+            freeBuffers.push_back(buffer);
+            continue;
+          }
+          uint32_t chunkRows =
+              (std::max)(1U, (wholeStrip.endRow + chunksPerStrip - 1) / chunksPerStrip);
+          for(uint32_t beginRow = 0; beginRow < wholeStrip.endRow; beginRow += chunkRows)
+          {
+            auto chunk = wholeStrip;
+            chunk.beginRow = beginRow;
+            chunk.endRow = (std::min)(beginRow + chunkRows, wholeStrip.endRow);
+            chunks.push_back(chunk);
+            buffer->chunksLeft++;
+          }
+          if(buffer->chunksLeft == 0)
+            freeBuffers.push_back(buffer);
+          workAvailable.notify_all();
+        }
+        --stripsBeingRead;
+        workAvailable.notify_all();
+        continue;
+      }
+      if(stripsBeingRead == 0)
+        break;
+      workAvailable.wait(lock);
+    }
+    lock.unlock();
+    workAvailable.notify_all();
+    if(handle && handle != tif)
+      TIFFClose(handle);
+  };
+
+  std::vector<std::thread> threads;
+  for(uint32_t t = 1; t < numThreads; ++t)
+    threads.emplace_back(worker, t);
+  worker(0);
+  for(auto& thread : threads)
+    thread.join();
+
+  return success;
+}
+
+template<typename T>
 bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                                 uint16_t tiPC, uint16_t tiPhoto, uint32_t chroma_subsample_x,
                                 uint32_t chroma_subsample_y)
 {
   if(!tif)
     return false;
+  if(chroma_subsample_x == 1 && chroma_subsample_y == 1)
+    return readTiffStrips<T>(tif, comps, numcomps, tiSpp, tiPC, tiPhoto);
 
   bool success = true;
   auto planes = std::make_unique<T*[]>(numcomps);
   tsize_t rowStride;
-  bool invert;
   tdata_t buf = nullptr;
   tstrip_t strip;
   tsize_t strip_size;
   uint32_t currentPlane = 0;
-  T* buffer32s = nullptr;
-  bool subsampled = chroma_subsample_x != 1 || chroma_subsample_y != 1;
-  uint32_t maxThreads = (std::max)(1U, std::thread::hardware_concurrency());
-  std::vector<std::vector<T>> workerRows(maxThreads);
-  std::vector<std::vector<T*>> workerPlanes(maxThreads, std::vector<T*>(numcomps));
   size_t luma_block = chroma_subsample_x * chroma_subsample_y;
   size_t unitSize = luma_block + 2;
-  if(tiPC == PLANARCONFIG_SEPARATE)
-    tiSpp = 1U; /* consider only one sample per plane */
   strip_size = TIFFStripSize(tif);
   buf = _TIFFmalloc(strip_size);
   if(buf == nullptr)
@@ -1636,10 +1812,7 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
     success = false;
     goto beach;
   }
-  rowStride = (tsize_t)(((uint64_t)comps[0].w * tiSpp * comps[0].prec + 7U) / 8U);
-  buffer32s = new T[(size_t)comps[0].w * tiSpp];
   strip = 0;
-  invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
   for(uint16_t j = 0; j < numcomps; j++)
     planes[j] = (T*)comps[j].data;
   do
@@ -1649,8 +1822,7 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
     uint32_t height = 0;
     // if width % chroma_subsample_x != 0...
     size_t planeUnits = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
-    if(subsampled)
-      rowStride = (tsize_t)((planeUnits * unitSize * comp->prec + 7U) / 8U);
+    rowStride = (tsize_t)((planeUnits * unitSize * comp->prec + 7U) / 8U);
     size_t xpos = 0;
     for(; (height < comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++)
     {
@@ -1667,153 +1839,62 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
       const uint8_t* datau8 = (const uint8_t*)buf;
       while(ssize >= rowStride)
       {
-        if(chroma_subsample_x == 1 && chroma_subsample_y == 1)
+        uint32_t strideDiffCb = comps[1].stride - comps[1].w;
+        uint32_t strideDiffCr = comps[2].stride - comps[2].w;
+        // clump samples carry BitsPerSample bits each, packed high bit first and
+        // restarting on a byte boundary at every clump row
+        const uint8_t bitsPerSample = comp->prec;
+        const uint32_t sampleMask =
+            bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
+        const uint8_t* clumpRow = datau8;
+        uint32_t bitAccumulator = 0;
+        uint32_t bitsHeld = 0;
+        auto nextSample = [&]() -> T {
+          while(bitsHeld < bitsPerSample)
+          {
+            bitAccumulator = (bitAccumulator << 8) | *clumpRow++;
+            bitsHeld += 8;
+          }
+          bitsHeld -= bitsPerSample;
+
+          return (T)((bitAccumulator >> bitsHeld) & sampleMask);
+        };
+        for(size_t unit = 0; unit < planeUnits; ++unit)
         {
-          /* Determine how many complete rows remain in this strip */
-          uint32_t rowsInStrip = (uint32_t)(ssize / rowStride);
-          uint32_t rowsAvail = comp->h - height;
-          uint32_t rowCount = (std::min)(rowsInStrip, rowsAvail);
-          if(rowCount == 0)
-            break;
-
-          size_t pixelCount = (size_t)comp->w * tiSpp;
-          uint8_t prec = comps[0].prec;
-          bool sgnd = comps[0].sgnd;
-          uint16_t targetPlanes = (tiSpp == 1) ? (uint16_t)1 : numcomps;
-
-          if(rowCount >= 4)
+          // process a unit
+          // 1. luma
+          for(size_t k = 0; k < chroma_subsample_y; ++k)
           {
-            std::atomic<bool> convOk{true};
-            uint32_t nThreads = (std::min)(rowCount, maxThreads);
-
-            auto worker = [&](uint32_t threadIndex, uint32_t begin, uint32_t end) {
-              auto& rowBuffer = workerRows[threadIndex];
-              rowBuffer.resize(pixelCount);
-              auto& rowPlanes = workerPlanes[threadIndex];
-              for(uint32_t r = begin; r < end; ++r)
-              {
-                if(!convOk.load(std::memory_order_relaxed))
-                  return;
-                const uint8_t* rowData = datau8 + (size_t)r * (size_t)rowStride;
-                if(!convertRowTIFF<T>(rowData, rowBuffer.data(), pixelCount, prec, sgnd, invert))
-                {
-                  convOk.store(false, std::memory_order_relaxed);
-                  return;
-                }
-                for(uint16_t k = 0; k < numcomps; ++k)
-                  rowPlanes[k] = planes[k] + r * comp->stride;
-                grk::hwy_deinterleave(rowBuffer.data(), rowPlanes.data(), comp->w, targetPlanes);
-              }
-            };
-
-            /* Split rows across threads */
-            std::vector<std::thread> threads;
-            uint32_t rowsPerThread = rowCount / nThreads;
-            uint32_t remainder = rowCount % nThreads;
-            uint32_t start = 0;
-            for(uint32_t t = 0; t < nThreads; ++t)
+            for(size_t j = 0; j < chroma_subsample_x; ++j)
             {
-              uint32_t count = rowsPerThread + (t < remainder ? 1 : 0);
-              if(t == nThreads - 1)
-                worker(t, start, start + count); // run last chunk on this thread
-              else
-                threads.emplace_back(worker, t, start, start + count);
-              start += count;
-            }
-            for(auto& th : threads)
-              th.join();
-
-            if(!convOk.load())
-            {
-              success = false;
-              goto beach;
+              T luma = nextSample();
+              bool accept = height + k < comp->h && xpos + j < comp->w;
+              if(accept)
+                planes[0][xpos + j + k * comp->stride] = luma;
             }
           }
-          else
-          {
-            /* Small strip: process sequentially (avoid Taskflow overhead) */
-            auto rowPlanesArr = std::make_unique<T*[]>(numcomps);
-            for(uint32_t r = 0; r < rowCount; ++r)
-            {
-              if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount,
-                                    prec, sgnd, invert))
-              {
-                success = false;
-                goto beach;
-              }
-              for(uint16_t k = 0; k < numcomps; ++k)
-                rowPlanesArr[k] = planes[k] + r * comp->stride;
-              grk::hwy_deinterleave(buffer32s, rowPlanesArr.get(), comp->w, targetPlanes);
-            }
-          }
+          // 2. chroma
+          *planes[1]++ = nextSample();
+          *planes[2]++ = nextSample();
 
-          /* Advance all state by rowCount rows */
-          for(uint16_t k = 0; k < numcomps; ++k)
-            planes[k] += (size_t)rowCount * comp->stride;
-          datau8 += (size_t)rowCount * (size_t)rowStride;
-          ssize -= (tsize_t)((size_t)rowCount * (size_t)rowStride);
-          height += rowCount;
+          // 3. increment raster x
+          xpos += chroma_subsample_x;
+          if(xpos >= comp->w)
+          {
+            xpos = 0;
+            planes[0] += comp->stride * chroma_subsample_y;
+            planes[1] += strideDiffCb;
+            planes[2] += strideDiffCr;
+            height += chroma_subsample_y;
+          }
         }
-        else
-        {
-          uint32_t strideDiffCb = comps[1].stride - comps[1].w;
-          uint32_t strideDiffCr = comps[2].stride - comps[2].w;
-          // clump samples carry BitsPerSample bits each, packed high bit first and
-          // restarting on a byte boundary at every clump row
-          const uint8_t bitsPerSample = comp->prec;
-          const uint32_t sampleMask =
-              bitsPerSample >= 32 ? 0xFFFFFFFFU : ((1U << bitsPerSample) - 1U);
-          const uint8_t* clumpRow = datau8;
-          uint32_t bitAccumulator = 0;
-          uint32_t bitsHeld = 0;
-          auto nextSample = [&]() -> T {
-            while(bitsHeld < bitsPerSample)
-            {
-              bitAccumulator = (bitAccumulator << 8) | *clumpRow++;
-              bitsHeld += 8;
-            }
-            bitsHeld -= bitsPerSample;
-
-            return (T)((bitAccumulator >> bitsHeld) & sampleMask);
-          };
-          for(size_t unit = 0; unit < planeUnits; ++unit)
-          {
-            // process a unit
-            // 1. luma
-            for(size_t k = 0; k < chroma_subsample_y; ++k)
-            {
-              for(size_t j = 0; j < chroma_subsample_x; ++j)
-              {
-                T luma = nextSample();
-                bool accept = height + k < comp->h && xpos + j < comp->w;
-                if(accept)
-                  planes[0][xpos + j + k * comp->stride] = luma;
-              }
-            }
-            // 2. chroma
-            *planes[1]++ = nextSample();
-            *planes[2]++ = nextSample();
-
-            // 3. increment raster x
-            xpos += chroma_subsample_x;
-            if(xpos >= comp->w)
-            {
-              xpos = 0;
-              planes[0] += comp->stride * chroma_subsample_y;
-              planes[1] += strideDiffCb;
-              planes[2] += strideDiffCr;
-              height += chroma_subsample_y;
-            }
-          }
-          datau8 += rowStride;
-          ssize -= rowStride;
-        }
+        datau8 += rowStride;
+        ssize -= rowStride;
       }
     }
     currentPlane++;
   } while((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
 beach:
-  delete[] buffer32s;
   if(buf)
     _TIFFfree(buf);
   return success;
@@ -1983,6 +2064,7 @@ inline std::optional<ImageFileHeader> TIFFFormat::readHeader(const std::string& 
   uint32_t num_pages = 0;
   uint32_t cur_dir;
 
+  fileName_ = filename;
   chroma_subsample_x = 1;
   chroma_subsample_y = 1;
   colorSpace_ = GRK_CLRSPC_UNKNOWN;
