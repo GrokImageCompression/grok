@@ -63,6 +63,7 @@ struct ITileProcessor;
 #include "mct.h"
 #include "TileProcessor.h"
 #include "TileProcessorCompress.h"
+#include "WaveletInt16Rules.h"
 #include "CodeStreamCompress.h"
 #include "T2Compress.h"
 #include "CompressScheduler.h"
@@ -131,8 +132,10 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     auto imageComp = headerImage_->comps + compno;
     auto tileComp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
-    bool use16BitDwt = tileComp->num_resolutions_ > 1 &&
-                       grk_get_data_type(true, imageComp->prec, true, tccp->qmfbid_) == GRK_INT_16;
+    bool isRctChroma = compno > 0;
+    bool use16BitDwt =
+        tileComp->num_resolutions_ > 1 && tccp->qmfbid_ == 1 &&
+        wavelet53FitsInt16(imageComp->prec, isRctChroma, (uint8_t)(tileComp->num_resolutions_ - 1));
     use16BitMctWindows = use16BitDwt && imageComp->data_type == GRK_INT_16;
   }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
@@ -148,9 +151,10 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     bool use16BitDwt = false;
     if(tileComp->num_resolutions_ > 1)
     {
-      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+      bool isRctChroma = needsMctDecompress(compno) && tcp_->mct_ == 1 && compno > 0;
       use16BitDwt =
-          grk_get_data_type(true, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16;
+          tccp->qmfbid_ == 1 && wavelet53FitsInt16(imageComp->prec, isRctChroma,
+                                                   (uint8_t)(tileComp->num_resolutions_ - 1));
     }
     tileComp->setUse16BitDwt(use16BitDwt);
     bool isMctComponent = tcp_->mct_ == 1 && compno < 3;

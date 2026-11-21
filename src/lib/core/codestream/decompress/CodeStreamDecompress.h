@@ -765,7 +765,4 @@ private:
   std::atomic<int32_t> batchTileScheduledRows_ = 0;
 };
 
-bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
-                            bool irreversibleInt16);
-
 } // namespace grk

@@ -63,6 +63,7 @@ struct ITileProcessor;
 #include "Qfactor.h"
 #include "TileProcessorCompress.h"
 #include "XYZTransform.h"
+#include "WaveletInt16Rules.h"
 
 static bool compressionUses32BitPreprocessing(const grk_cparameters* parameters)
 {
@@ -79,8 +80,11 @@ grk_data_type grk_compress_get_recommended_data_type(const grk_cparameters* para
   if(grk::Profile::usesIrreversibleWavelet(parameters->rsiz))
     return GRK_INT_32;
 
-  bool usesStandardMct = parameters->mct == 1 && is_mct_component;
-  return grk_get_data_type(true, precision, usesStandardMct, 1);
+  bool sharesRctChromaLimit = parameters->mct == 1 && is_mct_component;
+  return grk::wavelet53FitsInt16(precision, sharesRctChromaLimit,
+                                 (uint8_t)(parameters->numresolution - 1))
+             ? GRK_INT_16
+             : GRK_INT_32;
 }
 
 namespace grk

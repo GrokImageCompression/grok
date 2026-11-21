@@ -14,16 +14,21 @@ improving cache utilization and throughput for eligible images.
 The 16-bit path is selected at runtime in `TileProcessor::decompressInit()`
 (TileProcessor.cpp) when all of the following hold:
 
-1. **Precision + headroom ≤ 16 bits**, per `grk_get_data_type`:
-   - Decode, reversible 5/3, with or without RCT: max precision 12 bits
-   - Decode, irreversible 9/7: max precision 10 bits
-   - Compress, reversible 5/3: `prec + 4 ≤ 16`, or `prec + 5 ≤ 16` with RCT
+1. **Precision + headroom ≤ 16 bits**, per `WaveletInt16Rules.h`:
+   - Reversible 5/3, encode and decode: `prec + 3 ≤ 16` up to five levels,
+     `prec + 4 ≤ 16` above, plus one bit for RCT chroma
+   - Decode, irreversible 9/7: `prec + 6 ≤ 16`
    - Compress, irreversible 9/7: never
 
 A region (partial) decode qualifies on the same terms as a whole-tile decode,
 under either filter, and the mercury fast path applies the same rule, so both
 pipelines return the same sample type. All components of a decode share one
 sample type, so one ineligible component forces every component to int32.
+
+The decode decision uses the main header coding style. A tile-part COD or COC
+that needs more headroom than that decision allows fails the decode with an
+error. Mercury hands any int16 plan whose tiles change the level count, colour
+transform or wavelet to the classic pipeline, which applies the check.
 
 ### Data Flow
 
@@ -146,11 +151,70 @@ For **16-bit synthesis**, a lossless decode retraces the forward transform, so
 the int16 buffers must hold every forward intermediate value. The largest
 magnitude at 12 bits with RCT is 32564, in chroma, over images built from the
 sign of each 5/3 analysis response at five levels. The same search at 13 bits
-gives 65132. This holds only because the update and predict steps below average
+gives 65132. At six levels the 12 bit RCT chroma maximum is about 33050, which
+exceeds int16. This holds only because the update and predict steps below average
 without overflow in an int16 lane.
 
-For **16-bit analysis**, the forward kernels add two samples in an int16 lane, so
-RCT needs one more bit of headroom than the synthesis limit.
+For **16-bit analysis**, the worst case 5/3 analysis gain is 7.95 up to five
+levels and 8.07 at six, so six or more levels need one more bit.
+
+### Why the Rules Are What They Are
+
+An int16 lane holds one sign bit and 15 magnitude bits. A p-bit unsigned
+sample becomes signed after the DC shift, with magnitude at most 2^(p-1), so it
+already uses p of the 16 bits. Every bit of growth in the transform has to fit
+in the remaining 16 - p bits.
+
+**Growth comes from the filter gain.** A wavelet coefficient is a weighted sum
+of input samples. Its largest possible magnitude is the largest sample
+magnitude times the sum of the absolute weights, which is the BIBO gain of that
+subband's filter. The worst image for one coefficient sets each sample to plus
+or minus full scale, matching the sign of its weight. That looks like a fine
+checkerboard shaped by the filter. Natural images never come close, but a
+lossless codec has to be exact for every input, so the worst case decides.
+
+**The level count matters because gains compound.** A subband at level k is
+k - 1 low pass filters followed by one high pass, in both directions. The 2D
+gain is the row gain times the column gain. Computing it for the 5/3 filter
+gives 4.0 at one level, 7.95 at five levels and 8.07 at six, and it converges
+to about 8.2. Up to five levels the gain is below 8, so 3 extra bits are enough.
+At six or more it exceeds 8, so 4 bits are needed.
+
+**RCT chroma needs one more bit.** The RCT chroma components are differences
+such as B - G. The difference of two p-bit samples spans twice the range of
+either, so chroma enters the wavelet with p + 1 bits. Luma is a weighted average
+of R, G and B, so its range stays within one sample.
+
+**Sums inside the lifting steps do not add a bit.** Each lifting step adds two
+neighbours and halves the result. The sum alone can need one bit more than its
+inputs. The SIMD kernels use averaging instructions that never form the full sum
+(see below), so only the values actually stored, the coefficients and the
+partly lifted samples, have to fit.
+
+**One 5/3 rule for encode and decode.** For a lossless stream made from an
+in-range image, every value the inverse transform produces is a value the
+forward transform produced, because lifting is undone step by step. So the
+decoder needs exactly the headroom the encoder needs, and lossless decode is
+exact under the same rule. The rule uses the exact gain bits: `prec + 3` up to
+five levels, `prec + 4` above, plus one for RCT chroma. RCT luma needs no extra
+bit. On encode the luma limit never decides anything, because the three RCT
+components share one sample type and chroma has the tighter limit.
+
+**Lossy 5/3 decode keeps no extra margin.** A stream decoded from fewer quality
+layers carries truncated coefficients, and the reconstruction can ring past the
+sample range before the final clamp. In rare cases that can wrap an int16 lane.
+The rule does not reserve a bit for it, so lossy decodes keep the int16 speed.
+
+**Tiles can change the inputs.** The decision is made once per decode, from
+the main header, before tile headers are read. A tile-part header can raise the
+level count or turn on RCT for one tile. Each tile is checked against the
+decision, and a tile that needs more headroom fails the decode instead of
+producing wrong samples.
+
+**9/7.** The decoder lifts in fixed point with 3 fraction bits to keep sub-LSB
+precision, on top of a synthesis gain of 2^2.79, so it needs `prec + 6`. The
+encoder always uses float. Forward fixed-point lifting rounds at every step and
+would change the coefficients compared with the float path.
 
 ## Overflow-Safe SIMD Averaging
 

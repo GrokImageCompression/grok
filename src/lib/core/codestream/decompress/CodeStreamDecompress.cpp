@@ -64,6 +64,7 @@ struct ITileProcessor;
 #include "GrkImageSIMD.h"
 #include "CodeStreamDecompress.h"
 #include "SelectiveFetchRanges.h"
+#include "WaveletInt16Rules.h"
 
 namespace grk
 {
@@ -3081,8 +3082,11 @@ bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
     uint8_t prec = image->comps[i].prec;
     // int16 9/7 has no fraction bits left above 13 bit samples
     bool forcedIrreversible = irreversibleInt16 && tccp->qmfbid_ == 0 && prec <= 13;
-    bool int16 =
-        forcedIrreversible || grk_get_data_type(false, prec, false, tccp->qmfbid_) == GRK_INT_16;
+    bool isRctChroma = tcp->mct_ == 1 && image->numcomps >= 3 && (i == 1 || i == 2);
+    bool fits = tccp->qmfbid_ == 1
+                    ? wavelet53FitsInt16(prec, isRctChroma, (uint8_t)(tccp->numresolutions_ - 1))
+                    : inverse97FitsInt16(prec);
+    bool int16 = forcedIrreversible || fits;
     if(!int16 || tccp->usesPart2Transform())
       return false;
   }

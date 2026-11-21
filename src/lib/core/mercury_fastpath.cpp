@@ -73,6 +73,7 @@ struct ITileProcessor;
 #include "TileCache.h"
 #include "TileCompletion.h"
 #include "CodeStreamDecompress.h"
+#include "WaveletInt16Rules.h"
 
 #include "mercury_capi.h"
 

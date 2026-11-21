@@ -43,7 +43,7 @@ struct BlockExec
   uint8_t qmfbid = 0;
   // Fractional left-shift applied when dequantizing into the int16 fixed-point
   // (Q-format) DWT path; 0 for the int32/float path.  See WaveletReverse97_16.cpp
-  // and the headroom analysis in grk_get_data_type.
+  // and the headroom analysis in inverse97FitsInt16.
   uint8_t qShift = 0;
   /* code block offset in buffer coordinates*/
   uint32_t x = 0;

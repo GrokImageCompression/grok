@@ -15,7 +15,7 @@
  *
  */
 
-// reversible 5/3 above 12 bits decodes through the int32 wavelet, which the
+// reversible 5/3 above 13 bits decodes through the int32 wavelet, which the
 // int16 tests never reach. a reduced decode of a signed component overshoots
 // the sample range next to an edge and has no dc shift, the case the SIMD
 // vertical pass skipped the clamp on. one decode thread keeps every strip
@@ -29,7 +29,7 @@
 
 namespace
 {
-const uint8_t PRECISION = 13;
+const uint8_t PRECISION = 14;
 const uint32_t WIDTH = 900;
 const uint32_t HEIGHT = 300;
 const uint32_t IMAGE_X0 = 3;

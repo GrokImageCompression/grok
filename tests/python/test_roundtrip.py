@@ -228,7 +228,7 @@ class TestHeaderReading:
 
 
 class TestInt16Gate:
-    """Tests for the int16 vs int32 decode-path selection (grk_get_data_type).
+    """Tests for the int16 vs int32 decode-path selection.
     From BIBO analysis the int16 fixed-point path is viable iff sample precision +
     transform headroom <= 16.  For irreversible 9/7 the headroom is 7 (≈3 bits 2D
     BIBO gain + ≈4 bits fractional precision), so int16 is used only for precision
@@ -354,26 +354,3 @@ class TestInt16Gate:
         assert worst <= max_int16_error
         grok_core.grk_object_unref(float_codec)
         grok_core.grk_object_unref(int16_codec)
-
-    def test_grk_get_data_type_irreversible(self):
-        """Irreversible 9/7 (qmfbid=0): int16 iff prec <= 10,
-        independent of MCT on decode."""
-        # decode, MCT: 10-bit -> int16, 11/12-bit -> int32
-        assert grok_core.grk_get_data_type(False, 10, True, 0) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 11, True, 0) == grok_core.GRK_INT_32
-        assert grok_core.grk_get_data_type(False, 12, True, 0) == grok_core.GRK_INT_32
-        # decode, non-MCT (single component): same threshold
-        assert grok_core.grk_get_data_type(False, 10, False, 0) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 11, False, 0) == grok_core.GRK_INT_32
-        # compress: MCT 9/7 always int32 (forward ICT is float)
-        assert grok_core.grk_get_data_type(True, 8, True, 0) == grok_core.GRK_INT_32
-
-    def test_grk_get_data_type_reversible(self):
-        """Reversible 5/3 (qmfbid=1): decode int16 iff prec <= 12, with or without MCT."""
-        assert grok_core.grk_get_data_type(False, 12, False, 1) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 13, False, 1) == grok_core.GRK_INT_32
-        assert grok_core.grk_get_data_type(False, 12, True, 1) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(False, 13, True, 1) == grok_core.GRK_INT_32
-        # compress with MCT keeps one more bit of headroom
-        assert grok_core.grk_get_data_type(True, 11, True, 1) == grok_core.GRK_INT_16
-        assert grok_core.grk_get_data_type(True, 12, True, 1) == grok_core.GRK_INT_32

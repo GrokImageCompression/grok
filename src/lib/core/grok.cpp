@@ -406,24 +406,6 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
   return GrkImage::create(nullptr, numcmpts, cmptparms, clrspc, alloc_data);
 }
 
-grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
-{
-  if(!compress)
-  {
-    // 5/3 synthesis gain reaches 2^3.03 at eight levels
-    // 12 bit colour transform content at that worst gain wraps in int16
-    if(qmfbid == 1)
-      return prec + 4 <= 16 ? GRK_INT_16 : GRK_INT_32;
-    // 9/7 synthesis gain reaches 2^2.79, plus 3 fraction bits in the int16 lifting
-    return prec + 6 <= 16 ? GRK_INT_16 : GRK_INT_32;
-  }
-  // forward 9/7 fixed point rounds at every lifting step
-  if(qmfbid != 1)
-    return GRK_INT_32;
-  // forward 5/3 kernels add two samples in an int16 lane
-  return (int)prec + (is_mct ? 5 : 4) <= 16 ? GRK_INT_16 : GRK_INT_32;
-}
-
 grk_image_meta* grk_image_meta_new(void)
 {
   return (grk_image_meta*)(new GrkImageMeta());

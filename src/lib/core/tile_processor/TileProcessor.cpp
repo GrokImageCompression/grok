@@ -48,6 +48,7 @@ struct ITileProcessorCompress;
 #include "PacketParser.h"
 #include "PacketCache.h"
 #include "CodeStream.h"
+#include "WaveletInt16Rules.h"
 
 #include "PacketLengthCache.h"
 #include "CoderPool.h"
@@ -1153,6 +1154,15 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
   // uniform type across its components, and the composite buffer is allocated from the same
   // decision.
   bool can16Bit = cp_->codingParams_.dec_.use16BitDwt_;
+  if(can16Bit &&
+     !wholeImageUses16BitDwt(tcp_, headerImage_, cp_->codingParams_.dec_.irreversibleInt16_))
+  {
+    grklog.error("Tile %u coding parameters need more headroom than the 16 bit decode "
+                 "chosen from the main header",
+                 tileIndex_);
+    success_ = false;
+    return false;
+  }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;

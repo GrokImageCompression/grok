@@ -258,7 +258,7 @@
  *  This path is selected at runtime when ALL of the following hold:
  *
  *    1. Irreversible wavelet (qmfbid == 0)
- *    2. Image precision ≤ 10 bits (grk_get_data_type)
+ *    2. Image precision ≤ 10 bits (inverse97FitsInt16)
  *
  *  A region decode qualifies on the same terms: hwy_step_16_97 runs these
  *  lifting steps over the partial framework's window and reproduces the

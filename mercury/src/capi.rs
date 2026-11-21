@@ -32,15 +32,15 @@ use crate::codec::params::{
 };
 use crate::codec::tile_geom::Dims;
 use crate::decode::graph::{
-    CompRow, CompRowSink, RowSink, Rows, WovenFn, launch_comps_with_coder, launch_with_coder,
-    uniform_subsampling, weave_comps_with_coder, weave_with_coder,
+    launch_comps_with_coder, launch_with_coder, uniform_subsampling, weave_comps_with_coder,
+    weave_with_coder, CompRow, CompRowSink, RowSink, Rows, WovenFn,
 };
 use crate::decode::plan::{
-    DecodePlan, Drafted, FetchedPacketFeed, MainHeaderIn, PacketFeed, PltUse, SotChainCursor,
-    SotWalk, TileFeed, TlmEntry, draft,
+    draft, DecodePlan, Drafted, FetchedPacketFeed, MainHeaderIn, PacketFeed, PltUse,
+    SotChainCursor, SotWalk, TileFeed, TlmEntry,
 };
 use crate::decode::read_at::{
-    ConsumedRuns, FETCH_GAP_BYTES, FetchedRuns, FilledRuns, LateFetchedRuns, ReadAt, fetch_runs,
+    fetch_runs, ConsumedRuns, FetchedRuns, FilledRuns, LateFetchedRuns, ReadAt, FETCH_GAP_BYTES,
 };
 use crate::decode::stripe_decoder::{BlockCoder, MercuryStripeBlockInfo};
 use crate::decode::window::intersect;
@@ -497,6 +497,19 @@ fn stamp_err(err_buf: *mut u8, err_cap: usize, msg: &str) {
     }
 }
 
+fn tile_changes_int16_headroom(tile: &CodParams, main: &CodParams) -> bool {
+    // grok's int16 decision depends only on the main header coding style
+    tile.use_ycc != main.use_ycc
+        || tile
+            .comps
+            .iter()
+            .zip(&main.comps)
+            .any(|(tile_comp, main_comp)| {
+                tile_comp.num_levels != main_comp.num_levels
+                    || tile_comp.reversible != main_comp.reversible
+            })
+}
+
 fn assemble_plan(
     hdr: *const MercuryMainHeader,
     params: *const MercuryDecodeParams,
@@ -599,6 +612,20 @@ fn assemble_plan(
                 plan.max_strips = max_strips;
             }
             plan.int16_dwt = int16_dwt;
+            if int16_dwt
+                && plan
+                    .tiles
+                    .iter()
+                    .flatten()
+                    .any(|tile| tile_changes_int16_headroom(&tile.cod, &plan.cod))
+            {
+                stamp_err(
+                    err_buf,
+                    err_cap,
+                    "int16 plan: a tile-part COD or COC changes the levels, colour transform or wavelet",
+                );
+                return std::ptr::null_mut();
+            }
             match feed {
                 Some(TileFeed::Streamed(feed)) => {
                     let bytes = Arc::new(FilledRuns::over(src, feed.runs()));
@@ -1082,7 +1109,7 @@ pub extern "C" fn mercury_bench_dwt(
     iters: i32,
 ) -> f64 {
     use crate::dwt::level_builder::{
-        BandDims, LevelSpec, warp_w5x3_prec, warp_w9x7, warp_w9x7_i16,
+        warp_w5x3_prec, warp_w9x7, warp_w9x7_i16, BandDims, LevelSpec,
     };
     use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, SamplePrec, Synthesis};
     use std::collections::VecDeque;
