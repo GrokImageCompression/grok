@@ -233,6 +233,13 @@ set_source_files_properties(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
   PROPERTIES COMPILE_OPTIONS "-w")
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1952)
+  # msvc 19.52 SSA optimizer crashes with internal compiler error C1001 on BlockCoderDec.cpp
+  set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
+    PROPERTIES COMPILE_OPTIONS "/d2SSAOptimizer-")
+endif()
+
 # the reversible 5/3 inverse wavelet lifting is exact modular arithmetic:
 # valid coefficients never overflow, but a malformed codestream can push an
 # intermediate past int range. define that as 2's-complement wraparound (what
