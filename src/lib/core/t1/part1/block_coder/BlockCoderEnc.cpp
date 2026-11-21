@@ -574,6 +574,30 @@ void BlockCoder::enc_refpass(int8_t bpno, int32_t* nmsedec, uint8_t type)
   }
   POP_MQC();
 }
+#define enc_clnpass_sign_macro(datap, ci, vsc)                                                \
+  {                                                                                           \
+    uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, *(flagsPtr - 1), *(flagsPtr + 1), ci); \
+    if(nmsedec)                                                                               \
+      *nmsedec += getnmsedec_sig((uint32_t)smr_abs(*(datap)), (uint32_t)bpno);                \
+    uint8_t ctxno = lut_ctxno_sc[lu];                                                         \
+    curctx = mqc->ctxs + ctxno;                                                               \
+    uint8_t v = smr_sign(*(datap));                                                           \
+    mqc_encode_macro(mqc, curctx, a, c, ct, v ^ lut_spb[lu]);                                 \
+    update_flags(flagsPtr, ci, v, w_ + 2U, vsc);                                              \
+  }
+#define enc_clnpass_step_macro(datap, ci, vsc)                \
+  {                                                           \
+    if(!(*flagsPtr & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) \
+    {                                                         \
+      uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));    \
+      curctx = mqc->ctxs + ctxno;                             \
+      uint32_t v = !!(smr_abs(*(datap)) & (uint32_t)one);     \
+      mqc_encode_macro(mqc, curctx, a, c, ct, v);             \
+      if(v)                                                   \
+        enc_clnpass_sign_macro(datap, ci, vsc)                \
+    }                                                         \
+    *flagsPtr &= ~(T1_PI_THIS << (ci));                       \
+  }
 void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
 {
   const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
@@ -582,18 +606,21 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
   if(nmsedec)
     *nmsedec = 0;
   auto flagsPtr = flags_ + 1 + (w_ + 2);
+  const uint32_t vsc = (cblksty & GRK_CBLKSTY_VSC) ? 1 : 0;
+  const uint32_t visitedAndSignificant =
+      (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
   uint16_t k;
   for(k = 0; k < (h_ & ~3U); k += 4, flagsPtr += 2)
   {
     for(uint16_t i = 0; i < w_; ++i, ++flagsPtr)
     {
-      uint32_t agg = !(*flagsPtr);
-      uint8_t runlen = 0;
-      if(agg)
+      auto datap = uncompressedData_ + k * stride_ + i;
+      if(*flagsPtr == 0)
       {
+        uint8_t runlen = 0;
         for(; runlen < 4; ++runlen)
         {
-          if(smr_abs(uncompressedData_[((k + runlen) * stride_) + i]) & (uint32_t)one)
+          if(smr_abs(datap[runlen * stride_]) & (uint32_t)one)
             break;
         }
         uint8_t ctxno = T1_CTXNO_AGG;
@@ -605,61 +632,38 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
         curctx = mqc->ctxs + ctxno;
         mqc_encode_macro(mqc, curctx, a, c, ct, runlen >> 1);
         mqc_encode_macro(mqc, curctx, a, c, ct, runlen & 1);
-      }
-      auto datap = uncompressedData_ + ((k + runlen) * stride_) + i;
-      const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 |
-                              T1_PI_1 | T1_PI_2 | T1_PI_3);
-      bool stage_2 = true;
-      if((*flagsPtr & check) == check)
-      {
         switch(runlen)
         {
           case 0:
-            *flagsPtr &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+            enc_clnpass_sign_macro(datap, 0, vsc);
+            enc_clnpass_step_macro(datap + stride_, 3, 0);
+            enc_clnpass_step_macro(datap + 2 * stride_, 6, 0);
+            enc_clnpass_step_macro(datap + 3 * stride_, 9, 0);
             break;
           case 1:
-            *flagsPtr &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
+            enc_clnpass_sign_macro(datap + stride_, 3, 0);
+            enc_clnpass_step_macro(datap + 2 * stride_, 6, 0);
+            enc_clnpass_step_macro(datap + 3 * stride_, 9, 0);
             break;
           case 2:
-            *flagsPtr &= ~(T1_PI_2 | T1_PI_3);
-            break;
-          case 3:
-            *flagsPtr &= ~(T1_PI_3);
+            enc_clnpass_sign_macro(datap + 2 * stride_, 6, 0);
+            enc_clnpass_step_macro(datap + 3 * stride_, 9, 0);
             break;
           default:
-            stage_2 = false;
+            enc_clnpass_sign_macro(datap + 3 * stride_, 9, 0);
             break;
         }
+        continue;
       }
-      for(uint8_t ci = 3 * runlen; ci < 3 * 4 && stage_2; ci += 3)
+      if((*flagsPtr & visitedAndSignificant) == visitedAndSignificant)
       {
-        bool goto_PARTIAL = false;
-        if((agg != 0) && (ci == 3 * runlen))
-          goto_PARTIAL = true;
-        else if(!(*flagsPtr & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))))
-        {
-          uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));
-          curctx = mqc->ctxs + ctxno;
-          uint32_t v = !!(smr_abs(*datap) & (uint32_t)one);
-          mqc_encode_macro(mqc, curctx, a, c, ct, v);
-          goto_PARTIAL = v;
-        }
-        if(goto_PARTIAL)
-        {
-          uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, *(flagsPtr - 1), *(flagsPtr + 1), ci);
-          if(nmsedec)
-            *nmsedec += getnmsedec_sig((uint32_t)smr_abs(*datap), (uint32_t)bpno);
-          uint8_t ctxno = lut_ctxno_sc[lu];
-          curctx = mqc->ctxs + ctxno;
-          uint8_t v = smr_sign(*datap);
-          uint8_t spb = lut_spb[lu];
-          mqc_encode_macro(mqc, curctx, a, c, ct, v ^ spb);
-          uint32_t vsc = ((cblksty & GRK_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
-          update_flags(flagsPtr, ci, v, w_ + 2U, vsc);
-        }
-        *flagsPtr &= ~(T1_PI_THIS << (ci));
-        datap += stride_;
+        *flagsPtr &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+        continue;
       }
+      enc_clnpass_step_macro(datap, 0, vsc);
+      enc_clnpass_step_macro(datap + stride_, 3, 0);
+      enc_clnpass_step_macro(datap + 2 * stride_, 6, 0);
+      enc_clnpass_step_macro(datap + 3 * stride_, 9, 0);
     }
   }
   if(k < h_)
