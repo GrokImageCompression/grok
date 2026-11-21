@@ -57,6 +57,7 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   bool init(void) override;
 
   PacketTracker* getPacketTracker(void) override;
+  PacketHeaderStore* getPacketHeaderStore(void) override;
   bool preCompressTile(size_t thread_id) override;
   bool canWritePocMarker(void) override;
   bool writeTilePartT2(uint32_t* tileBytesWritten) override;
@@ -123,6 +124,7 @@ private:
   uint8_t newTilePartProgressionPosition_ = 0;
   // track which packets have already been written to the code stream
   PacketTracker* packetTracker_ = nullptr;
+  PacketHeaderStore packetHeaderStore_;
 
   // --- compress DAG state ---
   std::unique_ptr<tf::Taskflow> compressFlow_;

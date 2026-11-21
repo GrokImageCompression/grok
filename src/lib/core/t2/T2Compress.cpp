@@ -95,6 +95,9 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
   tileProcessor->getPacketTracker()->clear();
   if(markers)
     markers->pushInit(isFinal);
+  auto headerStore = isFinal ? tileProcessor->getPacketHeaderStore() : nullptr;
+  if(headerStore)
+    headerStore->clear();
   for(uint16_t compno = 0; compno < max_comp; ++compno)
   {
     uint64_t componentBytes = 0;
@@ -113,7 +116,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
         if(current_pi->getLayno() < max_layers)
         {
           uint32_t bytesInLayer = 0;
-          if(!compressPacketSimulate(tcp, current_pi, &bytesInLayer, maxBytes, markers, debug))
+          if(!compressPacketSimulate(tcp, current_pi, &bytesInLayer, maxBytes, markers, headerStore,
+                                     debug))
             return false;
 
           componentBytes += bytesInLayer;
@@ -140,13 +144,15 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
     if(tilePartBytes && compno < image->numcomps)
       tilePartBytes[compno] = componentBytes;
   }
+  if(headerStore)
+    headerStore->markComplete();
 
   return true;
 }
 bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
                                         uint32_t* packet_bytes_written,
                                         uint32_t max_bytes_available, PLMarker* markers,
-                                        [[maybe_unused]] bool debug)
+                                        PacketHeaderStore* headerStore, [[maybe_unused]] bool debug)
 {
   uint16_t compno = pi->getCompno();
   uint8_t resno = pi->getResno();
@@ -176,13 +182,27 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
       max_bytes_available -= 6;
     byteCount += 6;
   }
-  t1_t2::BitIO bio(nullptr, max_bytes_available, true);
-  if(!compressHeader(&bio, res, layno, precinctIndex))
-    return false;
-
-  byteCount += (uint32_t)bio.numBytes();
+  size_t headerBytes;
+  if(headerStore)
+  {
+    headerStore->beginHeader(layno, compno, resno, precinctIndex);
+    t1_t2::BitIO bio(headerStore, true);
+    if(!compressHeader(&bio, res, layno, precinctIndex))
+      return false;
+    headerBytes = headerStore->endHeader();
+    if(headerBytes > max_bytes_available)
+      return false;
+  }
+  else
+  {
+    t1_t2::BitIO bio(nullptr, max_bytes_available, true);
+    if(!compressHeader(&bio, res, layno, precinctIndex))
+      return false;
+    headerBytes = bio.numBytes();
+  }
+  byteCount += headerBytes;
   if(max_bytes_available != UINT_MAX)
-    max_bytes_available -= (uint32_t)bio.numBytes();
+    max_bytes_available -= (uint32_t)headerBytes;
   if(tcp->csty_ & CP_CSTY_EPH)
   {
     if(max_bytes_available < 2)
@@ -448,12 +468,20 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IStream* 
     if(!stream->write8u((uint8_t)(numProcessedPackets & 0xff)))
       return false;
   }
-  auto bio = std::unique_ptr<t1_t2::BitIO>(new t1_t2::BitIO(stream, true));
-
-  // initialize precinct and code blocks if this is the first layer
   auto res = tilec->resolutions_ + resno;
-  if(!compressHeader(bio.get(), res, layno, precinctIndex))
-    return false;
+  auto storedHeader =
+      tileProcessor->getPacketHeaderStore()->find(layno, compno, resno, precinctIndex);
+  if(!storedHeader.empty())
+  {
+    if(!stream->writeBytes(storedHeader.data(), storedHeader.size()))
+      return false;
+  }
+  else
+  {
+    t1_t2::BitIO bio(stream, true);
+    if(!compressHeader(&bio, res, layno, precinctIndex))
+      return false;
+  }
 
   // EPH marker
   if(tcp->csty_ & CP_CSTY_EPH)

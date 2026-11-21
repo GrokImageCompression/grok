@@ -20,6 +20,7 @@
 namespace grk
 {
 struct ITileProcessor;
+class PacketHeaderStore;
 
 /**
  Tier-2 coding
@@ -86,7 +87,8 @@ private:
    * @return true if successful
    */
   bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
-                              uint32_t len, PLMarker* markers, bool debug);
+                              uint32_t len, PLMarker* markers, PacketHeaderStore* headerStore,
+                              bool debug);
 
   bool compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
 };

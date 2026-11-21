@@ -687,6 +687,10 @@ PacketTracker* TileProcessorCompress::getPacketTracker(void)
 {
   return packetTracker_;
 }
+PacketHeaderStore* TileProcessorCompress::getPacketHeaderStore(void)
+{
+  return &packetHeaderStore_;
+}
 uint8_t TileProcessorCompress::getTilePartCounter(void) const
 {
   return tilePartCounter_;

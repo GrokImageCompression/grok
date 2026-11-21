@@ -19,6 +19,7 @@
 
 #include "ITileProcessor.h"
 #include "PacketTracker.h" // For PacketTracker forward declaration
+#include "PacketHeaderStore.h"
 
 namespace grk
 {
@@ -39,6 +40,7 @@ struct ITileProcessorCompress : virtual public ITileProcessor
    * @return Pointer to the PacketTracker
    */
   virtual PacketTracker* getPacketTracker(void) = 0;
+  virtual PacketHeaderStore* getPacketHeaderStore(void) = 0;
 
   /**
    * @brief Pre-compresses the tile (compression-only preparation)
