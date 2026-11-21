@@ -113,6 +113,14 @@ if(GRK_DATA_ROOT)
       -P T0=0,0,2,2,3,RLCP/T0=0,0,3,4,3,CPRL)
 endif()
 
+# a single layer whose every-pass trial fails reuses its last measured layout,
+# so that trial must leave the packet lengths for the PLT marker intact
+if(GRK_DATA_ROOT)
+  add_test(NAME grk_compress_plt_rate_test
+    COMMAND grk_compress -i ${GRK_DATA_ROOT}/input/nonregression/Bretagne2.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/plt_rate.j2k -t 64,64 -I -L -r 4)
+endif()
+
 add_executable(grk_compress_ht_test GrkCompressHTTest.cpp)
 target_link_libraries(grk_compress_ht_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_compress_ht_test

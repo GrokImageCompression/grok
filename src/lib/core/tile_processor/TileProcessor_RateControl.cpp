@@ -867,7 +867,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
         makeLayerFinal(layno);
         tookEveryPass = t2.compressPacketsSimulate(
             tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
-            newTilePartProgressionPosition_, packetLengthCache_->getMarkers(), false, false);
+            newTilePartProgressionPosition_, nullptr, false, false);
         if(!tookEveryPass)
           for(size_t i = 0; i < numBlocks; ++i)
             flatCodeblocks[i]->setNumPassesInPreviousLayers(passesBefore[i]);
