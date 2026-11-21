@@ -140,13 +140,6 @@ struct mqcoder : public mqcoder_base
 #endif
 };
 
-#ifdef PLUGIN_DEBUG_ENCODE
-#define CODER_SETCURCTX(mqc, ctxno)        \
-  (mqc)->debug_mqc.context_number = ctxno; \
-  (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)
-#else
-#define CODER_SETCURCTX(mqc, ctxno) (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)
-#endif
 #include "mqc_dec_inl.h"
 #include "mqc_enc_inl.h"
 

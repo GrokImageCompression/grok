@@ -42,15 +42,7 @@ const uint8_t B12_POS = 12;
   constexpr bool segmentHasSentinel = true;   \
   bool approaching_red;                       \
   (void)approaching_red;                      \
-  uint32_t* curctx = nullptr;                 \
-  uint32_t c = coder.c;                       \
-  uint32_t a = coder.a;                       \
-  uint8_t ct = coder.ct;
-
-#define DEC_PASS_STORE_MQC() \
-  coder.c = c;               \
-  coder.a = a;               \
-  coder.ct = ct;
+  PUSH_MQC();
 
 #define DEC_PASS_LOCAL_VARIABLES_DIFF(flagsStride)                                      \
   const int32_t one = 1 << bpno;                                                        \
@@ -77,20 +69,19 @@ const uint8_t red_zone = 6;
 #define DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder) \
   (coder.backup_->i != BACKUP_DISABLED) && (passno == coder.backup_->passno_)
 
-#define DEC_PASS_MQC_BACKUP_LOCAL(coder)                        \
-  coder.backup_->a = a;                                         \
-  coder.backup_->c = c;                                         \
-  coder.backup_->ct = ct;                                       \
-  coder.backup_->curctx_index_ = curctx - &coder.packedCtxs[0]; \
-  coder.backup_->curctx = &coder.backup_->ctxs[coder.backup_->curctx_index_];
+#define DEC_PASS_MQC_BACKUP_LOCAL(coder) \
+  coder.backup_->a = a;                  \
+  coder.backup_->c = c;                  \
+  coder.backup_->ct = ct;                \
+  coder.backup_->curctx_index_ = curctx - &coder.ctxs[0];
 
-#define DEC_PASS_MQC_RESTORE_LOCAL(coder)                   \
-  a = coder.backup_->a;                                     \
-  c = coder.backup_->c;                                     \
-  ct = coder.backup_->ct;                                   \
-  curctx = &coder.packedCtxs[coder.backup_->curctx_index_]; \
-  coder.a = a;                                              \
-  coder.c = c;                                              \
+#define DEC_PASS_MQC_RESTORE_LOCAL(coder)             \
+  a = coder.backup_->a;                               \
+  c = coder.backup_->c;                               \
+  ct = coder.backup_->ct;                             \
+  curctx = &coder.ctxs[coder.backup_->curctx_index_]; \
+  coder.a = a;                                        \
+  coder.c = c;                                        \
   coder.ct = ct;
 
 #define DEC_PASS_DO_BACKUP(coder, p)      \

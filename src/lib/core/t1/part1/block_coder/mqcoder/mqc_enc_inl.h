@@ -96,31 +96,35 @@
 #define mqc_codemps_macro(mqc, curctx, a, c, ct) \
   do                                             \
   {                                              \
-    a -= (*curctx)->qeval;                       \
+    uint32_t state = *(curctx);                  \
+    uint32_t qeval = mqc_qeval(state);           \
+    a -= qeval;                                  \
     if((a & 0x8000) == 0)                        \
     {                                            \
-      if(a < (*curctx)->qeval)                   \
-        a = (*curctx)->qeval;                    \
+      if(a < qeval)                              \
+        a = qeval;                               \
       else                                       \
-        c += (*curctx)->qeval;                   \
-      *curctx = (*curctx)->nmps;                 \
+        c += qeval;                              \
+      *curctx = mqc_next(state, 0);              \
       mqc_renorme_macro(mqc, a, c, ct);          \
     }                                            \
     else                                         \
     {                                            \
-      c += (*curctx)->qeval;                     \
+      c += qeval;                                \
     }                                            \
   } while(0)
 
 #define mqc_codelps_macro(mqc, curctx, a, c, ct) \
   do                                             \
   {                                              \
-    a -= (*curctx)->qeval;                       \
-    if(a < (*curctx)->qeval)                     \
-      c += (*curctx)->qeval;                     \
+    uint32_t state = *(curctx);                  \
+    uint32_t qeval = mqc_qeval(state);           \
+    a -= qeval;                                  \
+    if(a < qeval)                                \
+      c += qeval;                                \
     else                                         \
-      a = (*curctx)->qeval;                      \
-    *curctx = (*curctx)->nlps;                   \
+      a = qeval;                                 \
+    *curctx = mqc_next(state, 1);                \
     mqc_renorme_macro(mqc, a, c, ct);            \
   } while(0)
 
@@ -129,13 +133,13 @@
   {                                                                                          \
     (mqc)->debug_mqc.context_number = ctxno;                                                 \
     nextCXD(&(mqc)->debug_mqc, d);                                                           \
-    if((*curctx)->mps == (d))                                                                \
+    if(mqc_mps(*curctx) == (d))                                                              \
       mqc_codemps_macro(mqc, curctx, a, c, ct) else mqc_codelps_macro(mqc, curctx, a, c, ct) \
   }
 #else
 #define mqc_encode_macro(mqc, curctx, a, c, ct, d) \
   {                                                \
-    if((*curctx)->mps == (d))                      \
+    if(mqc_mps(*curctx) == (d))                    \
       mqc_codemps_macro(mqc, curctx, a, c, ct);    \
     else                                           \
       mqc_codelps_macro(mqc, curctx, a, c, ct);    \

@@ -94,7 +94,7 @@ void mqcoder::backup(void)
   backup_->end_of_byte_stream_counter = end_of_byte_stream_counter;
   backup_->bp = bp;
   for(uint32_t i = 0; i < MQC_NUMCTXS; ++i)
-    backup_->packedCtxs[i] = packedCtxs[i];
+    backup_->ctxs[i] = ctxs[i];
 }
 
 void mqcoder::restore(void)
@@ -104,18 +104,16 @@ void mqcoder::restore(void)
   end_of_byte_stream_counter = backup_->end_of_byte_stream_counter;
   bp = backup_->bp;
   for(uint32_t i = 0; i < MQC_NUMCTXS; ++i)
-    packedCtxs[i] = backup_->packedCtxs[i];
+    ctxs[i] = backup_->ctxs[i];
 }
 
 void mqcoder::resetstates(void)
 {
   for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
-    ctxs[i] = mqc_states;
-  ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
-  ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
-  ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
-  for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
-    packedCtxs[i] = mqc_pack(ctxs[i]);
+    ctxs[i] = mqc_pack(mqc_states);
+  ctxs[T1_CTXNO_UNI] = mqc_pack(mqc_states + (uint32_t)(46 << 1));
+  ctxs[T1_CTXNO_AGG] = mqc_pack(mqc_states + (uint32_t)(3 << 1));
+  ctxs[T1_CTXNO_ZC] = mqc_pack(mqc_states + (uint32_t)(4 << 1));
 }
 
 void mqcoder::reinit(void)
@@ -137,7 +135,6 @@ void mqcoder::init_dec(const DataChunk* chunks, uint16_t numChunks)
 {
   /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
   init_dec_common(chunks, numChunks);
-  CODER_SETCURCTX(this, 0);
   end_of_byte_stream_counter = 0;
   c = (uint32_t)((numChunks == 0 ? 0xff : *bp) << 16);
   if(numChunks)
@@ -189,10 +186,6 @@ void mqcoder::setbits_enc(void)
 
 void mqcoder::init_enc(uint8_t* data)
 {
-  /* To avoid the curctx pointer to be dangling, but not strictly */
-  /* required as the current context is always set before compressing */
-  CODER_SETCURCTX(this, 0);
-
   /* As specified in Figure C.10 - Initialization of the compressor */
   /* (C.2.8 Initialization of the compressor (INITENC)) */
   a = 0x8000;
@@ -325,10 +318,13 @@ void mqcoder::erterm_enc(void)
 
 void mqcoder::segmark_enc(void)
 {
-  CODER_SETCURCTX(this, 18);
+#ifdef PLUGIN_DEBUG_ENCODE
+  debug_mqc.context_number = 18;
+#endif
+  uint32_t* curctx = ctxs + 18;
   for(uint32_t i = 1; i < 5; i++)
   {
-    if((*curctx)->mps == (i & 1))
+    if(mqc_mps(*curctx) == (i & 1))
       mqc_codemps_macro(this, curctx, a, c, ct);
     else
       mqc_codelps_macro(this, curctx, a, c, ct);

@@ -29,15 +29,14 @@ typedef uint32_t grk_flag;
 #define MQC_NUMCTXS 19
 
 #define PUSH_MQC()            \
-  auto curctx = coder.curctx; \
+  uint32_t* curctx = nullptr; \
   uint32_t c = coder.c;       \
   uint32_t a = coder.a;       \
   uint8_t ct = coder.ct
 
-#define POP_MQC()        \
-  coder.curctx = curctx; \
-  coder.c = c;           \
-  coder.a = a;           \
+#define POP_MQC() \
+  coder.c = c;    \
+  coder.a = a;    \
   coder.ct = ct;
 
 /** We hold the state of individual data points for the BlockCoder compressor using
@@ -142,7 +141,7 @@ typedef uint32_t grk_flag;
 #define T1_TYPE_MQ 0 /** Normal coding using entropy coder */
 #define T1_TYPE_RAW 1 /** Raw compressing*/
 
-#define SETCURCTX(curctx, ctxno) curctx = &(mqc)->packedCtxs[(uint32_t)(ctxno)]
+#define SETCURCTX(curctx, ctxno) curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
 
 #define GETCTXNO_MAG(f) \
   (uint8_t)(T1_CTXNO_MAG + (((f) & T1_MU_0) ? 2 : !!((f) & T1_SIGMA_NEIGHBOURS)))
@@ -256,17 +255,7 @@ struct mqcoder_base
   /**
    * @brief  Array of contexts
    */
-  const mqc_state* ctxs[MQC_NUMCTXS];
-  uint32_t packedCtxs[MQC_NUMCTXS];
-  /**
-   *  @brief Pointer to current context in ctxs array
-   */
-  const mqc_state** curctx;
-
-  /**
-   * @brief Index of curctx in ctxs array
-   */
-  ptrdiff_t curctx_index_;
+  uint32_t ctxs[MQC_NUMCTXS];
 
   /**
    * @brief true if in differential decompress mode

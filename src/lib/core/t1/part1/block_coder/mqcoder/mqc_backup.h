@@ -71,6 +71,8 @@ struct mqcoder_backup : public mqcoder_base
    */
   uint16_t position;
 
+  ptrdiff_t curctx_index_;
+
   /**
    * @brief local loop variables
    */

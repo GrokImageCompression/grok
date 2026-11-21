@@ -218,7 +218,7 @@ void BlockCoder::checkSegSym(int32_t cblksty)
     (void)approaching_red;
     uint8_t* adjusted_end;
     (void)adjusted_end;
-    uint32_t* curctx = &coder.packedCtxs[T1_CTXNO_UNI];
+    uint32_t* curctx = &coder.ctxs[T1_CTXNO_UNI];
     uint8_t v, v2;
     DEC_SYMBOL(v, mqc, curctx, mqc->a, mqc->c, mqc->ct);
     DEC_SYMBOL(v2, mqc, curctx, mqc->a, mqc->c, mqc->ct);
@@ -389,7 +389,7 @@ void BlockCoder::dec_refpass(int8_t bpno)
         *flagsPtr &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);                                     \
       }                                                                                            \
     }                                                                                              \
-    DEC_PASS_STORE_MQC();                                                                          \
+    POP_MQC();                                                                                     \
   }
 
 #define DEC_PASS_CLN_IMPL_DIFF_FINAL(bpno, vsc, w_, h_, flagsStride)                               \
@@ -476,7 +476,7 @@ void BlockCoder::dec_refpass(int8_t bpno)
         *flagsPtr &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);                                     \
       }                                                                                            \
     }                                                                                              \
-    DEC_PASS_STORE_MQC();                                                                          \
+    POP_MQC();                                                                                     \
   }
 
 #define DEC_PASS_SIG_IMPL_DIFF(bpno, vsc, w_, h_, flagsStride)                                  \
@@ -518,7 +518,7 @@ void BlockCoder::dec_refpass(int8_t bpno)
           DEC_PASS_SIG_STEP(_flags, flagsPtr, flagsStride, dataPtr + j * w_, 0, j, 3 * j, vsc); \
           *flagsPtr = _flags;                                                                   \
         }                                                                                       \
-    DEC_PASS_STORE_MQC();                                                                       \
+    POP_MQC();                                                                                  \
   }
 #define DEC_PASS_SIG_IMPL_DIFF_FINAL(bpno, vsc, w_, h_, flagsStride)                            \
   {                                                                                             \
@@ -554,7 +554,7 @@ void BlockCoder::dec_refpass(int8_t bpno)
           DEC_PASS_SIG_STEP(_flags, flagsPtr, flagsStride, dataPtr + j * w_, 0, j, 3 * j, vsc); \
           *flagsPtr = _flags;                                                                   \
         }                                                                                       \
-    DEC_PASS_STORE_MQC();                                                                       \
+    POP_MQC();                                                                                  \
   }
 
 template<uint16_t w_, uint16_t h_, bool vsc>
@@ -637,7 +637,7 @@ void BlockCoder::dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t pas
           DEC_PASS_REF_STEP(_flags, dataPtr + j * w_, 0, j, j * 3);      \
           *flagsPtr = _flags;                                            \
         }                                                                \
-    DEC_PASS_STORE_MQC();                                                \
+    POP_MQC();                                                           \
   }
 #define DEC_PASS_REF_IMPL_DIFF_FINAL(bpno, w_, h_, flagsStride)          \
   {                                                                      \
@@ -672,7 +672,7 @@ void BlockCoder::dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t pas
           DEC_PASS_REF_STEP(_flags, dataPtr + j * w_, 0, j, j * 3);      \
           *flagsPtr = _flags;                                            \
         }                                                                \
-    DEC_PASS_STORE_MQC();                                                \
+    POP_MQC();                                                           \
   }
 
 template<uint16_t w_, uint16_t h_>

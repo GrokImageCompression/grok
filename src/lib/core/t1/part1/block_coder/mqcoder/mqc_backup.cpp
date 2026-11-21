@@ -21,10 +21,11 @@ namespace grk::t1
 {
 
 mqcoder_backup::mqcoder_backup(void)
-    : mqcoder_base(true), flagsBackup_(nullptr), position(BACKUP_DISABLED), i(BACKUP_DISABLED),
-      j(BACKUP_DISABLED), k(BACKUP_DISABLED), partial(false), runlen(BACKUP_DISABLED),
-      dataPtr_(nullptr), flagsPtr_(nullptr), _flags(0), numBpsToDecompress_(BACKUP_DISABLED),
-      passno_(BACKUP_DISABLED), passtype_(BACKUP_DISABLED), layer_(BACKUP_DISABLED)
+    : mqcoder_base(true), flagsBackup_(nullptr), position(BACKUP_DISABLED), curctx_index_(0),
+      i(BACKUP_DISABLED), j(BACKUP_DISABLED), k(BACKUP_DISABLED), partial(false),
+      runlen(BACKUP_DISABLED), dataPtr_(nullptr), flagsPtr_(nullptr), _flags(0),
+      numBpsToDecompress_(BACKUP_DISABLED), passno_(BACKUP_DISABLED), passtype_(BACKUP_DISABLED),
+      layer_(BACKUP_DISABLED)
 {}
 
 /**
@@ -62,6 +63,7 @@ mqcoder_backup& mqcoder_backup::operator=(const mqcoder_backup& other)
     flagsBackup_ = nullptr;
     uncompressedBufBackup_ = nullptr;
     position = other.position;
+    curctx_index_ = other.curctx_index_;
     i = other.i;
     j = other.j;
     k = other.k;
