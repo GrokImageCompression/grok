@@ -39,9 +39,18 @@ const uint8_t B12_POS = 12;
   auto flagsPtr = flags_ + flagsStride + 1;   \
   grk_flag _flags = 0;                        \
   uint16_t i = 0, j = 0, k = 0;               \
+  constexpr bool segmentHasSentinel = true;   \
   bool approaching_red;                       \
   (void)approaching_red;                      \
-  PUSH_MQC();
+  const mqc_state** curctx = nullptr;         \
+  uint32_t c = coder.c;                       \
+  uint32_t a = coder.a;                       \
+  uint8_t ct = coder.ct;
+
+#define DEC_PASS_STORE_MQC() \
+  coder.c = c;               \
+  coder.a = a;               \
+  coder.ct = ct;
 
 #define DEC_PASS_LOCAL_VARIABLES_DIFF(flagsStride)                                      \
   const int32_t one = 1 << bpno;                                                        \
@@ -50,6 +59,7 @@ const uint8_t B12_POS = 12;
   auto flagsPtr = flags_ + flagsStride + 1;                                             \
   grk_flag _flags = 0;                                                                  \
   uint16_t i = 0, j = 0, k = 0;                                                         \
+  constexpr bool segmentHasSentinel = false;                                            \
   const mqc_state** curctx;                                                             \
   uint32_t c, a;                                                                        \
   uint8_t ct;                                                                           \
@@ -292,13 +302,42 @@ const uint8_t red_zone = 6;
     }                                                                                  \
   }
 
+// jpeg 2000: 0xFF followed by a byte above 0x8F is a marker
+#define DEC_BYTEIN_SENTINEL(mqc, c, ct)    \
+  {                                        \
+    uint8_t next = mqc->bp[1];             \
+    if(*mqc->bp == 0xff)                   \
+    {                                      \
+      if(next > 0x8f)                      \
+      {                                    \
+        c += 0xff00;                       \
+        ct = 8;                            \
+        mqc->end_of_byte_stream_counter++; \
+      }                                    \
+      else                                 \
+      {                                    \
+        mqc->bp++;                         \
+        c += (uint32_t)next << 9;          \
+        ct = 7;                            \
+      }                                    \
+    }                                      \
+    else                                   \
+    {                                      \
+      mqc->bp++;                           \
+      c += (uint32_t)next << 8;            \
+      ct = 8;                              \
+    }                                      \
+  }
+
 #define DEC_RENORM(mqc, a, c, ct)            \
   {                                          \
     do                                       \
     {                                        \
       if(ct == 0)                            \
       {                                      \
-        if(mqc->start == mqc->end)           \
+        if constexpr(segmentHasSentinel)     \
+          DEC_BYTEIN_SENTINEL(mqc, c, ct)    \
+        else if(mqc->start == mqc->end)      \
         {                                    \
           c += 0xff00;                       \
           ct = 8;                            \

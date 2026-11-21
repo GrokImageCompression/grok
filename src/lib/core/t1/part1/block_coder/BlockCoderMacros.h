@@ -119,7 +119,7 @@ namespace grk::t1
         *flagsPtr &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);                                     \
       }                                                                                            \
     }                                                                                              \
-    POP_MQC();                                                                                     \
+    DEC_PASS_STORE_MQC();                                                                          \
   }
 
 #define DEC_PASS_SIG_STEP(flags, flagsPtr, flagsStride, data, dataStride, ciorig, ci, vsc) \
@@ -175,7 +175,7 @@ namespace grk::t1
           DEC_PASS_SIG_STEP(_flags, flagsPtr, flagsStride, dataPtr + j * w_, 0, j, 3 * j, vsc); \
           *flagsPtr = _flags;                                                                   \
         }                                                                                       \
-    POP_MQC();                                                                                  \
+    DEC_PASS_STORE_MQC();                                                                       \
   }
 
 // Decode Magnitude Refinement Pass
@@ -220,7 +220,7 @@ namespace grk::t1
           DEC_PASS_REF_STEP(_flags, dataPtr + j * w_, 0, j, j * 3);      \
           *flagsPtr = _flags;                                            \
         }                                                                \
-    POP_MQC();                                                           \
+    DEC_PASS_STORE_MQC();                                                \
   }
 
 } // namespace grk::t1

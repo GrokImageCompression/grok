@@ -91,6 +91,8 @@ private:
    as done in the various decoding steps. */
   grk_flag* flags_;
   uint32_t flagsLen_;
+  std::vector<uint8_t> segmentBytes_;
+  DataChunk segmentChunk_{};
   bool compressor;
 
   pass_enc encoderPasses_[maxCodePassesPerBlock];

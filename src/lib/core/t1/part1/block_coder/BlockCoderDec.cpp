@@ -30,9 +30,29 @@ void BlockCoder::decompressInitOrientation(uint8_t orientation)
 void BlockCoder::decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks)
 {
   if(type == T1_TYPE_RAW)
+  {
     coder.raw_init_dec(chunks, numChunks);
-  else
+    return;
+  }
+  if(cacheAll(cacheStrategy_))
+  {
     coder.init_dec(chunks, numChunks);
+    return;
+  }
+  uint32_t segmentLength = 0;
+  for(uint16_t i = 0; i < numChunks; ++i)
+    segmentLength += chunks[i].length;
+  segmentBytes_.resize(segmentLength + 2);
+  uint32_t offset = 0;
+  for(uint16_t i = 0; i < numChunks; ++i)
+  {
+    memcpy(segmentBytes_.data() + offset, chunks[i].data, chunks[i].length);
+    offset += chunks[i].length;
+  }
+  segmentBytes_[segmentLength] = 0xff;
+  segmentBytes_[segmentLength + 1] = 0xff;
+  segmentChunk_ = DataChunk{segmentBytes_.data(), segmentLength};
+  coder.init_dec(&segmentChunk_, 1);
 }
 
 void BlockCoder::decompressBackup(void)
@@ -193,6 +213,7 @@ void BlockCoder::checkSegSym(int32_t cblksty)
   if(cblksty & GRK_CBLKSTY_SEGSYM)
   {
     auto mqc = &coder;
+    constexpr bool segmentHasSentinel = false;
     bool approaching_red;
     (void)approaching_red;
     uint8_t* adjusted_end;
