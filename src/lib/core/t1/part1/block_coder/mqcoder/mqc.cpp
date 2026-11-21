@@ -94,7 +94,7 @@ void mqcoder::backup(void)
   backup_->end_of_byte_stream_counter = end_of_byte_stream_counter;
   backup_->bp = bp;
   for(uint32_t i = 0; i < MQC_NUMCTXS; ++i)
-    backup_->ctxs[i] = ctxs[i];
+    backup_->packedCtxs[i] = packedCtxs[i];
 }
 
 void mqcoder::restore(void)
@@ -104,7 +104,7 @@ void mqcoder::restore(void)
   end_of_byte_stream_counter = backup_->end_of_byte_stream_counter;
   bp = backup_->bp;
   for(uint32_t i = 0; i < MQC_NUMCTXS; ++i)
-    ctxs[i] = backup_->ctxs[i];
+    packedCtxs[i] = backup_->packedCtxs[i];
 }
 
 void mqcoder::resetstates(void)
@@ -114,6 +114,8 @@ void mqcoder::resetstates(void)
   ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
   ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
   ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
+  for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
+    packedCtxs[i] = mqc_pack(ctxs[i]);
 }
 
 void mqcoder::reinit(void)

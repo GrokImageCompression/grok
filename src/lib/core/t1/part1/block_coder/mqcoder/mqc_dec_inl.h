@@ -42,7 +42,7 @@ const uint8_t B12_POS = 12;
   constexpr bool segmentHasSentinel = true;   \
   bool approaching_red;                       \
   (void)approaching_red;                      \
-  const mqc_state** curctx = nullptr;         \
+  uint32_t* curctx = nullptr;                 \
   uint32_t c = coder.c;                       \
   uint32_t a = coder.a;                       \
   uint8_t ct = coder.ct;
@@ -60,7 +60,7 @@ const uint8_t B12_POS = 12;
   grk_flag _flags = 0;                                                                  \
   uint16_t i = 0, j = 0, k = 0;                                                         \
   constexpr bool segmentHasSentinel = false;                                            \
-  const mqc_state** curctx;                                                             \
+  uint32_t* curctx = nullptr;                                                           \
   uint32_t c, a;                                                                        \
   uint8_t ct;                                                                           \
   /* a segment with no bytes has nothing to resume from */                              \
@@ -77,22 +77,20 @@ const uint8_t red_zone = 6;
 #define DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder) \
   (coder.backup_->i != BACKUP_DISABLED) && (passno == coder.backup_->passno_)
 
-#define DEC_PASS_MQC_BACKUP_LOCAL(coder)                  \
-  coder.backup_->a = a;                                   \
-  coder.backup_->c = c;                                   \
-  coder.backup_->ct = ct;                                 \
-  coder.backup_->curctx_index_ = curctx - &coder.ctxs[0]; \
+#define DEC_PASS_MQC_BACKUP_LOCAL(coder)                        \
+  coder.backup_->a = a;                                         \
+  coder.backup_->c = c;                                         \
+  coder.backup_->ct = ct;                                       \
+  coder.backup_->curctx_index_ = curctx - &coder.packedCtxs[0]; \
   coder.backup_->curctx = &coder.backup_->ctxs[coder.backup_->curctx_index_];
 
-#define DEC_PASS_MQC_RESTORE_LOCAL(coder)             \
-  a = coder.backup_->a;                               \
-  c = coder.backup_->c;                               \
-  ct = coder.backup_->ct;                             \
-  coder.curctx_index_ = coder.backup_->curctx_index_; \
-  curctx = &coder.ctxs[coder.curctx_index_];          \
-  coder.curctx = curctx;                              \
-  coder.a = a;                                        \
-  coder.c = c;                                        \
+#define DEC_PASS_MQC_RESTORE_LOCAL(coder)                   \
+  a = coder.backup_->a;                                     \
+  c = coder.backup_->c;                                     \
+  ct = coder.backup_->ct;                                   \
+  curctx = &coder.packedCtxs[coder.backup_->curctx_index_]; \
+  coder.a = a;                                              \
+  coder.c = c;                                              \
   coder.ct = ct;
 
 #define DEC_PASS_DO_BACKUP(coder, p)      \
@@ -165,7 +163,6 @@ const uint8_t red_zone = 6;
     }                                                                                              \
     else                                                                                           \
     {                                                                                              \
-      curctx = coder.curctx;                                                                       \
       c = coder.c;                                                                                 \
       a = coder.a;                                                                                 \
       ct = coder.ct;                                                                               \
@@ -227,7 +224,6 @@ const uint8_t red_zone = 6;
     }                                                                                              \
     else                                                                                           \
     {                                                                                              \
-      curctx = coder.curctx;                                                                       \
       c = coder.c;                                                                                 \
       a = coder.a;                                                                                 \
       ct = coder.ct;                                                                               \
@@ -361,35 +357,36 @@ const uint8_t red_zone = 6;
  * @param c MQ variable c
  * @param ct MQ variable ct
  */
-#define DEC_SYMBOL(d, mqc, curctx, a, c, ct)         \
-  do                                                 \
-  {                                                  \
-    auto ctx = *(curctx);                            \
-    a -= ctx->qeval;                                 \
-    uint32_t qeval_shift = ctx->qeval << 16;         \
-    if(c < qeval_shift)                              \
-    {                                                \
-      uint32_t mask = (uint32_t)-(a < ctx->qeval);   \
-      a = ctx->qeval;                                \
-      d = ctx->mps ^ (~mask & 1);                    \
-      *curctx = mask ? ctx->nmps : ctx->nlps;        \
-      DEC_RENORM(mqc, a, c, ct);                     \
-    }                                                \
-    else                                             \
-    {                                                \
-      c -= qeval_shift;                              \
-      if(a < A_MIN)                                  \
-      {                                              \
-        uint32_t mask = (uint32_t)-(a < ctx->qeval); \
-        d = ctx->mps ^ (mask & 1);                   \
-        *curctx = mask ? ctx->nlps : ctx->nmps;      \
-        DEC_RENORM(mqc, a, c, ct);                   \
-      }                                              \
-      else                                           \
-      {                                              \
-        d = ctx->mps;                                \
-      }                                              \
-    }                                                \
+#define DEC_SYMBOL(d, mqc, curctx, a, c, ct)    \
+  do                                            \
+  {                                             \
+    uint32_t state = *(curctx);                 \
+    uint32_t qeval = mqc_qeval(state);          \
+    a -= qeval;                                 \
+    uint32_t qeval_shift = qeval << 16;         \
+    if(c < qeval_shift)                         \
+    {                                           \
+      uint32_t mask = (uint32_t)-(a < qeval);   \
+      a = qeval;                                \
+      d = mqc_mps(state) ^ (~mask & 1);         \
+      *curctx = mqc_next(state, ~mask & 1);     \
+      DEC_RENORM(mqc, a, c, ct);                \
+    }                                           \
+    else                                        \
+    {                                           \
+      c -= qeval_shift;                         \
+      if(a < A_MIN)                             \
+      {                                         \
+        uint32_t mask = (uint32_t)-(a < qeval); \
+        d = mqc_mps(state) ^ (mask & 1);        \
+        *curctx = mqc_next(state, mask & 1);    \
+        DEC_RENORM(mqc, a, c, ct);              \
+      }                                         \
+      else                                      \
+      {                                         \
+        d = mqc_mps(state);                     \
+      }                                         \
+    }                                           \
   } while(0)
 
 ////////////////////////////////////////////////////////////////////

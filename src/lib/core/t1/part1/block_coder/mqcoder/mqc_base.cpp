@@ -24,8 +24,8 @@ namespace grk::t1
  * @brief Creates an mqcoder_base
  */
 mqcoder_base::mqcoder_base(bool cached)
-    : c(0), a(0), ct(0), end_of_byte_stream_counter(0), bp(nullptr), ctxs{}, curctx(nullptr),
-      curctx_index_(0), cached_(cached), finalLayer_(false)
+    : c(0), a(0), ct(0), end_of_byte_stream_counter(0), bp(nullptr), ctxs{}, packedCtxs{},
+      curctx(nullptr), curctx_index_(0), cached_(cached), finalLayer_(false)
 {}
 
 // Copy constructor
@@ -63,6 +63,7 @@ mqcoder_base& mqcoder_base::operator=(const mqcoder_base& other)
     for(int i = 0; i < MQC_NUMCTXS; i++)
     {
       ctxs[i] = other.ctxs[i];
+      packedCtxs[i] = other.packedCtxs[i];
     }
     curctx_index_ = other.curctx - &other.ctxs[0];
     curctx = &ctxs[curctx_index_];
@@ -88,7 +89,7 @@ bool mqcoder_base::operator==(const mqcoder_base& other) const
   // Compare ctxs array element by element
   for(int i = 0; i < MQC_NUMCTXS; i++)
   {
-    if(ctxs[i] != other.ctxs[i])
+    if(ctxs[i] != other.ctxs[i] || packedCtxs[i] != other.packedCtxs[i])
     {
       rc = false;
     }

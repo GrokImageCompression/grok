@@ -70,4 +70,15 @@ const mqc_state mqc_states[47 * 2] = {
     {0x5601, 0, &mqc_states[92], &mqc_states[92]}, {0x5601, 1, &mqc_states[93], &mqc_states[93]},
 };
 
-}
+uint32_t mqc_packed_next[2][47 * 2];
+
+static const bool mqc_packed_next_filled = [] {
+  for(uint32_t i = 0; i < 47 * 2; ++i)
+  {
+    mqc_packed_next[0][i] = mqc_pack(mqc_states[i].nmps);
+    mqc_packed_next[1][i] = mqc_pack(mqc_states[i].nlps);
+  }
+  return true;
+}();
+
+} // namespace grk::t1
