@@ -166,14 +166,28 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
   uint32_t numTiles = (uint32_t)cp_->t_grid_height_ * cp_->t_grid_width_;
 
   bool singleTile = numTiles == 1;
+  auto tileOffsetInImage = [this](const TileComponent* tilec, const grk_image_comp* imageComp) {
+    uint32_t offsetX = ceildiv<uint32_t>(headerImage_->x0, imageComp->dx);
+    uint32_t offsetY = ceildiv<uint32_t>(headerImage_->y0, imageComp->dy);
+    return (tilec->x0 - offsetX) + (uint64_t)(tilec->y0 - offsetY) * imageComp->stride;
+  };
+  auto attachesToImage = [singleTile](const TileComponent* tilec, const grk_image_comp* imageComp) {
+    bool matchingDataType =
+        imageComp->data_type == (tilec->uses16BitWindow() ? GRK_INT_16 : GRK_INT_32);
+    return matchingDataType && (singleTile || imageComp->data);
+  };
   for(uint32_t j = 0; j < headerImage_->numcomps; ++j)
   {
     auto tilec = tile_->comps_ + j;
     auto imagec = headerImage_->comps + j;
-    bool matchingDataType =
-        imagec->data_type == (tilec->uses16BitWindow() ? GRK_INT_16 : GRK_INT_32);
-    if(singleTile && matchingDataType)
-      tilec->attachWindowData(imagec->data, imagec->stride);
+    if(attachesToImage(tilec, imagec))
+    {
+      size_t sampleBytes = tilec->uses16BitWindow() ? sizeof(int16_t) : sizeof(int32_t);
+      auto data = imagec->data ? static_cast<uint8_t*>(imagec->data) +
+                                     tileOffsetInImage(tilec, imagec) * sampleBytes
+                               : nullptr;
+      tilec->attachWindowData(data, imagec->stride);
+    }
     else if(!tilec->allocWindow())
     {
       grklog.error("Error allocating tile component data.");
@@ -184,15 +198,10 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
   {
     auto tilec = tile_->comps_ + i;
     auto imageComp = headerImage_->comps + i;
-    bool matchingDataType =
-        imageComp->data_type == (tilec->uses16BitWindow() ? GRK_INT_16 : GRK_INT_32);
-    if((singleTile && matchingDataType) || !imageComp->data)
+    if(attachesToImage(tilec, imageComp) || !imageComp->data)
       continue;
 
-    uint32_t offsetX = ceildiv<uint32_t>(headerImage_->x0, imageComp->dx);
-    uint32_t offsetY = ceildiv<uint32_t>(headerImage_->y0, imageComp->dy);
-    uint64_t imageOffset =
-        (tilec->x0 - offsetX) + (uint64_t)(tilec->y0 - offsetY) * imageComp->stride;
+    uint64_t imageOffset = tileOffsetInImage(tilec, imageComp);
     if(tilec->uses16BitWindow())
     {
       auto source = static_cast<const int16_t*>(imageComp->data) + imageOffset;
@@ -292,26 +301,23 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
     tccp->dc_level_shift_ = 1 << ((this->headerImage->comps + compno)->prec - 1);
 #endif
 
-    auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
-    uint64_t samples = tile_comp->getWindow()->stridedArea();
-
-    if(tccp->qmfbid_ == 1)
+    auto window = tile_comp->getWindow()->getResWindowBufferHighestSimple();
+    if(tccp->qmfbid_ == 1 && tccp->dcLevelShift_ == 0)
+      continue;
+    for(uint32_t row = 0; row < tile_comp->height(); ++row)
     {
+      auto samples = window.buf_ + (size_t)row * window.stride_;
       // reversible, no wavelet: apply DC shift as fallback
-      if(tccp->dcLevelShift_ == 0)
-        continue;
-      for(uint64_t i = 0; i < samples; ++i)
+      if(tccp->qmfbid_ == 1)
       {
-        *current_ptr = (int32_t)((int64_t)*current_ptr - tccp->dcLevelShift_);
-        ++current_ptr;
+        for(uint32_t column = 0; column < tile_comp->width(); ++column)
+          samples[column] = (int32_t)((int64_t)samples[column] - tccp->dcLevelShift_);
+        continue;
       }
-    }
-    else
-    {
       // irreversible, no wavelet: int32 → float + DC shift as fallback
-      float* floatPtr = (float*)current_ptr;
-      for(uint64_t i = 0; i < samples; ++i)
-        *floatPtr++ = (float)((int64_t)*current_ptr++ - tccp->dcLevelShift_);
+      auto floatSamples = (float*)samples;
+      for(uint32_t column = 0; column < tile_comp->width(); ++column)
+        floatSamples[column] = (float)((int64_t)samples[column] - tccp->dcLevelShift_);
     }
 #ifdef GRK_FORCE_SIGNED_COMPRESS
     tccp->dc_level_shift_ = 0;

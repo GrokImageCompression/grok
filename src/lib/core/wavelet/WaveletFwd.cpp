@@ -147,7 +147,7 @@ namespace HWY_NAMESPACE
       // on an odd row and so is a high-pass coefficient
       if(height == 1 && (parity == 1 || dcShift != 0))
       {
-        auto v = Load(d, resolution);
+        auto v = LoadN(d, resolution, numcols);
         if(dcShift != 0)
           v = v - Set(d, dcShift);
         auto res = parity == 1 ? ShiftLeft<1>(v) : v;
@@ -166,12 +166,12 @@ namespace HWY_NAMESPACE
     {
       // note: dn <= sn
       uint32_t i = 0;
-      auto s_0 = Load(d, resolution);
-      auto d_0 = Load(d, resolution + stride);
+      auto s_0 = LoadN(d, resolution, numcols);
+      auto d_0 = LoadN(d, resolution + stride, numcols);
       if(sn > 1)
       {
         //  high pass top
-        const auto s_0p1 = Load(d, resolution + 2 * stride);
+        const auto s_0p1 = LoadN(d, resolution + 2 * stride, numcols);
         d_0 -= ShiftRight<1>(s_0 + s_0p1);
         Store(d_0, d, &scratch[lanes]);
         auto s_i = s_0p1;
@@ -183,9 +183,9 @@ namespace HWY_NAMESPACE
         for(; i + 1 < sn; i++)
         {
           // high pass
-          const auto s_ip1 = Load(d, resolution + ((i + 1) << 1) * stride);
+          const auto s_ip1 = LoadN(d, resolution + ((i + 1) << 1) * stride, numcols);
           const auto d_i =
-              Load(d, resolution + ((i << 1) + 1) * stride) - ShiftRight<1>(s_i + s_ip1);
+              LoadN(d, resolution + ((i << 1) + 1) * stride, numcols) - ShiftRight<1>(s_i + s_ip1);
           Store(d_i, d, &scratch[((i << 1) + 1) * lanes]);
           // low pass
           const auto s_ii = s_i + ShiftRight<2>(d_im1 + d_i + c_d2);
@@ -197,19 +197,19 @@ namespace HWY_NAMESPACE
         if(dn == sn)
         {
           // high pass reflection at bottom
-          const auto d_i = Load(d, resolution + ((i << 1) + 1) * stride) - s_i;
+          const auto d_i = LoadN(d, resolution + ((i << 1) + 1) * stride, numcols) - s_i;
           Store(d_i, d, &scratch[((i << 1) + 1) * lanes]);
 
           // final low-pass step
           const auto s_ii =
-              Load(d, resolution + (i << 1) * stride) + ShiftRight<2>(d_im1 + d_i + c_d2);
+              LoadN(d, resolution + (i << 1) * stride, numcols) + ShiftRight<2>(d_im1 + d_i + c_d2);
           Store(s_ii, d, &scratch[(i << 1) * lanes]);
         }
         else
         {
           // low pass reflection at bottom
-          const auto s_ii =
-              Load(d, resolution + (i << 1) * stride) + ShiftRight<2>(ShiftLeft<1>(d_im1) + c_d2);
+          const auto s_ii = LoadN(d, resolution + (i << 1) * stride, numcols) +
+                            ShiftRight<2>(ShiftLeft<1>(d_im1) + c_d2);
           Store(s_ii, d, &scratch[(i << 1) * lanes]);
         }
       }
@@ -230,8 +230,8 @@ namespace HWY_NAMESPACE
       // note: sn <= dn
 
       // high pass reflection at top
-      auto s_i = Load(d, resolution + 1 * stride); // s_0
-      auto d_0 = Load(d, resolution + 0 * stride) - s_i;
+      auto s_i = LoadN(d, resolution + 1 * stride, numcols); // s_0
+      auto d_0 = LoadN(d, resolution + 0 * stride, numcols) - s_i;
       Store(d_0, d, &scratch[0]);
 
       auto s_im1 = s_i;
@@ -240,8 +240,9 @@ namespace HWY_NAMESPACE
       for(; i < sn; i++)
       {
         // high
-        s_i = Load(d, resolution + ((i << 1) + 1) * stride);
-        const auto d_i = Load(d, resolution + (i << 1) * stride) - ShiftRight<1>(s_i + s_im1);
+        s_i = LoadN(d, resolution + ((i << 1) + 1) * stride, numcols);
+        const auto d_i =
+            LoadN(d, resolution + (i << 1) * stride, numcols) - ShiftRight<1>(s_i + s_im1);
         Store(d_i, d, &scratch[(i << 1) * lanes]);
         // low
         const auto s_iim1 = s_im1 + ShiftRight<2>(d_im1 + d_i + c_d2);
@@ -254,18 +255,18 @@ namespace HWY_NAMESPACE
       if(sn < dn)
       {
         // high pass reflection at bottom (at index sn = dn - 1)
-        const auto d_sn = Load(d, resolution + (sn << 1) * stride) - s_im1;
+        const auto d_sn = LoadN(d, resolution + (sn << 1) * stride, numcols) - s_im1;
         Store(d_sn, d, &scratch[(sn << 1) * lanes]);
 
         // regular low pass at bottom
-        const auto s_iim1 = Load(d, resolution + (((dn - 2) << 1) + 1) * stride) +
+        const auto s_iim1 = LoadN(d, resolution + (((dn - 2) << 1) + 1) * stride, numcols) +
                             ShiftRight<2>(d_im1 + d_sn + c_d2);
         Store(s_iim1, d, &scratch[(((dn - 2) << 1) + 1) * lanes]);
       }
       else
       {
         // low pass reflection at bottom
-        const auto s_ii = Load(d, resolution + (((dn - 1) << 1) + 1) * stride) +
+        const auto s_ii = LoadN(d, resolution + (((dn - 1) << 1) + 1) * stride, numcols) +
                           ShiftRight<2>(ShiftLeft<1>(d_im1) + c_d2);
         Store(s_ii, d, &scratch[(((dn - 1) << 1) + 1) * lanes]);
       }
@@ -643,7 +644,8 @@ namespace HWY_NAMESPACE
       if(height == 1)
       {
         const HWY_FULL(int32_t) di;
-        auto v = intInput ? ConvertTo(d, Load(di, (const int32_t*)res)) : Load(d, res);
+        auto v = intInput ? ConvertTo(d, LoadN(di, (const int32_t*)res, numcols))
+                          : LoadN(d, res, numcols);
         if(dcShift != 0.0f)
           v = v - Set(d, dcShift);
         if(parity == 1)
@@ -664,7 +666,7 @@ namespace HWY_NAMESPACE
         const auto vshift = Set(d, dcShift);
         for(auto j = 0U; j < height; ++j)
         {
-          Store(ConvertTo(d, Load(di, intIn)) - vshift, d, temp);
+          Store(ConvertTo(d, LoadN(di, intIn, numcols)) - vshift, d, temp);
           temp += lanes;
           intIn += stride;
         }
@@ -673,7 +675,7 @@ namespace HWY_NAMESPACE
       {
         for(auto j = 0U; j < height; ++j)
         {
-          Store(ConvertTo(d, Load(di, intIn)), d, temp);
+          Store(ConvertTo(d, LoadN(di, intIn, numcols)), d, temp);
           temp += lanes;
           intIn += stride;
         }
@@ -687,7 +689,7 @@ namespace HWY_NAMESPACE
         const auto vshift = Set(d, dcShift);
         for(auto j = 0U; j < height; ++j)
         {
-          Store(Load(d, in) - vshift, d, temp);
+          Store(LoadN(d, in, numcols) - vshift, d, temp);
           temp += lanes;
           in += stride;
         }
@@ -696,7 +698,7 @@ namespace HWY_NAMESPACE
       {
         for(auto j = 0U; j < height; ++j)
         {
-          Store(Load(d, in), d, temp);
+          Store(LoadN(d, in, numcols), d, temp);
           temp += lanes;
           in += stride;
         }

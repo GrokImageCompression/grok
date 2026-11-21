@@ -499,34 +499,32 @@ namespace HWY_NAMESPACE
   public:
     void transform(const ScheduleInfo& info)
     {
-      auto highestResBufferStride =
-          info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
-      auto index = (uint64_t)info.yBegin * highestResBufferStride;
-      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
-      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-      auto chan0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple().buf_;
+      auto window0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
+      auto chan0 = window0.buf_;
       auto chan1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimple().buf_;
       auto chan2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimple().buf_;
-
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
       const HWY_FULL(int32_t) di;
-      int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
+      const uint32_t lanes = (uint32_t)Lanes(di);
+      auto vdcr = Set(di, shiftInfo[0]._shift);
+      auto vdcg = Set(di, shiftInfo[1]._shift);
+      auto vdcb = Set(di, shiftInfo[2]._shift);
+      const uint32_t width = info.tile->comps_[0].width();
 
-      auto vdcr = Set(di, shift[0]);
-      auto vdcg = Set(di, shift[1]);
-      auto vdcb = Set(di, shift[2]);
-
-      size_t begin = index;
-      for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
+      for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
       {
-        auto r = Load(di, chan0 + j) + vdcr;
-        auto g = Load(di, chan1 + j) + vdcg;
-        auto b = Load(di, chan2 + j) + vdcb;
-        auto y = ShiftRight<2>((g + g) + b + r);
-        auto u = b - g;
-        auto v = r - g;
-        Store(y, di, chan0 + j);
-        Store(u, di, chan1 + j);
-        Store(v, di, chan2 + j);
+        uint64_t rowOffset = (uint64_t)row * window0.stride_;
+        for(uint32_t column = 0; column < width; column += lanes)
+        {
+          size_t count = (std::min)(lanes, width - column);
+          auto index = rowOffset + column;
+          auto r = LoadN(di, chan0 + index, count) + vdcr;
+          auto g = LoadN(di, chan1 + index, count) + vdcg;
+          auto b = LoadN(di, chan2 + index, count) + vdcb;
+          StoreN(ShiftRight<2>((g + g) + b + r), di, chan0 + index, count);
+          StoreN(b - g, di, chan1 + index, count);
+          StoreN(r - g, di, chan2 + index, count);
+        }
       }
     }
   };
@@ -556,13 +554,13 @@ namespace HWY_NAMESPACE
         uint32_t column = 0;
         for(; column + lanes <= width; column += lanes)
         {
-          auto red = Load(dataType, channel0 + rowOffset + column) + redShift;
-          auto green = Load(dataType, channel1 + rowOffset + column) + greenShift;
-          auto blue = Load(dataType, channel2 + rowOffset + column) + blueShift;
+          auto red = LoadU(dataType, channel0 + rowOffset + column) + redShift;
+          auto green = LoadU(dataType, channel1 + rowOffset + column) + greenShift;
+          auto blue = LoadU(dataType, channel2 + rowOffset + column) + blueShift;
           auto luminance = ShiftRight<2>((green + green) + blue + red);
-          Store(luminance, dataType, channel0 + rowOffset + column);
-          Store(blue - green, dataType, channel1 + rowOffset + column);
-          Store(red - green, dataType, channel2 + rowOffset + column);
+          StoreU(luminance, dataType, channel0 + rowOffset + column);
+          StoreU(blue - green, dataType, channel1 + rowOffset + column);
+          StoreU(red - green, dataType, channel2 + rowOffset + column);
         }
         for(; column < width; ++column)
         {
@@ -586,44 +584,39 @@ namespace HWY_NAMESPACE
   public:
     void transform(const ScheduleInfo& info)
     {
-      auto highestResBufferStride =
-          info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
-      auto index = (uint64_t)info.yBegin * highestResBufferStride;
-      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
-      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-      auto chan0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple().buf_;
+      auto window0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
+      auto chan0 = window0.buf_;
       auto chan1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimple().buf_;
       auto chan2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimple().buf_;
-
-      int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
-
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
       const HWY_FULL(float) df;
       const HWY_FULL(int32_t) di;
-
+      const uint32_t lanes = (uint32_t)Lanes(di);
       auto va_r = Set(df, a_r);
       auto va_g = Set(df, a_g);
       auto va_b = Set(df, a_b);
       auto vcb = Set(df, cb);
       auto vcr = Set(df, cr);
+      auto vdcr = Set(di, shiftInfo[0]._shift);
+      auto vdcg = Set(di, shiftInfo[1]._shift);
+      auto vdcb = Set(di, shiftInfo[2]._shift);
+      const uint32_t width = info.tile->comps_[0].width();
 
-      auto vdcr = Set(di, shift[0]);
-      auto vdcg = Set(di, shift[1]);
-      auto vdcb = Set(di, shift[2]);
-
-      size_t begin = index;
-      for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
+      for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
       {
-        auto r = ConvertTo(df, Load(di, chan0 + j) + vdcr);
-        auto g = ConvertTo(df, Load(di, chan1 + j) + vdcg);
-        auto b = ConvertTo(df, Load(di, chan2 + j) + vdcb);
-
-        auto y = va_r * r + va_g * g + va_b * b;
-        auto u = vcb * (b - y);
-        auto v = vcr * (r - y);
-
-        Store(y, df, (float*)(chan0 + j));
-        Store(u, df, (float*)(chan1 + j));
-        Store(v, df, (float*)(chan2 + j));
+        uint64_t rowOffset = (uint64_t)row * window0.stride_;
+        for(uint32_t column = 0; column < width; column += lanes)
+        {
+          size_t count = (std::min)(lanes, width - column);
+          auto index = rowOffset + column;
+          auto r = ConvertTo(df, LoadN(di, chan0 + index, count) + vdcr);
+          auto g = ConvertTo(df, LoadN(di, chan1 + index, count) + vdcg);
+          auto b = ConvertTo(df, LoadN(di, chan2 + index, count) + vdcb);
+          auto y = va_r * r + va_g * g + va_b * b;
+          StoreN(y, df, (float*)(chan0 + index), count);
+          StoreN(vcb * (b - y), df, (float*)(chan1 + index), count);
+          StoreN(vcr * (r - y), df, (float*)(chan2 + index), count);
+        }
       }
     }
 

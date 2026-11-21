@@ -1965,6 +1965,10 @@ GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
  * remain valid until grk_compress() completes. The returned codec object must
  * be released with grk_object_unref().
  *
+ * @warning grk_compress() may transform the sample buffers of @p image in
+ * place, so after it returns they no longer hold the source samples. Copy the
+ * image first if the samples are needed after compression.
+ *
  * @param stream_params  output stream description (see @ref grk_stream_params)
  * @param parameters     compression settings (see @ref grk_cparameters)
  * @param image          source image to compress (see @ref grk_image)
