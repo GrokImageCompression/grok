@@ -885,6 +885,10 @@ add_executable(grk_bmp_1bit_row_overrun_test GrkBmp1BitRowOverrunTest.cpp)
 target_link_libraries(grk_bmp_1bit_row_overrun_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_bmp_1bit_row_overrun_test COMMAND grk_bmp_1bit_row_overrun_test)
 
+add_executable(grk_pgx_image_offset_test GrkPgxImageOffsetTest.cpp)
+target_link_libraries(grk_pgx_image_offset_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
+add_test(NAME grk_pgx_image_offset_test COMMAND grk_pgx_image_offset_test)
+
 # synthesizes its own images, so it needs no GRK_DATA_ROOT
 add_executable(grk_degenerate_97_test GrkDegenerate97Test.cpp)
 target_link_libraries(grk_degenerate_97_test ${GROK_CORE_NAME} spdlog::spdlog)

@@ -154,13 +154,8 @@ inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_ty
 {
   grk_image_comp cmptparm; /* maximum of 1 component  */
   memset(&cmptparm, 0, sizeof(grk_image_comp));
-  cmptparm.x0 = parameters->image_offset_x0;
-  cmptparm.y0 = parameters->image_offset_y0;
-  cmptparm.w = !cmptparm.x0 ? ((width_ - 1) * parameters->subsampling_dx + 1)
-                            : cmptparm.x0 + (uint32_t)(width_ - 1) * parameters->subsampling_dx + 1;
-  cmptparm.h = !cmptparm.y0
-                   ? ((height_ - 1) * parameters->subsampling_dy + 1)
-                   : cmptparm.y0 + (uint32_t)(height_ - 1) * parameters->subsampling_dy + 1;
+  cmptparm.w = width_;
+  cmptparm.h = height_;
   cmptparm.sgnd = sgnd_;
   cmptparm.prec = prec_;
   cmptparm.data_type = dataType;
@@ -172,10 +167,10 @@ inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_ty
   if(image)
   {
     /* set image offset and reference grid */
-    image->x0 = cmptparm.x0;
-    image->y0 = cmptparm.x0;
-    image->x1 = cmptparm.w;
-    image->y1 = cmptparm.h;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
+    image->x1 = image->x0 + (width_ - 1) * parameters->subsampling_dx + 1;
+    image->y1 = image->y0 + (height_ - 1) * parameters->subsampling_dy + 1;
     if(!readSamplesAs(dataType, [&](auto sample) {
          readSamples<decltype(sample)>(image);
          return true;
