@@ -1702,7 +1702,7 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
                 }
                 for(uint16_t k = 0; k < numcomps; ++k)
                   rowPlanes[k] = planes[k] + r * comp->stride;
-                interleave(rowBuffer.data(), rowPlanes.data(), comp->w, targetPlanes);
+                grk::hwy_deinterleave(rowBuffer.data(), rowPlanes.data(), comp->w, targetPlanes);
               }
             };
 
@@ -1743,7 +1743,7 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
               }
               for(uint16_t k = 0; k < numcomps; ++k)
                 rowPlanesArr[k] = planes[k] + r * comp->stride;
-              interleave(buffer32s, rowPlanesArr.get(), comp->w, targetPlanes);
+              grk::hwy_deinterleave(buffer32s, rowPlanesArr.get(), comp->w, targetPlanes);
             }
           }
 
@@ -1874,7 +1874,7 @@ bool TIFFFormat::readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint16_t
         uint16_t targetPlanes = numcomps;
         if(tiSpp == 1)
           targetPlanes = 1;
-        interleave(buffer32s, planes.get(), comp->w, targetPlanes);
+        grk::hwy_deinterleave(buffer32s, planes.get(), comp->w, targetPlanes);
         for(uint16_t k = 0; k < numcomps; ++k)
           planes[k] += comp->stride;
         data += (size_t)rowStride / sizeof(RT);

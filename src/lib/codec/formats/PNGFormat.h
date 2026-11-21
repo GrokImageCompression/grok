@@ -761,7 +761,7 @@ bool PNGFormat::readSamples(void)
         T* rowPlanes[4];
         for(uint16_t c = 0; c < nr_comp_; ++c)
           rowPlanes[c] = planeBase[c] + (size_t)r * stride;
-        interleave(row32s, rowPlanes, width, nr_comp_);
+        grk::hwy_deinterleave(row32s, rowPlanes, width, nr_comp_);
       }
       free(row32s);
     };

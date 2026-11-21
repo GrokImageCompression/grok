@@ -377,7 +377,7 @@ void JPEGFormat::readScanlines(JSAMPARRAY rowBuffer)
       row[i] = rowBuffer[0][i];
 
     // convert to planar
-    interleave(row, planes, w, decompress_num_comps);
+    grk::hwy_deinterleave(row, planes, w, decompress_num_comps);
 
     for(uint16_t j = 0; j < decompress_num_comps; j++)
       planes[j] += dest_stride;

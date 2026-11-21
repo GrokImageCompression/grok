@@ -573,17 +573,18 @@ namespace HWY_NAMESPACE
       dest[i] = invert ? ((int32_t)src[i] ^ 0xFFFF) : (int32_t)src[i];
   }
 
-  /* ─── Deinterleave packed int32 → separate component planes ─── */
-  static void Hwy_deinterleave_i32(const int32_t* HWY_RESTRICT src, int32_t* const* dest,
-                                   uint32_t w, uint16_t numComps)
+  /* ─── Deinterleave packed samples → separate component planes ─── */
+  template<typename T>
+  static void Hwy_deinterleave(const T* HWY_RESTRICT src, T* const* dest, uint32_t w,
+                               uint16_t numComps)
   {
     if(numComps == 1)
     {
-      memcpy(dest[0], src, w * sizeof(int32_t));
+      memcpy(dest[0], src, w * sizeof(T));
       return;
     }
 
-    const HWY_FULL(int32_t) di;
+    const HWY_FULL(T) di;
     const uint32_t L = (uint32_t)Lanes(di);
 
     if(numComps == 3)
@@ -895,7 +896,8 @@ HWY_EXPORT(Hwy_copy_i32_to_u32_row);
 HWY_EXPORT(Hwy_unpack_8u_to_i32);
 HWY_EXPORT(Hwy_unpack_16be_to_i32);
 HWY_EXPORT(Hwy_unpack_16le_to_i32);
-HWY_EXPORT(Hwy_deinterleave_i32);
+HWY_EXPORT_T(Hwy_deinterleave_i32, Hwy_deinterleave<int32_t>);
+HWY_EXPORT_T(Hwy_deinterleave_i16, Hwy_deinterleave<int16_t>);
 HWY_EXPORT(Hwy_pack_planar_to_8);
 HWY_EXPORT(Hwy_pack_planar_to_16);
 HWY_EXPORT(Hwy_pack_planar_to_16be);
@@ -973,10 +975,16 @@ GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, siz
   HWY_DYNAMIC_DISPATCH(Hwy_unpack_16le_to_i32)(src, dest, w, invert);
 }
 
-GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w,
-                                       uint16_t numComps)
+GRK_SIMD_API void hwy_deinterleave(const int32_t* src, int32_t* const* dest, uint32_t w,
+                                   uint16_t numComps)
 {
-  HWY_DYNAMIC_DISPATCH(Hwy_deinterleave_i32)(src, dest, w, numComps);
+  HWY_DYNAMIC_DISPATCH_T(Hwy_deinterleave_i32)(src, dest, w, numComps);
+}
+
+GRK_SIMD_API void hwy_deinterleave(const int16_t* src, int16_t* const* dest, uint32_t w,
+                                   uint16_t numComps)
+{
+  HWY_DYNAMIC_DISPATCH_T(Hwy_deinterleave_i16)(src, dest, w, numComps);
 }
 
 GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,

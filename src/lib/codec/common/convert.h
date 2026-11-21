@@ -62,40 +62,6 @@ static constexpr int32_t INV_MASK_2 = (1 << 2) - 1;
     dest = INV((T)dst, mask, invert);                             \
   }
 
-/**
- * @brief Writes one row of interleaved pixels to N planar rows
- *
- * @tparam T type of src and dest buffers
- * @param src non-strided interleaved source buffer
- * @param dest array of N planar row buffers
- * @param w width of source
- * @param numComps number of components to interleave
- */
-template<typename T>
-void interleave(const T* src, T* const* dest, uint32_t w, uint16_t numComps)
-{
-  if constexpr(std::is_same_v<T, int32_t>)
-  {
-    grk::hwy_deinterleave_i32(src, dest, w, numComps);
-  }
-  else
-  {
-    if(numComps == 1)
-    {
-      memcpy(dest[0], src, w * sizeof(T));
-    }
-    else
-    {
-      size_t src_index = 0;
-      for(size_t i = 0; i < w; i++)
-      {
-        for(size_t j = 0; j < numComps; ++j)
-          dest[j][i] = src[src_index++];
-      }
-    }
-  }
-}
-
 template<typename T>
 T sign_extend(T val, uint8_t shift)
 {

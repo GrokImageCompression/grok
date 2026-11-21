@@ -101,10 +101,12 @@ GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size
  * Used by TIFF decode (N=16 path, libtiff already decoded to native byte order). */
 GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, size_t w, bool invert);
 
-/* Deinterleave packed int32 buffer [R0,G0,B0,R1,G1,B1,...] into separate component
+/* Deinterleave packed buffer [R0,G0,B0,R1,G1,B1,...] into separate component
  * planes. Optimised for numComps == 3 and 4; falls back to scalar for others. */
-GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w,
-                                       uint16_t numComps);
+GRK_SIMD_API void hwy_deinterleave(const int32_t* src, int32_t* const* dest, uint32_t w,
+                                   uint16_t numComps);
+GRK_SIMD_API void hwy_deinterleave(const int16_t* src, int16_t* const* dest, uint32_t w,
+                                   uint16_t numComps);
 
 /* Pack N planar int32 components into interleaved uint8 output, one row at a time.
  * Each src[k] points to the start of the k-th component for this row.
