@@ -439,6 +439,50 @@ namespace HWY_NAMESPACE
     deinterleave_h(scratch, resolution, dn, sn, stride, parity, numrows);
   }
 
+  // target[k] += coefficient * (neighbours[k + offset] + neighbours[k + offset + 1]), with the
+  // neighbours mirrored at both ends of the row
+  template<bool Scaled>
+  HWY_ATTR static void lift97_row(float* target, uint32_t targetCount, const float* neighbours,
+                                  uint32_t neighbourCount, int32_t offset, float coefficient,
+                                  float scale)
+  {
+    const HWY_FULL(float) d;
+    const size_t lanes = Lanes(d);
+    const auto vcoefficient = Set(d, coefficient);
+    const auto vscale = Set(d, scale);
+    auto lift = [&](auto curr, auto left, auto right) {
+      auto lifted = curr + (left + right) * vcoefficient;
+      if constexpr(Scaled)
+        lifted = lifted * vscale;
+      return lifted;
+    };
+    auto liftOne = [&](uint32_t k) {
+      int64_t left = (int64_t)k + offset;
+      int64_t right = left + 1;
+      if(left < 0)
+        left = right;
+      if(right >= (int64_t)neighbourCount)
+        right = left;
+      target[k] =
+          GetLane(lift(Set(d, target[k]), Set(d, neighbours[left]), Set(d, neighbours[right])));
+    };
+    // both neighbours exist for k >= -offset and k + offset + 1 < neighbourCount
+    uint32_t begin = (uint32_t)std::min<int64_t>(-offset, targetCount);
+    int64_t lastInterior = (int64_t)neighbourCount - offset - 1;
+    uint32_t end = (uint32_t)std::clamp<int64_t>(lastInterior, begin, targetCount);
+    for(uint32_t k = 0; k < begin; ++k)
+      liftOne(k);
+    uint32_t k = begin;
+    for(; k + lanes <= end; k += (uint32_t)lanes)
+    {
+      auto left = LoadU(d, neighbours + (int64_t)k + offset);
+      auto right = LoadU(d, neighbours + (int64_t)k + offset + 1);
+      StoreU(lift(LoadU(d, target + k), left, right), d, target + k);
+    }
+    for(; k < targetCount; ++k)
+      liftOne(k);
+  }
+
   void encode_97_h(float* res, float* scratch, const uint32_t width, const uint8_t parity,
                    const uint32_t stride, const uint32_t numrows, float dcShift)
   {
@@ -456,177 +500,40 @@ namespace HWY_NAMESPACE
 
     const HWY_FULL(float) d;
     const size_t lanes = Lanes(d);
-    const size_t lanesx2 = lanes << 1;
     const uint32_t sn = (width + !parity) >> 1;
     const uint32_t dn = width - sn;
-    const uint32_t off_s = parity;
-    const uint32_t off_d = !parity;
-    const int32_t reflect_d = ((int32_t)off_d - (int32_t)off_s) * (int32_t)lanes;
-    const int32_t reflect_s = ((int32_t)off_s - (int32_t)off_d) * (int32_t)lanes;
-
-    // fetch
-    auto temp = scratch;
-    const HWY_FULL(int32_t) di;
-    const auto indices = Iota(di, 0) * Set(di, static_cast<int32_t>(stride));
-    if(dcShift != 0.0f)
+    const auto vshift = Set(d, dcShift);
+    float* low = scratch;
+    float* high = scratch + sn;
+    float* evenSamples = parity ? high : low;
+    float* oddSamples = parity ? low : high;
+    // a high-pass sample's left neighbour is low[k] for parity 0 and low[k - 1] for parity 1
+    const int32_t highOffset = parity ? -1 : 0;
+    const int32_t lowOffset = parity ? 0 : -1;
+    for(uint32_t r = 0; r < numrows; ++r)
     {
-      const auto vshift = Set(d, dcShift);
-      for(auto j = 0U; j < width; ++j)
+      float* row = res + (size_t)r * stride;
+      uint32_t pair = 0;
+      for(; 2 * pair + 2 * lanes <= width; pair += (uint32_t)lanes)
       {
-        auto ind = indices + Set(di, static_cast<int32_t>(j));
-        Store(GatherIndexN(d, res, ind, numrows) - vshift, d, temp);
-        temp += lanes;
+        auto first = LoadU(d, row + 2 * pair);
+        auto second = LoadU(d, row + 2 * pair + lanes);
+        StoreU(ConcatEven(d, second, first) - vshift, d, evenSamples + pair);
+        StoreU(ConcatOdd(d, second, first) - vshift, d, oddSamples + pair);
       }
-    }
-    else
-    {
-      for(auto j = 0U; j < width; ++j)
+      for(; 2 * pair < width; ++pair)
       {
-        auto ind = indices + Set(di, static_cast<int32_t>(j));
-        Store(GatherIndexN(d, res, ind, numrows), d, temp);
-        temp += lanes;
+        evenSamples[pair] = GetLane(Set(d, row[2 * pair]) - vshift);
+        if(2 * pair + 1 < width)
+          oddSamples[pair] = GetLane(Set(d, row[2 * pair + 1]) - vshift);
       }
+      lift97_row<false>(high, dn, low, sn, highOffset, alpha, 1.0f);
+      lift97_row<false>(low, sn, high, dn, lowOffset, beta, 1.0f);
+      lift97_row<true>(high, dn, low, sn, highOffset, gamma, K);
+      // the high pass neighbours were stored already scaled by K
+      lift97_row<true>(low, sn, high, dn, lowOffset, delta * invK, invK);
+      memcpy(row, scratch, (size_t)width * sizeof(float));
     }
-
-    // high pass 1
-    auto scratch_d = scratch + off_d * lanes;
-    const uint32_t samples_no_end_bdry_d = std::min<uint32_t>(dn, sn - !parity);
-    auto s_d = Set(d, alpha);
-
-    auto scratch_s = scratch + off_s * lanes;
-    const uint32_t samples_no_end_bdry_s = std::min<uint32_t>(sn, dn - parity);
-    auto s_s = Set(d, beta);
-
-    uint32_t i_d = 0;
-    uint32_t i_s = 0;
-    auto prev_d = s_s;
-    auto prev_s = s_s;
-    if(samples_no_end_bdry_d != 0)
-    {
-      // reflection at left
-      prev_d = Load(d, &scratch_d[reflect_s]);
-      auto curr_d = Load(d, &scratch_d[0]);
-      auto next_d = Load(d, &scratch_d[lanes]);
-      Store(curr_d + (prev_d + next_d) * s_d, d, &scratch_d[0]);
-      scratch_d += lanesx2;
-      prev_d = next_d;
-      i_d++;
-    }
-    for(; i_d < samples_no_end_bdry_d; ++i_d)
-    {
-      auto curr_d = Load(d, &scratch_d[0]);
-      auto next_d = Load(d, &scratch_d[lanes]);
-      Store(curr_d + (prev_d + next_d) * s_d, d, &scratch_d[0]);
-      scratch_d += lanesx2;
-      prev_d = next_d;
-    }
-
-    if(i_d + 1 == dn)
-    {
-      // reflection at right
-      prev_d = Load(d, &scratch_d[-1 * (int64_t)lanes]);
-      auto curr_d = Load(d, &scratch_d[0]);
-      Store(curr_d + (prev_d + prev_d) * s_d, d, &scratch_d[0]);
-    }
-    // low pass 1
-    if(samples_no_end_bdry_s != 0)
-    {
-      // reflection at left
-      prev_s = Load(d, &scratch_s[reflect_d]);
-      auto curr_s = Load(d, &scratch_s[0]);
-      auto next_s = Load(d, &scratch_s[lanes]);
-      Store(curr_s + (prev_s + next_s) * s_s, d, &scratch_s[0]);
-      scratch_s += lanesx2;
-      prev_s = next_s;
-      i_s++;
-    }
-    for(; i_s < samples_no_end_bdry_s; ++i_s)
-    {
-      auto curr_s = Load(d, &scratch_s[0]);
-      auto next_s = Load(d, &scratch_s[lanes]);
-      Store(curr_s + (prev_s + next_s) * s_s, d, &scratch_s[0]);
-      scratch_s += lanesx2;
-      prev_s = next_s;
-    }
-
-    if(i_s + 1 == sn)
-    {
-      // reflection at right
-      prev_s = Load(d, &scratch_s[-1 * (int64_t)lanes]);
-      auto curr_s = Load(d, &scratch_s[0]);
-      Store(curr_s + (prev_s + prev_s) * s_s, d, &scratch_s[0]);
-    }
-
-    // high pass 2
-    scratch_d = scratch + off_d * lanes;
-    s_d = Set(d, gamma);
-    const auto sf_d = Set(d, K);
-
-    scratch_s = scratch + off_s * lanes;
-    // the high pass neighbours were stored already scaled by K
-    s_s = Set(d, delta * invK);
-    const auto sf_s = Set(d, invK);
-
-    i_d = 0;
-    if(samples_no_end_bdry_d != 0)
-    {
-      // reflection at left
-      prev_d = Load(d, &scratch_d[reflect_s]);
-      auto curr_d = Load(d, &scratch_d[0]);
-      auto next_d = Load(d, &scratch_d[lanes]);
-      Store((curr_d + (prev_d + next_d) * s_d) * sf_d, d, &scratch_d[0]);
-      scratch_d += lanesx2;
-      prev_d = next_d;
-      i_d++;
-    }
-    for(; i_d < samples_no_end_bdry_d; ++i_d)
-    {
-      auto curr_d = Load(d, &scratch_d[0]);
-      auto next_d = Load(d, &scratch_d[lanes]);
-      Store((curr_d + (prev_d + next_d) * s_d) * sf_d, d, &scratch_d[0]);
-      scratch_d += lanesx2;
-      prev_d = next_d;
-    }
-
-    if(i_d + 1 == dn)
-    {
-      // reflection at right
-      prev_d = Load(d, &scratch_d[-1 * (int64_t)lanes]);
-      auto curr_d = Load(d, &scratch_d[0]);
-      Store((curr_d + (prev_d + prev_d) * s_d) * sf_d, d, &scratch_d[0]);
-    }
-    // low pass 2
-
-    i_s = 0;
-    if(samples_no_end_bdry_s != 0)
-    {
-      // reflection at left
-      prev_s = Load(d, &scratch_s[reflect_d]);
-      auto curr_s = Load(d, &scratch_s[0]);
-      auto next_s = Load(d, &scratch_s[lanes]);
-      Store((curr_s + (prev_s + next_s) * s_s) * sf_s, d, &scratch_s[0]);
-      scratch_s += lanesx2;
-      prev_s = next_s;
-      i_s++;
-    }
-    for(; i_s < samples_no_end_bdry_s; ++i_s)
-    {
-      auto curr_s = Load(d, &scratch_s[0]);
-      auto next_s = Load(d, &scratch_s[lanes]);
-      Store((curr_s + (prev_s + next_s) * s_s) * sf_s, d, &scratch_s[0]);
-      scratch_s += lanesx2;
-      prev_s = next_s;
-    }
-
-    if(i_s + 1 == sn)
-    {
-      // reflection at right
-      prev_s = Load(d, &scratch_s[-1 * (int64_t)lanes]);
-      auto curr_s = Load(d, &scratch_s[0]);
-      Store((curr_s + (prev_s + prev_s) * s_s) * sf_s, d, &scratch_s[0]);
-    }
-
-    deinterleave_h(scratch, res, dn, sn, stride, parity, numrows);
   }
 
   void encode_97_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
