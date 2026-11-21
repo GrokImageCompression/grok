@@ -107,6 +107,10 @@ GRK_SIMD_API void hwy_deinterleave(const int32_t* src, int32_t* const* dest, uin
                                    uint16_t numComps);
 GRK_SIMD_API void hwy_deinterleave(const int16_t* src, int16_t* const* dest, uint32_t w,
                                    uint16_t numComps);
+GRK_SIMD_API void hwy_deinterleave(const uint8_t* src, int32_t* const* dest, uint32_t w,
+                                   uint16_t numComps);
+GRK_SIMD_API void hwy_deinterleave(const uint8_t* src, int16_t* const* dest, uint32_t w,
+                                   uint16_t numComps);
 
 /* Pack N planar int32 components into interleaved uint8 output, one row at a time.
  * Each src[k] points to the start of the k-th component for this row.

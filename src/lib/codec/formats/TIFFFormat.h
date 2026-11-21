@@ -1668,18 +1668,24 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   uint32_t stripsBeingRead = 0;
   bool success = true;
 
+  bool unsignedBytes = prec == 8 && !sgnd && !invert;
   auto convertRows = [&](const RowChunk& chunk, std::vector<T>& rowBuffer, T** rowPlanes) {
-    rowBuffer.resize(pixelCount);
     for(uint32_t r = chunk.beginRow; r < chunk.endRow; ++r)
     {
-      if(!convertRowTIFF<T>(chunk.strip->bytes.get() + (size_t)r * (size_t)rowStride,
-                            rowBuffer.data(), pixelCount, prec, sgnd, invert))
-        return false;
+      const uint8_t* rowBytes = chunk.strip->bytes.get() + (size_t)r * (size_t)rowStride;
       for(uint16_t k = 0; k < targetPlanes; ++k)
       {
         auto comp = comps + chunk.plane + k;
         rowPlanes[k] = (T*)comp->data + (size_t)(chunk.stripFirstRow + r) * comp->stride;
       }
+      if(unsignedBytes)
+      {
+        grk::hwy_deinterleave(rowBytes, rowPlanes, width, targetPlanes);
+        continue;
+      }
+      rowBuffer.resize(pixelCount);
+      if(!convertRowTIFF<T>(rowBytes, rowBuffer.data(), pixelCount, prec, sgnd, invert))
+        return false;
       grk::hwy_deinterleave(rowBuffer.data(), rowPlanes, width, targetPlanes);
     }
     return true;
