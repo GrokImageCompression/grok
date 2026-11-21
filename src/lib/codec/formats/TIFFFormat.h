@@ -1622,6 +1622,9 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
   uint32_t currentPlane = 0;
   T* buffer32s = nullptr;
   bool subsampled = chroma_subsample_x != 1 || chroma_subsample_y != 1;
+  uint32_t maxThreads = (std::max)(1U, std::thread::hardware_concurrency());
+  std::vector<std::vector<T>> workerRows(maxThreads);
+  std::vector<std::vector<T*>> workerPlanes(maxThreads, std::vector<T*>(numcomps));
   size_t luma_block = chroma_subsample_x * chroma_subsample_y;
   size_t unitSize = luma_block + 2;
   if(tiPC == PLANARCONFIG_SEPARATE)
@@ -1680,38 +1683,26 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
 
           if(rowCount >= 4)
           {
-            /* Parallel: allocate per-row temp buffers and dispatch via threads */
-            size_t bufSize = pixelCount;
-            auto rowBufs = std::make_unique<T*[]>(rowCount);
-            for(uint32_t r = 0; r < rowCount; ++r)
-              rowBufs[r] = new T[bufSize];
-
-            /* Snapshot plane pointers for each row (row r writes to offset r * stride) */
-            auto rowPlanes = std::make_unique<std::unique_ptr<T*[]>[]>(rowCount);
-            for(uint32_t r = 0; r < rowCount; ++r)
-            {
-              rowPlanes[r] = std::make_unique<T*[]>(numcomps);
-              for(uint16_t k = 0; k < numcomps; ++k)
-                rowPlanes[r][k] = planes[k] + r * comp->stride;
-            }
-
             std::atomic<bool> convOk{true};
-            uint32_t nThreads = (std::min)(rowCount, (uint32_t)std::thread::hardware_concurrency());
-            if(nThreads < 2)
-              nThreads = 1;
+            uint32_t nThreads = (std::min)(rowCount, maxThreads);
 
-            auto worker = [&](uint32_t begin, uint32_t end) {
+            auto worker = [&](uint32_t threadIndex, uint32_t begin, uint32_t end) {
+              auto& rowBuffer = workerRows[threadIndex];
+              rowBuffer.resize(pixelCount);
+              auto& rowPlanes = workerPlanes[threadIndex];
               for(uint32_t r = begin; r < end; ++r)
               {
                 if(!convOk.load(std::memory_order_relaxed))
                   return;
                 const uint8_t* rowData = datau8 + (size_t)r * (size_t)rowStride;
-                if(!convertRowTIFF<T>(rowData, rowBufs[r], pixelCount, prec, sgnd, invert))
+                if(!convertRowTIFF<T>(rowData, rowBuffer.data(), pixelCount, prec, sgnd, invert))
                 {
                   convOk.store(false, std::memory_order_relaxed);
                   return;
                 }
-                interleave(rowBufs[r], rowPlanes[r].get(), comp->w, targetPlanes);
+                for(uint16_t k = 0; k < numcomps; ++k)
+                  rowPlanes[k] = planes[k] + r * comp->stride;
+                interleave(rowBuffer.data(), rowPlanes.data(), comp->w, targetPlanes);
               }
             };
 
@@ -1724,16 +1715,13 @@ bool TIFFFormat::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numco
             {
               uint32_t count = rowsPerThread + (t < remainder ? 1 : 0);
               if(t == nThreads - 1)
-                worker(start, start + count); // run last chunk on this thread
+                worker(t, start, start + count); // run last chunk on this thread
               else
-                threads.emplace_back(worker, start, start + count);
+                threads.emplace_back(worker, t, start, start + count);
               start += count;
             }
             for(auto& th : threads)
               th.join();
-
-            for(uint32_t r = 0; r < rowCount; ++r)
-              delete[] rowBufs[r];
 
             if(!convOk.load())
             {
