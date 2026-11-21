@@ -127,6 +127,10 @@ struct CodeblockCompress : public Codeblock
   {
     getImpl()->setNumPasses(numPasses);
   }
+  CodePass* allocatePasses(uint8_t numPasses)
+  {
+    return getImpl()->allocatePasses(numPasses);
+  }
   CodePass* getLastPass(void)
   {
     return getImpl()->getLastPass();

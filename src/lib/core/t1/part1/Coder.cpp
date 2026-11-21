@@ -141,14 +141,14 @@ bool Coder::compress(CompressBlockExec* block)
                                  block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms,
                                  block->mct_numcomps, block->doRateControl, block->earlyStopSlope);
 
-  cblk->setNumPasses(cblkexp.numPassesTotal);
+  auto passes = cblk->allocatePasses(cblkexp.numPassesTotal);
   cblk->setNumBps(cblkexp.numbps);
   cblk->storeCompressedBytes(
       cblkexp.data, cblkexp.numPassesTotal ? cblkexp.passes[cblkexp.numPassesTotal - 1].rate : 0);
-  for(uint8_t i = 0; i < cblk->getNumPasses(); ++i)
+  for(uint8_t i = 0; i < cblkexp.numPassesTotal; ++i)
   {
     auto passexp = cblkexp.passes + i;
-    auto passgrk = cblk->getPass(i);
+    auto passgrk = passes + i;
     passgrk->distortiondec_ = passexp->distortiondec;
     passgrk->len_ = passexp->len;
     passgrk->rate_ = passexp->rate;

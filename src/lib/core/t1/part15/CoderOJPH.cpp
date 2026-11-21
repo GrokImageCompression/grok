@@ -201,9 +201,9 @@ bool T1OJPH::compress(CompressBlockExec* block)
   g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length, elastic_alloc,
               next_coded);
 
-  cblk->setNumPasses(1);
-  cblk->getPass(0)->len_ = (uint16_t)pass_length[0];
-  cblk->getPass(0)->rate_ = (uint16_t)pass_length[0];
+  auto pass = cblk->allocatePasses(1);
+  pass->len_ = (uint16_t)pass_length[0];
+  pass->rate_ = (uint16_t)pass_length[0];
   cblk->setNumBps(1);
   cblk->storeCompressedBytes(next_coded->buf, pass_length[0]);
 

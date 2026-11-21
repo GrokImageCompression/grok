@@ -110,53 +110,52 @@ struct PrecinctCodeblockStorage
 {
   PrecinctCodeblockStorage(uint32_t numBlocks, uint16_t numLayers, uint8_t maxPasses)
       : numLayers_(numLayers), maxPasses_(maxPasses),
-        passesOffset_((size_t)numBlocks * numLayers * sizeof(Layer)),
-        storage_(new uint8_t[passesOffset_ + (size_t)numBlocks * maxPasses * sizeof(CodePass)])
-  {
-    std::uninitialized_value_construct_n(reinterpret_cast<Layer*>(storage_.get()),
-                                         (size_t)numBlocks * numLayers);
-    std::uninitialized_value_construct_n(
-        reinterpret_cast<CodePass*>(storage_.get() + passesOffset_), (size_t)numBlocks * maxPasses);
-  }
+        layers_(new Layer[(size_t)numBlocks * numLayers]())
+  {}
   uint8_t maxPasses(void) const
   {
     return maxPasses_;
   }
   Layer* getLayers(uint32_t cblkno)
   {
-    return reinterpret_cast<Layer*>(storage_.get()) + (size_t)cblkno * numLayers_;
+    return layers_.get() + (size_t)cblkno * numLayers_;
   }
-  CodePass* getPasses(uint32_t cblkno)
-  {
-    return reinterpret_cast<CodePass*>(storage_.get() + passesOffset_) +
-           (size_t)cblkno * maxPasses_;
-  }
-  // blocks of one precinct are coded on different threads
   uint8_t* storeCompressedBytes(const uint8_t* bytes, uint32_t length)
   {
-    std::lock_guard<std::mutex> lock(streamChunksMutex_);
-    if(streamChunks_.empty() || streamChunkUsed_ + length > streamChunkCapacity_)
-    {
-      streamChunkCapacity_ =
-          std::max<size_t>(length, std::clamp<size_t>(2 * streamChunkCapacity_, 4096, 262144));
-      streamChunks_.emplace_back(new uint8_t[streamChunkCapacity_]);
-      streamChunkUsed_ = 0;
-    }
-    auto dest = streamChunks_.back().get() + streamChunkUsed_;
+    auto dest = allocate(length);
     memcpy(dest, bytes, length);
-    streamChunkUsed_ += length;
     return dest;
+  }
+  CodePass* allocatePasses(uint8_t numPasses)
+  {
+    auto passes = reinterpret_cast<CodePass*>(allocate((size_t)numPasses * sizeof(CodePass)));
+    std::uninitialized_value_construct_n(passes, numPasses);
+    return passes;
   }
 
 private:
+  uint8_t* allocate(size_t length)
+  {
+    // blocks of one precinct are coded on different threads
+    std::lock_guard<std::mutex> lock(chunksMutex_);
+    size_t offset = (chunkUsed_ + alignof(CodePass) - 1) & ~(alignof(CodePass) - 1);
+    if(chunks_.empty() || offset + length > chunkCapacity_)
+    {
+      chunkCapacity_ = std::max<size_t>(length, std::clamp<size_t>(2 * chunkCapacity_, 4096, 262144));
+      chunks_.emplace_back(new uint8_t[chunkCapacity_]);
+      offset = 0;
+    }
+    chunkUsed_ = offset + length;
+    return chunks_.back().get() + offset;
+  }
+
   uint16_t numLayers_;
   uint8_t maxPasses_;
-  size_t passesOffset_;
-  std::unique_ptr<uint8_t[]> storage_;
-  std::mutex streamChunksMutex_;
-  std::vector<std::unique_ptr<uint8_t[]>> streamChunks_;
-  size_t streamChunkCapacity_ = 0;
-  size_t streamChunkUsed_ = 0;
+  std::unique_ptr<Layer[]> layers_;
+  std::mutex chunksMutex_;
+  std::vector<std::unique_ptr<uint8_t[]>> chunks_;
+  size_t chunkCapacity_ = 0;
+  size_t chunkUsed_ = 0;
 };
 
 struct CodeblockCompressImpl : public CodeblockImpl
@@ -174,7 +173,7 @@ struct CodeblockCompressImpl : public CodeblockImpl
   {
     CodeblockImpl::init();
     layers = storage->getLayers(cblkno);
-    passes = storage->getPasses(cblkno);
+    passes = nullptr;
     storage_ = storage;
   }
   CodePass* getPass(uint8_t passno)
@@ -196,6 +195,12 @@ struct CodeblockCompressImpl : public CodeblockImpl
   void setNumPasses(uint8_t numPasses)
   {
     totalPasses_ = numPasses;
+  }
+  CodePass* allocatePasses(uint8_t numPasses)
+  {
+    totalPasses_ = numPasses;
+    passes = storage_->allocatePasses(numPasses);
+    return passes;
   }
   CodePass* getLastPass(void)
   {
