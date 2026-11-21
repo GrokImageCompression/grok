@@ -877,6 +877,10 @@ add_test(NAME grk_tiff_wide_row_test COMMAND grk_tiff_wide_row_test)
 # reads a 2^28 sample row, about 3 GB
 set_tests_properties(grk_tiff_wide_row_test PROPERTIES RUN_SERIAL TRUE)
 
+add_executable(grk_tiff_short_strip_test GrkTiffShortStripTest.cpp)
+target_link_libraries(grk_tiff_short_strip_test ${GROK_CODEC_NAME})
+add_test(NAME grk_tiff_short_strip_test COMMAND grk_tiff_short_strip_test)
+
 add_executable(grk_pbm_ascii_excess_pixels_test GrkPbmAsciiExcessPixelsTest.cpp)
 target_link_libraries(grk_pbm_ascii_excess_pixels_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_pbm_ascii_excess_pixels_test COMMAND grk_pbm_ascii_excess_pixels_test)

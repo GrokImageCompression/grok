@@ -1642,12 +1642,42 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   };
   struct RowChunk
   {
-    StripBuffer* strip;
+    const uint8_t* bytes;
+    StripBuffer* buffer;
     uint32_t plane;
     uint32_t stripFirstRow;
     uint32_t beginRow;
     uint32_t endRow;
   };
+  auto stripRows = [&](uint32_t strip) {
+    return (std::min)(rowsPerStrip, height - (strip % stripsPerPlane) * rowsPerStrip);
+  };
+  uint16_t compression = COMPRESSION_NONE;
+  TIFFGetFieldDefaulted(tif, TIFFTAG_COMPRESSION, &compression);
+  uint16_t fillOrder = FILLORDER_MSB2LSB;
+  TIFFGetFieldDefaulted(tif, TIFFTAG_FILLORDER, &fillOrder);
+  void* mappedFile = nullptr;
+  toff_t mappedSize = 0;
+  // libtiff byte swaps samples wider than 8 bits and reverses LSB first fill order after the copy
+  bool readMapped = compression == COMPRESSION_NONE && fillOrder == FILLORDER_MSB2LSB &&
+                    (prec <= 8 || !TIFFIsByteSwapped(tif)) &&
+                    TIFFGetMapFileProc(tif)(TIFFClientdata(tif), &mappedFile, &mappedSize);
+  std::vector<const uint8_t*> mappedStrips;
+  for(uint32_t strip = 0; readMapped && strip < numStrips; ++strip)
+  {
+    uint64_t offset = TIFFGetStrileOffset(tif, strip);
+    uint64_t byteCount = TIFFGetStrileByteCount(tif, strip);
+    if(byteCount < (uint64_t)stripRows(strip) * (uint64_t)rowStride || offset > mappedSize ||
+       byteCount > mappedSize - offset)
+    {
+      spdlog::error("tiftoimage: strip {} at offset {} with {} bytes does not fit the file", strip,
+                    offset, byteCount);
+      TIFFGetUnmapFileProc(tif)(TIFFClientdata(tif), mappedFile, mappedSize);
+      return false;
+    }
+    mappedStrips.push_back(static_cast<const uint8_t*>(mappedFile) + offset);
+  }
+
   uint32_t numThreads = (std::max)(1U, std::thread::hardware_concurrency());
   // linux zeroes a 2 MiB huge page once for every thread that first writes to it at the same time
   constexpr size_t hugePageBytes = 2 * 1024 * 1024;
@@ -1672,7 +1702,7 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   auto convertRows = [&](const RowChunk& chunk, std::vector<T>& rowBuffer, T** rowPlanes) {
     for(uint32_t r = chunk.beginRow; r < chunk.endRow; ++r)
     {
-      const uint8_t* rowBytes = chunk.strip->bytes.get() + (size_t)r * (size_t)rowStride;
+      const uint8_t* rowBytes = chunk.bytes + (size_t)r * (size_t)rowStride;
       for(uint16_t k = 0; k < targetPlanes; ++k)
       {
         auto comp = comps + chunk.plane + k;
@@ -1706,8 +1736,8 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
         bool converted = convertRows(chunk, rowBuffer, rowPlanes.data());
         lock.lock();
         success = success && converted;
-        if(--chunk.strip->chunksLeft == 0)
-          freeBuffers.push_back(chunk.strip);
+        if(chunk.buffer && --chunk.buffer->chunksLeft == 0)
+          freeBuffers.push_back(chunk.buffer);
         continue;
       }
       if(nextStrip < numStrips)
@@ -1718,31 +1748,44 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
         ++stripsBeingRead;
         for(uint32_t strip = firstStrip; success && strip < lastStrip; ++strip)
         {
-          if(freeBuffers.empty())
+          StripBuffer* buffer = nullptr;
+          const uint8_t* stripBytes;
+          uint32_t rowCount;
+          if(readMapped)
           {
-            buffers.push_back(std::make_unique<StripBuffer>());
-            buffers.back()->bytes.reset(new uint8_t[(size_t)stripSize]);
-            freeBuffers.push_back(buffers.back().get());
+            stripBytes = mappedStrips[strip];
+            rowCount = stripRows(strip);
           }
-          auto buffer = freeBuffers.back();
-          freeBuffers.pop_back();
-          lock.unlock();
-          // libtiff handles are not thread safe
-          if(!handle)
-            handle = TIFFOpen(fileName_.c_str(), "r");
-          tsize_t ssize =
-              handle ? TIFFReadEncodedStrip(handle, strip, buffer->bytes.get(), stripSize) : -1;
-          lock.lock();
-          if(ssize < 1 || ssize > stripSize)
+          else
           {
-            spdlog::error("tiftoimage: Bad value for ssize({}) vs. strip_size({}).",
-                          (long long)ssize, (long long)stripSize);
-            success = false;
-            break;
+            if(freeBuffers.empty())
+            {
+              buffers.push_back(std::make_unique<StripBuffer>());
+              buffers.back()->bytes.reset(new uint8_t[(size_t)stripSize]);
+              freeBuffers.push_back(buffers.back().get());
+            }
+            buffer = freeBuffers.back();
+            freeBuffers.pop_back();
+            lock.unlock();
+            // libtiff handles are not thread safe
+            if(!handle)
+              handle = TIFFOpen(fileName_.c_str(), "r");
+            tsize_t ssize =
+                handle ? TIFFReadEncodedStrip(handle, strip, buffer->bytes.get(), stripSize) : -1;
+            lock.lock();
+            if(ssize < 1 || ssize > stripSize)
+            {
+              spdlog::error("tiftoimage: Bad value for ssize({}) vs. strip_size({}).",
+                            (long long)ssize, (long long)stripSize);
+              success = false;
+              break;
+            }
+            stripBytes = buffer->bytes.get();
+            rowCount = (std::min)((uint32_t)(ssize / rowStride), stripRows(strip));
           }
-          uint32_t stripFirstRow = (strip % stripsPerPlane) * rowsPerStrip;
-          RowChunk wholeStrip{buffer, strip / stripsPerPlane, stripFirstRow, 0,
-                              (std::min)((uint32_t)(ssize / rowStride), height - stripFirstRow)};
+          RowChunk wholeStrip{
+              stripBytes, buffer,  strip / stripsPerPlane, (strip % stripsPerPlane) * rowsPerStrip,
+              0,          rowCount};
           uint32_t stripsLeft = numStrips - strip;
           uint32_t chunksPerStrip = (numThreads + stripsLeft - 1) / stripsLeft;
           if(chunksPerStrip == 1)
@@ -1751,7 +1794,8 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
             bool converted = convertRows(wholeStrip, rowBuffer, rowPlanes.data());
             lock.lock();
             success = success && converted;
-            freeBuffers.push_back(buffer);
+            if(buffer)
+              freeBuffers.push_back(buffer);
             continue;
           }
           uint32_t chunkRows =
@@ -1762,9 +1806,10 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
             chunk.beginRow = beginRow;
             chunk.endRow = (std::min)(beginRow + chunkRows, wholeStrip.endRow);
             chunks.push_back(chunk);
-            buffer->chunksLeft++;
+            if(buffer)
+              buffer->chunksLeft++;
           }
-          if(buffer->chunksLeft == 0)
+          if(buffer && buffer->chunksLeft == 0)
             freeBuffers.push_back(buffer);
           workAvailable.notify_all();
         }
@@ -1788,6 +1833,8 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   worker(0);
   for(auto& thread : threads)
     thread.join();
+  if(readMapped)
+    TIFFGetUnmapFileProc(tif)(TIFFClientdata(tif), mappedFile, mappedSize);
 
   return success;
 }
