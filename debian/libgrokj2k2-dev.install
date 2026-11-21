@@ -1,0 +1,6 @@
+usr/include/grok-*
+usr/lib/*/libgrokj2k.so
+usr/lib/*/libgrokj2kcodec.so
+usr/lib/*/pkgconfig/libgrokj2k.pc
+usr/lib/*/pkgconfig/libgrokj2kcodec.pc
+usr/lib/*/cmake/grok-*

@@ -1,3 +1,17 @@
+libgrokj2k (21.0.0-1) unstable; urgency=medium
+
+    * New upstream release
+    * Library soname bumped to 2: rename libgrokj2k1, libgrokj2k1-dev and
+      libgrokj2k1-doc to libgrokj2k2, libgrokj2k2-dev and libgrokj2k2-doc
+    * Build the Mercury decoder: add cargo, rustc, librust-thiserror-dev and
+      librust-loom-dev to Build-Depends, use the Debian crate registry offline
+      and regenerate mercury/Cargo.lock from it
+    * Raise the cmake build dependency to 3.21
+    * Build spdlog against libfmt-dev instead of downloading fmt
+    * Add .install files, the binary packages were empty
+
+ -- Aaron Boxer <boxerab@protonmail.com>  Sat, 21 Nov 2026 09:00:00 -0500
+
 libgrokj2k (20.2.6-1) unstable; urgency=medium
 
     * bug fix release: fixed a number of buffer overflow issues

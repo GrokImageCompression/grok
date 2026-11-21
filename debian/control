@@ -2,13 +2,18 @@ Source: libgrokj2k
 Priority: optional
 Maintainer: Aaron Boxer <boxerab@protonmail.com>
 Homepage: https://github.com/GrokImageCompression/grok
-Build-Depends: cmake (>= 3.20.0),
+Build-Depends: cargo (>= 1.87),
+               cmake (>= 3.21),
                debhelper-compat (= 13),
                help2man,
                liblcms2-dev,
                libpng-dev,
                libtiff-dev,
+               libfmt-dev,
                libjpeg-dev,
+               librust-loom-dev,
+               librust-thiserror-dev (>= 2),
+               rustc (>= 1.87),
                zlib1g-dev
 Build-Depends-Indep: doxygen
 Standards-Version: 4.6.1.0
@@ -17,7 +22,7 @@ Vcs-Browser: https://github.com/GrokImageCompression/grok
 Vcs-Git: https://github.com/GrokImageCompression/grok.git -b debian/master
 Rules-Requires-Root: no
 
-Package: libgrokj2k1
+Package: libgrokj2k2
 Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
@@ -30,12 +35,12 @@ Description: JPEG 2000 image compression/decompression library
  .
  This package contains the runtime files for Grok.
 
-Package: libgrokj2k1-dev
+Package: libgrokj2k2-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
-Depends: libgrokj2k1 (= ${binary:Version}), ${misc:Depends}
-Recommends: libgrokj2k1-doc (= ${source:Version})
+Depends: libgrokj2k2 (= ${binary:Version}), ${misc:Depends}
+Recommends: libgrokj2k2-doc (= ${source:Version})
 Description: development files for Grok, a JPEG 2000 image library
  Grok is a library for handling the JPEG 2000 image compression format.
  JPEG 2000 is a wavelet-based image compression standard that permits
@@ -61,7 +66,7 @@ Description: command-line tools for the Grok JPEG 2000 library
   - grk_transcode: transcode JPEG 2000 files (JP2, JPH, J2K) without
                   full decompression.
 
-Package: libgrokj2k1-doc
+Package: libgrokj2k2-doc
 Section: doc
 Architecture: all
 Multi-Arch: foreign

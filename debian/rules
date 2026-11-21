@@ -6,6 +6,9 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 # as per upstream request:
 export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
 
+# debian build chroots have no network access for cargo
+export CARGO_HOME = $(CURDIR)/debian/cargo_home
+
 %:
 	dh $@
 
@@ -16,22 +19,33 @@ CMAKE_EXTRA_FLAGS += -DCMAKE_SKIP_RPATH=ON \
   -DGRK_BUILD_LCMS2:BOOL=OFF \
   -DGRK_BUILD_LIBPNG:BOOL=OFF \
   -DGRK_BUILD_JPEG:BOOL=OFF \
-  -DGRK_BUILD_LIBTIFF:BOOL=OFF
+  -DGRK_BUILD_LIBTIFF:BOOL=OFF \
+  -DSPDLOG_FMT_EXTERNAL:BOOL=ON
 
 override_dh_auto_configure:
+	mkdir -p $(CARGO_HOME)
+	printf '[source.crates-io]\nreplace-with = "debian"\n[source.debian]\ndirectory = "/usr/share/cargo/registry"\n[net]\noffline = true\n' > $(CARGO_HOME)/config.toml
+	# upstream Cargo.lock pins crate versions that the debian registry does not carry
+	cp mercury/Cargo.lock debian/Cargo.lock.upstream
+	cd mercury && cargo generate-lockfile
 	dh_auto_configure -- $(CMAKE_EXTRA_FLAGS)
 
-SOVERSION=1
+override_dh_auto_clean:
+	dh_auto_clean
+	[ ! -f debian/Cargo.lock.upstream ] || mv debian/Cargo.lock.upstream mercury/Cargo.lock
+
+SOVERSION=2
 pkg_lib = libgrokj2k$(SOVERSION)
 pkg_dev = libgrokj2k$(SOVERSION)-dev
 pkg_bin = grokj2k-tools
 
 override_dh_missing:
 	# annoying cmake-fatal-error export stuff:
-	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-20.2/GrokTargets*.cmake
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-$(VER_MAJOR_MINOR)/GrokTargets*.cmake
 	dh_missing --list-missing
 
 VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
+VER_MAJOR_MINOR = $(shell echo $(VER_FULL) | cut -d . -f 1,2)
 
 debian/%.1: debian/grk_common.1.in
 	help2man --include=$< --output=$@ --name="Works with JPEG2000 files" \

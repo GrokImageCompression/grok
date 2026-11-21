@@ -5,14 +5,14 @@ Managing Tags
 Move master tag:
 
 ```
-git push origin :refs/tags/v20.2.6 && git tag -fa v20.2.6 && git push origin --tags
+git push origin :refs/tags/v21.0.0 && git tag -fa v21.0.0 && git push origin --tags
 ```
 
 
 Move debian/master tag:
 
 ```
-git push origin :refs/tags/v20.2.6.debian && git tag -fa v20.2.6.debian && git push origin --tags
+git push origin :refs/tags/v21.0.0.debian && git tag -fa v21.0.0.debian && git push origin --tags
 ```
 
 ------------------
@@ -24,11 +24,11 @@ Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
 0. `cd $SOURCE_DIR`
 
 1. First-time chroot setup:
-   `apt install git sbuild cmake  devscripts build-essential debhelper help2man libpng-dev liblcms2-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian`
+   `apt install git sbuild cmake  devscripts build-essential debhelper help2man libpng-dev liblcms2-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian cargo rustc librust-thiserror-dev librust-loom-dev libfmt-dev`
 
 2. `sudo schroot -c debian-sid`
 
-3. `git archive --format=tar v20.2.6 | gzip > libgrokj2k_20.2.6.orig.tar.gz && mv libgrokj2k_20.2.6.orig.tar.gz ..`
+3. `curl -L -o ../libgrokj2k_21.0.0.orig.tar.gz https://github.com/GrokImageCompression/grok/releases/download/v21.0.0/source-full.tar.gz`
 
 4. `dpkg-buildpackage -us -uc`
 
@@ -73,7 +73,7 @@ sudo systemd-nspawn -D /srv/chroot/debian-sid
 apt update && apt upgrade -y
 apt install -y git cmake build-essential debhelper devscripts help2man \
     libpng-dev liblcms2-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen \
-    lintian
+    lintian cargo rustc librust-thiserror-dev librust-loom-dev libfmt-dev
 ```
 
 ### Bind-mount source directory and build
@@ -85,7 +85,7 @@ sudo systemd-nspawn -D /srv/chroot/debian-sid --bind=$HOME/src/grok:/src/grok
 git config --global --add safe.directory /src/grok
 cd /src/grok
 git submodule foreach --recursive 'rm -rf .git'
-git archive --format=tar v20.2.6 | gzip > ../libgrokj2k_20.2.6.orig.tar.gz
+curl -L -o ../libgrokj2k_21.0.0.orig.tar.gz https://github.com/GrokImageCompression/grok/releases/download/v21.0.0/source-full.tar.gz
 dpkg-buildpackage -us -uc
 lintian -EviIL +pedantic ../*.changes
 git submodule update --init
