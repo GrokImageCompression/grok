@@ -37,11 +37,6 @@ jobs:
         cmake -B base-build -S base-tree -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON -DGRK_ENABLE_LIBCURL=ON
         cmake --build base-build -j$(nproc) --target grokj2k
 
-    - name: assert mercury is in both builds
-      run: |
-        nm -D build/bin/libgrokj2k.so | grep -q mercury_warp_loom
-        nm -D base-build/bin/libgrokj2k.so | grep -q mercury_warp_loom
-
     - name: cache sentinel-2 images
       uses: actions/cache@v4
       with:

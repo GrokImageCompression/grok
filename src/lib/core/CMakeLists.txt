@@ -279,31 +279,28 @@ if(UNIX)
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
 
-# mercury streaming fast path — compile mercury's DWT kernels against grok's
+# mercury streaming fast path: compile mercury's DWT kernels against grok's
 # Highway and link the extern-kernels mercury staticlib (built by cargo
-# into the build tree, so read-only sources and several build trees work). requires cargo: when it is absent the fast path is dropped and
-# mercury_fastpath.cpp compiles to a no-op fallback. run cargo --version
-# rather than trusting find_program: the oss-fuzz base-builder image puts a
-# cargo wrapper on PATH without a rust toolchain behind it.
+# into the build tree, so read-only sources and several build trees work).
 set(MERCURY_DIR ${CMAKE_SOURCE_DIR}/mercury)
-find_program(CARGO_EXECUTABLE cargo)
-set(GRK_ENABLE_MERCURY OFF)
-if(CARGO_EXECUTABLE AND EXISTS ${MERCURY_DIR}/Cargo.toml)
-  execute_process(COMMAND ${CARGO_EXECUTABLE} --version
-    RESULT_VARIABLE CARGO_VERSION_RESULT OUTPUT_QUIET ERROR_QUIET)
-  if(CARGO_VERSION_RESULT EQUAL 0)
-    set(GRK_ENABLE_MERCURY ON)
-  endif()
-endif()
-set(GRK_ENABLE_MERCURY ${GRK_ENABLE_MERCURY} PARENT_SCOPE)
-
 set(MERCURY_HOOK_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mercury_compress.cpp)
 target_sources(${GROK_CORE_NAME} PRIVATE ${MERCURY_HOOK_SOURCES})
 set_source_files_properties(${MERCURY_HOOK_SOURCES} PROPERTIES
   INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
 
-if(GRK_ENABLE_MERCURY)
+if(GRK_BUILD_MERCURY)
+  find_program(CARGO_EXECUTABLE cargo)
+  if(NOT CARGO_EXECUTABLE)
+    message(FATAL_ERROR "cargo not found: install a rust toolchain or configure with -DGRK_BUILD_MERCURY=OFF")
+  endif()
+  # oss-fuzz base-builder images put a cargo wrapper on PATH with no rust toolchain behind it
+  execute_process(COMMAND ${CARGO_EXECUTABLE} --version
+    RESULT_VARIABLE CARGO_VERSION_RESULT OUTPUT_QUIET ERROR_QUIET)
+  if(NOT CARGO_VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "${CARGO_EXECUTABLE} --version failed: install a rust toolchain or configure with -DGRK_BUILD_MERCURY=OFF")
+  endif()
+
   # an explicit cargo target (CARGO_BUILD_TARGET) keeps RUSTFLAGS off build
   # scripts and proc macros, and moves the artifact under a triple subdir
   set(MERCURY_TARGET_ROOT ${CMAKE_BINARY_DIR}/mercury-target)

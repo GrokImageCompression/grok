@@ -246,7 +246,7 @@ target_include_directories(grk_rescale_test PRIVATE
 target_link_libraries(grk_rescale_test ${GROK_CORE_NAME})
 add_test(NAME grk_rescale_test COMMAND grk_rescale_test)
 
-if(GRK_ENABLE_MERCURY)
+if(GRK_BUILD_MERCURY)
   if(BUILD_SHARED_LIBS AND CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF" AND CMAKE_NM)
     add_test(NAME grk_mercury_elf_symbols_test
       COMMAND ${CMAKE_COMMAND} -DNM=${CMAKE_NM} -DLIBRARY=$<TARGET_FILE:${GROK_CORE_NAME}>
@@ -658,7 +658,7 @@ if(GRK_DATA_ROOT)
   set_tests_properties(grk_mercury_plan_oom_test PROPERTIES TIMEOUT 60)
 endif()
 
-if(GRK_ENABLE_MERCURY)
+if(GRK_BUILD_MERCURY)
   add_executable(grk_mercury_window_block_storage_test GrkMercuryWindowBlockStorageTest.cpp)
   target_link_libraries(grk_mercury_window_block_storage_test ${GROK_CORE_NAME} spdlog::spdlog)
   add_test(NAME grk_mercury_window_block_storage_test
@@ -1190,7 +1190,7 @@ add_executable(grk_callback_stream_test GrkCallbackStreamTest.cpp)
 target_link_libraries(grk_callback_stream_test ${GROK_CORE_NAME})
 add_test(NAME grk_callback_stream_test COMMAND grk_callback_stream_test)
 set_tests_properties(grk_callback_stream_test PROPERTIES TIMEOUT 120)
-if(GRK_ENABLE_MERCURY)
+if(GRK_BUILD_MERCURY)
   add_test(NAME grk_callback_stream_mercury_test COMMAND grk_callback_stream_test mercury)
   set_tests_properties(grk_callback_stream_mercury_test PROPERTIES TIMEOUT 120)
 endif()

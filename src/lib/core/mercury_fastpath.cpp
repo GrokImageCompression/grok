@@ -2475,7 +2475,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
 
 } // namespace grk
 
-#else // GRK_MERCURY_BUILD: fast path unavailable (no cargo at configure time)
+#else // GRK_MERCURY_BUILD: fast path unavailable (GRK_BUILD_MERCURY=OFF)
 
 namespace grk
 {

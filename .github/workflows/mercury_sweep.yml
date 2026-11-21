@@ -40,11 +40,6 @@ jobs:
       working-directory: ${{ github.workspace }}/build
       run: cmake --build . --config $BUILD_TYPE -j$(nproc)
 
-    - name: assert mercury is in the build
-      # without rust the library builds without mercury and every decode is
-      # classic, turning the sweep into classic vs classic
-      run: nm -D ${{ github.workspace }}/build/bin/libgrokj2k.so | grep -q mercury_warp_loom
-
     - name: runner cpu
       # hosted runners mix intel and amd, and mercury's kernels dispatch on cpu features
       run: lscpu

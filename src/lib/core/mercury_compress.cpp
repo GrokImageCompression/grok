@@ -361,7 +361,7 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
 
 } // namespace grk
 
-#else // GRK_MERCURY_BUILD: no mercury encoder without cargo at configure time
+#else // GRK_MERCURY_BUILD: no mercury encoder (GRK_BUILD_MERCURY=OFF)
 
 namespace grk
 {

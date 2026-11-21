@@ -18,7 +18,7 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 ## Build
 
-Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms. It requires version 3.20 or higher.
+Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms. It requires version 3.21 or higher.
 
 ## Compilers
 
@@ -28,6 +28,10 @@ Supported compilers:
 1. clang : version 16 or higher (C++23 required)
 1. MSVC : 2022 or higher
 1. Binaryen for WebAssembly
+
+### Rust
+
+The mercury codec needs a rust toolchain with cargo 1.87 or higher, and cmake stops with an error when cargo is missing. To build without mercury, configure with `-DGRK_BUILD_MERCURY=OFF`.
 
 ### g++
 
