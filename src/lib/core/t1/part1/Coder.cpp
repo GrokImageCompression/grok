@@ -83,22 +83,8 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
   }
   else
   {
-    const auto* const tileData = static_cast<float*>(block->tileData);
-    double quant = 1.0 / block->stepsize;
-    for(auto j = 0U; j < h; ++j)
-    {
-      for(auto i = 0U; i < w; ++i)
-      {
-        int32_t temp = (int32_t)grk_lrintf((float)(((double)tileData[tile_index++] * quant)) *
-                                           (1 << T1_NMSEDEC_FRACBITS));
-        int32_t mag = temp * ((temp > 0) - (temp < 0));
-        if((uint32_t)mag > maximum)
-          maximum = (uint32_t)mag;
-        int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
-        uncompressedData[cblk_index++] = sgn | mag;
-      }
-      tile_index += tileLineAdvance;
-    }
+    maximum = quantizeToSignMagnitude(uncompressedData, static_cast<const float*>(block->tileData),
+                                      block->tile_width, w, h, 1.0 / block->stepsize);
   }
 
   return true;
