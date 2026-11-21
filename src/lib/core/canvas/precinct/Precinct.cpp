@@ -84,6 +84,41 @@ PrecinctImpl* Precinct::getImpl(void)
   return impl_;
 }
 
+void PrecinctCompress::compactBlockStorage(void)
+{
+  auto impl = getImpl();
+  if(!impl->blockStorage_)
+    return;
+  size_t passBytes = 0;
+  size_t codeBytes = 0;
+  for(uint32_t cblkno = 0; cblkno < impl->numEnc_; ++cblkno)
+  {
+    auto cblk = impl->enc_ + cblkno;
+    passBytes += (size_t)cblk->getNumPasses() * sizeof(t1::CodePass);
+    if(cblk->getNumPasses())
+      codeBytes += cblk->getLastPass()->rate_;
+  }
+  size_t compactedBytes = passBytes + codeBytes;
+  auto compacted = std::make_unique_for_overwrite<uint8_t[]>(compactedBytes);
+  auto passDestination = reinterpret_cast<t1::CodePass*>(compacted.get());
+  auto codeDestination = compacted.get() + passBytes;
+  for(uint32_t cblkno = 0; cblkno < impl->numEnc_; ++cblkno)
+  {
+    auto cblk = impl->enc_ + cblkno;
+    uint8_t numPasses = cblk->getNumPasses();
+    if(!numPasses)
+      continue;
+    std::memcpy(passDestination, cblk->getPass(0), numPasses * sizeof(t1::CodePass));
+    cblk->setPasses(passDestination);
+    passDestination += numPasses;
+    uint16_t codeLength = cblk->getLastPass()->rate_;
+    std::memcpy(codeDestination, cblk->getCompressedBytes(), codeLength);
+    cblk->setCompressedBytes(codeDestination);
+    codeDestination += codeLength;
+  }
+  impl->blockStorage_->replaceChunks(std::move(compacted), compactedBytes);
+}
+
 PrecinctImpl* PrecinctCompress::makeImpl(void)
 {
   return new PrecinctImplCompress(this, numLayers_, maxPasses_);

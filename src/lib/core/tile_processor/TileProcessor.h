@@ -308,6 +308,8 @@ struct TileProcessor : virtual public ITileProcessor
    */
   void release(void) override;
 
+  void deallocBuffers();
+
   /**
    * @brief release select resources
    *
@@ -439,12 +441,6 @@ private:
   std::unique_ptr<FlowComponent> t2ParseFlow_;
   std::unique_ptr<FlowComponent> allocAndScheduleFlow_;
   std::unique_ptr<FlowComponent> postDecompressFlow_;
-
-  /**
-   * @brief deallocate buffers
-   *
-   */
-  void deallocBuffers();
 
   /**
    * @brief Create a Tile Window Buffers object

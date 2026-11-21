@@ -74,11 +74,11 @@ static bool compressionUses32BitPreprocessing(const grk_cparameters* parameters)
 grk_data_type grk_compress_get_recommended_data_type(const grk_cparameters* parameters,
                                                      uint8_t precision, bool is_mct_component)
 {
-  if(!parameters || precision == 0 || parameters->numresolution <= 1 || parameters->irreversible ||
-     parameters->mct == 2 || parameters->mct_data || compressionUses32BitPreprocessing(parameters))
+  if(!parameters || precision == 0 || parameters->numresolution <= 1 || parameters->mct == 2 ||
+     parameters->mct_data || compressionUses32BitPreprocessing(parameters))
     return GRK_INT_32;
-  if(grk::Profile::usesIrreversibleWavelet(parameters->rsiz))
-    return GRK_INT_32;
+  if(parameters->irreversible || grk::Profile::usesIrreversibleWavelet(parameters->rsiz))
+    return parameters->tile_size_on && precision <= 15 ? GRK_INT_16 : GRK_INT_32;
 
   bool sharesRctChromaLimit = parameters->mct == 1 && is_mct_component;
   return grk::wavelet53FitsInt16(precision, sharesRctChromaLimit,

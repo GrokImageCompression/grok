@@ -133,6 +133,14 @@ struct PrecinctCodeblockStorage
     return passes;
   }
 
+  void replaceChunks(std::unique_ptr<uint8_t[]> chunk, size_t size)
+  {
+    chunks_.clear();
+    chunks_.push_back(std::move(chunk));
+    chunkCapacity_ = size;
+    chunkUsed_ = size;
+  }
+
 private:
   uint8_t* allocate(size_t length)
   {

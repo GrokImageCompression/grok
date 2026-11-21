@@ -34,3 +34,12 @@
   and by `memcpy` in the host row callback. Removing all three gains 1.4% on
   SPOT6 on 48 cores and 2.2% on 16. Writing `dye_row` output straight into
   the host tile image needs a destination row callback in the C API.
+
+- Shrink `t1::CodePass` from 24 to 16 bytes by putting `distortiondec_`
+  first. A multi-tile `-r` encode keeps every pass until image-wide rate
+  allocation, 3.68M passes on lossy s2_tci at 1 bpp, so this saves about
+  30 MB. `CodePass` must match the public `grk_plugin_pass` layout, because
+  `plugin_bridge.cpp` points code blocks at the plugin's pass arrays, and the
+  GPU plugin's `gpup_pass` must match it too. Either change all three layouts
+  together, or copy the plugin's passes into block storage and drop the
+  shared layout.

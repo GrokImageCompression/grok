@@ -1423,6 +1423,23 @@ uint16_t TileProcessorCompress::minimumSlope(void) const
   return (uint16_t)compressScheduler->getRateControlStats().minimumSlope_.load(
       std::memory_order_relaxed);
 }
+void TileProcessorCompress::compactBlockStorage(void)
+{
+  for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
+  {
+    auto tilec = tile_->comps_ + compno;
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
+    {
+      auto res = tilec->resolutions_ + resno;
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
+      {
+        for(auto prc : res->band[bandIndex].precincts_)
+          static_cast<PrecinctCompress*>(prc)->compactBlockStorage();
+      }
+    }
+  }
+}
+
 void TileProcessorCompress::addLayerSlopes(uint16_t layno, uint64_t* bodyBytesAtSlope,
                                            uint64_t* passesAtSlope) const
 {

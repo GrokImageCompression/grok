@@ -229,10 +229,10 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     }
 
     auto source = static_cast<const int16_t*>(imageComp->data) + imageOffset;
+    uint32_t width = tilec->width();
     for(uint32_t row = 0; row < tilec->height(); ++row)
     {
-      for(uint32_t column = 0; column < tilec->width(); ++column)
-        destination.buf_[column] = source[column];
+      std::copy(source, source + width, destination.buf_);
       source += imageComp->stride;
       destination.buf_ += destination.stride_;
     }

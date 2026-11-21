@@ -146,10 +146,10 @@ struct Precinct : public Rect32_16
 
 protected:
   uint16_t numLayers_;
+  PrecinctImpl* getImpl(void);
 
 private:
   PrecinctImpl* impl_ = nullptr;
-  PrecinctImpl* getImpl(void);
   virtual PrecinctImpl* makeImpl(void) = 0;
   Point8 cblk_expn_;
 };
@@ -160,6 +160,8 @@ struct PrecinctCompress : public Precinct
                    Point8 cblk_expn, uint8_t maxPasses)
       : Precinct(numLayers, precinctIndex, bounds, cblk_expn), maxPasses_(maxPasses)
   {}
+
+  void compactBlockStorage(void);
 
 private:
   PrecinctImpl* makeImpl(void) override;

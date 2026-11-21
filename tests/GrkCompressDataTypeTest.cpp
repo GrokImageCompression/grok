@@ -238,7 +238,11 @@ bool recommendedDataTypesMatch()
   parameters.numresolution = defaultResolutionCount;
 
   parameters.irreversible = true;
-  expect("irreversible", 8, false, GRK_INT_32);
+  expect("irreversible single tile", 8, false, GRK_INT_32);
+  parameters.tile_size_on = true;
+  expect("irreversible tiles", 8, false, GRK_INT_16);
+  expect("irreversible tiles 16 bit", 16, false, GRK_INT_32);
+  parameters.tile_size_on = false;
   parameters.irreversible = false;
 
   parameters.numresolution = 1;
@@ -276,6 +280,53 @@ bool recommendedDataTypesMatch()
     success = false;
   }
   return success;
+}
+
+std::vector<uint8_t> compressIrreversibleTiles(grk_data_type dataType)
+{
+  const CompressionCase testCase = {
+      "irreversible tiles", dataType, 8, false, 3, true, true, false, true};
+  auto image = makeImage(testCase);
+  if(!image)
+    return {};
+  grk_cparameters parameters = {};
+  grk_compress_set_default_params(&parameters);
+  parameters.cod_format = GRK_FMT_J2K;
+  parameters.irreversible = true;
+  parameters.mct = 1;
+  parameters.tile_size_on = true;
+  parameters.t_width = 31;
+  parameters.t_height = 23;
+  parameters.numlayers = 1;
+  parameters.layer_rate[0] = 8;
+  parameters.allocation_by_rate_distortion = true;
+
+  std::vector<uint8_t> compressed(compressedCapacity);
+  grk_stream_params stream = {};
+  stream.buf = compressed.data();
+  stream.buf_len = compressed.size();
+  auto codec = grk_compress_init(&stream, &parameters, image);
+  size_t compressedSize = codec ? grk_compress(codec, nullptr) : 0;
+  if(codec)
+    grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+  compressed.resize(compressedSize);
+  return compressed;
+}
+
+bool irreversibleTilesMatchAcrossDataTypes()
+{
+  auto fromInt16 = compressIrreversibleTiles(GRK_INT_16);
+  auto fromInt32 = compressIrreversibleTiles(GRK_INT_32);
+  if(fromInt32.empty() || fromInt16 != fromInt32)
+  {
+    std::fprintf(stderr,
+                 "irreversible tiles: int16 codestream (%zu bytes) differs from int32 "
+                 "codestream (%zu bytes)\n",
+                 fromInt16.size(), fromInt32.size());
+    return false;
+  }
+  return true;
 }
 
 constexpr uint32_t worstCaseSide = 512;
@@ -607,6 +658,8 @@ int main()
     if(!runWorstCase(testCase))
       ++failures;
   if(!tileLevelOverrideIsChecked())
+    ++failures;
+  if(!irreversibleTilesMatchAcrossDataTypes())
     ++failures;
   grk_deinitialize();
 

@@ -78,6 +78,7 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   bool allocateTileRate(void);
   uint16_t getSlopeThreshold(void) const;
 
+  void compactBlockStorage(void);
   uint16_t minimumSlope(void) const;
   void addLayerSlopes(uint16_t layno, uint64_t* bodyBytesAtSlope, uint64_t* passesAtSlope) const;
   bool simulateLayersAt(uint16_t layno, uint16_t thresh, uint64_t* packetBytes);

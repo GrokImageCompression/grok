@@ -307,7 +307,12 @@ uint64_t CodeStreamCompress::compressTilesWithImageWideRate(uint32_t numTiles)
       tileProcessor->runCompressionTasks();
       tileProcessor->releaseCompressDAG();
       if(!tileProcessor->compressDAGSuccess())
+      {
         tilesCoded = false;
+        return;
+      }
+      tileProcessor->deallocBuffers();
+      tileProcessor->compactBlockStorage();
     });
   }
   TFSingleton::get().run(tileFlow).wait();
