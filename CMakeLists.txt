@@ -30,7 +30,7 @@ set(PACKAGE_VERSION "${PROJECT_VERSION}")
 # As autotools does not support X.Y notation for SOVERSION, we have to use
 # two different versions, one for Grok itself and one for its .so
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 1)
+  set(GROK_SOVERSION 2)
 endif()
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}"
