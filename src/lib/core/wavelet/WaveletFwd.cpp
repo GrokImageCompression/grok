@@ -1039,17 +1039,37 @@ namespace HWY_NAMESPACE
     {
       T* row = resolution + r * stride;
 
-      // Load row and narrow to int16
       int16_t* buf = scratch;
-      copy_to_int16(row, buf, width);
+      const int16_t* source;
+      if constexpr(std::is_same_v<T, int16_t>)
+      {
+        source = row;
+      }
+      else
+      {
+        copy_to_int16(row, buf, width);
+        source = buf;
+      }
 
       // Separate into E[0..sn-1] and O[0..dn-1]
       int16_t* E = buf + width;
       int16_t* O = E + sn;
-      for(uint32_t k = 0; k < sn; ++k)
-        E[k] = buf[2 * k + parity];
-      for(uint32_t k = 0; k < dn; ++k)
-        O[k] = buf[2 * k + !parity];
+      int16_t* evenSamples = parity ? O : E;
+      int16_t* oddSamples = parity ? E : O;
+      uint32_t pair = 0;
+      for(; 2 * pair + 2 * lanes16 <= width; pair += (uint32_t)lanes16)
+      {
+        auto low = LoadU(d16, source + 2 * pair);
+        auto high = LoadU(d16, source + 2 * pair + lanes16);
+        StoreU(ConcatEven(d16, high, low), d16, evenSamples + pair);
+        StoreU(ConcatOdd(d16, high, low), d16, oddSamples + pair);
+      }
+      for(; 2 * pair < width; ++pair)
+      {
+        evenSamples[pair] = source[2 * pair];
+        if(2 * pair + 1 < width)
+          oddSamples[pair] = source[2 * pair + 1];
+      }
 
       // Prediction: O[k] -= (E_left + E_right) >> 1
       // SIMD bulk (all neighbors valid)
@@ -1160,10 +1180,17 @@ namespace HWY_NAMESPACE
         }
       }
 
-      for(uint32_t k = 0; k < sn; ++k)
-        row[k] = (T)E[k];
-      for(uint32_t k = 0; k < dn; ++k)
-        row[sn + k] = (T)O[k];
+      if constexpr(std::is_same_v<T, int16_t>)
+      {
+        memcpy(row, E, (size_t)width * sizeof(int16_t));
+      }
+      else
+      {
+        for(uint32_t k = 0; k < sn; ++k)
+          row[k] = (T)E[k];
+        for(uint32_t k = 0; k < dn; ++k)
+          row[sn + k] = (T)O[k];
+      }
     }
   }
 
