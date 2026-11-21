@@ -108,9 +108,9 @@ public:
    */
   virtual void release(void) = 0;
 
-protected:
   void releaseCoders(void);
 
+protected:
   /**
    * @brief atomic tracking of compress/decompress success
    */

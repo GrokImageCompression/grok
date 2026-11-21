@@ -59,6 +59,9 @@ private:
   // runs the deferred XYZ transform when mercury turns the frame down
   bool selectMercuryEncode(const grk_cparameters* parameters);
   uint64_t compressWithMercury(void);
+  bool usesImageWideRateControl(uint32_t numTiles);
+  bool allocateImageWideRate(std::vector<std::unique_ptr<TileProcessorCompress>>& tiles);
+  uint64_t compressTilesWithImageWideRate(uint32_t numTiles);
   std::unique_ptr<TileProcessorCompress> singleTileProcessor_;
   bool init_header_writing(void);
   bool end(void);

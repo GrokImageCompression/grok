@@ -110,6 +110,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/decompress/FileFormatMJ2Decompress.cpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/compress/CodeStreamCompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/compress/CodeStreamCompress_RateControl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress_ReadMarkers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress_Dump.cpp

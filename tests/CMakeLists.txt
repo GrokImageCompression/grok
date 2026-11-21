@@ -897,6 +897,10 @@ add_executable(grk_bmp_1bit_row_overrun_test GrkBmp1BitRowOverrunTest.cpp)
 target_link_libraries(grk_bmp_1bit_row_overrun_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_bmp_1bit_row_overrun_test COMMAND grk_bmp_1bit_row_overrun_test)
 
+add_executable(grk_image_wide_rate_test GrkImageWideRateTest.cpp)
+target_link_libraries(grk_image_wide_rate_test ${GROK_CODEC_NAME})
+add_test(NAME grk_image_wide_rate_test COMMAND grk_image_wide_rate_test)
+
 add_executable(grk_pgx_image_offset_test GrkPgxImageOffsetTest.cpp)
 target_link_libraries(grk_pgx_image_offset_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_pgx_image_offset_test COMMAND grk_pgx_image_offset_test)

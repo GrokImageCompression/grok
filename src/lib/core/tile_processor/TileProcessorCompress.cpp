@@ -511,38 +511,38 @@ void TileProcessorCompress::buildCompressDAG(void)
     for(auto* lastDwt : lastDwtPerComponent)
       lastDwt->precede(*t1Flow_);
   }
+}
 
-  // 4. Rate allocation (single task at the end)
-  auto rateAllocTask =
-      compressFlow_
-          ->emplace([this] {
-            packetLengthCache_->deleteMarkers();
-            if(cp_->codingParams_.enc_.writePlt_)
-              packetLengthCache_->createMarkers(stream_);
-            uint32_t allPacketBytes = 0;
-            if(!rateAllocateWithFallback(&allPacketBytes))
-            {
-              dagSuccess_ = false;
-              return;
-            }
-            packetTracker_->clear();
-            if(canPreCalculateTileLen())
-            {
-              preCalculatedTileLen_ = sotMarkerSegmentLen;
-              if(canWritePocMarker())
-              {
-                uint32_t pocSize =
-                    CodeStreamCompress::getPocSize(tile_->numcomps_, tcp_->getNumProgressions());
-                preCalculatedTileLen_ += pocSize;
-              }
-              if(packetLengthCache_->getMarkers())
-                preCalculatedTileLen_ += packetLengthCache_->getMarkers()->getTotalBytesWritten();
-              preCalculatedTileLen_ += 2;
-              preCalculatedTileLen_ += allPacketBytes;
-            }
-          })
-          .name("rateAlloc");
-  t1Flow_->precede(rateAllocTask);
+void TileProcessorCompress::createPacketLengthMarkers(void)
+{
+  packetLengthCache_->deleteMarkers();
+  if(cp_->codingParams_.enc_.writePlt_)
+    packetLengthCache_->createMarkers(stream_);
+}
+
+void TileProcessorCompress::recordPreCalculatedTileLen(uint32_t allPacketBytes)
+{
+  packetTracker_->clear();
+  if(!canPreCalculateTileLen())
+    return;
+  preCalculatedTileLen_ = sotMarkerSegmentLen;
+  if(canWritePocMarker())
+    preCalculatedTileLen_ +=
+        CodeStreamCompress::getPocSize(tile_->numcomps_, tcp_->getNumProgressions());
+  if(packetLengthCache_->getMarkers())
+    preCalculatedTileLen_ += packetLengthCache_->getMarkers()->getTotalBytesWritten();
+  preCalculatedTileLen_ += 2;
+  preCalculatedTileLen_ += allPacketBytes;
+}
+
+bool TileProcessorCompress::allocateTileRate(void)
+{
+  createPacketLengthMarkers();
+  uint32_t allPacketBytes = 0;
+  if(!rateAllocateWithFallback(&allPacketBytes))
+    return false;
+  recordPreCalculatedTileLen(allPacketBytes);
+  return true;
 }
 
 void TileProcessorCompress::runCompressionTasks(void)
@@ -552,6 +552,16 @@ void TileProcessorCompress::runCompressionTasks(void)
     executor.corun(*compressFlow_);
   else
     executor.run(*compressFlow_).wait();
+}
+
+void TileProcessorCompress::releaseCompressDAG(void)
+{
+  compressFlow_.reset();
+  mctFlow_.reset();
+  dwtFlows_.clear();
+  t1Flow_.reset();
+  dwtScratch_.clear();
+  scheduler_->releaseCoders();
 }
 
 bool TileProcessorCompress::compressDAGSuccess(void) const

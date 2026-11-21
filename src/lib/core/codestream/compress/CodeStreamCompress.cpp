@@ -970,6 +970,9 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
     return success ? stream_->tell() : 0;
   }
 
+  if(usesImageWideRateControl(numTiles))
+    return compressTilesWithImageWideRate(numTiles);
+
   MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker> completedTiles;
   std::mutex completedTilesMutex;
   auto finishTiles = [&](TileProcessorCompress* tileProcessor) {
@@ -997,7 +1000,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
         {
           tileProcessor->buildCompressDAG();
           tileProcessor->runCompressionTasks();
-          if(!tileProcessor->compressDAGSuccess())
+          if(!tileProcessor->compressDAGSuccess() || !tileProcessor->allocateTileRate())
             success = false;
         }
       }

@@ -1417,4 +1417,115 @@ void TileProcessorCompress::makeLayerFinal(uint16_t layno)
   }
 }
 
+uint16_t TileProcessorCompress::minimumSlope(void) const
+{
+  auto compressScheduler = static_cast<CompressScheduler*>(scheduler_);
+  return (uint16_t)compressScheduler->getRateControlStats().minimumSlope_.load(
+      std::memory_order_relaxed);
+}
+void TileProcessorCompress::addLayerSlopes(uint16_t layno, uint64_t* bodyBytesAtSlope,
+                                           uint64_t* passesAtSlope) const
+{
+  for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
+  {
+    auto tilec = tile_->comps_ + compno;
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
+    {
+      auto res = tilec->resolutions_ + resno;
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
+      {
+        for(auto prc : res->band[bandIndex].precincts_)
+        {
+          for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+          {
+            auto cblk = prc->getCompressBlock(cblkno);
+            uint8_t base = layno == 0 ? 0 : cblk->getNumPassesInPreviousLayers();
+            uint32_t previousRate = base ? cblk->getPass(base - 1)->rate_ : 0;
+            uint32_t effectiveSlope = USHRT_MAX;
+            for(uint8_t passno = base; passno < cblk->getNumPasses(); ++passno)
+            {
+              auto pass = cblk->getPass(passno);
+              if(!pass->slope_)
+                continue;
+              // makeLayerFeasible stops at the first hull pass at or under the threshold
+              effectiveSlope = std::min<uint32_t>(effectiveSlope, pass->slope_);
+              bodyBytesAtSlope[effectiveSlope] += pass->rate_ - previousRate;
+              passesAtSlope[effectiveSlope]++;
+              previousRate = pass->rate_;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+bool TileProcessorCompress::simulateLayersAt(uint16_t layno, uint16_t thresh, uint64_t* packetBytes)
+{
+  makeLayerFeasible(layno, thresh, false);
+  createPacketLengthMarkers();
+  auto markers = packetLengthCache_->getMarkers();
+  uint32_t bytes = 0;
+  T2Compress t2(this);
+  if(!t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), &bytes, UINT_MAX,
+                                 newTilePartProgressionPosition_, markers, false, false))
+    return false;
+  *packetBytes = bytes + (markers ? markers->getTotalBytesWritten() : 0);
+  return true;
+}
+bool TileProcessorCompress::simulateWholeLayer(uint16_t layno, uint64_t* packetBytes)
+{
+  std::vector<std::pair<t1::CodeblockCompress*, uint8_t>> previousPasses;
+  for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
+  {
+    auto tilec = tile_->comps_ + compno;
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
+    {
+      auto res = tilec->resolutions_ + resno;
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
+      {
+        for(auto prc : res->band[bandIndex].precincts_)
+        {
+          for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+          {
+            auto cblk = prc->getCompressBlock(cblkno);
+            previousPasses.push_back({cblk, cblk->getNumPassesInPreviousLayers()});
+          }
+        }
+      }
+    }
+  }
+  makeLayerFinal(layno);
+  createPacketLengthMarkers();
+  auto markers = packetLengthCache_->getMarkers();
+  uint32_t bytes = 0;
+  T2Compress t2(this);
+  bool simulated =
+      t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U), &bytes, UINT_MAX,
+                                 newTilePartProgressionPosition_, markers, false, false);
+  for(auto& [cblk, passes] : previousPasses)
+    cblk->setNumPassesInPreviousLayers(passes);
+  *packetBytes = bytes + (markers ? markers->getTotalBytesWritten() : 0);
+  return simulated;
+}
+void TileProcessorCompress::commitLayerAt(uint16_t layno, uint16_t thresh)
+{
+  makeLayerFeasible(layno, thresh, true);
+}
+void TileProcessorCompress::commitWholeLayer(uint16_t layno)
+{
+  makeLayerFinal(layno);
+}
+bool TileProcessorCompress::finishImageRateControl(uint16_t lastThreshold)
+{
+  createPacketLengthMarkers();
+  uint32_t allPacketBytes = 0;
+  T2Compress t2(this);
+  if(!t2.compressPacketsSimulate(tileIndex_, tcp_->numLayers_, &allPacketBytes, UINT_MAX,
+                                 newTilePartProgressionPosition_, packetLengthCache_->getMarkers(),
+                                 true, false))
+    return false;
+  recordPreCalculatedTileLen(allPacketBytes);
+  slopeThreshold_ = lastThreshold;
+  return true;
+}
 } // namespace grk

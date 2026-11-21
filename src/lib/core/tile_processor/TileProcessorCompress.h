@@ -73,8 +73,18 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
 
   void buildCompressDAG(void);
   void runCompressionTasks(void);
+  void releaseCompressDAG(void);
   bool compressDAGSuccess(void) const;
+  bool allocateTileRate(void);
   uint16_t getSlopeThreshold(void) const;
+
+  uint16_t minimumSlope(void) const;
+  void addLayerSlopes(uint16_t layno, uint64_t* bodyBytesAtSlope, uint64_t* passesAtSlope) const;
+  bool simulateLayersAt(uint16_t layno, uint16_t thresh, uint64_t* packetBytes);
+  bool simulateWholeLayer(uint16_t layno, uint64_t* packetBytes);
+  void commitLayerAt(uint16_t layno, uint16_t thresh);
+  void commitWholeLayer(uint16_t layno);
+  bool finishImageRateControl(uint16_t lastThreshold);
   void resetForNextFrame(void);
 
 private:
@@ -104,6 +114,8 @@ private:
   bool pcrdBisectFeasible(uint32_t* p_data_written, bool disableRateControl);
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
   void syncPluginCodeBlockData();
+  void createPacketLengthMarkers(void);
+  void recordPreCalculatedTileLen(uint32_t allPacketBytes);
   uint16_t slopeThreshold_ = 0;
   bool ignoreSlopeHint_ = false;
   bool checkMinimumLayerSizes_ = false;
