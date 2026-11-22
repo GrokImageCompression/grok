@@ -60,11 +60,12 @@ struct Case
   double layerRate;
   // false lets grok derive the size caps from the ratio
   bool cinemaCaps;
-  // mercury writes no PLT
-  bool writePlt;
+  // mercury turns BISECT down
+  bool bisectRateControl;
   // 16-bit X'Y'Z' that grok cuts to 12 bits, else the test cuts it
   bool cutInGrok = false;
   grk_data_type dataType = GRK_INT_32;
+  bool writePlt = false;
 };
 
 enum class Route
@@ -189,6 +190,8 @@ Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>&
   params.numresolution = test.fourK ? RESOLUTIONS_4K : RESOLUTIONS_2K;
   params.write_tlm = true;
   params.write_plt = test.writePlt;
+  if(test.bisectRateControl)
+    params.rate_control_algorithm = GRK_RATE_CONTROL_BISECT;
   params.rate_control_slope_hint = slopeHint;
   params.rate_control_tolerance = test.tolerance;
   std::vector<uint8_t> out(OUTPUT_CAPACITY);
@@ -278,16 +281,16 @@ bool runCase(const Case& test)
     const char* label =
         route == Route::File ? "grok file" : (route == Route::Strips ? "grok strips" : "grok");
     auto throughGrok = libraryEncode(test, planes, slopeHint, true, route).codestream;
-    if(mercuryCompressed == test.writePlt)
+    if(mercuryCompressed == test.bisectRateControl)
     {
       fprintf(stderr, "%s: grok %s the frame to mercury\n", test.name,
-              test.writePlt ? "handed" : "did not hand");
+              test.bisectRateControl ? "handed" : "did not hand");
       return false;
     }
-    if(test.xyzPrecision && classicXyzRan != test.writePlt)
+    if(test.xyzPrecision && classicXyzRan != test.bisectRateControl)
     {
       fprintf(stderr, "%s: classic's XYZ transform %s\n", test.name,
-              test.writePlt ? "did not run" : "ran before mercury");
+              test.bisectRateControl ? "did not run" : "ran before mercury");
       return false;
     }
     if(!sameCodestream(test, label, classic, throughGrok))
@@ -321,11 +324,27 @@ int main()
       {"2k xyz 8 bit", false, 999, 317, 30000, 0, 0.0, 8, 0.0, true},
       {"2k ratio 10", false, 1024, 540, 20000, 0, 0.0, 0, 10.0, false},
       {"4k xyz ratio 10 under cap", true, 1500, 800, 20000, 0, 0.0, 16, 10.0, true},
-      {"2k xyz 10 bit plt", false, 999, 317, 30000, 0, 0.0, 10, 0.0, true, true},
+      {"2k xyz 10 bit bisect", false, 999, 317, 30000, 0, 0.0, 10, 0.0, true, true},
       {"2k xyz 12 bit int16", false, 999, 317, 30000, 0, 0.0, 12, 0.0, true, false, false,
        GRK_INT_16},
       {"2k 16 bit cut by grok", false, 999, 317, 30000, 0, 0.0, 0, 0.0, true, false, true},
-      {"4k 16 bit cut by grok plt", true, 1283, 611, 30000, 0, 0.0, 0, 0.0, true, true, true},
+      {"4k 16 bit cut by grok bisect", true, 1283, 611, 30000, 0, 0.0, 0, 0.0, true, true, true},
+      {.name = "2k xyz 10 bit plt",
+       .fourK = false,
+       .width = 999,
+       .height = 317,
+       .noise = 30000,
+       .xyzPrecision = 10,
+       .cinemaCaps = true,
+       .writePlt = true},
+      {.name = "4k 16 bit cut by grok plt",
+       .fourK = true,
+       .width = 1283,
+       .height = 611,
+       .noise = 30000,
+       .cinemaCaps = true,
+       .cutInGrok = true,
+       .writePlt = true},
   };
   bool ok = true;
   for(const auto& test : cases)

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <vector>
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -98,10 +99,11 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
   auto headerStore = isFinal ? tileProcessor->getPacketHeaderStore() : nullptr;
   if(headerStore)
     headerStore->clear();
-  for(uint16_t compno = 0; compno < max_comp; ++compno)
+  std::vector<uint64_t> componentBytes(max_comp);
+  // PLT lengths must follow stream order: every tile part of one progression, then the next
+  for(uint32_t poc = 0; poc < pocno; ++poc)
   {
-    uint64_t componentBytes = 0;
-    for(uint32_t poc = 0; poc < pocno; ++poc)
+    for(uint16_t compno = 0; compno < max_comp; ++compno)
     {
       auto current_pi = packetManager.getPacketIter(poc);
       packetManager.enable_tile_part_generation(poc, (compno == 0), newTilePartProgressionPosition);
@@ -120,7 +122,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
                                      debug))
             return false;
 
-          componentBytes += bytesInLayer;
+          componentBytes[compno] += bytesInLayer;
           if(maxBytes != UINT_MAX)
           {
             if(maxBytes < bytesInLayer)
@@ -135,15 +137,16 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
           *allPacketBytes += bytesInLayer;
           // a caller counting the parts applies the component cap itself
           if(!tilePartBytes && cp->codingParams_.enc_.maxComponentRate_ &&
-             componentBytes > cp->codingParams_.enc_.maxComponentRate_)
+             componentBytes[compno] > cp->codingParams_.enc_.maxComponentRate_)
             return false;
         }
       }
     }
-    // the caller's array has one slot per component
-    if(tilePartBytes && compno < image->numcomps)
-      tilePartBytes[compno] = componentBytes;
   }
+  // the caller's array has one slot per component
+  if(tilePartBytes)
+    std::copy_n(componentBytes.begin(), std::min<uint32_t>(max_comp, image->numcomps),
+                tilePartBytes);
   if(headerStore)
     headerStore->markComplete();
 

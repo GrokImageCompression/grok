@@ -91,7 +91,7 @@ namespace
            !parameters->allocation_by_quality && parameters->layer_rate[0] > 0.0 &&
            parameters->mct != 2 && !parameters->mct_data && !parameters->qfactor &&
            !parameters->quant_step_shift && !(parameters->csty & (CP_CSTY_SOP | CP_CSTY_EPH)) &&
-           !parameters->write_plt && !parameters->progressive_rate_control &&
+           !parameters->progressive_rate_control &&
            parameters->rate_control_algorithm == GRK_RATE_CONTROL_PCRD_OPT &&
            !(parameters->rsiz & GRK_PROFILE_PART2) && parameters->tx0 == 0 && parameters->ty0 == 0;
   }
@@ -265,6 +265,7 @@ bool CodeStreamCompress::createMercuryEncoder(void)
   params.slope_hint = enc.rateControlSlopeHint_;
   params.rate_tolerance = enc.rateControlTolerance_;
   params.split_by_component = enc.enableTilePartGeneration_;
+  params.write_plt = enc.writePlt_;
   params.xyz_source_precision = mercuryXyzSourcePrecision_.value_or(0);
   params.threads = (uint32_t)TFSingleton::num_threads();
   const uint8_t levels = (uint8_t)(tcp->tccps_[0].numresolutions_ - 1);

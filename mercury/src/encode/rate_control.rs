@@ -1,4 +1,4 @@
-use super::tile_packets::{TileBands, TilePacketWriter, run_tasks};
+use super::tile_packets::{TileBands, TilePacketWriter, plt_markers, run_tasks};
 
 const SLOPE_BUCKETS: usize = u16::MAX as usize + 1;
 const MAX_SLOPE: u32 = u16::MAX as u32;
@@ -100,11 +100,6 @@ fn no_passes(bands: &TileBands) -> Vec<Vec<u8>> {
         .collect()
 }
 
-fn packet_bytes(writer: &mut TilePacketWriter, bands: &TileBands, included: &[Vec<u8>]) -> u64 {
-    let written = writer.write_packets(bands, included, false);
-    written.iter().map(|packet| packet.length as u64).sum()
-}
-
 pub(crate) struct ImageRateAllocation {
     // [tile][band] passes included per block
     pub included: Vec<Vec<Vec<u8>>>,
@@ -115,6 +110,7 @@ pub(crate) fn allocate_image_rate(
     writers: &mut [TilePacketWriter],
     tiles: &[TileBands],
     targets: &RateTargets,
+    write_plt: bool,
     threads: usize,
 ) -> ImageRateAllocation {
     let mut included: Vec<Vec<Vec<u8>>> = tiles.iter().map(no_passes).collect();
@@ -128,7 +124,15 @@ pub(crate) fn allocate_image_rate(
             .collect();
         run_tasks(tasks, threads, |((writer, bands), included)| {
             layout(bands, included);
-            packet_bytes(writer, bands, included)
+            let written = writer.write_packets(bands, included, false);
+            let packets: u64 = written.iter().map(|packet| packet.length as u64).sum();
+            // classic counts PLT bytes only in its image-wide rate measurements
+            let plt = if write_plt {
+                plt_markers(written.iter().map(|packet| packet.length as u32)).len() as u64
+            } else {
+                0
+            };
+            packets + plt
         })
         .into_iter()
         .sum()

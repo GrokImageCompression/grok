@@ -1307,7 +1307,7 @@ fn comb_tile_part(
 /// across markers. None disables the shortcut: no markers, a dangling
 /// continuation, a zero length (a packet is at least one byte), or a length
 /// past 32 bits.
-fn plt_packet_lengths(mut markers: Vec<(u8, Vec<u8>)>) -> Option<Vec<u32>> {
+pub(crate) fn plt_packet_lengths(mut markers: Vec<(u8, Vec<u8>)>) -> Option<Vec<u32>> {
     if markers.is_empty() {
         return None;
     }

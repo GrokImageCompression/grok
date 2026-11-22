@@ -1949,6 +1949,7 @@ pub struct MercuryEncodeParams {
     pub slope_hint: u16,
     pub rate_tolerance: f64,
     pub split_by_component: bool,
+    pub write_plt: bool,
     // 0 for no XYZ conversion
     pub xyz_source_precision: u32,
     // 0 for every core
@@ -2035,6 +2036,7 @@ pub unsafe extern "C" fn mercury_encoder_new(
             slope_hint: params.slope_hint,
         },
         split_by_component: params.split_by_component,
+        write_plt: params.write_plt,
         xyz_source_precision: xyz.then_some(params.xyz_source_precision),
         threads: match params.threads {
             0 => std::thread::available_parallelism().map_or(1, |count| count.get()),

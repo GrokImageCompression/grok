@@ -343,6 +343,7 @@ typedef struct MercuryEncodeParams
   uint16_t slope_hint;
   double rate_tolerance;
   bool split_by_component;
+  bool write_plt;
   /* 0 for no XYZ conversion */
   uint32_t xyz_source_precision;
   /* 0 for every core */

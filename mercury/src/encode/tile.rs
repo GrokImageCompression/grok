@@ -12,18 +12,20 @@ use super::component::{
 };
 use super::rate_control::{ImageRateAllocation, RateTargets, allocate_image_rate, allocate_rate};
 use super::stripe_queue::{StripeQueue, StripeWorkers};
-use super::tile_packets::{TileBand, TileBands, TilePacketWriter, run_tasks};
+use super::tile_packets::{TileBand, TileBands, TilePacketWriter, plt_markers, run_tasks};
 
 const STRIPES_QUEUED_PER_WORKER: usize = 2;
 const SOT: u16 = 0xFF90;
 const SOD: u16 = 0xFF93;
 const SOT_SEGMENT_LENGTH: u16 = 10;
+const SOT_BYTES: usize = 12;
 const SOT_SOD_BYTES: usize = 14;
 pub(crate) const ORIENTATIONS: usize = 4;
 
 pub(crate) struct TileEncodeParams<'a> {
     pub rate: RateTargets,
     pub split_by_component: bool,
+    pub write_plt: bool,
     // RGB at this precision, converted like classic's applyXYZTransform
     pub xyz_source_precision: Option<u32>,
     pub threads: usize,
@@ -87,15 +89,14 @@ fn int16_inverse_steps(bands: &[BandQuantization], levels: u8, wavelet: &Int16Wa
         .collect()
 }
 
-fn tile_part_header(tile: u16, index: u8, count: u8, psot: u32) -> [u8; SOT_SOD_BYTES] {
-    let mut header = [0u8; SOT_SOD_BYTES];
+fn sot_segment(tile: u16, index: u8, count: u8, psot: u32) -> [u8; SOT_BYTES] {
+    let mut header = [0u8; SOT_BYTES];
     header[0..2].copy_from_slice(&SOT.to_be_bytes());
     header[2..4].copy_from_slice(&SOT_SEGMENT_LENGTH.to_be_bytes());
     header[4..6].copy_from_slice(&tile.to_be_bytes());
     header[6..10].copy_from_slice(&psot.to_be_bytes());
     header[10] = index;
     header[11] = count;
-    header[12..14].copy_from_slice(&SOD.to_be_bytes());
     header
 }
 
@@ -271,6 +272,7 @@ pub(crate) struct ImageEncoder {
     header: MainHeaderIn,
     rate: RateTargets,
     split_by_component: bool,
+    write_plt: bool,
     threads: usize,
     // [component][band number]
     max_bit_planes: Vec<Vec<u8>>,
@@ -352,6 +354,7 @@ impl ImageEncoder {
         Self {
             rate: params.rate,
             split_by_component: params.split_by_component,
+            write_plt: params.write_plt,
             threads: params.threads,
             max_bit_planes,
             samples,
@@ -469,7 +472,13 @@ impl ImageEncoder {
                 slope_threshold: allocation.slope_threshold,
             }
         } else {
-            allocate_image_rate(&mut writers, &bands, &self.rate, self.threads)
+            allocate_image_rate(
+                &mut writers,
+                &bands,
+                &self.rate,
+                self.write_plt,
+                self.threads,
+            )
         };
         let tasks: Vec<_> = writers
             .iter_mut()
@@ -501,16 +510,20 @@ impl ImageEncoder {
                 }
             }
             let count = u8::try_from(parts.len()).expect("classic allows 255 tile-parts");
+            // classic writes every packet length of the tile in its first tile-part
+            let plt = if self.write_plt {
+                plt_markers(written.iter().map(|packet| packet.length as u32))
+            } else {
+                Vec::new()
+            };
             let mut packets = written.iter();
             for (index, part) in parts.iter().enumerate() {
-                let psot = SOT_SOD_BYTES + part.length;
+                let markers: &[u8] = if index == 0 { &plt } else { &[] };
+                let psot = SOT_SOD_BYTES + markers.len() + part.length;
                 start_tile_part(tile as u16, psot);
-                write(&tile_part_header(
-                    tile as u16,
-                    index as u8,
-                    count,
-                    psot as u32,
-                ));
+                write(&sot_segment(tile as u16, index as u8, count, psot as u32));
+                write(markers);
+                write(&SOD.to_be_bytes());
                 for packet in packets.by_ref().take(part.packets) {
                     write(packet.header);
                     for body in packet.bodies {

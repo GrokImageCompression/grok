@@ -220,3 +220,66 @@ pub(crate) fn run_tasks<T: Send, R: Send>(
         .map(|result| result.expect("every task ran"))
         .collect()
 }
+
+const PLT: u16 = 0xFF58;
+// classic's plWriteBufferLen, the Zplt byte and the packet lengths of one PLT segment
+const PLT_SEGMENT_PAYLOAD: usize = u16::MAX as usize - 4;
+
+pub(crate) fn plt_markers(lengths: impl Iterator<Item = u32>) -> Vec<u8> {
+    let mut markers = Vec::new();
+    let mut lplt_positions: Vec<usize> = Vec::new();
+    for length in lengths {
+        let digits = (u32::BITS - length.leading_zeros()).div_ceil(7);
+        let fits = lplt_positions
+            .last()
+            .is_some_and(|&at| markers.len() - at - 2 + digits as usize <= PLT_SEGMENT_PAYLOAD);
+        if !fits {
+            markers.extend_from_slice(&PLT.to_be_bytes());
+            lplt_positions.push(markers.len());
+            let zplt = (lplt_positions.len() - 1) as u8;
+            markers.extend_from_slice(&[0, 0, zplt]);
+        }
+        for digit in (0..digits).rev() {
+            let group = (length >> (7 * digit)) as u8 & 0x7F;
+            markers.push(if digit == 0 { group } else { group | 0x80 });
+        }
+    }
+    let segment_ends = lplt_positions
+        .iter()
+        .skip(1)
+        .map(|&at| at - 2)
+        .chain([markers.len()]);
+    for (&at, end) in lplt_positions.iter().zip(segment_ends) {
+        markers[at..at + 2].copy_from_slice(&((end - at) as u16).to_be_bytes());
+    }
+    markers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::decode::plan::plt_packet_lengths;
+
+    #[test]
+    fn plt_markers_split_segments_like_classic_and_decode() {
+        // two-byte lengths fill the first segment to exactly 65531 bytes after 32765 of them
+        let lengths: Vec<u32> = (0..40_000u32)
+            .map(|i| 128 + i % 1000)
+            .chain([1, 300_000])
+            .collect();
+        let markers = plt_markers(lengths.iter().copied());
+        let mut segments = Vec::new();
+        let mut at = 0;
+        while at < markers.len() {
+            assert_eq!(&markers[at..at + 2], &PLT.to_be_bytes());
+            let lplt = u16::from_be_bytes([markers[at + 2], markers[at + 3]]) as usize;
+            segments.push((markers[at + 4], markers[at + 5..at + 2 + lplt].to_vec()));
+            at += 2 + lplt;
+        }
+        assert_eq!(at, markers.len());
+        let zplts: Vec<u8> = segments.iter().map(|(zplt, _)| *zplt).collect();
+        assert_eq!(zplts, [0, 1]);
+        assert_eq!(1 + segments[0].1.len(), PLT_SEGMENT_PAYLOAD);
+        assert_eq!(plt_packet_lengths(segments), Some(lengths));
+    }
+}
