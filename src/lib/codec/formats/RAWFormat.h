@@ -25,7 +25,7 @@
 #include "ImageFormat.h"
 #include <memory>
 
-class RAWFormat : public ImageFormat
+class RAWFormat : public ImageFormat, public IStripReader
 {
 public:
   explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
@@ -37,19 +37,34 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
   bool bigEndian;
+  bool readFromStdin_ = false;
+  uint32_t width_ = 0;
+  uint32_t height_ = 0;
+  uint16_t numcomps_ = 0;
+  uint8_t prec_ = 0;
+  bool sgnd_ = false;
 
+  grk_image* createImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
+  size_t rowBytes(void) const;
+  bool readBytes(size_t length, std::vector<uint8_t>& fileBytes);
+  template<typename RT, typename T>
+  void convertRowsFrom(const uint8_t* bytes, uint32_t rows, T* dest, size_t stride) const;
   template<typename T>
-  bool readSamples(grk_image* image, const grk_raw_cparameters* raw_cp);
+  void convertRows(const uint8_t* bytes, uint32_t rows, T* dest, size_t stride) const;
+  template<typename T>
+  bool readSamples(grk_image* image);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
+  void warnIfTrailingBytes(void);
 
   template<typename WT>
   bool writeToFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint32_t w, uint32_t stride,
                    uint32_t h, int32_t lower, int32_t upper);
-
-  template<typename RT, typename T>
-  bool readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t nloop);
 };
 
 template<typename WT>
@@ -81,26 +96,6 @@ bool RAWFormat::writeToFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uin
   }
   if(buffered && fwrite(buffer, sizeof(WT), buffered, fileStream_) != buffered)
     return false;
-
-  return true;
-}
-
-template<typename RT, typename T>
-bool RAWFormat::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t nloop)
-{
-  const size_t bufSize = 4096;
-  RT buf[bufSize];
-
-  for(uint64_t i = 0; i < nloop; i += bufSize)
-  {
-    size_t target = (i + bufSize > nloop) ? (nloop - i) : bufSize;
-    size_t ct = fread(buf, sizeof(RT), target, fileHandle);
-    if(ct != target)
-      return false;
-    RT* inPtr = buf;
-    for(size_t j = 0; j < ct; j++)
-      *(ptr++) = (T)grk::endian<RT>(*inPtr++, bigEndian);
-  }
 
   return true;
 }
@@ -294,97 +289,175 @@ inline std::optional<ImageFileHeader> RAWFormat::readHeader(const std::string& f
     spdlog::error("Failed to open {} for reading", filename);
     return std::nullopt;
   }
+  readFromStdin_ = grk::useStdio(filename);
+  width_ = raw_cp->width;
+  height_ = raw_cp->height;
+  numcomps_ = raw_cp->numcomps;
+  prec_ = raw_cp->prec;
+  sgnd_ = raw_cp->sgnd;
 
   return ImageFileHeader{raw_cp->numcomps, raw_cp->prec};
 }
 
-inline grk_image* RAWFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline grk_image* RAWFormat::createImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   grk_raw_cparameters* raw_cp = &parameters->raw_cp;
   uint32_t subsampling_dx = parameters->subsampling_dx;
   uint32_t subsampling_dy = parameters->subsampling_dy;
-  uint16_t numcomps = raw_cp->numcomps;
-  uint32_t w = raw_cp->width;
-  uint32_t h = raw_cp->height;
   GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-  uint16_t ch;
-  bool success = false;
-  grk_image* image = nullptr;
-
-  if(numcomps == 1)
+  if(numcomps_ == 1)
     color_space = GRK_CLRSPC_GRAY;
-  else if((numcomps >= 3) && (parameters->mct == 0))
+  else if((numcomps_ >= 3) && (parameters->mct == 0))
     color_space = GRK_CLRSPC_SYCC;
-  else if((numcomps >= 3) && (parameters->mct != 2))
+  else if((numcomps_ >= 3) && (parameters->mct != 2))
     color_space = GRK_CLRSPC_SRGB;
 
-  auto cmptparm = std::make_unique<grk_image_comp[]>(numcomps);
-  /* initialize image components */
-  for(uint16_t i = 0; i < numcomps; i++)
+  auto cmptparm = std::make_unique<grk_image_comp[]>(numcomps_);
+  for(uint16_t i = 0; i < numcomps_; i++)
   {
     memset(&cmptparm[i], 0, sizeof(grk_image_comp));
-    cmptparm[i].prec = raw_cp->prec;
-    cmptparm[i].sgnd = raw_cp->sgnd;
+    cmptparm[i].prec = prec_;
+    cmptparm[i].sgnd = sgnd_;
     cmptparm[i].data_type = dataType;
     cmptparm[i].dx = (uint8_t)(subsampling_dx * raw_cp->comps[i].dx);
     cmptparm[i].dy = (uint8_t)(subsampling_dy * raw_cp->comps[i].dy);
-    cmptparm[i].w = w;
-    cmptparm[i].h = h;
+    cmptparm[i].w = width_;
+    cmptparm[i].h = height_;
   }
-  /* create the image */
-  image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
+  auto image = grk_image_new(numcomps_, &cmptparm[0], color_space, allocData);
   if(!image)
-    goto cleanup;
-
-  /* set image offset and reference grid */
+    return nullptr;
   image->x0 = parameters->image_offset_x0;
   image->y0 = parameters->image_offset_y0;
-  image->x1 = parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1;
-  image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
+  image->x1 = parameters->image_offset_x0 + (width_ - 1) * subsampling_dx + 1;
+  image->y1 = parameters->image_offset_y0 + (height_ - 1) * subsampling_dy + 1;
+  return image;
+}
 
-  if(!readSamplesAs(dataType,
-                    [&](auto sample) { return readSamples<decltype(sample)>(image, raw_cp); }))
-    goto cleanup;
+inline size_t RAWFormat::rowBytes(void) const
+{
+  return (size_t)width_ * (prec_ <= 8 ? 1 : 2);
+}
 
+inline bool RAWFormat::readBytes(size_t length, std::vector<uint8_t>& fileBytes)
+{
+  fileBytes.resize(length);
+  size_t bytesRead = fread(fileBytes.data(), 1, length, fileIO_->getFileHandle());
+  if(bytesRead != length)
+  {
+    spdlog::error("RAW: bytes read ({}) are less than expected number of bytes ({})", bytesRead,
+                  length);
+    return false;
+  }
+  return true;
+}
+
+template<typename RT, typename T>
+void RAWFormat::convertRowsFrom(const uint8_t* bytes, uint32_t rows, T* dest, size_t stride) const
+{
+  for(uint32_t r = 0; r < rows; ++r)
+  {
+    T* row = dest + r * stride;
+    for(uint32_t x = 0; x < width_; ++x)
+    {
+      RT value;
+      memcpy(&value, bytes, sizeof(RT));
+      bytes += sizeof(RT);
+      row[x] = (T)grk::endian<RT>(value, bigEndian);
+    }
+  }
+}
+
+template<typename T>
+void RAWFormat::convertRows(const uint8_t* bytes, uint32_t rows, T* dest, size_t stride) const
+{
+  if(prec_ <= 8)
+    sgnd_ ? convertRowsFrom<int8_t, T>(bytes, rows, dest, stride)
+          : convertRowsFrom<uint8_t, T>(bytes, rows, dest, stride);
+  else
+    sgnd_ ? convertRowsFrom<int16_t, T>(bytes, rows, dest, stride)
+          : convertRowsFrom<uint16_t, T>(bytes, rows, dest, stride);
+}
+
+inline void RAWFormat::warnIfTrailingBytes(void)
+{
+  uint8_t ch;
   if(fread(&ch, 1, 1, fileIO_->getFileHandle()))
     spdlog::warn("End of raw file not reached... processing anyway");
-  success = true;
-cleanup:
-  fileIO_->close();
-  if(!success)
+}
+
+template<typename T>
+bool RAWFormat::readSamples(grk_image* image)
+{
+  std::vector<uint8_t> fileBytes;
+  for(uint16_t compno = 0; compno < numcomps_; compno++)
+  {
+    auto comp = image->comps + compno;
+    for(uint32_t row = 0; row < height_; row += stripReadRows)
+    {
+      uint32_t rows = (std::min)(stripReadRows, height_ - row);
+      if(!readBytes(rows * rowBytes(), fileBytes))
+        return false;
+      convertRows<T>(fileBytes.data(), rows, (T*)comp->data + row * comp->stride, comp->stride);
+    }
+  }
+  warnIfTrailingBytes();
+  return true;
+}
+
+inline grk_image* RAWFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = createImage(parameters, dataType, true);
+  bool read = image && readSamplesAs(dataType, [&](auto sample) {
+                return readSamples<decltype(sample)>(image);
+              });
+  if(!fileIO_->close() || !read)
   {
     if(image)
       grk_object_unref(&image->obj);
-    image = nullptr;
+    return nullptr;
   }
   return image;
 }
 
-template<typename T>
-bool RAWFormat::readSamples(grk_image* image, const grk_raw_cparameters* raw_cp)
+inline grk_image* RAWFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
 {
-  uint32_t w = raw_cp->width;
-  uint32_t h = raw_cp->height;
-  for(uint16_t compno = 0; compno < image->numcomps; compno++)
-  {
-    auto ptr = (T*)image->comps[compno].data;
-    for(uint32_t j = 0; j < h; ++j)
-    {
-      bool rc;
-      if(raw_cp->prec <= 8)
-        rc = raw_cp->sgnd ? readFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w)
-                          : readFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-      else
-        rc = raw_cp->sgnd ? readFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w)
-                          : readFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w);
-      if(!rc)
-      {
-        spdlog::error("Error reading raw file. End of file probably reached.");
-        return false;
-      }
-      ptr += image->comps[compno].stride;
-    }
-  }
+  // stdin can't seek between the component planes
+  if(readFromStdin_ && numcomps_ > 1)
+    return nullptr;
+  return createImage(parameters, dataType, false);
+}
 
-  return true;
+template<typename T>
+bool RAWFormat::pushStrips(grk_object* codec)
+{
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height_);
+  uint64_t planeBytes = (uint64_t)height_ * rowBytes();
+  std::vector<uint8_t> fileBytes;
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t firstRow = strip * rowsPerStrip;
+    uint32_t rows = (std::min)(rowsPerStrip, height_ - firstRow);
+    for(uint16_t compno = 0; compno < numcomps_; ++compno)
+    {
+      uint64_t offset = compno * planeBytes + firstRow * rowBytes();
+      if(numcomps_ > 1 && !seek((int64_t)offset, SEEK_SET))
+        return false;
+      if(!readBytes(rows * rowBytes(), fileBytes))
+        return false;
+      convertRows<T>(fileBytes.data(), rows, planes[compno].data(), width_);
+    }
+    return true;
+  };
+  bool pushed =
+      pushStripsReadAhead<T>(codec, numcomps_, width_, height_, rowsPerStrip, readStrip) &&
+      (numcomps_ == 1 || seek((int64_t)(planeBytes * numcomps_), SEEK_SET));
+  if(pushed)
+    warnIfTrailingBytes();
+  return fileIO_->close() && pushed;
+}
+
+inline bool RAWFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
