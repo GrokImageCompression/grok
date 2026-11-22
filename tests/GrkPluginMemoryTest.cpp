@@ -46,9 +46,9 @@ constexpr uint32_t kCinemaHeight = 1080;
 constexpr double kCinemaRatio = 10.0;
 // the device and the CPU run the irreversible wavelet in different arithmetic
 constexpr int32_t kLossyTolerance = 8;
-// a lossy 12 bit encode held against the transformed source: the device's 9/7
-// pipeline lands within 10 codes, the CPU encoder within 5
-constexpr int32_t kCinemaEncodeTolerance = 16;
+// a lossy 12 bit encode held against the transformed source: the device and the
+// CPU encoder both land within 5 codes
+constexpr int32_t kCinemaEncodeTolerance = 8;
 constexpr uint32_t kSyccWidth = 256;
 constexpr uint32_t kSyccHeight = 144;
 constexpr uint8_t kSyccPrecision = 16;
@@ -764,6 +764,40 @@ void checkQuantSteps(uint8_t qfactor, uint8_t cblkSty, uint8_t numResolutions)
   grk_object_unref(&source->obj);
 }
 
+// every pass kept, so the code stream's quantizer steps and the device's 9/7 set the error
+void checkLossyEncodeAccuracy()
+{
+  constexpr uint8_t kLossyPrecision = 16;
+  constexpr int32_t kLossyEncodeTolerance = 8;
+  std::printf("lossy %u bit plugin encode against its source\n", kLossyPrecision);
+  grk_cparameters params;
+  baseParameters(params);
+  params.irreversible = true;
+  auto source = smoothFrame(kWidth, kHeight, kLossyPrecision);
+  if(!source)
+  {
+    fail("lossy frame allocation");
+    return;
+  }
+  std::vector<uint8_t> stream((size_t)kWidth * kHeight * kNumComps * 4);
+  uint64_t before = grk_plugin_accelerated_frames();
+  uint64_t length = compress(source, params, stream);
+  if(length == 0)
+    fail("lossy plugin compress");
+  if(grk_plugin_accelerated_frames() != before + 1)
+    fail("lossy plugin compress was not counted as accelerated");
+  grk_plugin_set_enabled(false);
+  auto decoded = decode(stream, length);
+  grk_plugin_set_enabled(true);
+  int32_t maxDifference = 0;
+  bool close = samplesEqual(source, decoded, kLossyEncodeTolerance, &maxDifference);
+  std::printf("lossy %u bit plugin encode, CPU decoded: max error %d codes\n", kLossyPrecision,
+              maxDifference);
+  if(!close)
+    fail("lossy plugin encode strays from its source");
+  grk_object_unref(&source->obj);
+}
+
 // an origin of 16 on an 18 sample grid makes the resolutions below the full one 1 sample across
 void checkOneSampleResolutions(bool vertical, bool irreversible)
 {
@@ -1180,6 +1214,7 @@ int main(int argc, char** argv)
   for(const auto& declined : htDeclinedCases)
     checkHTDeclined(declined);
   checkCinema();
+  checkLossyEncodeAccuracy();
   checkSyccCinema();
   checkDeclinedDecode();
   for(uint8_t cblkSty : {(uint8_t)0, (uint8_t)GRK_CBLKSTY_HT_ONLY})
