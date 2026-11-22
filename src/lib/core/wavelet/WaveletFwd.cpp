@@ -1360,62 +1360,59 @@ namespace HWY_NAMESPACE
 
     const uint32_t sn = (height + !parity) >> 1;
     const uint32_t dn = height - sn;
-    int16_t* E = scratch;
-    int16_t* O = scratch + sn * lanes;
-    for(uint32_t k = 0; k < sn; ++k)
-      Store(loadRow(resolution + size_t(2 * k + parity) * stride), d, E + k * lanes);
-    for(uint32_t k = 0; k < dn; ++k)
-      Store(loadRow(resolution + size_t(2 * k + !parity) * stride), d, O + k * lanes);
-
-    auto evenLeft = [&](uint32_t k) { return (parity == 0) ? k : ((k > 0) ? (k - 1) : 0); };
-    auto evenRight = [&](uint32_t k) {
-      return (parity == 0) ? ((k + 1 < sn) ? (k + 1) : k) : ((k < sn) ? k : (sn > 0 ? sn - 1 : 0));
-    };
-    auto oddLeft = [&](uint32_t k) { return (parity == 0) ? ((k > 0) ? (k - 1) : 0) : k; };
-    auto oddRight = [&](uint32_t k) {
-      return (parity == 0) ? ((k < dn) ? k : (dn > 0 ? dn - 1 : 0)) : ((k + 1 < dn) ? (k + 1) : k);
+    HWY_ALIGN int16_t lowRing[4 * MaxLanes(d)];
+    auto isLow = [parity](uint32_t position) { return ((position + parity) & 1) == 0; };
+    auto rowAt = [&](uint32_t position) {
+      size_t band = position >> 1;
+      return isLow(position) ? lowRing + (band & 3) * lanes : scratch + band * lanes;
     };
 
     const bool unitFactor = factorQ15 == 32768;
-    for(uint32_t k = 0; k < dn; ++k)
+    const auto halfFactor = Set(d, (int16_t)((factorQ15 + 1) >> 1));
+    const auto halfFactorAlpha = Set(d, (int16_t)std::lround((double)factorQ15 * alpha / 2.0));
+    const auto levelFactor = Set(d, (int16_t)factorQ15);
+    for(uint32_t newest = 0; newest < height + 4; ++newest)
     {
-      auto left = Load(d, E + evenLeft(k) * lanes);
-      auto right = Load(d, E + evenRight(k) * lanes);
-      auto odd = Load(d, O + k * lanes);
-      if(unitFactor)
+      if(newest < height)
+        Store(loadRow(resolution + size_t(newest) * stride), d, rowAt(newest));
+      for(uint32_t step = 0; step < 4; ++step)
       {
-        odd = halvedPredict0(d, odd, left, right);
+        if(newest < step + 1)
+          break;
+        uint32_t target = newest - 1 - step;
+        bool updatesLow = step & 1;
+        if(target >= height || isLow(target) != updatesLow)
+          continue;
+        auto left = Load(d, rowAt(target == 0 ? 1 : target - 1));
+        auto right = Load(d, rowAt(target + 1 < height ? target + 1 : target - 1));
+        int16_t* row = rowAt(target);
+        auto value = Load(d, row);
+        switch(step)
+        {
+          case 0:
+            value = unitFactor ? halvedPredict0(d, value, left, right)
+                               : MulFixedPoint15(value, halfFactor) +
+                                     MulFixedPoint15(left + right, halfFactorAlpha);
+            break;
+          case 1:
+            value = halvedUpdate1(d, unitFactor ? value : MulFixedPoint15(value, levelFactor), left,
+                                  right);
+            break;
+          case 2:
+            value = halvedPredict2(d, value, left, right);
+            break;
+          default:
+            value = halvedUpdate3(d, value, left, right);
+            break;
+        }
+        if(step == 3)
+          storeRow(value, resolution + size_t(target >> 1) * stride);
+        else
+          Store(value, d, row);
       }
-      else
-      {
-        auto halfFactor = Set(d, (int16_t)((factorQ15 + 1) >> 1));
-        auto halfFactorAlpha = Set(d, (int16_t)std::lround((double)factorQ15 * alpha / 2.0));
-        odd = MulFixedPoint15(odd, halfFactor) + MulFixedPoint15(left + right, halfFactorAlpha);
-      }
-      Store(odd, d, O + k * lanes);
-    }
-    for(uint32_t k = 0; k < sn; ++k)
-    {
-      auto even = Load(d, E + k * lanes);
-      if(!unitFactor)
-        even = MulFixedPoint15(even, Set(d, (int16_t)factorQ15));
-      Store(
-          halvedUpdate1(d, even, Load(d, O + oddLeft(k) * lanes), Load(d, O + oddRight(k) * lanes)),
-          d, E + k * lanes);
     }
     for(uint32_t k = 0; k < dn; ++k)
-      Store(halvedPredict2(d, Load(d, O + k * lanes), Load(d, E + evenLeft(k) * lanes),
-                           Load(d, E + evenRight(k) * lanes)),
-            d, O + k * lanes);
-    for(uint32_t k = 0; k < sn; ++k)
-      Store(halvedUpdate3(d, Load(d, E + k * lanes), Load(d, O + oddLeft(k) * lanes),
-                          Load(d, O + oddRight(k) * lanes)),
-            d, E + k * lanes);
-
-    for(uint32_t k = 0; k < sn; ++k)
-      storeRow(Load(d, E + k * lanes), resolution + size_t(k) * stride);
-    for(uint32_t k = 0; k < dn; ++k)
-      storeRow(Load(d, O + k * lanes), resolution + size_t(sn + k) * stride);
+      storeRow(Load(d, scratch + k * lanes), resolution + size_t(sn + k) * stride);
   }
 
   template<class Op>
