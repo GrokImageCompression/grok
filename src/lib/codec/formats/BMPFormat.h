@@ -97,7 +97,7 @@ void put_int(uint8_t** buf, T val)
   *buf += sizeof(T);
 }
 
-class BMPFormat : public ImageFormat
+class BMPFormat : public ImageFormat, public IStripReader
 {
 public:
   BMPFormat(void);
@@ -110,17 +110,19 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
   uint64_t off_;
+  bool bitfieldMasksValid(void);
+  bool setSampleLayout(void);
+  grk_image* createImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
+  std::unique_ptr<uint8_t[]> readAllRows(void);
   template<typename T>
-  bool readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image);
+  void convertRows(const uint8_t* fileRows, uint32_t rows, T* const* planes, size_t stride);
   template<typename T>
-  grk_image* bmp8toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
-  template<typename T>
-  grk_image* bmp4toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
-  template<typename T>
-  grk_image* bmp1toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
+  bool pushStrips(grk_object* codec);
   bool readFileHeader(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readRawData(uint8_t* pData, uint32_t stride, uint32_t height);
@@ -139,6 +141,8 @@ private:
   bool paletteHasColour_ = false;
   uint16_t numcomps_ = 0;
   GRK_COLOR_SPACE colourSpace_ = GRK_CLRSPC_UNKNOWN;
+  uint32_t bmpStride_ = 0;
+  uint32_t masks_[4] = {};
 
   template<typename T>
   void conv_1u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
@@ -150,14 +154,12 @@ private:
   void conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int32_t dstStride,
                   uint32_t width, uint32_t height);
 
+  template<typename T, size_t bytesPerPixel>
+  void convertMaskedRows(const uint8_t* rowZero, int32_t rowStep, uint32_t rows, T* const* planes,
+                         size_t stride);
   template<typename T>
-  void mask32toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image, uint32_t redMask,
-                     uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
-  template<typename T>
-  void mask16toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image, uint32_t redMask,
-                     uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
-  template<typename T>
-  void bmp24toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
+  void convert24Rows(const uint8_t* rowZero, int32_t rowStep, uint32_t rows, T* const* planes,
+                     size_t stride);
   void maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec);
 };
 
@@ -461,36 +463,6 @@ inline bool BMPFormat::writeFinish(void)
   }
 
   return ImageFormat::writeFinish();
-}
-
-template<typename T>
-grk_image* BMPFormat::bmp1toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
-{
-  uint32_t width = image->decompress_width;
-  uint32_t height = image->decompress_height;
-  conv_1u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
-             height);
-  return image;
-}
-
-template<typename T>
-grk_image* BMPFormat::bmp4toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
-{
-  uint32_t width = image->decompress_width;
-  uint32_t height = image->decompress_height;
-  conv_4u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
-             height);
-  return image;
-}
-
-template<typename T>
-grk_image* BMPFormat::bmp8toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
-{
-  uint32_t width = image->decompress_width;
-  uint32_t height = image->decompress_height;
-  conv_8u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
-             height);
-  return image;
 }
 
 inline bool BMPFormat::readFileHeader(GRK_BITMAPFILEHEADER* fileHeader,
@@ -900,6 +872,8 @@ inline std::optional<ImageFileHeader>
 
   if(infoHeader_.biWidth == 0 || infoHeader_.biHeight == 0)
     goto cleanup;
+  if(!setSampleLayout())
+    goto cleanup;
 
   colourSpace_ = (numcomps_ == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB;
   if(infoHeader_.biBitCount <= 8U && paletteHasColour_)
@@ -922,67 +896,127 @@ cleanup:
   return std::nullopt;
 }
 
-inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline bool BMPFormat::bitfieldMasksValid(void)
+{
+  if(!(masks_[0] && masks_[1] && masks_[2]))
+  {
+    spdlog::error("RGB(A) bit masks must be non-zero");
+    return false;
+  }
+  bool fail = false;
+  bool hasAlpha = numcomps_ > 3;
+  const uint32_t* m = masks_;
+  for(uint32_t i = 0; i < numcomps_; ++i)
+  {
+    int lead = grk::count_leading_zeros(m[i]);
+    int trail = grk::count_trailing_zeros(m[i]);
+    int cnt = grk::population_count(m[i]);
+    // check contiguous
+    if(lead + trail + cnt != 32)
+    {
+      spdlog::error("RGB(A) bit masks must be contiguous");
+      fail = true;
+      break;
+    }
+    // check supported precision
+    if(cnt > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+    {
+      spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than "
+                    "%d is not supported",
+                    cnt, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+      fail = true;
+    }
+  }
+  // check overlap
+  if((m[0] & m[1]) || (m[0] & m[2]) || (m[1] & m[2]))
+  {
+    spdlog::error("RGB(A) bit masks must not overlap");
+    fail = true;
+  }
+  if(hasAlpha && !fail)
+  {
+    if((m[0] & m[3]) || (m[1] & m[3]) || (m[2] & m[3]))
+    {
+      spdlog::error("RGB(A) bit masks must not overlap");
+      fail = true;
+    }
+  }
+  if(fail)
+  {
+    spdlog::error("RGB(A) bit masks:\n"
+                  "{0:b}\n"
+                  "{0:b}\n"
+                  "{0:b}\n"
+                  "{0:b}",
+                  m[0], m[1], m[2], m[3]);
+  }
+  return !fail;
+}
+
+inline bool BMPFormat::setSampleLayout(void)
+{
+  uint32_t bitCount = infoHeader_.biBitCount;
+  uint32_t compression = infoHeader_.biCompression;
+  bool uncompressed = compression == 0 && (bitCount == 32 || bitCount == 24 || bitCount == 16 ||
+                                           bitCount == 8 || bitCount == 4 || bitCount == 1);
+  bool runLengthEncoded =
+      (compression == 1 && bitCount == 8) || (compression == 2 && bitCount == 4);
+  bool bitfields = compression == 3 && (bitCount == 32 || bitCount == 16);
+  if(!uncompressed && !runLengthEncoded && !bitfields)
+  {
+    spdlog::error("Precision [{}] does not match supported precision: "
+                  "24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
+                  bitCount);
+    return false;
+  }
+  if(uncompressed && bitCount == 32)
+  {
+    masks_[0] = 0x00FF0000U;
+    masks_[1] = 0x0000FF00U;
+    masks_[2] = 0x000000FFU;
+  }
+  else if(uncompressed && bitCount == 16)
+  {
+    masks_[0] = 0x7C00U;
+    masks_[1] = 0x03E0U;
+    masks_[2] = 0x001FU;
+  }
+  else if(bitfields)
+  {
+    masks_[0] = infoHeader_.biRedMask;
+    masks_[1] = infoHeader_.biGreenMask;
+    masks_[2] = infoHeader_.biBlueMask;
+    masks_[3] = infoHeader_.biAlphaMask;
+    if(bitCount == 16 && !masks_[0] && !masks_[1] && !masks_[2])
+    {
+      masks_[0] = 0xF800U;
+      masks_[1] = 0x07E0U;
+      masks_[2] = 0x001FU;
+    }
+    if(bitCount == 32 && !bitfieldMasksValid())
+      return false;
+  }
+  auto width = (uint32_t)infoHeader_.biWidth;
+  uint32_t strideBits = compression == 2 ? 8U : bitCount;
+  if(strideBits > (UINT32_MAX - 31U) / width)
+    return false;
+  bmpStride_ = ((width * strideBits + 31U) / 32U) * (uint32_t)sizeof(uint32_t);
+  return bmpStride_ <= UINT32_MAX / (uint32_t)infoHeader_.biHeight;
+}
+
+inline grk_image* BMPFormat::createImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   grk_image_comp cmptparm[4]; /* maximum of 4 components */
-  grk_image* image = nullptr;
-  bool result = false;
-  uint8_t* pData = nullptr;
-  uint32_t bmpStride;
-
-  if(infoHeader_.biBitCount > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)infoHeader_.biWidth)
-    goto cleanup;
-
-  bmpStride = (((uint32_t)infoHeader_.biWidth * infoHeader_.biBitCount + 31U) / 32U) *
-              (uint32_t)sizeof(uint32_t); /* rows are aligned on 32bits */
-  if(infoHeader_.biBitCount == 4 && infoHeader_.biCompression == 2)
-  { /* RLE 4 gets decoded as 8 bits data for now... */
-    if(8 > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)infoHeader_.biWidth)
-      goto cleanup;
-    bmpStride = (((uint32_t)infoHeader_.biWidth * 8U + 31U) / 32U) * (uint32_t)sizeof(uint32_t);
-  }
-
-  if(bmpStride > ((uint32_t)(uint32_t)-1) / sizeof(uint8_t) / (uint32_t)infoHeader_.biHeight)
-    goto cleanup;
-  pData = new uint8_t[bmpStride * (size_t)infoHeader_.biHeight];
-  if(pData == nullptr)
-    goto cleanup;
-  if(!seek(fileHeader_.bfOffBits, SEEK_SET))
-    goto cleanup;
-
-  switch(infoHeader_.biCompression)
-  {
-    case 0:
-    case 3:
-      /* read raw data */
-      result = readRawData(pData, bmpStride, (uint32_t)infoHeader_.biHeight);
-      break;
-    case 1:
-      /* read rle8 data */
-      result = readRle8Data(pData, bmpStride, (uint32_t)infoHeader_.biWidth,
-                            (uint32_t)infoHeader_.biHeight);
-      break;
-    case 2:
-      /* read rle4 data */
-      result = readRle4Data(pData, bmpStride, (uint32_t)infoHeader_.biWidth,
-                            (uint32_t)infoHeader_.biHeight);
-      break;
-    default:
-      spdlog::error("Unsupported BMP compression");
-      result = false;
-      break;
-  }
-  if(!result)
-  {
-    goto cleanup;
-  }
-
-  /* create the image */
   memset(&cmptparm[0], 0, sizeof(cmptparm));
   for(uint32_t i = 0; i < numcomps_; i++)
   {
     auto img_comp = cmptparm + i;
+    uint8_t maskShift, maskPrecision;
+    maskGetShiftAndPrec(masks_[i], &maskShift, &maskPrecision);
     img_comp->prec = (numcomps_ == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
+    if(masks_[0])
+      img_comp->prec = maskPrecision;
     img_comp->sgnd = false;
     img_comp->data_type = dataType;
     img_comp->dx = parameters->subsampling_dx;
@@ -991,9 +1025,9 @@ inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     img_comp->h = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biHeight, img_comp->dy);
   }
 
-  image = grk_image_new(numcomps_, &cmptparm[0], colourSpace_, true);
+  auto image = grk_image_new(numcomps_, &cmptparm[0], colourSpace_, allocData);
   if(!image)
-    goto cleanup;
+    return nullptr;
 
   if(infoHeader_.biBitCount <= 8U)
   {
@@ -1022,25 +1056,16 @@ inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_ty
       }
     }
   }
-  // ICC profile
   if(infoHeader_.biSize == sizeof(GRK_BITMAPINFOHEADER) &&
      infoHeader_.biColorSpaceType == ICC_PROFILE_EMBEDDED && infoHeader_.biIccProfileSize &&
      infoHeader_.biIccProfileSize < grk::maxICCProfileBufferLen)
   {
-    // read in ICC profile
-    if(!seek(fileHeaderSize + infoHeader_.biIccProfileOffset, SEEK_SET))
-      goto cleanup;
-
-    // allocate buffer
-    auto iccbuf = new uint8_t[infoHeader_.biIccProfileSize];
-    if(!read(iccbuf, infoHeader_.biIccProfileSize))
-    {
+    std::vector<uint8_t> iccbuf(infoHeader_.biIccProfileSize);
+    if(seek(fileHeaderSize + infoHeader_.biIccProfileOffset, SEEK_SET) &&
+       read(iccbuf.data(), iccbuf.size()))
+      copyICC(image, iccbuf.data(), infoHeader_.biIccProfileSize);
+    else
       spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
-      delete[] iccbuf;
-      goto cleanup;
-    }
-    copyICC(image, iccbuf, infoHeader_.biIccProfileSize);
-    delete[] iccbuf;
   }
   if(numcomps_ == 4U)
   {
@@ -1048,177 +1073,140 @@ inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     image->comps[3].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
   }
 
-  /* set image offset and reference grid */
   image->x0 = parameters->image_offset_x0;
   image->y0 = parameters->image_offset_y0;
   image->x1 = image->x0 + ((uint32_t)infoHeader_.biWidth - 1U) * parameters->subsampling_dx + 1U;
   image->y1 = image->y0 + ((uint32_t)infoHeader_.biHeight - 1U) * parameters->subsampling_dy + 1U;
-
-  if(!readSamplesAs(dataType, [&](auto sample) {
-       return readSamples<decltype(sample)>(pData, bmpStride, image);
-     }))
-  {
-    grk_object_unref(&image->obj);
-    image = nullptr;
-  }
-cleanup:
-  delete[] pData;
-  fileIO_->close();
   return image;
 }
 
-template<typename T>
-bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image)
+inline std::unique_ptr<uint8_t[]> BMPFormat::readAllRows(void)
 {
-  bool handled = true;
-  auto lastRow = pData + (size_t)(image->decompress_height - 1U) * bmpStride;
-  auto firstRow = topDown_ ? pData : lastRow;
-  int32_t rowStep = topDown_ ? (int32_t)bmpStride : -(int32_t)bmpStride;
-  /* Read the data */
+  auto width = (uint32_t)infoHeader_.biWidth;
+  auto height = (uint32_t)infoHeader_.biHeight;
+  std::unique_ptr<uint8_t[]> fileRows(new uint8_t[(size_t)bmpStride_ * height]);
+  if(!seek(fileHeader_.bfOffBits, SEEK_SET))
+    return nullptr;
+  bool read;
   switch(infoHeader_.biCompression)
   {
-    case 0:
-      switch(infoHeader_.biBitCount)
-      {
-        case 32: /* RGBX */
-          mask32toimage<T>(firstRow, rowStep, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
-                           0x00000000U);
-          break;
-        case 24: /*RGB */
-          bmp24toimage<T>(firstRow, rowStep, image);
-          break;
-        case 16: /*RGBX */
-          mask16toimage<T>(firstRow, rowStep, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
-          break;
-        case 8: /* RGB 8bpp Indexed */
-          bmp8toimage<T>(firstRow, rowStep, image);
-          break;
-        case 4: /* RGB 4bpp Indexed */
-          bmp4toimage<T>(firstRow, rowStep, image);
-          break;
-        case 1: /* Grayscale 1bpp Indexed */
-          bmp1toimage<T>(firstRow, rowStep, image);
-          break;
-        default:
-          handled = false;
-          break;
-      }
-      break;
     case 1:
-      switch(infoHeader_.biBitCount)
-      {
-        case 8: /*RLE8*/
-          bmp8toimage<T>(firstRow, rowStep, image);
-          break;
-        default:
-          handled = false;
-          break;
-      }
+      read = readRle8Data(fileRows.get(), bmpStride_, width, height);
       break;
     case 2:
-      switch(infoHeader_.biBitCount)
-      {
-        case 4: /*RLE4*/
-          bmp8toimage<T>(firstRow, rowStep, image); /* RLE 4 gets decoded as 8 bits data for now */
-          break;
-        default:
-          handled = false;
-          break;
-      }
+      read = readRle4Data(fileRows.get(), bmpStride_, width, height);
       break;
-    case 3:
-      switch(infoHeader_.biBitCount)
-      {
-        case 32: /* BITFIELDS bit mask */
-          if(infoHeader_.biRedMask && infoHeader_.biGreenMask && infoHeader_.biBlueMask)
-          {
-            bool fail = false;
-            bool hasAlpha = image->decompress_num_comps > 3;
-            // sanity check on bit masks
-            uint32_t m[4] = {infoHeader_.biRedMask, infoHeader_.biGreenMask, infoHeader_.biBlueMask,
-                             infoHeader_.biAlphaMask};
-            for(uint32_t i = 0; i < image->decompress_num_comps; ++i)
-            {
-              int lead = grk::count_leading_zeros(m[i]);
-              int trail = grk::count_trailing_zeros(m[i]);
-              int cnt = grk::population_count(m[i]);
-              // check contiguous
-              if(lead + trail + cnt != 32)
-              {
-                spdlog::error("RGB(A) bit masks must be contiguous");
-                fail = true;
-                break;
-              }
-              // check supported precision
-              if(cnt > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
-              {
-                spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than "
-                              "%d is not supported",
-                              cnt, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
-                fail = true;
-              }
-            }
-            // check overlap
-            if((m[0] & m[1]) || (m[0] & m[2]) || (m[1] & m[2]))
-            {
-              spdlog::error("RGB(A) bit masks must not overlap");
-              fail = true;
-            }
-            if(hasAlpha && !fail)
-            {
-              if((m[0] & m[3]) || (m[1] & m[3]) || (m[2] & m[3]))
-              {
-                spdlog::error("RGB(A) bit masks must not overlap");
-                fail = true;
-              }
-            }
-            if(fail)
-            {
-              spdlog::error("RGB(A) bit masks:\n"
-                            "{0:b}\n"
-                            "{0:b}\n"
-                            "{0:b}\n"
-                            "{0:b}",
-                            m[0], m[1], m[2], m[3]);
-              return false;
-            }
-          }
-          else
-          {
-            spdlog::error("RGB(A) bit masks must be non-zero");
-            handled = false;
-            break;
-          }
-
-          mask32toimage<T>(firstRow, rowStep, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-                           infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
-          break;
-        case 16: /* BITFIELDS bit mask*/
-          if((infoHeader_.biRedMask == 0U) && (infoHeader_.biGreenMask == 0U) &&
-             (infoHeader_.biBlueMask == 0U))
-          {
-            infoHeader_.biRedMask = 0xF800U;
-            infoHeader_.biGreenMask = 0x07E0U;
-            infoHeader_.biBlueMask = 0x001FU;
-          }
-          mask16toimage<T>(firstRow, rowStep, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-                           infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
-          break;
-        default:
-          handled = false;
-          break;
-      }
-      break;
-
     default:
-      handled = false;
+      read = readRawData(fileRows.get(), bmpStride_, height);
       break;
   }
-  if(!handled)
-    spdlog::error("Precision [{}] does not match supported precision: "
-                  "24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
-                  infoHeader_.biBitCount);
-  return handled;
+  return read ? std::move(fileRows) : nullptr;
+}
+
+template<typename T>
+void BMPFormat::convertRows(const uint8_t* fileRows, uint32_t rows, T* const* planes, size_t stride)
+{
+  auto width = (uint32_t)infoHeader_.biWidth;
+  auto rowZero = topDown_ ? fileRows : fileRows + (size_t)(rows - 1U) * bmpStride_;
+  int32_t rowStep = topDown_ ? (int32_t)bmpStride_ : -(int32_t)bmpStride_;
+  switch(infoHeader_.biBitCount)
+  {
+    case 32:
+      convertMaskedRows<T, 4>(rowZero, rowStep, rows, planes, stride);
+      break;
+    case 24:
+      convert24Rows<T>(rowZero, rowStep, rows, planes, stride);
+      break;
+    case 16:
+      convertMaskedRows<T, 2>(rowZero, rowStep, rows, planes, stride);
+      break;
+    case 8:
+      conv_8u32s(rowZero, rowStep, planes[0], (int32_t)stride, width, rows);
+      break;
+    case 4:
+      if(infoHeader_.biCompression == 2)
+        conv_8u32s(rowZero, rowStep, planes[0], (int32_t)stride, width, rows);
+      else
+        conv_4u32s(rowZero, rowStep, planes[0], (int32_t)stride, width, rows);
+      break;
+    case 1:
+      conv_1u32s(rowZero, rowStep, planes[0], (int32_t)stride, width, rows);
+      break;
+  }
+}
+
+inline grk_image* BMPFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = createImage(parameters, dataType, true);
+  auto fileRows = image ? readAllRows() : nullptr;
+  bool read = fileRows && readSamplesAs(dataType, [&](auto sample) {
+                using T = decltype(sample);
+                T* planes[4];
+                for(uint16_t c = 0; c < numcomps_; ++c)
+                  planes[c] = (T*)image->comps[c].data;
+                convertRows<T>(fileRows.get(), (uint32_t)infoHeader_.biHeight, planes,
+                               image->comps[0].stride);
+                return true;
+              });
+  if(!fileIO_->close() || !read)
+  {
+    if(image)
+      grk_object_unref(&image->obj);
+    return nullptr;
+  }
+  return image;
+}
+
+inline grk_image* BMPFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  return createImage(parameters, dataType, false);
+}
+
+template<typename T>
+bool BMPFormat::pushStrips(grk_object* codec)
+{
+  auto width = (uint32_t)infoHeader_.biWidth;
+  auto height = (uint32_t)infoHeader_.biHeight;
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height);
+  bool runLengthEncoded = infoHeader_.biCompression == 1 || infoHeader_.biCompression == 2;
+  std::unique_ptr<uint8_t[]> decodedRows;
+  if(runLengthEncoded)
+  {
+    decodedRows = readAllRows();
+    if(!decodedRows)
+    {
+      fileIO_->close();
+      return false;
+    }
+  }
+  std::vector<uint8_t> stripBytes;
+  std::vector<T*> planePointers(numcomps_);
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t firstRow = strip * rowsPerStrip;
+    uint32_t rows = (std::min)(rowsPerStrip, height - firstRow);
+    uint32_t firstFileRow = topDown_ ? firstRow : height - firstRow - rows;
+    size_t fileOffset = (size_t)firstFileRow * bmpStride_;
+    for(uint16_t c = 0; c < numcomps_; ++c)
+      planePointers[c] = planes[c].data();
+    if(runLengthEncoded)
+    {
+      convertRows<T>(decodedRows.get() + fileOffset, rows, planePointers.data(), width);
+      return true;
+    }
+    stripBytes.resize((size_t)rows * bmpStride_);
+    if(!seek((int64_t)(fileHeader_.bfOffBits + fileOffset), SEEK_SET) ||
+       !read(stripBytes.data(), stripBytes.size()))
+      return false;
+    convertRows<T>(stripBytes.data(), rows, planePointers.data(), width);
+    return true;
+  };
+  bool pushed = pushStripsReadAhead<T>(codec, numcomps_, width, height, rowsPerStrip, readStrip);
+  return fileIO_->close() && pushed;
+}
+
+inline bool BMPFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
 
 template<typename T>
@@ -1280,36 +1268,6 @@ void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int3
   }
 }
 
-template<typename T>
-void BMPFormat::bmp24toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
-{
-  uint32_t index;
-  uint32_t width, height;
-  const uint8_t* pSrc = nullptr;
-  width = image->decompress_width;
-  height = image->decompress_height;
-  index = 0;
-  pSrc = firstRow;
-  uint32_t stride_diff = image->comps[0].stride - image->decompress_width;
-  auto r = (T*)image->comps[0].data;
-  auto g = (T*)image->comps[1].data;
-  auto b = (T*)image->comps[2].data;
-  for(uint32_t y = 0; y < height; y++)
-  {
-    size_t src_index = 0;
-    for(uint32_t x = 0; x < width; x++)
-    {
-      r[index] = (T)pSrc[src_index + 2]; /* R */
-      g[index] = (T)pSrc[src_index + 1]; /* G */
-      b[index] = (T)pSrc[src_index]; /* B */
-      index++;
-      src_index += 3;
-    }
-    index += stride_diff;
-    pSrc += rowStep;
-  }
-}
-
 inline void BMPFormat::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec)
 {
   uint8_t tempShift, tempPrecision;
@@ -1331,111 +1289,56 @@ inline void BMPFormat::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_
   *prec = tempPrecision;
 }
 
-template<typename T>
-void BMPFormat::mask32toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image,
-                              uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
-                              uint32_t alphaMask)
+template<typename T, size_t bytesPerPixel>
+void BMPFormat::convertMaskedRows(const uint8_t* rowZero, int32_t rowStep, uint32_t rows,
+                                  T* const* planes, size_t stride)
 {
-  uint8_t redShift, redPrec;
-  uint8_t greenShift, greenPrec;
-  uint8_t blueShift, bluePrec;
-  uint8_t alphaShift, alphaPrec;
-
-  uint32_t width = image->decompress_width;
-  uint32_t stride_diff = image->comps[0].stride - width;
-  uint32_t height = image->decompress_height;
-  bool hasAlpha = image->decompress_num_comps > 3U;
-  maskGetShiftAndPrec(redMask, &redShift, &redPrec);
-  maskGetShiftAndPrec(greenMask, &greenShift, &greenPrec);
-  maskGetShiftAndPrec(blueMask, &blueShift, &bluePrec);
-  maskGetShiftAndPrec(alphaMask, &alphaShift, &alphaPrec);
-  image->comps[0].prec = redPrec;
-  image->comps[1].prec = greenPrec;
-  image->comps[2].prec = bluePrec;
-  if(hasAlpha)
-    image->comps[3].prec = alphaPrec;
-  uint32_t index = 0;
-  uint32_t x, y;
-  auto pSrc = firstRow;
-  auto r = (T*)image->comps[0].data;
-  auto g = (T*)image->comps[1].data;
-  auto b = (T*)image->comps[2].data;
-  T* alpha = nullptr;
-  if(hasAlpha)
-    alpha = (T*)image->comps[3].data;
-  for(y = 0; y < height; y++)
+  auto width = (uint32_t)infoHeader_.biWidth;
+  uint8_t shifts[4];
+  uint8_t precisions[4];
+  for(uint16_t c = 0; c < 4; ++c)
+    maskGetShiftAndPrec(masks_[c], shifts + c, precisions + c);
+  bool hasAlpha = numcomps_ > 3U;
+  auto source = rowZero;
+  for(uint32_t y = 0; y < rows; ++y, source += rowStep)
   {
-    size_t src_index = 0;
-    for(x = 0; x < width; x++)
+    T* r = planes[0] + y * stride;
+    T* g = planes[1] + y * stride;
+    T* b = planes[2] + y * stride;
+    T* alpha = hasAlpha ? planes[3] + y * stride : nullptr;
+    const uint8_t* pixel = source;
+    for(uint32_t x = 0; x < width; ++x, pixel += bytesPerPixel)
     {
       uint32_t value = 0U;
-      value |= ((uint32_t)pSrc[src_index]) << 0;
-      value |= ((uint32_t)pSrc[src_index + 1]) << 8;
-      value |= ((uint32_t)pSrc[src_index + 2]) << 16;
-      value |= ((uint32_t)pSrc[src_index + 3]) << 24;
-
-      r[index] = (T)((value & redMask) >> redShift); /* R */
-      g[index] = (T)((value & greenMask) >> greenShift); /* G */
-      b[index] = (T)((value & blueMask) >> blueShift); /* B */
+      for(size_t i = 0; i < bytesPerPixel; ++i)
+        value |= (uint32_t)pixel[i] << (8 * i);
+      r[x] = (T)((value & masks_[0]) >> shifts[0]);
+      g[x] = (T)((value & masks_[1]) >> shifts[1]);
+      b[x] = (T)((value & masks_[2]) >> shifts[2]);
       if(hasAlpha)
-        alpha[index] = (T)((value & alphaMask) >> alphaShift); /* A */
-      index++;
-      src_index += 4;
+        alpha[x] = (T)((value & masks_[3]) >> shifts[3]);
     }
-    index += stride_diff;
-    pSrc += rowStep;
   }
 }
 
 template<typename T>
-void BMPFormat::mask16toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image,
-                              uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
-                              uint32_t alphaMask)
+void BMPFormat::convert24Rows(const uint8_t* rowZero, int32_t rowStep, uint32_t rows,
+                              T* const* planes, size_t stride)
 {
-  uint8_t redShift, redPrec;
-  uint8_t greenShift, greenPrec;
-  uint8_t blueShift, bluePrec;
-  uint8_t alphaShift, alphaPrec;
-
-  uint32_t width = image->decompress_width;
-  uint32_t stride_diff = image->comps[0].stride - width;
-  uint32_t height = image->decompress_height;
-  bool hasAlpha = image->decompress_num_comps > 3U;
-  maskGetShiftAndPrec(redMask, &redShift, &redPrec);
-  maskGetShiftAndPrec(greenMask, &greenShift, &greenPrec);
-  maskGetShiftAndPrec(blueMask, &blueShift, &bluePrec);
-  maskGetShiftAndPrec(alphaMask, &alphaShift, &alphaPrec);
-  image->comps[0].prec = redPrec;
-  image->comps[1].prec = greenPrec;
-  image->comps[2].prec = bluePrec;
-  if(hasAlpha)
-    image->comps[3].prec = alphaPrec;
-  uint32_t index = 0;
-  uint32_t x, y;
-  auto pSrc = firstRow;
-  auto r = (T*)image->comps[0].data;
-  auto g = (T*)image->comps[1].data;
-  auto b = (T*)image->comps[2].data;
-  T* alpha = nullptr;
-  if(hasAlpha)
-    alpha = (T*)image->comps[3].data;
-  for(y = 0; y < height; y++)
+  auto width = (uint32_t)infoHeader_.biWidth;
+  auto source = rowZero;
+  for(uint32_t y = 0; y < rows; ++y, source += rowStep)
   {
-    size_t src_index = 0;
-    for(x = 0; x < width; x++)
+    T* r = planes[0] + y * stride;
+    T* g = planes[1] + y * stride;
+    T* b = planes[2] + y * stride;
+    const uint8_t* pixel = source;
+    for(uint32_t x = 0; x < width; ++x, pixel += 3)
     {
-      uint32_t value = ((uint32_t)pSrc[src_index + 0]) << 0;
-      value |= ((uint32_t)pSrc[src_index + 1]) << 8;
-
-      r[index] = (T)((value & redMask) >> redShift); /* R */
-      g[index] = (T)((value & greenMask) >> greenShift); /* G */
-      b[index] = (T)((value & blueMask) >> blueShift); /* B */
-      if(hasAlpha)
-        alpha[index] = (T)((value & alphaMask) >> alphaShift); /* A */
-      index++;
-      src_index += 2;
+      // bmp stores blue, green, red
+      r[x] = (T)pixel[2];
+      g[x] = (T)pixel[1];
+      b[x] = (T)pixel[0];
     }
-    index += stride_diff;
-    pSrc += rowStep;
   }
 }
