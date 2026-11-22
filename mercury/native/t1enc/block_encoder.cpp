@@ -99,21 +99,6 @@ static const double dwt_norms_real[4][32] = {
      285642.93365525, 285642.93365525, 285642.93365525, 285642.93365525, 285642.93365525,
      285642.93365525, 285642.93365525}};
 
-static inline int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos)
-{
-  if(bitpos > 0)
-    return lut_nmsedec_sig[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
-
-  return lut_nmsedec_sig0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
-}
-static inline int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos)
-{
-  if(bitpos > 0)
-    return lut_nmsedec_ref[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
-
-  return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
-}
-
 static inline void update_flags(grk_flag* flagsPtr, uint32_t ci, uint32_t s, uint32_t stride,
                                 uint32_t vsc)
 {
@@ -212,7 +197,7 @@ double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level
        (*flagsPtr & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U)                                  \
     {                                                                                      \
       uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));                                 \
-      uint8_t v = !!(smr_abs(*(datap)) & (uint32_t)one);                                   \
+      uint8_t v = (((uint32_t)*(datap) << shift) >> 31);                                   \
       curctx = mqc->ctxs + ctxno;                                                          \
       mqc_encode_macro(mqc, curctx, a, c, ct, v);                                          \
       if(v)                                                                                \
@@ -220,7 +205,7 @@ double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level
         uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, flagsPtr[-1], flagsPtr[1], ci); \
         ctxno = lut_ctxno_sc[lu];                                                          \
         v = smr_sign(*(datap));                                                            \
-        nmsedec += getnmsedec_sig((uint32_t)smr_abs(*(datap)), (uint32_t)bpno);            \
+        nmsedec += nmsedecSig[((uint32_t)*(datap) << shift) >> 25];                        \
         curctx = mqc->ctxs + ctxno;                                                        \
         mqc_encode_macro(mqc, curctx, a, c, ct, v ^ lut_spb[lu]);                          \
         update_flags(flagsPtr, ci, v, flagsStride, 0);                                     \
@@ -230,7 +215,8 @@ double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level
   }
 int32_t BlockEncoder::enc_sigpass(int8_t bpno)
 {
-  const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  const uint32_t shift = 31U - (uint32_t)(bpno + T1_NMSEDEC_FRACBITS);
+  const int16_t* nmsedecSig = bpno > 0 ? lut_nmsedec_sig : lut_nmsedec_sig0;
   const uint32_t width = w_;
   const uint32_t height = h_;
   const uint32_t stride = stride_;
@@ -249,7 +235,15 @@ int32_t BlockEncoder::enc_sigpass(int8_t bpno)
     for(uint32_t i = 0; i < width; ++i, ++flagsPtr)
     {
       if(*flagsPtr == 0U)
+      {
+        // significant samples set the flags of three adjacent columns
+        while(i + 3 < width && flagsPtr[3] == 0U)
+        {
+          flagsPtr += 3;
+          i += 3;
+        }
         continue;
+      }
       enc_sigpass_step_macro(row0 + i, 0);
       enc_sigpass_step_macro(row1 + i, 3);
       enc_sigpass_step_macro(row2 + i, 6);
@@ -271,22 +265,23 @@ int32_t BlockEncoder::enc_sigpass(int8_t bpno)
   POP_MQC();
   return nmsedec;
 }
-#define enc_refpass_step_macro(datap, ci)                                     \
-  {                                                                           \
-    uint32_t const shift_flags = (*flagsPtr >> (ci));                         \
-    if((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS)         \
-    {                                                                         \
-      uint8_t ctxno = GETCTXNO_MAG(shift_flags);                              \
-      nmsedec += getnmsedec_ref((uint32_t)smr_abs(*(datap)), (uint32_t)bpno); \
-      uint8_t v = !!(smr_abs(*(datap)) & (uint32_t)one);                      \
-      curctx = mqc->ctxs + ctxno;                                             \
-      mqc_encode_macro(mqc, curctx, a, c, ct, v);                             \
-      *flagsPtr |= T1_MU_THIS << (ci);                                        \
-    }                                                                         \
+#define enc_refpass_step_macro(datap, ci)                             \
+  {                                                                   \
+    uint32_t const shift_flags = (*flagsPtr >> (ci));                 \
+    if((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS) \
+    {                                                                 \
+      uint8_t ctxno = GETCTXNO_MAG(shift_flags);                      \
+      nmsedec += nmsedecRef[((uint32_t)*(datap) << shift) >> 25];     \
+      uint8_t v = (((uint32_t)*(datap) << shift) >> 31);              \
+      curctx = mqc->ctxs + ctxno;                                     \
+      mqc_encode_macro(mqc, curctx, a, c, ct, v);                     \
+      *flagsPtr |= T1_MU_THIS << (ci);                                \
+    }                                                                 \
   }
 int32_t BlockEncoder::enc_refpass(int8_t bpno)
 {
-  const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  const uint32_t shift = 31U - (uint32_t)(bpno + T1_NMSEDEC_FRACBITS);
+  const int16_t* nmsedecRef = bpno > 0 ? lut_nmsedec_ref : lut_nmsedec_ref0;
   const uint32_t width = w_;
   const uint32_t height = h_;
   const uint32_t stride = stride_;
@@ -332,7 +327,7 @@ int32_t BlockEncoder::enc_refpass(int8_t bpno)
 #define enc_clnpass_sign_macro(datap, ci)                                                     \
   {                                                                                           \
     uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, *(flagsPtr - 1), *(flagsPtr + 1), ci); \
-    nmsedec += getnmsedec_sig((uint32_t)smr_abs(*(datap)), (uint32_t)bpno);                   \
+    nmsedec += nmsedecSig[((uint32_t)*(datap) << shift) >> 25];                               \
     uint8_t ctxno = lut_ctxno_sc[lu];                                                         \
     curctx = mqc->ctxs + ctxno;                                                               \
     uint8_t v = smr_sign(*(datap));                                                           \
@@ -345,7 +340,7 @@ int32_t BlockEncoder::enc_refpass(int8_t bpno)
     {                                                         \
       uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));    \
       curctx = mqc->ctxs + ctxno;                             \
-      uint32_t v = !!(smr_abs(*(datap)) & (uint32_t)one);     \
+      uint32_t v = (((uint32_t)*(datap) << shift) >> 31);     \
       mqc_encode_macro(mqc, curctx, a, c, ct, v);             \
       if(v)                                                   \
         enc_clnpass_sign_macro(datap, ci)                     \
@@ -354,7 +349,8 @@ int32_t BlockEncoder::enc_refpass(int8_t bpno)
   }
 int32_t BlockEncoder::enc_clnpass(int8_t bpno)
 {
-  const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  const uint32_t shift = 31U - (uint32_t)(bpno + T1_NMSEDEC_FRACBITS);
+  const int16_t* nmsedecSig = bpno > 0 ? lut_nmsedec_sig : lut_nmsedec_sig0;
   const uint32_t width = w_;
   const uint32_t height = h_;
   const uint32_t stride = stride_;
@@ -373,16 +369,16 @@ int32_t BlockEncoder::enc_clnpass(int8_t bpno)
       auto datap = uncompressedData_ + k * stride + i;
       if(*flagsPtr == 0)
       {
-        uint8_t runlen = 0;
-        for(; runlen < 4; ++runlen)
-        {
-          if(smr_abs(datap[runlen * stride]) & (uint32_t)one)
-            break;
-        }
+        uint32_t columnBits = ((uint32_t)datap[0] | (uint32_t)datap[stride] |
+                               (uint32_t)datap[2 * stride] | (uint32_t)datap[3 * stride])
+                              << shift;
         curctx = mqc->ctxs + T1_CTXNO_AGG;
-        mqc_encode_macro(mqc, curctx, a, c, ct, runlen != 4);
-        if(runlen == 4)
+        mqc_encode_macro(mqc, curctx, a, c, ct, columnBits >> 31);
+        if(!(columnBits >> 31))
           continue;
+        uint8_t runlen = 0;
+        while(!(((uint32_t)datap[runlen * stride] << shift) >> 31))
+          ++runlen;
         curctx = mqc->ctxs + T1_CTXNO_UNI;
         mqc_encode_macro(mqc, curctx, a, c, ct, runlen >> 1);
         mqc_encode_macro(mqc, curctx, a, c, ct, runlen & 1);
@@ -458,14 +454,14 @@ int32_t BlockEncoder::enc_clnpass(int8_t bpno)
         {
           uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));
           curctx = mqc->ctxs + ctxno;
-          uint8_t v = !!(smr_abs(*datap) & (uint32_t)one);
+          uint8_t v = (((uint32_t)*datap << shift) >> 31);
           mqc_encode_macro(mqc, curctx, a, c, ct, v);
           goto_PARTIAL = v;
         }
         if(goto_PARTIAL)
         {
           uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, *(flagsPtr - 1), *(flagsPtr + 1), ci);
-          nmsedec += getnmsedec_sig((uint32_t)smr_abs(*datap), (uint32_t)bpno);
+          nmsedec += nmsedecSig[((uint32_t)*datap << shift) >> 25];
           uint8_t ctxno = lut_ctxno_sc[lu];
           curctx = mqc->ctxs + ctxno;
           uint8_t v = smr_sign(*datap);

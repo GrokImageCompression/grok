@@ -53,24 +53,16 @@ struct mqc_state
 
 extern const mqc_state mqc_states[47 * 2];
 
-// packed state: qeval in bits 16 to 31, mqc_states index in bits 0 to 6, mps is the index's low bit
+// packed state: qeval in bits 0 to 15, mqc_states index in bits 16 to 22, mps in bit 31
 extern uint32_t mqc_packed_next[2][47 * 2];
 
 inline uint32_t mqc_pack(const mqc_state* state)
 {
-  return (state->qeval << 16) | (uint32_t)(state - mqc_states);
-}
-inline uint32_t mqc_qeval(uint32_t state)
-{
-  return state >> 16;
-}
-inline uint8_t mqc_mps(uint32_t state)
-{
-  return (uint8_t)(state & 1);
+  return state->qeval | ((uint32_t)(state - mqc_states) << 16) | ((uint32_t)state->mps << 31);
 }
 inline uint32_t mqc_next(uint32_t state, uint32_t lps)
 {
-  return mqc_packed_next[lps][state & 0x7f];
+  return mqc_packed_next[lps][(state >> 16) & 0x7f];
 }
 
 } // namespace mercury_native::t1enc

@@ -93,47 +93,28 @@
     } while((a_ & 0x8000) == 0);            \
   }
 
-#define mqc_codemps_macro(mqc, curctx, a, c, ct) \
-  do                                             \
-  {                                              \
-    uint32_t state = *(curctx);                  \
-    uint32_t qeval = mqc_qeval(state);           \
-    a -= qeval;                                  \
-    if((a & 0x8000) == 0)                        \
-    {                                            \
-      if(a < qeval)                              \
-        a = qeval;                               \
-      else                                       \
-        c += qeval;                              \
-      *curctx = mqc_next(state, 0);              \
-      mqc_renorme_macro(mqc, a, c, ct);          \
-    }                                            \
-    else                                         \
-    {                                            \
-      c += qeval;                                \
-    }                                            \
-  } while(0)
-
-#define mqc_codelps_macro(mqc, curctx, a, c, ct) \
-  do                                             \
-  {                                              \
-    uint32_t state = *(curctx);                  \
-    uint32_t qeval = mqc_qeval(state);           \
-    a -= qeval;                                  \
-    if(a < qeval)                                \
-      c += qeval;                                \
-    else                                         \
-      a = qeval;                                 \
-    *curctx = mqc_next(state, 1);                \
-    mqc_renorme_macro(mqc, a, c, ct);            \
-  } while(0)
-
-#define mqc_encode_macro(mqc, curctx, a, c, ct, d) \
-  {                                                \
-    if(mqc_mps(*curctx) == (d))                    \
-      mqc_codemps_macro(mqc, curctx, a, c, ct);    \
-    else                                           \
-      mqc_codelps_macro(mqc, curctx, a, c, ct);    \
+// the state's mps in bit 31 makes one test cover both an lps and an mps that needs renormalizing
+#define mqc_encode_macro(mqc, curctx, a, c, ct, d)                     \
+  {                                                                    \
+    uint32_t state = *(curctx);                                        \
+    uint32_t lpsQeval = (((uint32_t)(d) << 31) ^ state) & 0x8000FFFFU; \
+    a -= lpsQeval;                                                     \
+    if((int32_t)a >= 0x8000)                                           \
+    {                                                                  \
+      c += lpsQeval;                                                   \
+    }                                                                  \
+    else                                                               \
+    {                                                                  \
+      uint32_t lps = lpsQeval >> 31;                                   \
+      uint32_t qeval = lpsQeval & 0xFFFFU;                             \
+      a &= 0xFFFFU;                                                    \
+      if((a < qeval) == !lps)                                          \
+        a = qeval;                                                     \
+      else                                                             \
+        c += qeval;                                                    \
+      *curctx = mqc_next(state, lps);                                  \
+      mqc_renorme_macro(mqc, a, c, ct);                                \
+    }                                                                  \
   }
 #define mqc_bypass_enc_macro(mqc, c, ct, d)                                 \
   {                                                                         \
