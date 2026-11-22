@@ -49,6 +49,10 @@ private:
   {
     void operator()(MercuryEncoder* encoder) const;
   };
+  struct IccTransformFree
+  {
+    void operator()(void* transform) const;
+  };
   void recordSlopeThreshold(uint16_t tileThreshold);
   std::atomic<uint16_t> slopeThreshold_{0};
   // the parameters the plugin compresses with, copied at init
@@ -70,6 +74,7 @@ private:
   grk_data_type stripDataType_ = GRK_INT_32;
   std::vector<uint8_t> stripSourcePrecisions_;
   bool classicXyzPerStrip_ = false;
+  std::unique_ptr<void, IccTransformFree> stripIccTransform_;
   uint32_t stripRowsPushed_ = 0;
   std::vector<std::vector<int32_t>> preprocessedStrip_;
   bool initStripInput(GrkImage* image);

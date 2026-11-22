@@ -1978,18 +1978,51 @@ GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
 GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
                                                    grk_cparameters* parameters, grk_image* image);
 
+/**
+ * @struct grk_strip
+ * @brief Consecutive rows of every component, pushed with grk_compress_push_strip()
+ */
 typedef struct _grk_strip
 {
-  uint32_t rows;
-  /* one plane per component, in the component's data type */
-  const void* const* planes;
-  /* samples between rows, the same for every plane */
-  uint32_t stride;
+  uint32_t rows; /* number of rows, at least 1 */
+  const void* const* planes; /* one plane per component, in the component's data type */
+  uint32_t stride; /* samples between rows, the same for every plane */
 } grk_strip;
 
+/**
+ * @brief Creates a JPEG 2000 compressor that takes its samples in strips.
+ *
+ * Same as grk_compress_init(), except that the sample buffers of @p image are
+ * ignored. Push every row of the image, top to bottom, with
+ * grk_compress_push_strip(), then call grk_compress() with a NULL tile to
+ * finish. All components must have the same width, height and data type.
+ *
+ * Single-tile lossy images that mercury supports are compressed as the strips
+ * arrive. For any other image the strips are collected into a whole image and
+ * compressed by grk_compress(). The ICC, XYZ and cinema precision transforms
+ * run on each strip. The GPU plugin is not used.
+ *
+ * @param stream_params  output stream description (see @ref grk_stream_params)
+ * @param parameters     compression settings (see @ref grk_cparameters)
+ * @param image          image header: geometry, precision, data type, metadata
+ * @return pointer to an opaque @ref grk_object on success, NULL on failure
+ *         (invalid parameters, MJ2 output, components of different sizes)
+ */
 GRK_API grk_object* GRK_CALLCONV grk_compress_init_strips(grk_stream_params* stream_params,
                                                           grk_cparameters* parameters,
                                                           grk_image* image);
+
+/**
+ * @brief Pushes the next rows of a strip compress.
+ *
+ * Blocks while the codec compresses, on the calling thread and on its worker
+ * threads. The strip buffers can be reused once the call returns.
+ *
+ * @param codec  codec from grk_compress_init_strips() (see @ref grk_object)
+ * @param strip  rows to push (see @ref grk_strip)
+ * @return true on success, false when the strip runs past the image height,
+ *         its stride is shorter than the width, or compression fails
+ */
 GRK_API bool GRK_CALLCONV grk_compress_push_strip(grk_object* codec, const grk_strip* strip);
 /**
  * @brief Compresses the image into a JPEG 2000 codestream.

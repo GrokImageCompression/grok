@@ -21,6 +21,8 @@
 #include <cstring>
 #include <vector>
 
+#include <lcms2.h>
+
 #include "grok.h"
 #include "GrkCompressInStrips.h"
 
@@ -54,6 +56,7 @@ struct Case
   uint32_t tileSide;
   bool expectMercury;
   grk_data_type dataType = GRK_INT_32;
+  bool icc = false;
 };
 
 void recordInfo(const char* message, void*)
@@ -85,6 +88,32 @@ enum class Input
   WholeImage,
   Strips,
 };
+
+void attachIccProfile(grk_image* image)
+{
+  // lcms leaves samples unchanged going from an sRGB profile to sRGB
+  cmsToneCurve* linear = cmsBuildGamma(nullptr, 1.0);
+  cmsHPROFILE profile = nullptr;
+  if(image->numcomps == 3)
+  {
+    cmsCIExyY whitePoint = {0.3127, 0.3290, 1.0};
+    cmsCIExyYTRIPLE rec2020 = {{0.708, 0.292, 1.0}, {0.170, 0.797, 1.0}, {0.131, 0.046, 1.0}};
+    cmsToneCurve* curves[3] = {linear, linear, linear};
+    profile = cmsCreateRGBProfile(&whitePoint, &rec2020, curves);
+  }
+  else
+  {
+    profile = cmsCreateGrayProfile(cmsD50_xyY(), linear);
+  }
+  cmsUInt32Number length = 0;
+  cmsSaveProfileToMem(profile, nullptr, &length);
+  image->meta = grk_image_meta_new();
+  image->meta->color.icc_profile_buf = new uint8_t[length];
+  image->meta->color.icc_profile_len = length;
+  cmsSaveProfileToMem(profile, image->meta->color.icc_profile_buf, &length);
+  cmsCloseProfile(profile);
+  cmsFreeToneCurve(linear);
+}
 
 uint64_t nextRandom(uint64_t& state)
 {
@@ -134,6 +163,11 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
   params.cod_format = GRK_FMT_J2K;
   params.irreversible = true;
   params.mct = test.mct ? 1 : 0;
+  if(test.icc)
+  {
+    attachIccProfile(image);
+    params.apply_icc = true;
+  }
   params.numresolution = test.resolutions;
   params.cblockw_init = test.blockSide;
   params.cblockh_init = test.blockSide;
@@ -240,6 +274,16 @@ bool runCase(const Case& test)
     if(!sameCodestream(test, label, classic, other))
       return false;
   }
+  if(test.icc)
+  {
+    auto withoutIcc = test;
+    withoutIcc.icc = false;
+    if(encode(withoutIcc, false, Input::WholeImage) == classic)
+    {
+      fprintf(stderr, "%s: the ICC profile left the codestream unchanged\n", test.name);
+      return false;
+    }
+  }
   printf("%s: %zu bytes identical\n", test.name, classic.size());
   return true;
 }
@@ -338,6 +382,12 @@ int main()
        GRK_INT_16},
       {"int16 12 bit", 640, 480, 3, 12, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false, 0,
        false, GRK_INT_16},
+      {"icc int16 rgb 8 bit", 777, 515, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1,
+       false, 0, true, GRK_INT_16, true},
+      {"icc gray 16 bit", 515, 777, 1, 16, false, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false,
+       0, true, GRK_INT_32, true},
+      {"icc rgb 8 bit tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1,
+       false, 256, false, GRK_INT_32, true},
   };
   bool ok = true;
   for(const auto& test : cases)

@@ -2237,7 +2237,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     /* decode the source image */
 #ifdef GROK_HAVE_LIBTIFF
     bool stripInput = !pluginReady && parameters->decod_format == GRK_FMT_TIF &&
-                      parameters->cod_format != GRK_FMT_MJ2 && !parameters->apply_icc;
+                      parameters->cod_format != GRK_FMT_MJ2;
     if(stripInput)
     {
       auto tiff = loadTiffInput(info->input_file_name, parameters);

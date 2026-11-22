@@ -226,6 +226,11 @@ static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
   comp->prec = targetPrec;
 }
 
+void CodeStreamCompress::IccTransformFree::operator()(void* transform) const
+{
+  cmsDeleteTransform(transform);
+}
+
 bool CodeStreamCompress::acceptStrips(void)
 {
   stripInput_ = true;
@@ -262,6 +267,13 @@ bool CodeStreamCompress::preprocessStrip(int32_t* const* planes, uint32_t stride
     comps[c].stride = stride;
     comps[c].prec = stripSourcePrecisions_[c];
   }
+  auto iccTransform = stripIccTransform_.get();
+  bool iccApplied = !iccTransform ||
+                    (image->numcomps > 2
+                         ? transformIccRgb<int32_t>(iccTransform, comps.data())
+                         : transformIccGray<int32_t>(iccTransform, comps.data(), nullptr, nullptr));
+  if(!iccApplied)
+    return false;
   grk_image strip = {};
   strip.numcomps = image->numcomps;
   strip.comps = comps.data();
@@ -297,7 +309,7 @@ bool CodeStreamCompress::pushStrip(const grk_strip* strip)
   bool cutStrip = false;
   for(uint16_t c = 0; c < image->numcomps && !mercuryXyzSourcePrecision_; ++c)
     cutStrip = cutStrip || stripSourcePrecisions_[c] > image->comps[c].prec;
-  bool transformStrip = classicXyzPerStrip_ || cutStrip;
+  bool transformStrip = stripIccTransform_ || classicXyzPerStrip_ || cutStrip;
   bool widenStrip = stripDataType_ != image->comps[0].data_type;
   if(mercuryEncode_ && !widenStrip && !transformStrip)
   {
@@ -435,11 +447,14 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
   if(parameters->apply_icc && stripInput_)
   {
-    grklog.error("Strip input does not support applying the ICC profile");
-    return false;
+    stripIccTransform_.reset(image->createIccTransform());
+    if(stripIccTransform_)
+      image->removeIccProfile();
   }
-  if(parameters->apply_icc)
+  else if(parameters->apply_icc)
+  {
     image->applyICC<int32_t>();
+  }
 
   if(parameters->apply_xyz_transform)
   {

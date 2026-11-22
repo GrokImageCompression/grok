@@ -279,8 +279,12 @@ public:
   /*#define DEBUG_PROFILE*/
   template<typename T>
   bool applyICC(void);
+  cmsHTRANSFORM createIccTransform(void);
+  void removeIccProfile(void);
 
 private:
+  template<typename T>
+  bool applyIccGray(cmsHTRANSFORM transform);
   template<typename T>
   void scaleComponent(grk_image_comp* component, uint8_t precision);
 
@@ -1641,8 +1645,7 @@ bool GrkImage::compositeInterleaved(uint16_t srcNumComps, grk_image_comp* srcCom
 
 /*#define DEBUG_PROFILE*/
 /*#define DEBUG_PROFILE*/
-template<typename T>
-bool GrkImage::applyICC(void)
+inline cmsHTRANSFORM GrkImage::createIccTransform(void)
 {
   cmsUInt32Number out_space;
   cmsUInt32Number intent = 0;
@@ -1650,26 +1653,21 @@ bool GrkImage::applyICC(void)
   cmsHPROFILE in_prof = nullptr;
   cmsHPROFILE out_prof = nullptr;
   cmsUInt32Number in_type, out_type;
-  size_t nr_samples, componentSize;
-  uint32_t prec, w, stride_diff, h;
+  uint32_t prec;
   GRK_COLOR_SPACE oldspace;
-  bool rc = false;
 
-  if(!validateICC())
-    return false;
-
-  if(numcomps == 0 || !allComponentsSanityCheck(true))
-    return false;
+  if(!validateICC() || numcomps == 0)
+    return nullptr;
   for(uint16_t i = 0; i < numcomps; ++i)
   {
     if(comps[i].sgnd)
     {
       grklog.warn("applyICC: components must be unsigned");
-      return false;
+      return nullptr;
     }
   }
   if(!meta || !meta->color.icc_profile_buf || !meta->color.icc_profile_len)
-    return false;
+    return nullptr;
   in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
   if(!in_prof)
     goto cleanup;
@@ -1678,12 +1676,8 @@ bool GrkImage::applyICC(void)
   out_space = cmsGetColorSpace(in_prof);
   intent = cmsGetHeaderRenderingIntent(in_prof);
 
-  w = comps[0].w;
-  stride_diff = comps[0].stride - w;
-  h = comps[0].h;
-  if(!w || !h)
+  if(!comps[0].w || !comps[0].h)
     goto cleanup;
-  componentSize = (size_t)w * h;
 
   prec = comps[0].prec;
   oldspace = color_space;
@@ -1768,306 +1762,334 @@ bool GrkImage::applyICC(void)
     goto cleanup;
   }
 
-  if(numcomps > 2)
-  { /* RGB, RGBA */
-    if(prec <= 8)
-    {
-      nr_samples = componentSize * 3U;
-      if(nr_samples / 3U != componentSize) // overflow check
-      {
-        grklog.error("nr_samples overflow in applyICC");
-        goto cleanup;
-      }
-      if(w > UINT32_MAX / 3)
-      {
-        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
-        goto cleanup;
-      }
-      auto inbuf = new uint8_t[nr_samples];
-      auto outbuf = new uint8_t[nr_samples];
-
-      auto r = (T*)comps[0].data;
-      auto g = (T*)comps[1].data;
-      auto b = (T*)comps[2].data;
-
-      if constexpr(std::is_same_v<T, int32_t>)
-      {
-        hwy_planar_to_packed_8(r, g, b, inbuf, w, h, comps[0].stride);
-      }
-      else
-      {
-        size_t src_index = 0;
-        size_t dest_index = 0;
-        for(uint32_t j = 0; j < h; ++j)
-        {
-          for(uint32_t i = 0; i < w; ++i)
-          {
-            inbuf[dest_index++] = (uint8_t)r[src_index];
-            inbuf[dest_index++] = (uint8_t)g[src_index];
-            inbuf[dest_index++] = (uint8_t)b[src_index];
-            src_index++;
-          }
-          src_index += stride_diff;
-        }
-      }
-
-      cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w, 3 * w, 0, 0);
-
-      if constexpr(std::is_same_v<T, int32_t>)
-      {
-        hwy_packed_to_planar_8(outbuf, r, g, b, w, h, comps[0].stride);
-      }
-      else
-      {
-        size_t src_index = 0;
-        size_t dest_index = 0;
-        for(uint32_t j = 0; j < h; ++j)
-        {
-          for(uint32_t i = 0; i < w; ++i)
-          {
-            r[dest_index] = (T)outbuf[src_index++];
-            g[dest_index] = (T)outbuf[src_index++];
-            b[dest_index] = (T)outbuf[src_index++];
-            dest_index++;
-          }
-          dest_index += stride_diff;
-        }
-      }
-      delete[] inbuf;
-      delete[] outbuf;
-    }
-    else
-    {
-      if(componentSize > (SIZE_MAX / 3) / sizeof(uint16_t)) // overflow check
-      {
-        grklog.error("nr_samples overflow in applyICC");
-        goto cleanup;
-      }
-      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
-      {
-        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
-        goto cleanup;
-      }
-      nr_samples = componentSize * 3U * sizeof(uint16_t);
-      auto inbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
-      auto outbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
-
-      auto r = (T*)comps[0].data;
-      auto g = (T*)comps[1].data;
-      auto b = (T*)comps[2].data;
-
-      if constexpr(std::is_same_v<T, int32_t>)
-      {
-        hwy_planar_to_packed_16(r, g, b, inbuf, w, h, comps[0].stride);
-      }
-      else
-      {
-        size_t src_index = 0;
-        size_t dest_index = 0;
-        for(uint32_t j = 0; j < h; ++j)
-        {
-          for(uint32_t i = 0; i < w; ++i)
-          {
-            inbuf[dest_index++] = (uint16_t)r[src_index];
-            inbuf[dest_index++] = (uint16_t)g[src_index];
-            inbuf[dest_index++] = (uint16_t)b[src_index];
-            src_index++;
-          }
-          src_index += stride_diff;
-        }
-      }
-
-      cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w * sizeof(uint16_t),
-                               3 * w * sizeof(uint16_t), 0, 0);
-      if constexpr(std::is_same_v<T, int32_t>)
-      {
-        hwy_packed_to_planar_16(outbuf, r, g, b, w, h, comps[0].stride);
-      }
-      else
-      {
-        size_t src_index = 0;
-        size_t dest_index = 0;
-        for(uint32_t j = 0; j < h; ++j)
-        {
-          for(uint32_t i = 0; i < w; ++i)
-          {
-            r[dest_index] = (T)outbuf[src_index++];
-            g[dest_index] = (T)outbuf[src_index++];
-            b[dest_index] = (T)outbuf[src_index++];
-            dest_index++;
-          }
-          dest_index += stride_diff;
-        }
-      }
-      delete[] inbuf;
-      delete[] outbuf;
-    }
-  }
-  else
-  { /* GRAY, GRAYA */
-    nr_samples = componentSize * 3U;
-    if(nr_samples / 3U != componentSize) // overflow check
-    {
-      grklog.error("nr_samples overflow in applyICC");
-      goto cleanup;
-    }
-    auto newComps = new grk_image_comp[numcomps + 2U];
-    if(!newComps)
-    {
-      grklog.error("Memory allocation failure in applyICC");
-      goto cleanup;
-    }
-    for(uint16_t i = 0; i < numcomps + 2U; ++i)
-    {
-      if(i < numcomps)
-        newComps[i] = comps[i];
-      else
-        memset(newComps + i, 0, sizeof(grk_image_comp));
-    }
-    delete[] comps;
-    comps = newComps;
-    if(prec <= 8)
-    {
-      if(w > UINT32_MAX / 3)
-      {
-        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
-        goto cleanup;
-      }
-      auto inbuf = new uint8_t[componentSize];
-      auto outbuf = new uint8_t[nr_samples];
-
-      auto r = (T*)comps[0].data;
-      size_t src_index = 0;
-      size_t dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        for(uint32_t i = 0; i < w; ++i)
-          inbuf[dest_index++] = (uint8_t)r[src_index++];
-        src_index += stride_diff;
-      }
-      cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w, 3 * w, 0, 0);
-      T *g = nullptr, *b = nullptr;
-      if(force_rgb)
-      {
-        if(numcomps == 2)
-          comps[3] = comps[1];
-        comps[1] = comps[0];
-        setDataToNull(comps + 1);
-        allocData(comps + 1);
-        comps[2] = comps[0];
-        setDataToNull(comps + 2);
-        allocData(comps + 2);
-        numcomps = (uint16_t)(2 + numcomps);
-        g = (T*)comps[1].data;
-        b = (T*)comps[2].data;
-      }
-      src_index = 0;
-      dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        for(uint32_t i = 0; i < w; ++i)
-        {
-          r[dest_index] = (T)outbuf[src_index++];
-          if(force_rgb)
-          {
-            g[dest_index] = (T)outbuf[src_index++];
-            b[dest_index] = (T)outbuf[src_index++];
-          }
-          else
-          {
-            src_index += 2;
-          }
-          dest_index++;
-        }
-        dest_index += stride_diff;
-      }
-      delete[] inbuf;
-      delete[] outbuf;
-    }
-    else
-    {
-      if(componentSize > SIZE_MAX / sizeof(uint16_t))
-      {
-        grklog.error("componentSize overflow in applyICC");
-        goto cleanup;
-      }
-      if(componentSize * 3U > SIZE_MAX / sizeof(uint16_t))
-      {
-        grklog.error("nr_samples overflow in applyICC");
-        goto cleanup;
-      }
-      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
-      {
-        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
-        goto cleanup;
-      }
-      auto inbuf = new uint16_t[componentSize];
-      auto outbuf = new uint16_t[componentSize * 3U];
-
-      auto r = (T*)comps[0].data;
-      size_t src_index = 0;
-      size_t dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        for(uint32_t i = 0; i < w; ++i)
-          inbuf[dest_index++] = (uint16_t)r[src_index++];
-        src_index += stride_diff;
-      }
-      cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w * sizeof(uint16_t),
-                               3 * w * sizeof(uint16_t), 0, 0);
-      T *g = nullptr, *b = nullptr;
-      if(force_rgb)
-      {
-        if(numcomps == 2)
-          comps[3] = comps[1];
-        comps[1] = comps[0];
-        setDataToNull(comps + 1);
-        allocData(comps + 1);
-        comps[2] = comps[0];
-        setDataToNull(comps + 2);
-        allocData(comps + 2);
-        numcomps = (uint16_t)(2 + numcomps);
-        g = (T*)comps[1].data;
-        b = (T*)comps[2].data;
-      }
-      src_index = 0;
-      dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
-      {
-        for(uint32_t i = 0; i < w; ++i)
-        {
-          r[dest_index] = (T)outbuf[src_index++];
-          if(force_rgb)
-          {
-            g[dest_index] = (T)outbuf[src_index++];
-            b[dest_index] = (T)outbuf[src_index++];
-          }
-          else
-          {
-            src_index += 2;
-          }
-          dest_index++;
-        }
-        dest_index += stride_diff;
-      }
-      delete[] inbuf;
-      delete[] outbuf;
-    }
-  } /* if(image->numcomps */
-  rc = true;
-  delete[] meta->color.icc_profile_buf;
-  meta->color.icc_profile_buf = nullptr;
-  meta->color.icc_profile_len = 0;
 cleanup:
   if(in_prof)
     cmsCloseProfile(in_prof);
   if(out_prof)
     cmsCloseProfile(out_prof);
-  if(transform)
-    cmsDeleteTransform(transform);
 
-  return rc;
-} /* applyICC() */
+  return transform;
+}
+
+inline void GrkImage::removeIccProfile(void)
+{
+  delete[] meta->color.icc_profile_buf;
+  meta->color.icc_profile_buf = nullptr;
+  meta->color.icc_profile_len = 0;
+}
+
+template<typename T>
+bool transformIccRgb(cmsHTRANSFORM transform, grk_image_comp* comps)
+{
+  const uint32_t w = comps[0].w;
+  const uint32_t h = comps[0].h;
+  const uint32_t stride_diff = comps[0].stride - w;
+  const uint32_t prec = comps[0].prec;
+  const size_t componentSize = (size_t)w * h;
+  size_t nr_samples;
+  if(prec <= 8)
+  {
+    nr_samples = componentSize * 3U;
+    if(nr_samples / 3U != componentSize) // overflow check
+    {
+      grklog.error("nr_samples overflow in applyICC");
+      return false;
+    }
+    if(w > UINT32_MAX / 3)
+    {
+      grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
+      return false;
+    }
+    auto inbuf = new uint8_t[nr_samples];
+    auto outbuf = new uint8_t[nr_samples];
+
+    auto r = (T*)comps[0].data;
+    auto g = (T*)comps[1].data;
+    auto b = (T*)comps[2].data;
+
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      hwy_planar_to_packed_8(r, g, b, inbuf, w, h, comps[0].stride);
+    }
+    else
+    {
+      size_t src_index = 0;
+      size_t dest_index = 0;
+      for(uint32_t j = 0; j < h; ++j)
+      {
+        for(uint32_t i = 0; i < w; ++i)
+        {
+          inbuf[dest_index++] = (uint8_t)r[src_index];
+          inbuf[dest_index++] = (uint8_t)g[src_index];
+          inbuf[dest_index++] = (uint8_t)b[src_index];
+          src_index++;
+        }
+        src_index += stride_diff;
+      }
+    }
+
+    cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w, 3 * w, 0, 0);
+
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      hwy_packed_to_planar_8(outbuf, r, g, b, w, h, comps[0].stride);
+    }
+    else
+    {
+      size_t src_index = 0;
+      size_t dest_index = 0;
+      for(uint32_t j = 0; j < h; ++j)
+      {
+        for(uint32_t i = 0; i < w; ++i)
+        {
+          r[dest_index] = (T)outbuf[src_index++];
+          g[dest_index] = (T)outbuf[src_index++];
+          b[dest_index] = (T)outbuf[src_index++];
+          dest_index++;
+        }
+        dest_index += stride_diff;
+      }
+    }
+    delete[] inbuf;
+    delete[] outbuf;
+  }
+  else
+  {
+    if(componentSize > (SIZE_MAX / 3) / sizeof(uint16_t)) // overflow check
+    {
+      grklog.error("nr_samples overflow in applyICC");
+      return false;
+    }
+    if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
+    {
+      grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
+      return false;
+    }
+    nr_samples = componentSize * 3U * sizeof(uint16_t);
+    auto inbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
+    auto outbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
+
+    auto r = (T*)comps[0].data;
+    auto g = (T*)comps[1].data;
+    auto b = (T*)comps[2].data;
+
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      hwy_planar_to_packed_16(r, g, b, inbuf, w, h, comps[0].stride);
+    }
+    else
+    {
+      size_t src_index = 0;
+      size_t dest_index = 0;
+      for(uint32_t j = 0; j < h; ++j)
+      {
+        for(uint32_t i = 0; i < w; ++i)
+        {
+          inbuf[dest_index++] = (uint16_t)r[src_index];
+          inbuf[dest_index++] = (uint16_t)g[src_index];
+          inbuf[dest_index++] = (uint16_t)b[src_index];
+          src_index++;
+        }
+        src_index += stride_diff;
+      }
+    }
+
+    cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w * sizeof(uint16_t),
+                             3 * w * sizeof(uint16_t), 0, 0);
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      hwy_packed_to_planar_16(outbuf, r, g, b, w, h, comps[0].stride);
+    }
+    else
+    {
+      size_t src_index = 0;
+      size_t dest_index = 0;
+      for(uint32_t j = 0; j < h; ++j)
+      {
+        for(uint32_t i = 0; i < w; ++i)
+        {
+          r[dest_index] = (T)outbuf[src_index++];
+          g[dest_index] = (T)outbuf[src_index++];
+          b[dest_index] = (T)outbuf[src_index++];
+          dest_index++;
+        }
+        dest_index += stride_diff;
+      }
+    }
+    delete[] inbuf;
+    delete[] outbuf;
+  }
+
+  return true;
+}
+
+template<typename T>
+bool transformIccGray(cmsHTRANSFORM transform, grk_image_comp* gray, T* g, T* b)
+{
+  const uint32_t w = gray->w;
+  const uint32_t h = gray->h;
+  const uint32_t stride_diff = gray->stride - w;
+  const uint32_t prec = gray->prec;
+  const size_t componentSize = (size_t)w * h;
+  size_t nr_samples;
+  nr_samples = componentSize * 3U;
+  if(nr_samples / 3U != componentSize) // overflow check
+  {
+    grklog.error("nr_samples overflow in applyICC");
+    return false;
+  }
+  if(prec <= 8)
+  {
+    if(w > UINT32_MAX / 3)
+    {
+      grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
+      return false;
+    }
+    auto inbuf = new uint8_t[componentSize];
+    auto outbuf = new uint8_t[nr_samples];
+
+    auto r = (T*)gray->data;
+    size_t src_index = 0;
+    size_t dest_index = 0;
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      for(uint32_t i = 0; i < w; ++i)
+        inbuf[dest_index++] = (uint8_t)r[src_index++];
+      src_index += stride_diff;
+    }
+    cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w, 3 * w, 0, 0);
+    src_index = 0;
+    dest_index = 0;
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      for(uint32_t i = 0; i < w; ++i)
+      {
+        r[dest_index] = (T)outbuf[src_index++];
+        if(g)
+        {
+          g[dest_index] = (T)outbuf[src_index++];
+          b[dest_index] = (T)outbuf[src_index++];
+        }
+        else
+        {
+          src_index += 2;
+        }
+        dest_index++;
+      }
+      dest_index += stride_diff;
+    }
+    delete[] inbuf;
+    delete[] outbuf;
+  }
+  else
+  {
+    if(componentSize > SIZE_MAX / sizeof(uint16_t))
+    {
+      grklog.error("componentSize overflow in applyICC");
+      return false;
+    }
+    if(componentSize * 3U > SIZE_MAX / sizeof(uint16_t))
+    {
+      grklog.error("nr_samples overflow in applyICC");
+      return false;
+    }
+    if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
+    {
+      grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
+      return false;
+    }
+    auto inbuf = new uint16_t[componentSize];
+    auto outbuf = new uint16_t[componentSize * 3U];
+
+    auto r = (T*)gray->data;
+    size_t src_index = 0;
+    size_t dest_index = 0;
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      for(uint32_t i = 0; i < w; ++i)
+        inbuf[dest_index++] = (uint16_t)r[src_index++];
+      src_index += stride_diff;
+    }
+    cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w * sizeof(uint16_t),
+                             3 * w * sizeof(uint16_t), 0, 0);
+    src_index = 0;
+    dest_index = 0;
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      for(uint32_t i = 0; i < w; ++i)
+      {
+        r[dest_index] = (T)outbuf[src_index++];
+        if(g)
+        {
+          g[dest_index] = (T)outbuf[src_index++];
+          b[dest_index] = (T)outbuf[src_index++];
+        }
+        else
+        {
+          src_index += 2;
+        }
+        dest_index++;
+      }
+      dest_index += stride_diff;
+    }
+    delete[] inbuf;
+    delete[] outbuf;
+  }
+
+  return true;
+}
+
+template<typename T>
+bool GrkImage::applyIccGray(cmsHTRANSFORM transform)
+{
+  auto newComps = new grk_image_comp[numcomps + 2U];
+  if(!newComps)
+  {
+    grklog.error("Memory allocation failure in applyICC");
+    return false;
+  }
+  for(uint16_t i = 0; i < numcomps + 2U; ++i)
+  {
+    if(i < numcomps)
+      newComps[i] = comps[i];
+    else
+      memset(newComps + i, 0, sizeof(grk_image_comp));
+  }
+  delete[] comps;
+  comps = newComps;
+  T *g = nullptr, *b = nullptr;
+  if(force_rgb)
+  {
+    if(numcomps == 2)
+      comps[3] = comps[1];
+    comps[1] = comps[0];
+    setDataToNull(comps + 1);
+    allocData(comps + 1);
+    comps[2] = comps[0];
+    setDataToNull(comps + 2);
+    allocData(comps + 2);
+    numcomps = (uint16_t)(2 + numcomps);
+    g = (T*)comps[1].data;
+    b = (T*)comps[2].data;
+  }
+  return transformIccGray<T>(transform, comps, g, b);
+}
+
+template<typename T>
+bool GrkImage::applyICC(void)
+{
+  if(!allComponentsSanityCheck(true))
+    return false;
+  auto transform = createIccTransform();
+  if(!transform)
+    return false;
+  bool rc = numcomps > 2 ? transformIccRgb<T>(transform, comps) : applyIccGray<T>(transform);
+  cmsDeleteTransform(transform);
+  if(!rc)
+    return false;
+  removeIccProfile();
+  return true;
+}
 
 template<typename T>
 bool GrkImage::convertToRGB_T(void)
