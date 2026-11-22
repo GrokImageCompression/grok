@@ -10,6 +10,7 @@ use crate::ffi_dwt::{
 
 use super::band_coder::{BandCoder, BandGeometry, BandT1Params, PendingBand, QuantizedSample};
 use super::stripe_queue::StripeQueue;
+use super::task_pool::TaskPool;
 
 pub(crate) trait CoefficientSample: AnalysisSample + QuantizedSample {}
 
@@ -32,6 +33,7 @@ pub(crate) struct ComponentParams<'a, T: CoefficientSample> {
 
 // one tile component: rows in, every code-block of every subband coded
 pub(crate) struct ComponentEncoder<T: CoefficientSample> {
+    staged_rows: Vec<T>,
     levels: Vec<LevelAnalysis<T>>,
     // details[level] holds HL, LH, HH
     details: Vec<[BandCoder<T>; 3]>,
@@ -124,6 +126,7 @@ impl<T: CoefficientSample> ComponentEncoder<T> {
             levels.push(analysis);
         }
         Self {
+            staged_rows: Vec::new(),
             levels,
             details,
             lowest: lowest.expect("at least one level"),
@@ -199,6 +202,33 @@ pub(crate) struct Int32RowFeed {
     pub xyz: Option<XyzTables>,
 }
 
+fn staged_batches<T: CoefficientSample>(
+    encoders: &mut [ComponentEncoder<T>],
+    samples: usize,
+) -> [&mut [T]; 3] {
+    let [luma, chroma_blue, chroma_red] = encoders else {
+        panic!("the colour transform needs three components");
+    };
+    [luma, chroma_blue, chroma_red].map(|encoder| {
+        encoder.staged_rows.resize(samples, T::default());
+        encoder.staged_rows.as_mut_slice()
+    })
+}
+
+fn push_staged_rows<T: CoefficientSample + Sync>(
+    encoders: &mut [ComponentEncoder<T>],
+    width: usize,
+    pool: &TaskPool,
+) {
+    pool.run(encoders.iter_mut().collect(), |encoder| {
+        let staged = std::mem::take(&mut encoder.staged_rows);
+        for row in staged.chunks_exact(width) {
+            encoder.push_row(|target| target.copy_from_slice(row));
+        }
+        encoder.staged_rows = staged;
+    });
+}
+
 impl Int32RowFeed {
     pub fn feed(
         &self,
@@ -207,26 +237,35 @@ impl Int32RowFeed {
         stride: usize,
         width: usize,
         rows: usize,
+        pool: &TaskPool,
     ) {
         // classic adds a negative DC shift
         let dc_shift = -(1i32 << (self.precision - 1));
-        let mut shifted = vec![vec![0f32; width]; if self.mct { 3 } else { 0 }];
-        for y in 0..rows {
+        if !self.mct {
+            pool.run(
+                encoders.iter_mut().zip(planes).collect(),
+                |(encoder, plane)| {
+                    for y in 0..rows {
+                        let source = &plane[y * stride..y * stride + width];
+                        encoder.push_row(|target| {
+                            for (sample, &value) in target.iter_mut().zip(source) {
+                                *sample = (value + dc_shift) as f32;
+                            }
+                        });
+                    }
+                },
+            );
+            return;
+        }
+        let [luma, chroma_blue, chroma_red] = staged_batches(encoders, width * rows);
+        let row_outputs: Vec<_> = luma
+            .chunks_exact_mut(width)
+            .zip(chroma_blue.chunks_exact_mut(width))
+            .zip(chroma_red.chunks_exact_mut(width))
+            .enumerate()
+            .collect();
+        pool.run(row_outputs, |(y, ((luma, chroma_blue), chroma_red))| {
             let row = |c: usize| planes[c][y * stride..y * stride + width].as_ptr();
-            if !self.mct {
-                for (encoder, plane) in encoders.iter_mut().zip(planes) {
-                    let source = &plane[y * stride..y * stride + width];
-                    encoder.push_row(|target| {
-                        for (sample, &value) in target.iter_mut().zip(source) {
-                            *sample = (value + dc_shift) as f32;
-                        }
-                    });
-                }
-                continue;
-            }
-            let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
-                unreachable!("three components");
-            };
             match &self.xyz {
                 Some(tables) => unsafe {
                     mercury_hwy_forward_xyz_ict(
@@ -254,10 +293,8 @@ impl Int32RowFeed {
                     );
                 },
             }
-            for (encoder, row) in encoders.iter_mut().zip(&shifted) {
-                encoder.push_row(|target| target.copy_from_slice(row));
-            }
-        }
+        });
+        push_staged_rows(encoders, width, pool);
     }
 }
 
@@ -280,32 +317,41 @@ impl Int16RowFeed {
         stride: usize,
         width: usize,
         rows: usize,
+        pool: &TaskPool,
     ) {
         let dc_shift = 1i32 << (self.precision - 1);
         // grok's CompressIrrev16 with the ICT, else the finest level's encode_97_16_v load
-        let mut shifted = vec![vec![0i16; width]; if self.mct { 3 } else { 0 }];
-        for y in 0..rows {
-            let row = |c: usize| &planes[c][y * stride..y * stride + width];
-            if !self.mct {
-                for (c, encoder) in encoders.iter_mut().enumerate() {
-                    let source = row(c);
-                    encoder.push_row(|target| {
-                        for (sample, &value) in target.iter_mut().zip(source) {
-                            *sample =
-                                int16_finest_sample(value, dc_shift as i16, self.fraction_bits);
-                        }
-                    });
-                }
-                continue;
-            }
-            let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
-                unreachable!("three components");
-            };
+        if !self.mct {
+            pool.run(
+                encoders.iter_mut().zip(planes).collect(),
+                |(encoder, plane)| {
+                    for y in 0..rows {
+                        let source = &plane[y * stride..y * stride + width];
+                        encoder.push_row(|target| {
+                            for (sample, &value) in target.iter_mut().zip(source) {
+                                *sample =
+                                    int16_finest_sample(value, dc_shift as i16, self.fraction_bits);
+                            }
+                        });
+                    }
+                },
+            );
+            return;
+        }
+        let [luma, chroma_blue, chroma_red] = staged_batches(encoders, width * rows);
+        let row_outputs: Vec<_> = luma
+            .chunks_exact_mut(width)
+            .zip(chroma_blue.chunks_exact_mut(width))
+            .zip(chroma_red.chunks_exact_mut(width))
+            .enumerate()
+            .collect();
+        pool.run(row_outputs, |(y, ((luma, chroma_blue), chroma_red))| {
+            let row = |c: usize| planes[c][y * stride..y * stride + width].as_ptr();
             unsafe {
                 mercury_hwy_forward_ict_16(
-                    row(0).as_ptr(),
-                    row(1).as_ptr(),
-                    row(2).as_ptr(),
+                    row(0),
+                    row(1),
+                    row(2),
                     -dc_shift,
                     self.fraction_bits,
                     luma.as_mut_ptr(),
@@ -314,10 +360,8 @@ impl Int16RowFeed {
                     width as i32,
                 );
             }
-            for (encoder, row) in encoders.iter_mut().zip(&shifted) {
-                encoder.push_row(|target| target.copy_from_slice(row));
-            }
-        }
+        });
+        push_staged_rows(encoders, width, pool);
     }
 }
 
@@ -327,47 +371,53 @@ pub(crate) struct ReversibleRowFeed {
 }
 
 impl ReversibleRowFeed {
-    pub fn feed<S: Copy + Into<i32>>(
+    pub fn feed<S: Copy + Into<i32> + Sync>(
         &self,
         encoders: &mut [ComponentEncoder<i32>],
         planes: &[&[S]],
         stride: usize,
         width: usize,
         rows: usize,
+        pool: &TaskPool,
     ) {
         let dc_shift = -(1i32 << (self.precision - 1));
-        for y in 0..rows {
-            let row = |c: usize| &planes[c][y * stride..y * stride + width];
-            if !self.mct {
-                for (c, encoder) in encoders.iter_mut().enumerate() {
-                    let source = row(c);
-                    encoder.push_row(|target| {
-                        for (sample, &value) in target.iter_mut().zip(source) {
-                            *sample = value.into() + dc_shift;
-                        }
-                    });
+        let shifted = |plane: &[S], x: usize| plane[x].into() + dc_shift;
+        pool.run(
+            encoders.iter_mut().enumerate().collect(),
+            |(component, encoder)| {
+                for y in 0..rows {
+                    let row = |c: usize| &planes[c][y * stride..y * stride + width];
+                    if !self.mct {
+                        let source = row(component);
+                        encoder.push_row(|target| {
+                            for (sample, &value) in target.iter_mut().zip(source) {
+                                *sample = value.into() + dc_shift;
+                            }
+                        });
+                        continue;
+                    }
+                    let (red, green, blue) = (row(0), row(1), row(2));
+                    // grok's CompressRev
+                    match component {
+                        0 => encoder.push_row(|target| {
+                            for (x, sample) in target.iter_mut().enumerate() {
+                                let green = shifted(green, x);
+                                *sample = (green + green + shifted(blue, x) + shifted(red, x)) >> 2;
+                            }
+                        }),
+                        1 => encoder.push_row(|target| {
+                            for (x, sample) in target.iter_mut().enumerate() {
+                                *sample = shifted(blue, x) - shifted(green, x);
+                            }
+                        }),
+                        _ => encoder.push_row(|target| {
+                            for (x, sample) in target.iter_mut().enumerate() {
+                                *sample = shifted(red, x) - shifted(green, x);
+                            }
+                        }),
+                    }
                 }
-                continue;
-            }
-            let (red, green, blue) = (row(0), row(1), row(2));
-            let shifted = |plane: &[S], x: usize| plane[x].into() + dc_shift;
-            // grok's CompressRev
-            encoders[0].push_row(|target| {
-                for (x, sample) in target.iter_mut().enumerate() {
-                    let green = shifted(green, x);
-                    *sample = (green + green + shifted(blue, x) + shifted(red, x)) >> 2;
-                }
-            });
-            encoders[1].push_row(|target| {
-                for (x, sample) in target.iter_mut().enumerate() {
-                    *sample = shifted(blue, x) - shifted(green, x);
-                }
-            });
-            encoders[2].push_row(|target| {
-                for (x, sample) in target.iter_mut().enumerate() {
-                    *sample = shifted(red, x) - shifted(green, x);
-                }
-            });
-        }
+            },
+        );
     }
 }

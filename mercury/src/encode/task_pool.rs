@@ -37,6 +37,19 @@ pub(crate) struct TaskPool {
     job_active: AtomicBool,
 }
 
+fn run_claimed_job(shared: &Shared, job: *const (dyn Fn() + Sync + 'static)) {
+    // Safety: TaskPool::share keeps the job alive until helpers_running is back to zero
+    let result = catch_unwind(AssertUnwindSafe(|| unsafe { (*job)() }));
+    let mut state = shared.state.lock().unwrap();
+    if let Err(panic) = result {
+        state.panic.get_or_insert(panic);
+    }
+    state.helpers_running -= 1;
+    if state.helpers_running == 0 {
+        shared.helpers_left.notify_all();
+    }
+}
+
 extern "C" fn run_helper(pass: *mut c_void) {
     // Safety: TaskPool::share boxes every pass it submits and the host runs each one once
     let pass = unsafe { Box::from_raw(pass.cast::<HelperPass>()) };
@@ -53,16 +66,7 @@ extern "C" fn run_helper(pass: *mut c_void) {
         state.helpers_running += 1;
         job
     };
-    // Safety: TaskPool::share keeps the job alive until helpers_running is back to zero
-    let result = catch_unwind(AssertUnwindSafe(|| unsafe { (*job)() }));
-    let mut state = pass.shared.state.lock().unwrap();
-    if let Err(panic) = result {
-        state.panic.get_or_insert(panic);
-    }
-    state.helpers_running -= 1;
-    if state.helpers_running == 0 {
-        pass.shared.helpers_left.notify_all();
-    }
+    run_claimed_job(&pass.shared, job);
 }
 
 impl TaskPool {
@@ -111,6 +115,19 @@ impl TaskPool {
             .into_iter()
             .map(|result| result.into_inner().unwrap().expect("every task ran"))
             .collect()
+    }
+
+    pub fn join_active_job(&self) {
+        let job = {
+            let mut state = self.shared.state.lock().unwrap();
+            let Some(job) = &state.job else {
+                return;
+            };
+            let job = job.0;
+            state.helpers_running += 1;
+            job
+        };
+        run_claimed_job(&self.shared, job);
     }
 
     fn share(&self, job: &(dyn Fn() + Sync), helpers: usize) {

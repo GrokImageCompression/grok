@@ -8,6 +8,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use crate::weft::rt::HostExecutor;
 
 use super::band_coder::{CodedBand, QuantizedSample, StripeLayout, code_stripe};
+use super::task_pool::TaskPool;
 
 pub(crate) struct StripeJob<T> {
     pub samples: Vec<T>,
@@ -95,16 +96,19 @@ pub(crate) struct StripeQueue<T> {
     state: Mutex<QueueState<T>>,
     host: HostExecutor,
     capacity: usize,
+    pool: Arc<TaskPool>,
 }
 
 extern "C" fn code_submitted_stripe<T: QuantizedSample>(pass: *mut c_void) {
     // Safety: try_push hands every pass an Arc from Arc::into_raw and the host runs each pass once
     let queue = unsafe { Arc::from_raw(pass.cast::<StripeQueue<T>>().cast_const()) };
+    // row feed jobs wait in the host queue behind every stripe submitted before them
+    queue.pool.join_active_job();
     queue.code_next();
 }
 
 impl<T: QuantizedSample> StripeQueue<T> {
-    pub fn warp(capacity: usize, host: HostExecutor) -> Self {
+    pub fn warp(capacity: usize, host: HostExecutor, pool: Arc<TaskPool>) -> Self {
         Self {
             state: Mutex::new(QueueState {
                 jobs: VecDeque::new(),
@@ -112,6 +116,7 @@ impl<T: QuantizedSample> StripeQueue<T> {
             }),
             host,
             capacity,
+            pool,
         }
     }
 
@@ -220,7 +225,8 @@ mod tests {
             submit: hold,
             ctx: (held as *const HeldPasses).cast_mut().cast(),
         };
-        let queue = Arc::new(StripeQueue::<f32>::warp(STRIPES, host));
+        let pool = Arc::new(TaskPool::warp(host, 1));
+        let queue = Arc::new(StripeQueue::<f32>::warp(STRIPES, host, pool));
         let results = Arc::new(StripeResults::default());
         for index in 0..STRIPES {
             let job = StripeJob {

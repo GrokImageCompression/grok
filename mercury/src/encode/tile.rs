@@ -164,13 +164,19 @@ impl<T: CoefficientSample> TileCoder<T> {
         header: &MainHeaderIn,
         components: Vec<ComponentCoding<T>>,
         threads: usize,
+        pool: &Arc<TaskPool>,
         host: HostExecutor,
         t1: MercuryT1EncodeFn,
     ) -> Self {
         // the thread pushing rows codes stripes too whenever the queue is full
         let workers = threads.saturating_sub(1);
-        let stripe_queue = (workers > 0)
-            .then(|| Arc::new(StripeQueue::warp(STRIPES_QUEUED_PER_WORKER * workers, host)));
+        let stripe_queue = (workers > 0).then(|| {
+            Arc::new(StripeQueue::warp(
+                STRIPES_QUEUED_PER_WORKER * workers,
+                host,
+                Arc::clone(pool),
+            ))
+        });
         let mut coder = Self {
             components,
             t1,
@@ -341,6 +347,7 @@ impl ImageEncoder {
             .collect();
         let stepsizes =
             |bands: &[BandQuantization]| bands.iter().map(|band| band.stepsize).collect();
+        let pool = Arc::new(TaskPool::warp(params.host, params.threads));
         let samples = match &params.int16_wavelet {
             None if cod.comps[0].reversible => {
                 let components: Vec<ComponentCoding<i32>> = quantization
@@ -352,7 +359,14 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Reversible {
-                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
+                    coder: TileCoder::warp(
+                        &header,
+                        components,
+                        params.threads,
+                        &pool,
+                        params.host,
+                        t1,
+                    ),
                     feed: ReversibleRowFeed {
                         precision,
                         mct: cod.use_ycc,
@@ -373,7 +387,14 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Int32 {
-                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
+                    coder: TileCoder::warp(
+                        &header,
+                        components,
+                        params.threads,
+                        &pool,
+                        params.host,
+                        t1,
+                    ),
                     feed: Int32RowFeed {
                         precision,
                         mct: cod.use_ycc,
@@ -394,7 +415,14 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Int16 {
-                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
+                    coder: TileCoder::warp(
+                        &header,
+                        components,
+                        params.threads,
+                        &pool,
+                        params.host,
+                        t1,
+                    ),
                     feed: Int16RowFeed {
                         precision,
                         fraction_bits: wavelet.fraction_bits,
@@ -417,7 +445,7 @@ impl ImageEncoder {
             rate: params.rate,
             split_by_component: params.split_by_component,
             write_plt: params.write_plt,
-            pool: Arc::new(TaskPool::warp(params.host, params.threads)),
+            pool,
             max_bit_planes,
             samples,
             unwritten_tiles: Vec::new(),
@@ -468,22 +496,23 @@ impl ImageEncoder {
             let count = (rows - done).min(row_end - self.rows_pushed);
             let first_sample = done * stride;
             let columns = &self.tile_columns;
+            let pool = self.pool.as_ref();
             match (&mut self.samples, planes) {
                 (TileSamples::Int32 { coder, feed }, TileRows::Int32(planes)) => push_tile_row(
                     coder,
                     columns,
                     planes,
                     first_sample,
-                    &self.pool,
-                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                    pool,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count, pool),
                 ),
                 (TileSamples::Int16 { coder, feed }, TileRows::Int16(planes)) => push_tile_row(
                     coder,
                     columns,
                     planes,
                     first_sample,
-                    &self.pool,
-                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                    pool,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count, pool),
                 ),
                 (
                     TileSamples::Reversible {
@@ -497,8 +526,8 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    &self.pool,
-                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                    pool,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count, pool),
                 ),
                 (
                     TileSamples::Reversible {
@@ -512,8 +541,8 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    &self.pool,
-                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                    pool,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count, pool),
                 ),
                 _ => panic!("plane type does not match the encoder"),
             }
