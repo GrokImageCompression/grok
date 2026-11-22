@@ -53,6 +53,7 @@ pub type BlockCoder = unsafe fn(&MercuryStripeBlockInfo) -> Option<*const i32>;
 /// Decode every block of a stripe row into `dst_lines` using `coder`,
 /// converting each double-scale sample with `xfer`. Blocks absent from
 /// every packet (`num_passes == 0`) decode to zeros.
+#[inline(always)]
 unsafe fn weave_stripe<T>(
     blocks: *const MercuryStripeBlockInfo,
     num_blocks: i32,
@@ -142,12 +143,47 @@ pub unsafe fn mercury_weave_stripe16_q13(
     delta: f32,
     coder: BlockCoder,
 ) -> bool {
+    #[cfg(target_arch = "x86_64")]
+    if std::arch::is_x86_feature_detected!("avx2") {
+        // SAFETY: the cpu has avx2, and the caller meets the contract
+        return unsafe {
+            weave_stripe16_q13_avx2(blocks, num_blocks, dst_lines, stripe_height, delta, coder)
+        };
+    }
+    unsafe { weave_stripe16_q13(blocks, num_blocks, dst_lines, stripe_height, delta, coder) }
+}
+
+// x86-64 without sse4.1 turns round_ties_even into a call to rintf
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn weave_stripe16_q13_avx2(
+    blocks: *const MercuryStripeBlockInfo,
+    num_blocks: i32,
+    dst_lines: *const *mut i16,
+    stripe_height: i32,
+    delta: f32,
+    coder: BlockCoder,
+) -> bool {
+    unsafe { weave_stripe16_q13(blocks, num_blocks, dst_lines, stripe_height, delta, coder) }
+}
+
+#[inline(always)]
+unsafe fn weave_stripe16_q13(
+    blocks: *const MercuryStripeBlockInfo,
+    num_blocks: i32,
+    dst_lines: *const *mut i16,
+    stripe_height: i32,
+    delta: f32,
+    coder: BlockCoder,
+) -> bool {
     let q13 = (1u32 << crate::dwt::fixed97::Q13_FRACTION_BITS) as f32;
     let fscale = delta * q13 / 2.0;
-    weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
-        // `as i32` saturates on overflow; clamp narrows to the i16 range
-        ((val as f32 * fscale).round_ties_even() as i32).clamp(-32768, 32767) as i16
-    })
+    unsafe {
+        weave_stripe(blocks, num_blocks, dst_lines, stripe_height, coder, |val| {
+            // `as i32` saturates on overflow; clamp narrows to the i16 range
+            ((val as f32 * fscale).round_ties_even() as i32).clamp(-32768, 32767) as i16
+        })
+    }
 }
 
 /// Decode a stripe row to f32 lines, irreversible dequant (normalized):
