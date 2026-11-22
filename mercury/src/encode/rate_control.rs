@@ -1,5 +1,5 @@
 use super::task_pool::TaskPool;
-use super::tile_packets::{TileBands, TilePacketWriter, plt_markers};
+use super::tile_packets::{TileBand, TileBands, TilePacketWriter, plt_markers};
 
 const SLOPE_BUCKETS: usize = u16::MAX as usize + 1;
 const MAX_SLOPE: u32 = u16::MAX as u32;
@@ -54,24 +54,18 @@ pub(crate) fn allocate_rate(
     search.allocate(true, true)
 }
 
-fn for_each_hull_pass(bands: &TileBands, mut visit: impl FnMut(usize, u32, u32)) {
-    for band in &bands.bands {
-        for block in &band.coded.blocks {
-            let mut previous_rate = 0u32;
-            let mut effective_slope = MAX_SLOPE;
-            for pass in band.coded.block_passes(block) {
-                if pass.slope == 0 {
-                    continue;
-                }
-                // a threshold stops at the first hull pass at or under it
-                effective_slope = effective_slope.min(pass.slope as u32);
-                visit(
-                    band.compno,
-                    effective_slope,
-                    pass.rate as u32 - previous_rate,
-                );
-                previous_rate = pass.rate as u32;
+fn for_each_hull_pass(band: &TileBand, mut visit: impl FnMut(u32, u32)) {
+    for block in &band.coded.blocks {
+        let mut previous_rate = 0u32;
+        let mut effective_slope = MAX_SLOPE;
+        for pass in band.coded.block_passes(block) {
+            if pass.slope == 0 {
+                continue;
             }
+            // a threshold stops at the first hull pass at or under it
+            effective_slope = effective_slope.min(pass.slope as u32);
+            visit(effective_slope, pass.rate as u32 - previous_rate);
+            previous_rate = pass.rate as u32;
         }
     }
 }
@@ -165,8 +159,8 @@ pub(crate) fn allocate_image_rate(
     let mut min_slope = MAX_SLOPE;
     let mut bytes_above = vec![0u64; SLOPE_BUCKETS + 1];
     let mut passes_above = vec![0u64; SLOPE_BUCKETS + 1];
-    for bands in tiles {
-        for_each_hull_pass(bands, |_, slope, bytes| {
+    for band in tiles.iter().flat_map(|bands| &bands.bands) {
+        for_each_hull_pass(band, |slope, bytes| {
             min_slope = min_slope.min(slope);
             bytes_above[slope as usize] += bytes as u64;
             passes_above[slope as usize] += 1;
@@ -262,7 +256,7 @@ struct Search<'w, 'a> {
     component_bytes: Vec<u64>,
     min_slope: u32,
     // [comp][slope + 1]: body bytes of the passes a threshold at slope keeps
-    body_bytes_above: Vec<u32>,
+    body_bytes_above: Vec<Vec<u32>>,
     passes_above: Vec<u32>,
     max_layer_length: u64,
     measured_headers: Vec<u64>,
@@ -281,21 +275,27 @@ impl<'w, 'a> Search<'w, 'a> {
         pool: &'w TaskPool,
     ) -> Self {
         let num_comps = bands.first_band.len();
-        let mut min_slope = MAX_SLOPE;
-        let mut body_bytes_above = vec![0u32; num_comps * (SLOPE_BUCKETS + 1)];
-        let mut passes_above = vec![0u32; SLOPE_BUCKETS + 1];
-        for_each_hull_pass(bands, |compno, slope, bytes| {
-            min_slope = min_slope.min(slope);
-            body_bytes_above[compno * (SLOPE_BUCKETS + 1) + slope as usize] += bytes;
-            passes_above[slope as usize] += 1;
-        });
-        for slope in (0..SLOPE_BUCKETS).rev() {
-            passes_above[slope] += passes_above[slope + 1];
-            for compno in 0..num_comps {
-                let base = compno * (SLOPE_BUCKETS + 1);
-                body_bytes_above[base + slope] += body_bytes_above[base + slope + 1];
+        let mut histograms = pool.run((0..=num_comps).collect(), |task| {
+            let count_passes = task == num_comps;
+            let mut min_slope = MAX_SLOPE;
+            let mut above = vec![0u32; SLOPE_BUCKETS + 1];
+            for band in bands
+                .bands
+                .iter()
+                .filter(|band| count_passes || band.compno == task)
+            {
+                for_each_hull_pass(band, |slope, bytes| {
+                    min_slope = min_slope.min(slope);
+                    above[slope as usize] += if count_passes { 1 } else { bytes };
+                });
             }
-        }
+            for slope in (0..SLOPE_BUCKETS).rev() {
+                above[slope] += above[slope + 1];
+            }
+            (above, min_slope)
+        });
+        let (passes_above, min_slope) = histograms.pop().expect("the pass count task ran");
+        let body_bytes_above = histograms.into_iter().map(|(above, _)| above).collect();
         Self {
             writer,
             bands,
@@ -415,7 +415,7 @@ impl<'w, 'a> Search<'w, 'a> {
     }
 
     fn body_bytes_at(&self, compno: usize, thresh: u32) -> u64 {
-        self.body_bytes_above[compno * (SLOPE_BUCKETS + 1) + thresh as usize + 1] as u64
+        self.body_bytes_above[compno][thresh as usize + 1] as u64
     }
 
     fn estimated_headers(&self, compno: usize, thresh: u32) -> u64 {
