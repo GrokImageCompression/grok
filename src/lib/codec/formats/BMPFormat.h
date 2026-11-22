@@ -1181,13 +1181,13 @@ bool BMPFormat::pushStrips(grk_object* codec)
   }
   std::vector<uint8_t> stripBytes;
   std::vector<T*> planePointers(numcomps_);
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t firstRow = strip * rowsPerStrip;
     uint32_t rows = (std::min)(rowsPerStrip, height - firstRow);
     uint32_t firstFileRow = topDown_ ? firstRow : height - firstRow - rows;
     size_t fileOffset = (size_t)firstFileRow * bmpStride_;
     for(uint16_t c = 0; c < numcomps_; ++c)
-      planePointers[c] = planes[c].data();
+      planePointers[c] = planes[c];
     if(runLengthEncoded)
     {
       convertRows<T>(decodedRows.get() + fileOffset, rows, planePointers.data(), width);

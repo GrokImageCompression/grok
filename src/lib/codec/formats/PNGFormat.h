@@ -824,7 +824,7 @@ bool PNGFormat::pushStrips(grk_object* codec)
   }
   std::vector<T> rowSamples;
   std::vector<T*> planePointers(nr_comp_);
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t firstRow = strip * rowsPerStrip;
     uint32_t rows = (std::min)(rowsPerStrip, height - firstRow);
     png_bytep* stripRows = rowPointers.data();
@@ -833,7 +833,7 @@ bool PNGFormat::pushStrips(grk_object* codec)
     else if(!readRows(stripRows, rows))
       return false;
     for(uint16_t c = 0; c < nr_comp_; ++c)
-      planePointers[c] = planes[c].data();
+      planePointers[c] = planes[c];
     convertRows<T>(stripRows, rows, planePointers.data(), width, rowSamples);
     return true;
   };

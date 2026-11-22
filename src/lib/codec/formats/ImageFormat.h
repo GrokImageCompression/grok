@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <exception>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -58,9 +59,16 @@ bool pushStripsReadAhead(grk_object* codec, uint16_t numcomps, uint32_t width, u
                          uint32_t rowsPerStrip, ReadStrip readStrip)
 {
   uint32_t strips = (height + rowsPerStrip - 1) / rowsPerStrip;
-  std::vector<std::vector<T>> stripPlanes[2];
+  std::vector<std::unique_ptr<T[]>> stripStorage;
+  std::vector<T*> stripPlanes[2];
   for(auto& planes : stripPlanes)
-    planes.assign(numcomps, std::vector<T>((size_t)rowsPerStrip * width));
+  {
+    for(uint16_t c = 0; c < numcomps; ++c)
+    {
+      stripStorage.push_back(std::make_unique_for_overwrite<T[]>((size_t)rowsPerStrip * width));
+      planes.push_back(stripStorage.back().get());
+    }
+  }
   std::mutex mutex;
   std::condition_variable changed;
   uint32_t stripsRead = 0;
@@ -108,7 +116,7 @@ bool pushStripsReadAhead(grk_object* codec, uint16_t numcomps, uint32_t width, u
       break;
     auto& planes = stripPlanes[strip % 2];
     for(uint16_t c = 0; c < numcomps; ++c)
-      planePointers[c] = planes[c].data();
+      planePointers[c] = planes[c];
     uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
     grk_strip stripRows = {rows, planePointers.data(), width};
     pushed = grk_compress_push_strip(codec, &stripRows);

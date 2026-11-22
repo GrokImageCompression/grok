@@ -370,10 +370,10 @@ bool JPEGFormat::pushStrips(grk_object* codec)
   auto numcomps = (uint16_t)decompressInfo_.output_components;
   uint32_t rowsPerStrip = (std::min)(stripReadRows, height);
   std::vector<T*> planePointers(numcomps);
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
     for(uint16_t c = 0; c < numcomps; ++c)
-      planePointers[c] = planes[c].data();
+      planePointers[c] = planes[c];
     return readRows<T>(rows, planePointers.data(), width);
   };
   if(!pushStripsReadAhead<T>(codec, numcomps, width, height, rowsPerStrip, readStrip))

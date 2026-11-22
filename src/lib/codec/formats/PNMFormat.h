@@ -1143,10 +1143,10 @@ bool PNMFormat::pushStrips(grk_object* codec)
   std::vector<uint8_t> fileBytes;
   std::vector<T> wideSamples;
   std::vector<T*> planePointers(numcomps_);
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
     for(uint16_t c = 0; c < numcomps_; ++c)
-      planePointers[c] = planes[c].data();
+      planePointers[c] = planes[c];
     return prec_ <= 8
                ? readRows<uint8_t, T>(rows, planePointers.data(), width, fileBytes, wideSamples)
                : readRows<uint16_t, T>(rows, planePointers.data(), width, fileBytes, wideSamples);

@@ -215,9 +215,9 @@ bool PGXFormat::pushStrips(grk_object* codec)
 {
   uint32_t rowsPerStrip = (std::min)(stripReadRows, height_);
   std::vector<uint8_t> fileBytes;
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t rows = (std::min)(rowsPerStrip, height_ - strip * rowsPerStrip);
-    return readRows<T>(rows, planes[0].data(), width_, fileBytes);
+    return readRows<T>(rows, planes[0], width_, fileBytes);
   };
   bool pushed = pushStripsReadAhead<T>(codec, 1, width_, height_, rowsPerStrip, readStrip);
   return fileIO_->close() && pushed;

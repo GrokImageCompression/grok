@@ -2629,7 +2629,7 @@ bool TIFFFormat::pushStrips(grk_object* codec)
   std::vector<uint8_t> stripBytes((size_t)stripSize);
   std::vector<T> rowBuffer;
   std::vector<T*> rowPlanes(targetPlanes);
-  auto readRows = [&](uint32_t read, std::vector<std::vector<T>>& planes) {
+  auto readRows = [&](uint32_t read, const std::vector<T*>& planes) {
     uint32_t firstRow = read * rowsPerRead;
     uint32_t rows = (std::min)(rowsPerRead, imageHeight_ - firstRow);
     for(uint32_t row = 0; row < rows; row += rowsPerStrip)
@@ -2650,7 +2650,7 @@ bool TIFFFormat::pushStrips(grk_object* codec)
         for(uint32_t r = 0; r < stripRows; ++r)
         {
           for(uint16_t k = 0; k < targetPlanes; ++k)
-            rowPlanes[k] = planes[plane + k].data() + (size_t)(row + r) * imageWidth_;
+            rowPlanes[k] = planes[plane + k] + (size_t)(row + r) * imageWidth_;
           if(!deinterleaveTiffRow(stripBytes.data() + (size_t)r * (size_t)rowStride,
                                   rowPlanes.data(), rowFormat, rowBuffer))
             return false;
@@ -2664,7 +2664,7 @@ bool TIFFFormat::pushStrips(grk_object* codec)
       comp.h = rows;
       comp.stride = imageWidth_;
       comp.prec = (uint8_t)bitsPerSample_;
-      comp.data = planes[c].data();
+      comp.data = planes[c];
       scaleComponent<T>(&comp, 12);
     }
     return true;

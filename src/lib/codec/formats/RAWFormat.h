@@ -435,7 +435,7 @@ bool RAWFormat::pushStrips(grk_object* codec)
   uint32_t rowsPerStrip = (std::min)(stripReadRows, height_);
   uint64_t planeBytes = (uint64_t)height_ * rowBytes();
   std::vector<uint8_t> fileBytes;
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+  auto readStrip = [&](uint32_t strip, const std::vector<T*>& planes) {
     uint32_t firstRow = strip * rowsPerStrip;
     uint32_t rows = (std::min)(rowsPerStrip, height_ - firstRow);
     for(uint16_t compno = 0; compno < numcomps_; ++compno)
@@ -445,7 +445,7 @@ bool RAWFormat::pushStrips(grk_object* codec)
         return false;
       if(!readBytes(rows * rowBytes(), fileBytes))
         return false;
-      convertRows<T>(fileBytes.data(), rows, planes[compno].data(), width_);
+      convertRows<T>(fileBytes.data(), rows, planes[compno], width_);
     }
     return true;
   };
