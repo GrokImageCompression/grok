@@ -1187,6 +1187,8 @@ bool grk_plugin_load(grk_plugin_load_info info)
       Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
       return true;
     }
+    minpf_cleanup_plugin_manager();
+    return false;
   }
 
   // Fallback: try current working directory (dcpomatic launches grk_compress
