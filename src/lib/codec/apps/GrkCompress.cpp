@@ -285,9 +285,9 @@ static grk_data_type compressDataType(const ImageFileHeader& header,
   return dataType;
 }
 
-static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
+static std::unique_ptr<IImageReader> createImageReader(const char* filename,
+                                                       GRK_SUPPORTED_FILE_FMT fmt)
 {
-  GRK_SUPPORTED_FILE_FMT fmt = parameters->decod_format;
   if(fmt == GRK_FMT_UNK)
   {
     int f = grk_get_file_format((char*)filename);
@@ -331,32 +331,44 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
     default:
       return nullptr;
   }
+  return reader;
+}
+
+static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
+{
+  auto reader = createImageReader(filename, parameters->decod_format);
+  if(!reader)
+    return nullptr;
   auto header = reader->readHeader(filename, parameters);
   if(!header)
     return nullptr;
   return reader->readPixels(parameters, compressDataType(*header, parameters));
 }
 
-#ifdef GROK_HAVE_LIBTIFF
-struct TiffInput
+struct StripInput
 {
   // without sample buffers when stripReader is set
   grk_image* image = nullptr;
-  std::unique_ptr<TIFFFormat> stripReader;
+  std::unique_ptr<IStripReader> stripReader;
 };
 
-static TiffInput loadTiffInput(const char* filename, grk_cparameters* parameters)
+static StripInput loadStripInput(const char* filename, grk_cparameters* parameters)
 {
-  auto reader = std::make_unique<TIFFFormat>();
+  auto reader = createImageReader(filename, parameters->decod_format);
+  if(!reader)
+    return {};
   auto header = reader->readHeader(filename, parameters);
   if(!header)
     return {};
   auto dataType = compressDataType(*header, parameters);
-  if(auto image = reader->readStripHeader(parameters, dataType))
-    return {image, std::move(reader)};
-  return {reader->readPixels(parameters, dataType), nullptr};
+  auto stripReader = dynamic_cast<IStripReader*>(reader.get());
+  grk_image* image = stripReader ? stripReader->readStripHeader(parameters, dataType) : nullptr;
+  if(!image)
+    return {reader->readPixels(parameters, dataType), nullptr};
+  std::unique_ptr<IStripReader> ownedStripReader(stripReader);
+  reader.release();
+  return {image, std::move(ownedStripReader)};
 }
-#endif
 
 int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stream_params* stream)
 {
@@ -2164,9 +2176,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   uint64_t compressedBytes = 0;
   grk_object* codec = nullptr;
   grk_image* image = info->image;
-#ifdef GROK_HAVE_LIBTIFF
-  std::unique_ptr<TIFFFormat> stripReader;
-#endif
+  std::unique_ptr<IStripReader> stripReader;
   bool createdImage = false;
   bool attachedPluginMetadata = false;
   std::string outfile;
@@ -2218,22 +2228,16 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       }
     }
     /* decode the source image */
-#ifdef GROK_HAVE_LIBTIFF
-    bool stripInput = !pluginReady && parameters->decod_format == GRK_FMT_TIF &&
-                      parameters->cod_format != GRK_FMT_MJ2;
-    if(stripInput)
+    if(!pluginReady && parameters->cod_format != GRK_FMT_MJ2)
     {
-      auto tiff = loadTiffInput(info->input_file_name, parameters);
-      image = tiff.image;
-      stripReader = std::move(tiff.stripReader);
+      auto input = loadStripInput(info->input_file_name, parameters);
+      image = input.image;
+      stripReader = std::move(input.stripReader);
     }
     else
     {
-      image = loadInputImage(info->input_file_name, info->compressor_parameters);
+      image = loadInputImage(info->input_file_name, parameters);
     }
-#else
-    image = loadInputImage(info->input_file_name, info->compressor_parameters);
-#endif
     if(!image)
     {
       spdlog::error("Unable to load input file");
@@ -2396,7 +2400,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   {
     safe_strcpy(info->stream_params.file, outfile.c_str());
   }
-#ifdef GROK_HAVE_LIBTIFF
   if(stripReader)
   {
     codec = grk_compress_init_strips(&info->stream_params, &frameParameters, image);
@@ -2410,9 +2413,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   {
     codec = grk_compress_init(&info->stream_params, &frameParameters, image);
   }
-#else
-  codec = grk_compress_init(&info->stream_params, &frameParameters, image);
-#endif
   if(!codec)
   {
     spdlog::error("failed to compress image: grk_compress_init");

@@ -633,7 +633,7 @@ void tiffSetErrorAndWarningHandlers(bool verbose);
  *
  * @see doc/IncrementalStripeCompositing.md for the incremental band-write pipeline.
  */
-class TIFFFormat : public ImageFormat
+class TIFFFormat : public ImageFormat, public IStripReader
 {
 public:
   TIFFFormat();
@@ -675,8 +675,8 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
-  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType);
-  bool pushStrips(grk_object* codec, grk_data_type dataType);
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
   bool readMetadata(const std::string& filename, grk_image* image, grk_cparameters* parameters);
 
 private:
@@ -2661,29 +2661,8 @@ bool TIFFFormat::pushStrips(grk_object* codec)
     }
     return true;
   };
-  std::vector<std::vector<T>> stripPlanes[2];
-  for(auto& planes : stripPlanes)
-    planes.assign(numcomps_, std::vector<T>((size_t)rowsPerStrip * imageWidth_));
-  if(!readStrip(0, stripPlanes[0]))
-    return false;
-  std::vector<const void*> planePointers(numcomps_);
-  for(uint32_t strip = 0; strip < stripsPerPlane; ++strip)
-  {
-    auto& planes = stripPlanes[strip % 2];
-    std::future<bool> nextRead;
-    if(strip + 1 < stripsPerPlane)
-      nextRead = std::async(std::launch::async, readStrip, strip + 1,
-                            std::ref(stripPlanes[(strip + 1) % 2]));
-    for(uint16_t c = 0; c < numcomps_; ++c)
-      planePointers[c] = planes[c].data();
-    uint32_t rows = (std::min)(rowsPerStrip, imageHeight_ - strip * rowsPerStrip);
-    grk_strip pushed = {rows, planePointers.data(), imageWidth_};
-    bool pushOk = grk_compress_push_strip(codec, &pushed);
-    bool readOk = !nextRead.valid() || nextRead.get();
-    if(!pushOk || !readOk)
-      return false;
-  }
-  return true;
+  return pushStripsReadAhead<T>(codec, numcomps_, imageWidth_, imageHeight_, rowsPerStrip,
+                                readStrip);
 }
 
 inline bool TIFFFormat::pushStrips(grk_object* codec, grk_data_type dataType)

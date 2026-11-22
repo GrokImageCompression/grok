@@ -17,7 +17,11 @@
 
 #pragma once
 
+#include <algorithm>
+#include <functional>
+#include <future>
 #include <mutex>
+#include <vector>
 
 #include "FileStandardIO.h"
 #include "IImageFormat.h"
@@ -42,6 +46,36 @@ bool readSamplesAs(grk_data_type dataType, ReadSamples readSamples)
                     (int)dataType);
       return false;
   }
+}
+
+template<typename T, typename ReadStrip>
+bool pushStripsReadAhead(grk_object* codec, uint16_t numcomps, uint32_t width, uint32_t height,
+                         uint32_t rowsPerStrip, ReadStrip readStrip)
+{
+  uint32_t strips = (height + rowsPerStrip - 1) / rowsPerStrip;
+  std::vector<std::vector<T>> stripPlanes[2];
+  for(auto& planes : stripPlanes)
+    planes.assign(numcomps, std::vector<T>((size_t)rowsPerStrip * width));
+  if(!readStrip(0, stripPlanes[0]))
+    return false;
+  std::vector<const void*> planePointers(numcomps);
+  for(uint32_t strip = 0; strip < strips; ++strip)
+  {
+    auto& planes = stripPlanes[strip % 2];
+    std::future<bool> nextRead;
+    if(strip + 1 < strips)
+      nextRead = std::async(std::launch::async, readStrip, strip + 1,
+                            std::ref(stripPlanes[(strip + 1) % 2]));
+    for(uint16_t c = 0; c < numcomps; ++c)
+      planePointers[c] = planes[c].data();
+    uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
+    grk_strip pushed = {rows, planePointers.data(), width};
+    bool pushOk = grk_compress_push_strip(codec, &pushed);
+    bool readOk = !nextRead.valid() || nextRead.get();
+    if(!pushOk || !readOk)
+      return false;
+  }
+  return true;
 }
 
 class ImageFormat : public IImageFormat

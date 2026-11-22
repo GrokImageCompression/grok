@@ -44,7 +44,7 @@ struct pnm_header
   PNM_COLOUR_SPACE colour_space;
 };
 
-class PNMFormat : public ImageFormat
+class PNMFormat : public ImageFormat, public IStripReader
 {
 public:
   explicit PNMFormat(bool split);
@@ -64,6 +64,8 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
   bool forceSplit;
@@ -78,10 +80,17 @@ private:
   bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, WT* buf, size_t* outCount);
   template<typename WT>
   bool encodeRows(uint32_t rows);
+  grk_image* createImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
+  bool hasByteAlignedSamples(void);
   template<typename WT, typename T>
-  bool readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval);
+  bool readRows(uint32_t rows, T* const* planes, size_t stride, std::vector<uint8_t>& fileBytes,
+                std::vector<T>& wideSamples);
+  template<typename T>
+  bool readByteAlignedSamples(grk_image* image);
   template<typename T>
   bool readSamples(grk_image* image);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
   bool closeStream(void);
 
   bool decodeHeader(struct pnm_header* ph);
@@ -931,59 +940,80 @@ static inline uint32_t uint_floorlog2(uint32_t a)
   return l;
 }
 
+// 64 rows encoded fastest against 16, 256 and 1024 on 5 and 120 megapixel RGB
+const uint32_t pnmRowsPerRead = 64;
+
 template<typename WT, typename T>
-bool PNMFormat::readBytes(FILE* fp, grk_image* image, size_t area, uint32_t maxval)
+bool PNMFormat::readRows(uint32_t rows, T* const* planes, size_t stride,
+                         std::vector<uint8_t>& fileBytes, std::vector<T>& wideSamples)
 {
-  if(!fp || !image)
-    return false;
-
-  assert(image->decompress_num_comps <= 4);
-
-  uint64_t i = 0;
-  uint64_t index = 0;
-  uint16_t compno = 0;
-  uint64_t totalSize = area * image->decompress_num_comps;
-  const uint64_t chunkSize = 4096 * 4;
-  WT chunk[chunkSize];
-  uint32_t width = image->decompress_width;
-  uint32_t stride_diff = image->comps[0].stride - width;
-  uint32_t counter = 0;
-  while(i < totalSize)
+  uint32_t width = pnmHeader_.width;
+  size_t rowSamples = (size_t)width * numcomps_;
+  size_t expectedBytes = rowSamples * rows * sizeof(WT);
+  fileBytes.resize(expectedBytes);
+  size_t bytesRead = fread(fileBytes.data(), 1, expectedBytes, fileIO_->getFileHandle());
+  if(bytesRead != expectedBytes)
   {
-    uint64_t toRead = (std::min)(chunkSize, (uint64_t)(totalSize - i));
-    size_t bytesRead = fread(chunk, sizeof(WT), toRead, fp);
-    if(bytesRead == 0)
-      break;
-    WT* chunkPtr = chunk;
-    for(size_t ct = 0; ct < bytesRead; ++ct)
+    spdlog::error("bytes read ({}) are less than expected number of bytes ({})", bytesRead,
+                  expectedBytes);
+    return false;
+  }
+  uint32_t maxval = pnmHeader_.maxval;
+  std::vector<T*> rowPlanes(numcomps_);
+  for(uint32_t r = 0; r < rows; ++r)
+  {
+    for(uint16_t c = 0; c < numcomps_; ++c)
+      rowPlanes[c] = planes[c] + r * stride;
+    const uint8_t* rowBytes = fileBytes.data() + r * rowSamples * sizeof(WT);
+    if constexpr(sizeof(WT) == 1)
     {
-      WT val = sizeof(WT) > 1 ? grk::endian<WT>(*chunkPtr++, true) : *chunkPtr++;
-      if(val > maxval)
+      uint8_t rowMax = *std::max_element(rowBytes, rowBytes + rowSamples);
+      if(rowMax > maxval)
       {
-        spdlog::error("PNM sample value {} exceeds maxval {}", val, maxval);
+        spdlog::error("PNM sample value {} exceeds maxval {}", rowMax, maxval);
         return false;
       }
-      ((T*)image->comps[compno++].data)[index] = (T)val;
-      if(compno == image->decompress_num_comps)
-      {
-        compno = 0;
-        index++;
-        counter++;
-        if(counter == width)
-        {
-          index += stride_diff;
-          counter = 0;
-        }
-      }
+      grk::hwy_deinterleave(rowBytes, rowPlanes.data(), width, numcomps_);
     }
-    i += bytesRead;
+    else
+    {
+      wideSamples.resize(rowSamples);
+      for(size_t i = 0; i < rowSamples; ++i)
+      {
+        // PNM stores 16 bit samples most significant byte first
+        uint32_t value = (uint32_t)(rowBytes[2 * i] << 8) | rowBytes[2 * i + 1];
+        if(value > maxval)
+        {
+          spdlog::error("PNM sample value {} exceeds maxval {}", value, maxval);
+          return false;
+        }
+        wideSamples[i] = (T)value;
+      }
+      grk::hwy_deinterleave(wideSamples.data(), rowPlanes.data(), width, numcomps_);
+    }
   }
-  if(i != totalSize)
-  {
-    spdlog::error("bytes read ({}) are less than expected number of bytes ({})", i, totalSize);
-    return false;
-  }
+  return true;
+}
 
+template<typename T>
+bool PNMFormat::readByteAlignedSamples(grk_image* image)
+{
+  uint32_t height = pnmHeader_.height;
+  size_t stride = image->comps[0].stride;
+  std::vector<uint8_t> fileBytes;
+  std::vector<T> wideSamples;
+  std::vector<T*> planes(numcomps_);
+  for(uint32_t row = 0; row < height; row += pnmRowsPerRead)
+  {
+    uint32_t rows = (std::min)(pnmRowsPerRead, height - row);
+    for(uint16_t c = 0; c < numcomps_; ++c)
+      planes[c] = (T*)image->comps[c].data + row * stride;
+    bool read = prec_ <= 8
+                    ? readRows<uint8_t, T>(rows, planes.data(), stride, fileBytes, wideSamples)
+                    : readRows<uint16_t, T>(rows, planes.data(), stride, fileBytes, wideSamples);
+    if(!read)
+      return false;
+  }
   return true;
 }
 
@@ -1043,7 +1073,8 @@ cleanup:
   return std::nullopt;
 }
 
-inline grk_image* PNMFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline grk_image* PNMFormat::createImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   uint8_t subsampling_dx = parameters->subsampling_dx;
   uint8_t subsampling_dy = parameters->subsampling_dy;
@@ -1061,26 +1092,75 @@ inline grk_image* PNMFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     cmptparm[i].w = w;
     cmptparm[i].h = h;
   }
-  auto image = grk_image_new(numcomps_, &cmptparm[0], colorSpace_, true);
+  auto image = grk_image_new(numcomps_, &cmptparm[0], colorSpace_, allocData);
   if(!image)
-    spdlog::error("pnmtoimage: Failed to create image");
-  bool success = false;
-  if(image)
   {
-    /* set image offset and reference grid */
-    image->x0 = parameters->image_offset_x0;
-    image->y0 = parameters->image_offset_y0;
-    image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
-    image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
-    success =
-        readSamplesAs(dataType, [&](auto sample) { return readSamples<decltype(sample)>(image); });
+    spdlog::error("pnmtoimage: Failed to create image");
+    return nullptr;
   }
+  /* set image offset and reference grid */
+  image->x0 = parameters->image_offset_x0;
+  image->y0 = parameters->image_offset_y0;
+  image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
+  image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
+  return image;
+}
+
+inline grk_image* PNMFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = createImage(parameters, dataType, true);
+  bool success = image && readSamplesAs(dataType, [&](auto sample) {
+                   return readSamples<decltype(sample)>(image);
+                 });
   if(!grk::safe_fclose(fileIO_->getFileHandle()) || !success)
   {
-    grk_object_unref(&image->obj);
+    if(image)
+      grk_object_unref(&image->obj);
     image = nullptr;
   }
   return image;
+}
+
+inline bool PNMFormat::hasByteAlignedSamples(void)
+{
+  uint32_t format = pnmHeader_.format;
+  auto colourSpace = pnmHeader_.colour_space;
+  return format == 5 || format == 6 ||
+         (format == 7 && (colourSpace == PNM_GRAY || colourSpace == PNM_GRAYA ||
+                          colourSpace == PNM_RGB || colourSpace == PNM_RGBA));
+}
+
+inline grk_image* PNMFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  if(!hasByteAlignedSamples())
+    return nullptr;
+  return createImage(parameters, dataType, false);
+}
+
+template<typename T>
+bool PNMFormat::pushStrips(grk_object* codec)
+{
+  uint32_t width = pnmHeader_.width;
+  uint32_t height = pnmHeader_.height;
+  uint32_t rowsPerStrip = (std::min)(pnmRowsPerRead, height);
+  std::vector<uint8_t> fileBytes;
+  std::vector<T> wideSamples;
+  std::vector<T*> planePointers(numcomps_);
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
+    for(uint16_t c = 0; c < numcomps_; ++c)
+      planePointers[c] = planes[c].data();
+    return prec_ <= 8
+               ? readRows<uint8_t, T>(rows, planePointers.data(), width, fileBytes, wideSamples)
+               : readRows<uint16_t, T>(rows, planePointers.data(), width, fileBytes, wideSamples);
+  };
+  bool pushed = pushStripsReadAhead<T>(codec, numcomps_, width, height, rowsPerStrip, readStrip);
+  return fileIO_->close() && pushed;
+}
+
+inline bool PNMFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
 
 template<typename T>
@@ -1159,17 +1239,9 @@ bool PNMFormat::readSamples(grk_image* image)
       }
     }
   }
-  else if(format == 5 || format == 6 ||
-          ((format == 7) &&
-           (pnmHeader_.colour_space == PNM_GRAY || pnmHeader_.colour_space == PNM_GRAYA ||
-            pnmHeader_.colour_space == PNM_RGB || pnmHeader_.colour_space == PNM_RGBA)))
+  else if(hasByteAlignedSamples())
   {
-    bool rc = false;
-    if(prec_ <= 8)
-      rc = readBytes<uint8_t, T>(fileIO_->getFileHandle(), image, area, pnmHeader_.maxval);
-    else
-      rc = readBytes<uint16_t, T>(fileIO_->getFileHandle(), image, area, pnmHeader_.maxval);
-    if(!rc)
+    if(!readByteAlignedSamples<T>(image))
       return false;
   }
   else if(format == 4 || (format == 7 && pnmHeader_.colour_space == PNM_BW))

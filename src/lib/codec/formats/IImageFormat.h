@@ -59,6 +59,14 @@ public:
   }
 };
 
+class IStripReader
+{
+public:
+  virtual ~IStripReader() = default;
+  virtual grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) = 0;
+  virtual bool pushStrips(grk_object* codec, grk_data_type dataType) = 0;
+};
+
 /**
  * @class IImageWriter
  * @brief Interface for writing decompressed pixels to (non JPEG 2000) image formats

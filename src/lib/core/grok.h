@@ -1985,10 +1985,10 @@ typedef struct _grk_strip
  * grk_compress_push_strip(), then call grk_compress() with a NULL tile to
  * finish. All components must have the same width, height and data type.
  *
- * Single-tile lossy images that mercury supports are compressed as the strips
- * arrive. For any other image the strips are collected into a whole image and
- * compressed by grk_compress(). The ICC, XYZ and cinema precision transforms
- * run on each strip. The GPU plugin is not used.
+ * Lossy images that mercury supports, tiled or not, are compressed as the
+ * strips arrive. For any other image the strips are collected into a whole
+ * image and compressed by grk_compress(). The ICC, XYZ and cinema precision
+ * transforms run on each strip. The GPU plugin is not used.
  *
  * @param stream_params  output stream description (see @ref grk_stream_params)
  * @param parameters     compression settings (see @ref grk_cparameters)
