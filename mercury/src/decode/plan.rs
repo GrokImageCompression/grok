@@ -29,7 +29,7 @@ use crate::codec::packet::{
 use crate::codec::packet_order::{
     PrecBand, chart_prec_bands, chart_precinct_grids, chart_precinct_positions, order_packets,
 };
-use crate::codec::params::{CodParams, QcdParams, SizParams};
+use crate::codec::params::{CodParams, QcdParams, SizParams, step_ranging};
 use crate::codec::tile_geom::{Dims, TileGeom, chart_tile_geom};
 use crate::decode::DecodeError;
 use crate::decode::window::comp_window;
@@ -67,6 +67,21 @@ pub struct MainHeaderIn {
     /// tile-part headers of tiles it will decode instead of scanning the SOT
     /// chain.
     pub tlm: Vec<TlmEntry>,
+}
+
+impl MainHeaderIn {
+    // QCD unless a QCC overrides it
+    pub fn component_quant(&self) -> Vec<QcdParams> {
+        (0..self.siz.comp_count())
+            .map(|c| {
+                self.qcc
+                    .iter()
+                    .find(|(idx, _)| *idx == c)
+                    .map(|(_, q)| q.clone())
+                    .unwrap_or_else(|| self.qcd.clone())
+            })
+            .collect()
+    }
 }
 
 /// A later-layer contribution to a code-block (bytes appended to the first).
@@ -857,16 +872,7 @@ pub fn draft(
     let num_tiles = (hdr.siz.tiles_across() * hdr.siz.tiles_down()) as usize;
     let num_comps = hdr.siz.comp_count();
 
-    // Per-component quantization: QCD unless a QCC override exists.
-    let quant: Vec<QcdParams> = (0..num_comps)
-        .map(|c| {
-            hdr.qcc
-                .iter()
-                .find(|(idx, _)| *idx == c)
-                .map(|(_, q)| q.clone())
-                .unwrap_or_else(|| hdr.qcd.clone())
-        })
-        .collect();
+    let quant = hdr.component_quant();
 
     // Tiles the decode window misses are never parsed: with TLM their
     // tile-part headers are never even read, and the sequential walk only
@@ -2514,13 +2520,6 @@ fn band_ranging(q: &QcdParams, qcd_idx: usize) -> Result<i32, DecodeError> {
             "plan: derived quantization not wired yet".into(),
         )),
     }
-}
-
-/// Recover the ranging exponent from a parsed step size:
-/// step = (1 + mu/2^11) / 2^eps with mu in [0, 2^11), so eps = -floor(log2 step).
-fn step_ranging(step: f32) -> i32 {
-    debug_assert!(step > 0.0);
-    -(step.log2().floor() as i32)
 }
 
 fn io_snag(e: std::io::Error) -> DecodeError {

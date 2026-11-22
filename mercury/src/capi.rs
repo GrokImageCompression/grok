@@ -1881,183 +1881,108 @@ pub unsafe extern "C" fn mercury_forward_dwt_tile(
     }
 }
 
-/// # Safety
-/// `planes` points to `num_comps` planes of unsigned samples, rows `stride` samples apart,
-/// `bounds` to x0, y0, x1, y1, `band_stepsizes` to 3 * levels + 1 step sizes in classic band
-/// order, `t1` null for mercury's own block encoder, and `stats` to 3 counters: coded bytes,
-/// coding passes, code-blocks.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn mercury_encode_tile_blocks(
-    planes: *const *const i32,
-    num_comps: u32,
-    stride: u32,
-    bounds: *const u32,
-    levels: u32,
-    precision: u32,
-    precision_shift: u32,
-    block_width: u32,
-    block_height: u32,
-    band_stepsizes: *const f32,
-    t1: Option<MercuryT1EncodeFn>,
-    stats: *mut u64,
-) -> i32 {
-    let t1 = t1.unwrap_or(crate::ffi_dwt::mercury_t1_encode_block);
-    if planes.is_null() || bounds.is_null() || band_stepsizes.is_null() || stats.is_null() {
-        return MERCURY_EBADARG;
-    }
-    if levels == 0 || precision_shift >= 31 || !(num_comps == 1 || num_comps == 3) {
-        return MERCURY_EBADARG;
-    }
-    let bounds: [u32; 4] = unsafe { std::ptr::read(bounds.cast()) };
-    let [x0, y0, x1, y1] = bounds;
-    if x1 <= x0 || y1 <= y0 || ((x1 - x0) as usize) > stride as usize {
-        return MERCURY_EBADARG;
-    }
-    let (width, height, stride) = ((x1 - x0) as usize, (y1 - y0) as usize, stride as usize);
-    let comps = num_comps as usize;
-    let planes: Vec<&[i32]> = (0..comps)
-        .map(|c| unsafe {
-            std::slice::from_raw_parts(*planes.add(c), (height - 1) * stride + width)
-        })
-        .collect();
-    let band_stepsizes =
-        unsafe { std::slice::from_raw_parts(band_stepsizes, 3 * levels as usize + 1) };
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let mct = comps == 3;
-        let mut encoders: Vec<crate::encode::component::ComponentEncoder> = (0..comps)
-            .map(|c| {
-                crate::encode::component::ComponentEncoder::warp(
-                    &crate::encode::component::ComponentParams {
-                        compno: c as i32,
-                        bounds,
-                        levels,
-                        block_width,
-                        block_height,
-                        band_stepsizes,
-                        mct,
-                        t1,
-                        stripe_queue: None,
-                    },
-                )
-            })
-            .collect();
-        crate::encode::component::feed_tile_rows(
-            &mut encoders,
-            &planes,
-            stride,
-            width,
-            height,
-            precision,
-            precision_shift,
-            None,
-        );
-        let mut total = crate::encode::band_coder::CodingStats::default();
-        for encoder in &encoders {
-            total.add(encoder.stats());
-        }
-        unsafe {
-            *stats = total.coded_bytes;
-            *stats.add(1) = total.coding_passes;
-            *stats.add(2) = total.blocks;
-        }
-    }));
-    match r {
-        Ok(()) => MERCURY_OK,
-        Err(_) => MERCURY_EPANIC,
-    }
-}
-
 // the XYZ table holds 2^precision floats
 const MAX_XYZ_SOURCE_PRECISION: u32 = 16;
-const DCI_PRECISION: u32 = crate::encode::dci::PRECISION as u32;
+
+#[repr(C)]
+pub struct MercuryEncodeParams {
+    pub max_layer_length: u32,
+    // 0 for no per-component cap
+    pub max_comp_size: u64,
+    pub slope_hint: u16,
+    pub rate_tolerance: f64,
+    pub split_by_component: bool,
+    // 0 for no XYZ conversion
+    pub xyz_source_precision: u32,
+    // 0 for every core
+    pub threads: u32,
+}
+
+pub type MercuryTilePartFn = extern "C" fn(ctx: *mut c_void, bytes: *const u8, len: u64);
+
+fn tile_encodable(header: &MainHeaderIn) -> bool {
+    let (siz, cod) = (&header.siz, &header.cod);
+    let first = &siz.components[0];
+    let components_match = siz.components.iter().all(|comp| {
+        !comp.is_signed && comp.xr_siz == 1 && comp.yr_siz == 1 && comp.precision == first.precision
+    });
+    let styles_match = cod
+        .comps
+        .iter()
+        .all(|style| !style.reversible && style.modes.0 == 0 && style.num_levels > 0);
+    siz.tiles_across() * siz.tiles_down() == 1
+        && siz.x_o_siz == 0
+        && siz.y_o_siz == 0
+        && cod.num_layers == 1
+        && !cod.use_sop
+        && !cod.use_eph
+        && (!cod.use_ycc || siz.comp_count() == 3)
+        && components_match
+        && styles_match
+}
 
 /// # Safety
-/// `planes` points to 3 planes of unsigned samples, rows `stride` samples apart, `comment`
-/// to `comment_len` bytes, `out` to `out_capacity` bytes, and `out_len` and
-/// `slope_threshold` to one value each.
+/// `header` is valid as for `mercury_warp_loom`, `params` points to one value,
+/// `planes` to one plane per component of the tile's samples, rows `stride`
+/// samples apart, and `slope_threshold` to one value.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn mercury_encode_dci(
+pub unsafe extern "C" fn mercury_encode_tile(
+    header: *const MercuryMainHeader,
+    params: *const MercuryEncodeParams,
     planes: *const *const i32,
     stride: u32,
-    width: u32,
-    height: u32,
-    four_k: bool,
-    source_precision: u32,
-    max_cs_size: u64,
-    layer_rate: f64,
-    max_comp_size: u64,
-    slope_hint: u16,
-    rate_tolerance: f64,
-    apply_xyz: bool,
-    write_tlm: bool,
-    threads: u32,
-    comment: *const u8,
-    comment_len: u32,
-    out: *mut u8,
-    out_capacity: u64,
-    out_len: *mut u64,
+    write_tile_part: MercuryTilePartFn,
+    write_ctx: *mut c_void,
     slope_threshold: *mut u16,
 ) -> i32 {
-    if planes.is_null() || comment.is_null() || out.is_null() || out_len.is_null() {
+    if params.is_null() || planes.is_null() || slope_threshold.is_null() {
         return MERCURY_EBADARG;
     }
-    if slope_threshold.is_null() || width == 0 || height == 0 || width > stride {
+    let Ok(header) = (unsafe { draft_header_in(header) }) else {
         return MERCURY_EBADARG;
-    }
-    let precision_supported = if apply_xyz {
-        (1..=MAX_XYZ_SOURCE_PRECISION).contains(&source_precision)
-    } else {
-        (DCI_PRECISION..DCI_PRECISION + 31).contains(&source_precision)
     };
-    if !precision_supported || max_cs_size == 0 {
+    let params = unsafe { &*params };
+    let rect = header.siz.tile_rect(0);
+    let (width, height) = (rect.x1 - rect.x0, rect.y1 - rect.y0);
+    let xyz = params.xyz_source_precision != 0;
+    let xyz_supported = !xyz
+        || (header.cod.use_ycc
+            && (1..=MAX_XYZ_SOURCE_PRECISION).contains(&params.xyz_source_precision));
+    if !tile_encodable(&header) || !xyz_supported || width == 0 || height == 0 || width > stride {
         return MERCURY_EBADARG;
     }
     let samples = (height as usize - 1) * stride as usize + width as usize;
-    let planes: Vec<&[i32]> = (0..3)
+    let planes: Vec<&[i32]> = (0..header.siz.comp_count())
         .map(|c| unsafe { std::slice::from_raw_parts(*planes.add(c), samples) })
         .collect();
-    let comment = unsafe { std::slice::from_raw_parts(comment, comment_len as usize) };
-    let params = crate::encode::dci::DciParams {
-        profile: if four_k {
-            crate::encode::dci::CinemaProfile::FourK
-        } else {
-            crate::encode::dci::CinemaProfile::TwoK
+    let encode_params = crate::encode::tile::TileEncodeParams {
+        rate: crate::encode::rate_control::RateTargets {
+            max_layer_length: params.max_layer_length,
+            component_cap: params.max_comp_size,
+            tolerance: params.rate_tolerance,
+            slope_hint: params.slope_hint,
         },
-        width,
-        height,
-        max_cs_size,
-        layer_rate,
-        max_comp_size,
-        slope_hint,
-        tolerance: rate_tolerance,
-        apply_xyz,
-        write_tlm,
-        threads: match threads {
+        split_by_component: params.split_by_component,
+        xyz_source_precision: xyz.then_some(params.xyz_source_precision),
+        threads: match params.threads {
             0 => std::thread::available_parallelism().map_or(1, |count| count.get()),
             count => count as usize,
         },
-        comment,
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        crate::encode::dci::encode_dci_frame(
+        crate::encode::tile::encode_tile(
             &planes,
             stride as usize,
-            source_precision,
-            &params,
+            &header,
+            &encode_params,
             crate::ffi_dwt::mercury_t1_encode_block,
+            |bytes| write_tile_part(write_ctx, bytes.as_ptr(), bytes.len() as u64),
         )
     }));
-    let Ok(frame) = r else {
+    let Ok(threshold) = r else {
         return MERCURY_EPANIC;
     };
-    if frame.codestream.len() as u64 > out_capacity {
-        return MERCURY_EBADARG;
-    }
-    unsafe {
-        std::ptr::copy_nonoverlapping(frame.codestream.as_ptr(), out, frame.codestream.len());
-        *out_len = frame.codestream.len() as u64;
-        *slope_threshold = frame.slope_threshold;
-    }
+    unsafe { *slope_threshold = threshold };
     MERCURY_OK
 }
 

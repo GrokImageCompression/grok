@@ -278,6 +278,13 @@ pub struct QcdParams {
     pub steps: Vec<f32>,
 }
 
+/// Recover the ranging exponent from a parsed step size:
+/// step = (1 + mu/2^11) / 2^eps with mu in [0, 2^11), so eps = -floor(log2 step).
+pub(crate) fn step_ranging(step: f32) -> i32 {
+    debug_assert!(step > 0.0);
+    -(step.log2().floor() as i32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

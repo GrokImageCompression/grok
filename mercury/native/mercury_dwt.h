@@ -101,10 +101,6 @@ void mercury_hwy_forward_xyz_ict(const MercuryXyzTables* tables, const int32_t* 
                                  const int32_t* green, const int32_t* blue, int32_t dc_shift,
                                  float* luma, float* chroma_blue, float* chroma_red, int samples);
 
-/* grok's Quantizer::generate step exponent and mantissa for one irreversible band */
-void mercury_t1_band_step(uint8_t numresolutions, uint8_t max_bit_depth, uint8_t bandno,
-                          double stepScale, uint8_t* exponent, uint16_t* mantissa);
-
 /* grok's RateControl::convexHull over one block's passes */
 void mercury_rate_convex_hull(const uint16_t* lens, const double* distortions, uint16_t* slopes,
                               uint32_t num_passes);

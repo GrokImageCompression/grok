@@ -396,9 +396,8 @@ if(GRK_ENABLE_MERCURY)
     target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels
       advapi32 bcrypt ntdll userenv ws2_32 synchronization)
     if(MSVC AND BUILD_SHARED_LIBS)
-      # the mercury tests call these rust functions through grokj2k.dll
-      target_link_options(${GROK_CORE_NAME} PRIVATE
-        /EXPORT:mercury_encode_dci /EXPORT:mercury_forward_dwt_tile)
+      # the mercury tests call this rust function through grokj2k.dll
+      target_link_options(${GROK_CORE_NAME} PRIVATE /EXPORT:mercury_forward_dwt_tile)
     endif()
   else()
     target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels dl)

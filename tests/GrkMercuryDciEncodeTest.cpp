@@ -19,11 +19,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string>
 #include <vector>
 
 #include "grok.h"
-#include "mercury_capi.h"
 
 namespace
 {
@@ -36,13 +34,10 @@ const uint32_t RESOLUTIONS_2K = 6;
 const uint32_t RESOLUTIONS_4K = 7;
 const uint8_t GUARD_BITS_2K = 1;
 const uint8_t GUARD_BITS_4K = 2;
-const size_t VERSION_FIELD_WIDTH = 16;
 const char* MERCURY_ENCODE_VARIABLE = "GRK_MERCURY_ENCODE";
 const char* MERCURY_COMPRESSED_MESSAGE = "mercury compressed";
 const char* CLASSIC_XYZ_MESSAGE = "Applied Rec.709 RGB";
 const char* OUTPUT_FILE = "grk_mercury_dci_encode_test.j2k";
-// grok's path runs on every core
-const uint32_t SINGLE_THREAD = 1;
 
 bool mercuryCompressed = false;
 bool classicXyzRan = false;
@@ -100,14 +95,9 @@ uint64_t nextRandom(uint64_t& state)
   return state >> 33;
 }
 
-uint8_t sourcePrecision(const Case& test)
-{
-  return test.xyzPrecision ? test.xyzPrecision : SOURCE_PRECISION;
-}
-
 std::vector<std::vector<int32_t>> makeFrame(const Case& test)
 {
-  uint32_t shift = SOURCE_PRECISION - sourcePrecision(test);
+  uint32_t shift = test.xyzPrecision ? SOURCE_PRECISION - test.xyzPrecision : 0;
   uint64_t state = test.width * 7919ULL + test.height;
   std::vector<std::vector<int32_t>> planes(COMPONENTS,
                                            std::vector<int32_t>((size_t)test.width * test.height));
@@ -129,16 +119,14 @@ std::vector<std::vector<int32_t>> makeFrame(const Case& test)
   return planes;
 }
 
-std::string defaultComment()
+struct Encoded
 {
-  auto version = std::string(grk_version());
-  version.resize(std::max(version.size(), VERSION_FIELD_WIDTH), ' ');
-  return "Created by Grok version " + version;
-}
+  std::vector<uint8_t> codestream;
+  uint16_t slopeThreshold;
+};
 
-std::vector<uint8_t> libraryEncode(const Case& test,
-                                   const std::vector<std::vector<int32_t>>& planes,
-                                   uint16_t slopeHint, bool mercury, bool toFile)
+Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>& planes,
+                      uint16_t slopeHint, bool mercury, bool toFile)
 {
   grk_image_comp comps[COMPONENTS] = {};
   for(auto& comp : comps)
@@ -199,6 +187,7 @@ std::vector<uint8_t> libraryEncode(const Case& test,
   classicXyzRan = false;
   auto codec = grk_compress_init(&stream, &params, image);
   uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
+  uint16_t slopeThreshold = codec ? grk_compress_get_slope_threshold(codec) : 0;
   grk_object_unref(codec);
   grk_object_unref(&image->obj);
   if(toFile)
@@ -210,26 +199,7 @@ std::vector<uint8_t> libraryEncode(const Case& test,
     remove(OUTPUT_FILE);
   }
   out.resize(length);
-  return out;
-}
-
-std::vector<uint8_t> mercuryEncode(const Case& test,
-                                   const std::vector<std::vector<int32_t>>& planes,
-                                   uint16_t slopeHint, uint16_t* threshold)
-{
-  const int32_t* pointers[COMPONENTS] = {planes[0].data(), planes[1].data(), planes[2].data()};
-  auto comment = defaultComment();
-  std::vector<uint8_t> out(OUTPUT_CAPACITY);
-  uint64_t length = 0;
-  int32_t rc = mercury_encode_dci(
-      pointers, test.width, test.width, test.height, test.fourK, sourcePrecision(test),
-      GRK_CINEMA_24_CS, 0.0, GRK_CINEMA_24_COMP, slopeHint, test.tolerance, test.xyzPrecision != 0,
-      true, SINGLE_THREAD, (const uint8_t*)comment.data(), (uint32_t)comment.size(), out.data(),
-      out.size(), &length, threshold);
-  if(rc != 0)
-    length = 0;
-  out.resize(length);
-  return out;
+  return {out, slopeThreshold};
 }
 
 bool sameCodestream(const Case& test, const char* label, const std::vector<uint8_t>& classic,
@@ -255,13 +225,12 @@ bool runCase(const Case& test)
 {
   auto planes = makeFrame(test);
   uint16_t slopeHint = 0;
-  uint16_t threshold = 0;
   if(test.hintOffset)
   {
-    mercuryEncode(test, planes, 0, &threshold);
-    slopeHint = (uint16_t)(threshold + test.hintOffset);
+    auto unhinted = libraryEncode(test, planes, 0, false, false);
+    slopeHint = (uint16_t)(unhinted.slopeThreshold + test.hintOffset);
   }
-  auto classic = libraryEncode(test, planes, slopeHint, false, false);
+  auto classic = libraryEncode(test, planes, slopeHint, false, false).codestream;
   if(mercuryCompressed)
   {
     fprintf(stderr, "%s: mercury ran with %s=0\n", test.name, MERCURY_ENCODE_VARIABLE);
@@ -269,7 +238,7 @@ bool runCase(const Case& test)
   }
   for(bool toFile : {false, true})
   {
-    auto throughGrok = libraryEncode(test, planes, slopeHint, true, toFile);
+    auto throughGrok = libraryEncode(test, planes, slopeHint, true, toFile).codestream;
     if(mercuryCompressed == test.writePlt)
     {
       fprintf(stderr, "%s: grok %s the frame to mercury\n", test.name,
@@ -285,10 +254,6 @@ bool runCase(const Case& test)
     if(!sameCodestream(test, toFile ? "grok file" : "grok", classic, throughGrok))
       return false;
   }
-  // a requested ratio only reaches mercury through grok's parameter setup
-  if(test.layerRate == 0.0 && !test.writePlt &&
-     !sameCodestream(test, "direct", classic, mercuryEncode(test, planes, slopeHint, &threshold)))
-    return false;
   printf("%s: %zu bytes identical\n", test.name, classic.size());
   return true;
 }

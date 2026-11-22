@@ -46,13 +46,8 @@ private:
   std::unique_ptr<grk_cparameters> pluginParameters_;
   uint64_t headerStartPosition_ = 0;
   uint64_t headerEndPosition_ = 0;
-  struct MercuryEncodeSettings
-  {
-    double layerRate;
-    uint64_t maxCodestreamSize;
-  };
-  // set unless GRK_MERCURY_ENCODE=0, when mercury writes the same codestream as classic
-  std::optional<MercuryEncodeSettings> mercuryEncode_;
+  // false with GRK_MERCURY_ENCODE=0, mercury writes the same codestream as classic
+  bool mercuryEncode_ = false;
   // RGB depth of a frame whose XYZ transform mercury runs
   std::optional<uint8_t> mercuryXyzSourcePrecision_;
   bool deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image);

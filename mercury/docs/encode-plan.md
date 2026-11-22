@@ -19,8 +19,9 @@ targets are DCI 2K and 4K, then large untiled lossy images.
 
 ## Output memory
 
-Mercury writes packets in classic's order and seeks back to patch Psot, TLM
-and the jp2c box length, like classic does. The output must be seekable.
+Classic writes the main header, EOC and TLM. Mercury writes the tile-parts in
+classic's order, and classic seeks back to patch TLM and the jp2c box length.
+The output must be seekable.
 
 What gets held:
 
@@ -92,21 +93,21 @@ passes together.
    - encode nodes per subband, column-sliced: collect a block row, quantize, call T1
    - store node for the tile's code-block records
    - multiple tiles run one tile row at a time
-4. **T2 and PCRD.** DCI 2K and 4K done, single thread: `encode::dci::encode_dci_frame` through `mercury_encode_dci`. `grk_mercury_dci_encode_test` compares whole codestreams with classic's library, slope hint and tolerance included. Other parameter sets, SOP, EPH and PLT are open.
+4. **T2 and PCRD.** Done, single tile: `encode::tile::encode_tile` through `mercury_encode_tile`. `grk_mercury_dci_encode_test` compares whole DCI codestreams with classic's library, slope hint and tolerance included. SOP, EPH, PLT and more than one layer are open.
    - packet bit writer with the 0xFF stuffing rule, tag tree encoder
    - markers: SOC, SIZ, COD, COC, QCD, QCC, POC, SOT, SOD, EOC, TLM, PLT
    - convex hull and bisect ported from `RateControl.cpp` and `TileProcessor_RateControl.cpp`, same iteration order and double arithmetic, both caps
    - all progression orders, POC, tile-parts split by component, SOP, EPH
 
    Test: byte-identical with classic on DCI 2K and 4K, then other parameter sets.
-5. **Parameters over the C ABI.** Replace the DCI constants in `encode::dci` with a parameter struct built from grok's `CodingParams`: SIZ, COD and COC, QCD and QCC, progression and POC, block size, precincts, guard bits, TLM, PLT and COM. The marker writer becomes general and DCI becomes one parameter set. `grk_mercury_dci_encode_test` stays byte-identical, and a new test compares the s2 parameter set with classic.
+5. **Parameters over the C ABI.** Done. Grok passes the same `MercuryMainHeader` the decoder takes (`fillMercuryCodingHeader`), plus classic's layer byte budget, the component cap and the tile-part split. Classic writes the main header, so mercury has no marker writer, and band steps come from the header's QCD and QCC. `codingMatchesMercury` and `parametersMatchMercury` in `mercury_compress.cpp` list what mercury takes: one tile, one layer, PCRD, 9/7, code-block style 0, int32 unsigned planes of one precision, any progression and POC, precincts, and tile-parts split by component under CPRL. `grk_mercury_tile_encode_test` compares eight parameter sets with classic and checks three that go to classic.
 6. **int16 lossy path.** Classic keeps lossy images up to 10 bit in int16 through the ICT, the 9/7 and quantization (`forward97FitsInt16`). Mercury matches it bit for bit:
    - an `AnalysisSample` impl for `i16`
    - row kernels in `native/transform/hwy_dwt_analysis.cpp` with classic's Q15 expressions and `forward97Int16LevelFactor`
    - band coder input quantized like `hwy_quantize16_to_sign_magnitude`
 
    Classic's `encode_97_16_v` lifts in row order with the same arithmetic per sample, so a row kernel can match it exactly. `grk_mercury_forward_dwt_test` gets an int16 oracle.
-7. **Rate control from a compression ratio.** Derive `max_layer_length` from `-r` the way `CodeStreamCompress::updateRates` does for a general image. One layer. Measure the bytes PCRD holds for s2, every coded pass of the tile, before counting on the memory gain.
+7. **PCRD memory.** Measure the bytes PCRD holds for s2, every coded pass of the tile, before counting on the memory gain.
 8. **Threading on one large image.** DCI feeds rows from one thread for all components. The 9/7 runs at 10 ms per 4K plane, about 8.8 M samples, so the analysis of s2's 362 M samples takes about 410 ms on one thread. Split the front end, either one feeder per component or each level's vertical lifting split by columns across threads, and keep whichever measures faster.
 9. **Strip API in grok.** Push entry point, eligibility checks, and the classic fallback. `grk_compress` reads TIFF strip by strip and pushes them. Phases 5 to 8 take whole int16 planes and serve only for byte-identity and timing until this lands.
 10. **Tiled images**, one tile row at a time.

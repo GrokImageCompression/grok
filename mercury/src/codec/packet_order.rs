@@ -145,6 +145,7 @@ pub struct PacketSlot {
     pub layer: u16,
     /// Precinct raster index within its (comp, res) precinct grid.
     pub prec: u32,
+    pub progression_volume: u16,
 }
 
 pub fn order_packets(
@@ -174,7 +175,7 @@ pub fn order_packets(
     };
     let mut pkts: Vec<PacketSlot> = Vec::new();
     let mut vol_pkts: Vec<([u64; 5], PacketSlot)> = Vec::new();
-    for vol in &volumes {
+    for (volume, vol) in volumes.iter().enumerate() {
         vol_pkts.clear();
         for c in vol.comp_s as usize..vol.comp_e as usize {
             for r in vol.res_s as usize..(vol.res_e as usize).min(grids[c].len()) {
@@ -197,6 +198,7 @@ pub fn order_packets(
                                 res: r as u8,
                                 layer: l,
                                 prec: prec as u32,
+                                progression_volume: volume as u16,
                             },
                         ));
                     }

@@ -60,19 +60,6 @@ impl TilePacketWriter {
         Self { order, precincts }
     }
 
-    // one tile part per run of packets from one component
-    pub fn component_runs(&self) -> usize {
-        let mut runs = 0;
-        let mut previous = None;
-        for slot in &self.order {
-            if previous != Some(slot.comp) {
-                runs += 1;
-                previous = Some(slot.comp);
-            }
-        }
-        runs
-    }
-
     // `included` holds the passes each block includes, per band of `bands`
     pub fn write_packets(
         &mut self,

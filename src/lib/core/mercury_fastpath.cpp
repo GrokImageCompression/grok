@@ -6,6 +6,7 @@
  */
 
 #include "mercury_fastpath.h"
+#include "mercury_header.h"
 
 #if defined(GRK_MERCURY_BUILD)
 
@@ -552,24 +553,6 @@ namespace
     return true;
   }
 
-  // MercuryMainHeader points into these vectors, a moved vector keeps its buffer
-  struct MercuryHeaderStorage
-  {
-    std::vector<MercurySizComp> comps;
-    std::vector<MercuryPrecinct> precincts;
-    std::vector<uint8_t> qcdRanges;
-    std::vector<float> qcdSteps;
-    std::vector<MercuryQccOverride> qcc;
-    std::vector<std::vector<uint8_t>> qccRanges;
-    std::vector<std::vector<float>> qccSteps;
-    std::vector<MercuryCocOverride> coc;
-    std::vector<std::vector<MercuryPrecinct>> cocPrecincts;
-    std::vector<MercuryProgressionVolume> poc;
-    std::vector<MercuryTlmEntry> tlm;
-    MercuryMainHeader header;
-    MercuryDecodeParams params;
-  };
-
   struct AsyncTile
   {
     uint16_t index = 0;
@@ -631,7 +614,9 @@ namespace
   // one mercury plan per tile, woven on the taskflow executor under classic's back-pressure
   struct MercuryTileState final : MercuryAsyncDecode
   {
-    std::unique_ptr<MercuryHeaderStorage> header;
+    std::unique_ptr<MercuryCodingHeader> header;
+    MercuryDecodeParams decodeParams;
+    std::vector<MercuryTlmEntry> tlmEntries;
     std::unique_ptr<MercuryReaders> readers;
     const GrkImage* composite = nullptr;
     // grk_decompress_get_image reads this after the full wait
@@ -818,7 +803,7 @@ namespace
       MercuryMainHeader tileHeader = header->header;
       tileHeader.tlm = tile.parts.data();
       tileHeader.num_tlm = static_cast<uint32_t>(tile.parts.size());
-      MercuryDecodeParams params = header->params;
+      MercuryDecodeParams params = decodeParams;
       params.win_x0 = tile.window.x0;
       params.win_y0 = tile.window.y0;
       params.win_x1 = tile.window.x1;
@@ -1540,6 +1525,160 @@ static TileSamples narrowestTileSamples(const GrkImage* img)
   return TileSamples::Int32;
 }
 
+void fillMercuryCodingHeader(MercuryCodingHeader& coding, const CodingParams& cp,
+                             TileCodingParams& tcp, const GrkImage& components,
+                             const GrkImage& canvas)
+{
+  const uint16_t nc = components.numcomps;
+  const auto& t0 = tcp.tccps_[0];
+  coding.comps.resize(nc);
+  for(uint16_t c = 0; c < nc; c++)
+  {
+    coding.comps[c].precision = components.comps[c].prec;
+    coding.comps[c].is_signed = components.comps[c].sgnd != 0;
+    coding.comps[c].xr_siz = components.comps[c].dx;
+    coding.comps[c].yr_siz = components.comps[c].dy;
+  }
+
+  const uint8_t numres = t0.numresolutions_;
+  if(t0.csty_ & CCP_CSTY_PRECINCT)
+  {
+    coding.precincts.resize(numres);
+    for(uint8_t r = 0; r < numres; r++)
+    {
+      coding.precincts[r].width = 1u << t0.precWidthExp_[r];
+      coding.precincts[r].height = 1u << t0.precHeightExp_[r];
+    }
+  }
+
+  // Quantization: QCD from component 0, plus a per-component override for the
+  // rest. Mercury applies each component's own quant; identical values decode
+  // identically whether they originated in a QCD or a QCC marker.
+  //
+  // A component's band count follows its own resolution count (3*levels + 1);
+  // use it rather than numStepSizes_, which grok's readQcd leaves at 0 for the
+  // components it propagates the QCD to (it copies the stepsizes_ array but
+  // not the count).
+  auto fillQuant = [](const auto& t, std::vector<uint8_t>& ranges, std::vector<float>& steps,
+                      MercuryQuant& q) {
+    const uint32_t nbands = (uint32_t)(3 * (t.numresolutions_ - 1) + 1);
+    q.guard_bits = t.numgbits_;
+    // readQcd expands a derived QCD into one step per band, so mercury sees it expounded
+    q.style = t.qntsty_ == CCP_QNTSTY_SIQNT ? CCP_QNTSTY_SEQNT : t.qntsty_;
+    ranges.clear();
+    steps.clear();
+    if(t.qntsty_ == CCP_QNTSTY_NOQNT)
+    {
+      ranges.resize(nbands);
+      for(uint32_t b = 0; b < nbands; b++)
+        ranges[b] = t.stepsizes_[b].expn;
+    }
+    else
+    {
+      steps.resize(nbands);
+      for(uint32_t b = 0; b < nbands; b++)
+        steps[b] =
+            (1.0f + (float)t.stepsizes_[b].mant / 2048.0f) / (float)(1u << t.stepsizes_[b].expn);
+    }
+    q.ranges = ranges.empty() ? nullptr : ranges.data();
+    q.num_ranges = (uint32_t)ranges.size();
+    q.steps = steps.empty() ? nullptr : steps.data();
+    q.num_steps = (uint32_t)steps.size();
+  };
+
+  MercuryMainHeader& mhdr = coding.header;
+  memset(&mhdr, 0, sizeof mhdr);
+  fillQuant(t0, coding.qcdRanges, coding.qcdSteps, mhdr.qcd);
+
+  coding.qcc.resize(nc > 1 ? (size_t)(nc - 1) : 0);
+  coding.qccRanges.resize(coding.qcc.size());
+  coding.qccSteps.resize(coding.qcc.size());
+  for(uint16_t c = 1; c < nc; c++)
+  {
+    auto& ov = coding.qcc[c - 1];
+    ov.comp = c;
+    fillQuant(tcp.tccps_[c], coding.qccRanges[c - 1], coding.qccSteps[c - 1], ov.quant);
+  }
+
+  // Coding style: the COD fields below come from component 0, and a COC gives
+  // each other component its own decomposition count, block size, block style,
+  // wavelet, and precincts.
+  coding.coc.resize(tcp.sawCoc_ && nc > 1 ? (size_t)(nc - 1) : 0);
+  coding.cocPrecincts.resize(coding.coc.size());
+  for(size_t i = 0; i < coding.coc.size(); i++)
+  {
+    const auto& t = tcp.tccps_[i + 1];
+    auto& ov = coding.coc[i];
+    ov.comp = (uint32_t)(i + 1);
+    ov.num_levels = (uint8_t)(t.numresolutions_ - 1);
+    ov.block_width = 1u << t.cblkw_expn_;
+    ov.block_height = 1u << t.cblkh_expn_;
+    ov.modes = t.cblkStyle_;
+    ov.reversible = (t.qmfbid_ == 1);
+    if(t.csty_ & CCP_CSTY_PRECINCT)
+    {
+      coding.cocPrecincts[i].resize(t.numresolutions_);
+      for(uint8_t r = 0; r < t.numresolutions_; r++)
+      {
+        coding.cocPrecincts[i][r].width = 1u << t.precWidthExp_[r];
+        coding.cocPrecincts[i][r].height = 1u << t.precHeightExp_[r];
+      }
+    }
+    ov.precincts = coding.cocPrecincts[i].empty() ? nullptr : coding.cocPrecincts[i].data();
+    ov.num_precincts = (uint32_t)coding.cocPrecincts[i].size();
+  }
+
+  // Main-header POC volume list; mercury clamps and rejects it the way
+  // finalizePocs does, so hand it over raw.
+  if(tcp.hasPoc())
+  {
+    coding.poc.resize(tcp.getNumProgressions());
+    for(size_t i = 0; i < coding.poc.size(); i++)
+    {
+      const auto& prog = tcp.progressionOrderChange_[i];
+      auto& vol = coding.poc[i];
+      vol.res_s = prog.res_s;
+      vol.comp_s = prog.comp_s;
+      vol.lay_e = prog.lay_e;
+      vol.res_e = prog.res_e;
+      vol.comp_e = prog.comp_e;
+      vol.order = (uint8_t)prog.progression;
+    }
+  }
+
+  // SIZ canvas from the header image: under a decode window the composite's
+  // bounds are the window rect, not the image, and tile geometry needs the
+  // real canvas.
+  mhdr.x_siz = canvas.x1;
+  mhdr.y_siz = canvas.y1;
+  mhdr.x_o_siz = canvas.x0;
+  mhdr.y_o_siz = canvas.y0;
+  mhdr.xt_siz = cp.t_width_;
+  mhdr.yt_siz = cp.t_height_;
+  mhdr.xt_o_siz = cp.tx0_;
+  mhdr.yt_o_siz = cp.ty0_;
+  mhdr.comps = coding.comps.data();
+  mhdr.num_comps = nc;
+  mhdr.order = (uint8_t)tcp.prg_;
+  mhdr.num_layers = tcp.numLayers_;
+  mhdr.use_ycc = (tcp.mct_ & 1) != 0;
+  mhdr.num_levels = (uint8_t)(numres - 1);
+  mhdr.block_width = 1u << t0.cblkw_expn_;
+  mhdr.block_height = 1u << t0.cblkh_expn_;
+  mhdr.modes = t0.cblkStyle_;
+  mhdr.reversible = (t0.qmfbid_ == 1);
+  mhdr.use_sop = (tcp.csty_ & CP_CSTY_SOP) != 0;
+  mhdr.use_eph = (tcp.csty_ & CP_CSTY_EPH) != 0;
+  mhdr.precincts = coding.precincts.empty() ? nullptr : coding.precincts.data();
+  mhdr.num_precincts = (uint32_t)coding.precincts.size();
+  mhdr.qcc = coding.qcc.empty() ? nullptr : coding.qcc.data();
+  mhdr.num_qcc = (uint32_t)coding.qcc.size();
+  mhdr.coc = coding.coc.empty() ? nullptr : coding.coc.data();
+  mhdr.num_coc = (uint32_t)coding.coc.size();
+  mhdr.poc = coding.poc.empty() ? nullptr : coding.poc.data();
+  mhdr.num_poc = (uint32_t)coding.poc.size();
+}
+
 bool mercuryFastPath(CodeStreamDecompress& cs)
 {
   const char* mercuryEnv = std::getenv("GRK_MERCURY");
@@ -1659,156 +1798,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
         MFP_BAIL("main QCD has fewer step sizes than the sub-bands it covers");
     }
 
-  std::vector<MercurySizComp> mhComps(nc);
-  for(uint16_t c = 0; c < nc; c++)
-  {
-    mhComps[c].precision = img->comps[c].prec;
-    mhComps[c].is_signed = img->comps[c].sgnd != 0;
-    mhComps[c].xr_siz = img->comps[c].dx;
-    mhComps[c].yr_siz = img->comps[c].dy;
-  }
-
-  const uint8_t numres = t0.numresolutions_;
-  std::vector<MercuryPrecinct> mhPrec;
-  if(t0.csty_ & CCP_CSTY_PRECINCT)
-  {
-    mhPrec.resize(numres);
-    for(uint8_t r = 0; r < numres; r++)
-    {
-      mhPrec[r].width = 1u << t0.precWidthExp_[r];
-      mhPrec[r].height = 1u << t0.precHeightExp_[r];
-    }
-  }
-
-  // Quantization: QCD from component 0, plus a per-component override for the
-  // rest. Mercury applies each component's own quant; identical values decode
-  // identically whether they originated in a QCD or a QCC marker.
-  //
-  // A component's band count follows its own resolution count (3*levels + 1);
-  // use it rather than numStepSizes_, which grok's readQcd leaves at 0 for the
-  // components it propagates the QCD to (it copies the stepsizes_ array but
-  // not the count).
-  auto fillQuant = [](const auto& t, std::vector<uint8_t>& ranges, std::vector<float>& steps,
-                      MercuryQuant& q) {
-    const uint32_t nbands = (uint32_t)(3 * (t.numresolutions_ - 1) + 1);
-    q.guard_bits = t.numgbits_;
-    // readQcd expands a derived QCD into one step per band, so mercury sees it expounded
-    q.style = t.qntsty_ == CCP_QNTSTY_SIQNT ? CCP_QNTSTY_SEQNT : t.qntsty_;
-    ranges.clear();
-    steps.clear();
-    if(t.qntsty_ == CCP_QNTSTY_NOQNT)
-    {
-      ranges.resize(nbands);
-      for(uint32_t b = 0; b < nbands; b++)
-        ranges[b] = t.stepsizes_[b].expn;
-    }
-    else
-    {
-      steps.resize(nbands);
-      for(uint32_t b = 0; b < nbands; b++)
-        steps[b] =
-            (1.0f + (float)t.stepsizes_[b].mant / 2048.0f) / (float)(1u << t.stepsizes_[b].expn);
-    }
-    q.ranges = ranges.empty() ? nullptr : ranges.data();
-    q.num_ranges = (uint32_t)ranges.size();
-    q.steps = steps.empty() ? nullptr : steps.data();
-    q.num_steps = (uint32_t)steps.size();
-  };
-
-  MercuryMainHeader mhdr;
-  memset(&mhdr, 0, sizeof mhdr);
-  std::vector<uint8_t> qcdRanges;
-  std::vector<float> qcdSteps;
-  fillQuant(t0, qcdRanges, qcdSteps, mhdr.qcd);
-
-  std::vector<MercuryQccOverride> mhQcc(nc > 1 ? (size_t)(nc - 1) : 0);
-  std::vector<std::vector<uint8_t>> qccRanges(mhQcc.size());
-  std::vector<std::vector<float>> qccSteps(mhQcc.size());
-  for(uint16_t c = 1; c < nc; c++)
-  {
-    auto& ov = mhQcc[c - 1];
-    ov.comp = c;
-    fillQuant(tcp->tccps_[c], qccRanges[c - 1], qccSteps[c - 1], ov.quant);
-  }
-
-  // Coding style: the COD fields below come from component 0, and a COC gives
-  // each other component its own decomposition count, block size, block style,
-  // wavelet, and precincts.
-  std::vector<MercuryCocOverride> mhCoc(tcp->sawCoc_ && nc > 1 ? (size_t)(nc - 1) : 0);
-  std::vector<std::vector<MercuryPrecinct>> cocPrec(mhCoc.size());
-  for(size_t i = 0; i < mhCoc.size(); i++)
-  {
-    const auto& t = tcp->tccps_[i + 1];
-    auto& ov = mhCoc[i];
-    ov.comp = (uint32_t)(i + 1);
-    ov.num_levels = (uint8_t)(t.numresolutions_ - 1);
-    ov.block_width = 1u << t.cblkw_expn_;
-    ov.block_height = 1u << t.cblkh_expn_;
-    ov.modes = t.cblkStyle_;
-    ov.reversible = (t.qmfbid_ == 1);
-    if(t.csty_ & CCP_CSTY_PRECINCT)
-    {
-      cocPrec[i].resize(t.numresolutions_);
-      for(uint8_t r = 0; r < t.numresolutions_; r++)
-      {
-        cocPrec[i][r].width = 1u << t.precWidthExp_[r];
-        cocPrec[i][r].height = 1u << t.precHeightExp_[r];
-      }
-    }
-    ov.precincts = cocPrec[i].empty() ? nullptr : cocPrec[i].data();
-    ov.num_precincts = (uint32_t)cocPrec[i].size();
-  }
-
-  // Main-header POC volume list; mercury clamps and rejects it the way
-  // finalizePocs does, so hand it over raw.
-  std::vector<MercuryProgressionVolume> mhPoc;
-  if(tcp->hasPoc())
-  {
-    mhPoc.resize(tcp->getNumProgressions());
-    for(size_t i = 0; i < mhPoc.size(); i++)
-    {
-      const auto& prog = tcp->progressionOrderChange_[i];
-      auto& vol = mhPoc[i];
-      vol.res_s = prog.res_s;
-      vol.comp_s = prog.comp_s;
-      vol.lay_e = prog.lay_e;
-      vol.res_e = prog.res_e;
-      vol.comp_e = prog.comp_e;
-      vol.order = (uint8_t)prog.progression;
-    }
-  }
-
-  // SIZ canvas from the header image: under a decode window the composite's
-  // bounds are the window rect, not the image, and tile geometry needs the
-  // real canvas.
-  mhdr.x_siz = cs.headerImage_->x1;
-  mhdr.y_siz = cs.headerImage_->y1;
-  mhdr.x_o_siz = cs.headerImage_->x0;
-  mhdr.y_o_siz = cs.headerImage_->y0;
-  mhdr.xt_siz = cs.cp_.t_width_;
-  mhdr.yt_siz = cs.cp_.t_height_;
-  mhdr.xt_o_siz = cs.cp_.tx0_;
-  mhdr.yt_o_siz = cs.cp_.ty0_;
-  mhdr.comps = mhComps.data();
-  mhdr.num_comps = nc;
-  mhdr.order = (uint8_t)tcp->prg_;
-  mhdr.num_layers = tcp->numLayers_;
-  mhdr.use_ycc = (tcp->mct_ & 1) != 0;
-  mhdr.num_levels = (uint8_t)(numres - 1);
-  mhdr.block_width = 1u << t0.cblkw_expn_;
-  mhdr.block_height = 1u << t0.cblkh_expn_;
-  mhdr.modes = t0.cblkStyle_;
-  mhdr.reversible = (t0.qmfbid_ == 1);
-  mhdr.use_sop = (tcp->csty_ & CP_CSTY_SOP) != 0;
-  mhdr.use_eph = (tcp->csty_ & CP_CSTY_EPH) != 0;
-  mhdr.precincts = mhPrec.empty() ? nullptr : mhPrec.data();
-  mhdr.num_precincts = (uint32_t)mhPrec.size();
-  mhdr.qcc = mhQcc.empty() ? nullptr : mhQcc.data();
-  mhdr.num_qcc = (uint32_t)mhQcc.size();
-  mhdr.coc = mhCoc.empty() ? nullptr : mhCoc.data();
-  mhdr.num_coc = (uint32_t)mhCoc.size();
-  mhdr.poc = mhPoc.empty() ? nullptr : mhPoc.data();
-  mhdr.num_poc = (uint32_t)mhPoc.size();
+  auto coding = std::make_unique<MercuryCodingHeader>();
+  fillMercuryCodingHeader(*coding, cs.cp_, *tcp, *img, *cs.headerImage_);
+  MercuryMainHeader& mhdr = coding->header;
   // zero length: a raw code stream, which runs to the end of the file
   mhdr.codestream_off = cs.codestreamOffset_;
   mhdr.codestream_len = cs.codestreamLength_;
@@ -1962,23 +1954,12 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     // a second decode on this codec joins the previous tiles first
     cs.mercuryAsync_.reset();
     auto state = std::make_unique<MercuryTileState>();
-    state->header = std::make_unique<MercuryHeaderStorage>();
-    state->header->header = mhdr;
-    state->header->params = mparams;
+    state->header = std::move(coding);
+    state->decodeParams = mparams;
     // one strip made HiRISE regions up to 31% slower and saved tiled images no time
     if(singleTile)
-      state->header->params.max_strips = std::max(1u, cores / 4);
-    state->header->comps = std::move(mhComps);
-    state->header->precincts = std::move(mhPrec);
-    state->header->qcdRanges = std::move(qcdRanges);
-    state->header->qcdSteps = std::move(qcdSteps);
-    state->header->qcc = std::move(mhQcc);
-    state->header->qccRanges = std::move(qccRanges);
-    state->header->qccSteps = std::move(qccSteps);
-    state->header->coc = std::move(mhCoc);
-    state->header->cocPrecincts = std::move(cocPrec);
-    state->header->poc = std::move(mhPoc);
-    state->header->tlm = std::move(mhTlm);
+      state->decodeParams.max_strips = std::max(1u, cores / 4);
+    state->tlmEntries = std::move(mhTlm);
     state->readers = std::move(readers);
     if(walkedTLM)
     {
@@ -2041,7 +2022,7 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
       }
     if(state->tiles.empty())
       MFP_BAIL("no tiles slated");
-    for(const auto& part : state->header->tlm)
+    for(const auto& part : state->tlmEntries)
       if(AsyncTile* tile = state->tileAt(part.tile))
         tile->parts.push_back(part);
     if(state->walkedTLM)

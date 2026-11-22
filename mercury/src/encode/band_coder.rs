@@ -8,21 +8,6 @@ use super::stripe_queue::{StripeJob, StripeQueue, StripeResults};
 // classic's maxCodePassesPerBlock
 const MAX_CODING_PASSES: usize = 94;
 
-#[derive(Default, Clone, Copy)]
-pub(crate) struct CodingStats {
-    pub coded_bytes: u64,
-    pub coding_passes: u64,
-    pub blocks: u64,
-}
-
-impl CodingStats {
-    pub fn add(&mut self, other: CodingStats) {
-        self.coded_bytes += other.coded_bytes;
-        self.coding_passes += other.coding_passes;
-        self.blocks += other.blocks;
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(crate) struct CodedPass {
     // cumulative bytes through this pass
@@ -68,14 +53,6 @@ impl CodedBand {
         self.blocks.append(&mut other.blocks);
         self.passes.append(&mut other.passes);
         self.bytes.append(&mut other.bytes);
-    }
-
-    pub fn stats(&self) -> CodingStats {
-        CodingStats {
-            coded_bytes: self.bytes.len() as u64,
-            coding_passes: self.passes.len() as u64,
-            blocks: self.blocks.len() as u64,
-        }
     }
 }
 

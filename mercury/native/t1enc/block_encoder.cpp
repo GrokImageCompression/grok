@@ -630,35 +630,6 @@ static const double mct_norms_irrev[] = {std::sqrt(3.0000), std::sqrt(3.2584), s
 #define MERCURY_T1ENC_API __attribute__((visibility("default")))
 #endif
 
-// grok's Quantizer::generate for one irreversible band, in its band order
-extern "C" MERCURY_T1ENC_API void mercury_t1_band_step(uint8_t numresolutions,
-                                                       uint8_t max_bit_depth, uint8_t bandno,
-                                                       double stepScale, uint8_t* exponent,
-                                                       uint16_t* mantissa)
-{
-  using namespace mercury_native::t1enc;
-  const bool isReversible = false;
-  auto floorlog2Step = [](uint32_t step) { return (int32_t)std::bit_width(step) - 1; };
-  uint8_t resno = (bandno == 0) ? 0 : (uint8_t)(((bandno - 1) / 3 + 1));
-  uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
-  uint8_t level = (uint8_t)(numresolutions - 1 - resno);
-  uint32_t gain = (orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2);
-
-  double stepsize = 1.0;
-  if(!isReversible)
-    stepsize = stepScale / BlockEncoder::getnorm(level, orient, false);
-  // T.800 equation E-3 codes steps relative to 2^(precision + gain)
-  uint32_t step = (uint32_t)floor(stepsize / (1 << gain) * 8192.0);
-  int32_t p, n;
-  p = floorlog2Step(step) - 13;
-  n = 11 - floorlog2Step(step);
-  uint32_t mant = (n < 0 ? step >> -n : step << n) & 0x7ff;
-  int32_t expn = (int32_t)max_bit_depth - p;
-  assert(expn >= 0);
-  *exponent = (uint8_t)expn;
-  *mantissa = (uint16_t)mant;
-}
-
 // mct: the samples are a component of grok's irreversible colour transform
 extern "C" MERCURY_T1ENC_API int32_t mercury_t1_encode_block(
     const int32_t* samples, int32_t num_cols, int32_t num_rows, uint32_t max_magnitude,

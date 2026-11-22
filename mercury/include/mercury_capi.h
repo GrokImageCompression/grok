@@ -334,14 +334,27 @@ typedef struct MercuryHostedWeave
 
 int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave);
 
-/* layer_rate 0 derives the rate from max_cs_size */
-int32_t mercury_encode_dci(const int32_t* const* planes, uint32_t stride, uint32_t width,
-                           uint32_t height, bool four_k, uint32_t source_precision,
-                           uint64_t max_cs_size, double layer_rate, uint64_t max_comp_size,
-                           uint16_t slope_hint, double rate_tolerance, bool apply_xyz,
-                           bool write_tlm, uint32_t threads, const uint8_t* comment,
-                           uint32_t comment_len, uint8_t* out, uint64_t out_capacity,
-                           uint64_t* out_len, uint16_t* slope_threshold);
+typedef struct MercuryEncodeParams
+{
+  uint32_t max_layer_length;
+  /* 0 for no per-component cap */
+  uint64_t max_comp_size;
+  uint16_t slope_hint;
+  double rate_tolerance;
+  bool split_by_component;
+  /* 0 for no XYZ conversion */
+  uint32_t xyz_source_precision;
+  /* 0 for every core */
+  uint32_t threads;
+} MercuryEncodeParams;
+
+/* called once per tile-part with its bytes from SOT to the last packet */
+typedef void (*mercury_tile_part_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
+
+int32_t mercury_encode_tile(const MercuryMainHeader* header, const MercuryEncodeParams* params,
+                            const int32_t* const* planes, uint32_t stride,
+                            mercury_tile_part_fn write_tile_part, void* write_ctx,
+                            uint16_t* slope_threshold);
 
 #ifdef __cplusplus
 }

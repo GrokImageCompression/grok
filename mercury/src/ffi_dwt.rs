@@ -197,15 +197,6 @@ unsafe extern "C" {
         samples: i32,
     );
 
-    pub fn mercury_t1_band_step(
-        numresolutions: u8,
-        max_bit_depth: u8,
-        bandno: u8,
-        step_scale: f64,
-        exponent: *mut u8,
-        mantissa: *mut u16,
-    );
-
     pub fn mercury_rate_convex_hull(
         lens: *const u16,
         distortions: *const f64,
