@@ -271,11 +271,14 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             block->qShift = tilec->qShift();
             block->resno = resno;
             block->roishift = tccp->roishift_;
-            block->stepsize = band->stepsize_;
+            // WaveletReverse97_16 uses a 2/K inverse to keep HH coefficients in int16 range
+            bool gainFreeStep = tilec->is16BitDwt() && tccp->qmfbid_ == 0;
+            block->stepsize =
+                gainFreeStep ? band->stepsize_ / (float)(1u << band->log2Gain()) : band->stepsize_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
             if(htBlock)
               block->k_msbs = (uint8_t)(block->k_msbs + cblk->htPlaceholderBitPlanes());
-            block->R_b = prec_ + gain_b[band->orientation_];
+            block->R_b = prec_ + band->log2Gain();
           };
           if(wholeTileDecoding)
           {

@@ -96,7 +96,7 @@ namespace HWY_NAMESPACE
 
   /* 9/7 lifting constants (inside HWY_NAMESPACE for multi-target compilation) */
   static const float hwy_K = 1.230174105f;
-  static const float hwy_twice_invK = 1.625732422f;
+  static const float hwy_invK = 0.812866211f;
   static const float hwy_dwt_alpha = 1.586134342f;
   static const float hwy_dwt_beta = 0.052980118f;
   static const float hwy_dwt_gamma = -0.882911075f;
@@ -328,11 +328,11 @@ namespace HWY_NAMESPACE
     const uint32_t x0_l = win_l.x0, x1_l = win_l.x1;
     const uint32_t x0_h = win_h.x0, x1_h = win_h.x1;
     const auto kV = Set(df, hwy_K);
-    const auto invKV = Set(df, hwy_twice_invK);
-    /* When trivial, step_97_full returns early without scaling — don't fuse */
+    const auto invKV = Set(df, hwy_invK);
     const bool trivial = (!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1);
     const auto scaleL = trivial ? Set(df, 1.0f) : kV;
-    const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
+    // T.800 1D_SR halves a lone odd sample
+    const auto scaleH = trivial ? Set(df, 0.5f) : invKV;
 
     uint32_t j = 0;
 
@@ -470,11 +470,11 @@ namespace HWY_NAMESPACE
     const uint32_t L = (uint32_t)Lanes(df);
     const uint32_t PLL = 2 * L;
     const auto kV = Set(df, hwy_K);
-    const auto invKV = Set(df, hwy_twice_invK);
-    /* When trivial, step_97_full returns early without scaling — don't fuse */
+    const auto invKV = Set(df, hwy_invK);
     const bool trivial = (!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1);
     const auto scaleL = trivial ? Set(df, 1.0f) : kV;
-    const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
+    // T.800 1D_SR halves a lone odd sample
+    const auto scaleH = trivial ? Set(df, 0.5f) : invKV;
 
     const bool hasDcShift = (dcShift != 0) || (dcMin != dcMax);
     const auto vShift = Set(di, dcShift);
@@ -656,7 +656,7 @@ static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K = 1.230174105f; /*  10078 */
-static const float twice_invK = 1.625732422f;
+static const float invK = 0.812866211f;
 
 struct Params97
 {
@@ -836,12 +836,17 @@ static void step2_97(const Params97& d, float c)
 /* </summary>                            */
 void WaveletReverse::step_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch)
 {
-  if((!scratch->parity && scratch->dn == 0 && scratch->sn <= 1) ||
-     (scratch->parity && scratch->sn == 0 && scratch->dn >= 1))
+  if(!scratch->parity && scratch->dn == 0 && scratch->sn <= 1)
     return;
+  if(scratch->parity && scratch->sn == 0 && scratch->dn >= 1)
+  {
+    // T.800 1D_SR halves a lone odd sample
+    step1_97(makeParams97(scratch, false, true), 0.5f);
+    return;
+  }
 
   step1_97(makeParams97(scratch, true, true), K);
-  step1_97(makeParams97(scratch, false, true), twice_invK);
+  step1_97(makeParams97(scratch, false, true), invK);
   step2_97(makeParams97(scratch, true, false), dwt_delta);
   step2_97(makeParams97(scratch, false, false), dwt_gamma);
   step2_97(makeParams97(scratch, true, false), dwt_beta);

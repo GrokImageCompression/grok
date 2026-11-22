@@ -90,18 +90,18 @@ void Quantizer::generate(uint8_t decomps, uint8_t max_bit_depth,
     uint8_t resno = (bandno == 0) ? 0 : (uint8_t)(((bandno - 1) / 3 + 1));
     uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
     uint8_t level = (uint8_t)(numresolutions - 1 - resno);
-    uint32_t gain =
-        (!isReversible) ? 0 : ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
+    uint32_t gain = (orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2);
 
     double stepsize = 1.0;
     if(!isReversible)
-      stepsize = stepScale * (1 << (gain)) / t1::BlockCoder::getnorm(level, orient, false);
-    uint32_t step = (uint32_t)floor(stepsize * 8192.0);
+      stepsize = stepScale / t1::BlockCoder::getnorm(level, orient, false);
+    // T.800 equation E-3 codes steps relative to 2^(precision + gain)
+    uint32_t step = (uint32_t)floor(stepsize / (1 << gain) * 8192.0);
     int32_t p, n;
     p = floorlog2(step) - 13;
     n = 11 - floorlog2(step);
     uint32_t mant = (n < 0 ? step >> -n : step << n) & 0x7ff;
-    int32_t expn = (int32_t)(max_bit_depth + gain) - p;
+    int32_t expn = (int32_t)max_bit_depth - p;
     assert(expn >= 0);
     if(isReversible)
       u8_SPqcd[bandno] = (uint8_t)(expn << 3);

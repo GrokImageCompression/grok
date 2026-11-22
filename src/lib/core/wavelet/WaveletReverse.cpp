@@ -693,7 +693,7 @@ namespace
 
   // magnitude of the analysis high pass response at Nyquist, run as a two sample
   // recursion over the lifting steps in analysis order. the high band arrives
-  // normalized to unit Nyquist gain, so synthesis puts this gain back before lifting.
+  // at twice unit Nyquist gain, the band gain of T.800 Table E-1.
   // the same recursion on a constant signal returns the ATK marker's scale factor.
   double nyquistGain(const TransformKernel& kernel)
   {
@@ -718,11 +718,16 @@ void WaveletReverse::kernelLine(T* line, uint32_t length, uint32_t parity) const
 {
   const auto& kernel = *kernel_;
   if(length == 1)
+  {
+    // T.800 1D_SR halves a lone odd sample
+    if(parity && !kernel.reversible)
+      line[0] = (T)(line[0] / 2);
     return;
+  }
   if(!kernel.reversible)
   {
     double lowScale = kernel.scale;
-    double highScale = nyquistGain(kernel);
+    double highScale = nyquistGain(kernel) / 2;
     for(uint32_t k = 0; k < length; ++k)
       line[k] = (T)(line[k] * (((k + parity) & 1) ? highScale : lowScale));
   }

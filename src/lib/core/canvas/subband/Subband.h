@@ -103,6 +103,12 @@ struct Subband : public Rect32
                            uint32_t precinctGridWidth, Point8 cblk_expn,
                            std::pmr::memory_resource* tileArena);
 
+  uint8_t log2Gain() const
+  {
+    // T.800 Table E-1 sub-band gains
+    return orientation_ == t1::BAND_ORIENT_LL ? 0 : (orientation_ == t1::BAND_ORIENT_HH ? 2 : 1);
+  }
+
   /**
    * @brief band orientation
    *

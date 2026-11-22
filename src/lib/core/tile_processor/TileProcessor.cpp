@@ -223,8 +223,9 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
           auto band = &res->band[bandIndex];
           auto plugin_band = plugin_res->band[bandIndex];
           assert(plugin_band->num_precincts == res->precinctGrid_.area());
-          //!!!! plugin still uses stepsize/2
-          plugin_band->stepsize = band->stepsize_ / 2;
+          // grok-gpu-plugin uses a 2/K inverse 9/7, whose steps exclude the band gain
+          uint8_t pluginGain = tcp_->tccps_[compno].qmfbid_ == 0 ? band->log2Gain() : 0;
+          plugin_band->stepsize = band->stepsize_ / 2 / (float)(1u << pluginGain);
           plugin_band->num_bit_planes = band->maxBitPlanes_;
           for(auto prc : band->precincts_)
           {
@@ -453,15 +454,7 @@ bool TileProcessor::init(void)
                                                tccp->verticalDepth_[level], band->orientation_,
                                                unreducedTileComp));
 
-        /* Table E-1 - Sub-band gains */
-        /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
-        /* the test (!isCompressor_ && l_tccp->qmfbid == 0) is strongly */
-        /* linked to the use of two_invK instead of invK */
-        const uint32_t log2_gain = (!isCompressor() && tccp->qmfbid_ == 0) ? 0
-                                   : (band->orientation_ == 0)             ? 0
-                                   : (band->orientation_ == 3)             ? 2
-                                                                           : 1;
-        uint32_t numbps = imageComp->prec + log2_gain;
+        uint32_t numbps = imageComp->prec + band->log2Gain();
         auto step_size = tccp->stepsizes_ + tccp->bandOffset_[resno] + bandIndex;
         grk_stepsize derived;
         if(tccp->qntsty_ == CCP_QNTSTY_SIQNT && tccp->dfsIndex_)

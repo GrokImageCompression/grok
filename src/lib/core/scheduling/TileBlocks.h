@@ -20,8 +20,6 @@
 namespace grk
 {
 
-const uint8_t gain_b[4] = {0, 1, 1, 2};
-
 /**
  * @struct ResBlocks
  * @brief store decompression blocks for a resolution
