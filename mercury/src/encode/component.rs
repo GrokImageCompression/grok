@@ -176,6 +176,9 @@ impl<T: CoefficientSample> ComponentEncoder<T> {
 // grok's RGB to X'Y'Z' lookup tables for one source precision
 pub(crate) struct XyzTables(*mut MercuryXyzTables);
 
+// mercury_hwy_forward_xyz_ict only reads the tables mercury_xyz_tables_new filled
+unsafe impl Sync for XyzTables {}
+
 impl XyzTables {
     pub fn warp(source_precision: u32, coded_precision: u32) -> Self {
         Self(unsafe { mercury_xyz_tables_new(source_precision, coded_precision) })

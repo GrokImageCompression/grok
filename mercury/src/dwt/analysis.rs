@@ -10,7 +10,7 @@ use crate::ffi_dwt::{
 // aliases neither neighbour
 pub(crate) trait AnalysisSample: Copy + Default {
     const LIFTING_STEPS: u8;
-    type LevelLifting: Copy;
+    type LevelLifting: Copy + Send;
 
     unsafe fn lift_vertical(
         level: Self::LevelLifting,

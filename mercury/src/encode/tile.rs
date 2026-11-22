@@ -183,41 +183,40 @@ impl<T: CoefficientSample> TileCoder<T> {
         }
     }
 
-    fn finish(mut self) -> Vec<Vec<Vec<Vec<CodedBand>>>> {
+    fn finish(mut self, threads: usize) -> Vec<Vec<Vec<Vec<CodedBand>>>> {
         if let Some(workers) = self.workers.take() {
             workers.finish();
         }
-        self.pending
-            .into_iter()
-            .map(|components| {
-                components
-                    .into_iter()
-                    .map(|resolutions| {
-                        resolutions
-                            .into_iter()
-                            .map(|bands| bands.into_iter().map(PendingBand::collect).collect())
-                            .collect()
-                    })
-                    .collect()
-            })
-            .collect()
+        run_tasks(self.pending, threads, |components| {
+            components
+                .into_iter()
+                .map(|resolutions| {
+                    resolutions
+                        .into_iter()
+                        .map(|bands| bands.into_iter().map(PendingBand::collect).collect())
+                        .collect()
+                })
+                .collect()
+        })
     }
 }
 
-fn push_tile_row<T: CoefficientSample, S>(
+fn push_tile_row<T: CoefficientSample, S: Sync>(
     coder: &mut TileCoder<T>,
     tile_columns: &[(usize, usize)],
     planes: &[&[S]],
     first_sample: usize,
-    feed: impl Fn(&mut [ComponentEncoder<T>], &[&[S]], usize),
+    threads: usize,
+    feed: impl Fn(&mut [ComponentEncoder<T>], &[&[S]], usize) + Sync,
 ) {
-    for (encoders, &(x0, width)) in coder.row_encoders.iter_mut().zip(tile_columns) {
+    let tasks: Vec<_> = coder.row_encoders.iter_mut().zip(tile_columns).collect();
+    run_tasks(tasks, threads, |(encoders, &(x0, width))| {
         let tile_planes: Vec<&[S]> = planes
             .iter()
             .map(|plane| &plane[first_sample + x0..])
             .collect();
         feed(encoders, &tile_planes, width);
-    }
+    });
 }
 
 enum TileSamples {
@@ -402,6 +401,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
+                    self.threads,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 (TileSamples::Int16 { coder, feed }, TileRows::Int16(planes)) => push_tile_row(
@@ -409,6 +409,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
+                    self.threads,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 _ => panic!("plane type does not match the encoder"),
@@ -447,22 +448,23 @@ impl ImageEncoder {
         assert_eq!(self.rows_left(), 0, "rows still to push");
         let (siz, cod) = (&self.header.siz, &self.header.cod);
         let coded = match self.samples {
-            TileSamples::Int32 { coder, .. } => coder.finish(),
-            TileSamples::Int16 { coder, .. } => coder.finish(),
+            TileSamples::Int32 { coder, .. } => coder.finish(self.threads),
+            TileSamples::Int16 { coder, .. } => coder.finish(self.threads),
         };
-        let geoms: Vec<TileGeom> = (0..coded.len())
-            .map(|tile| chart_tile_geom(siz, cod, tile as u16))
-            .collect();
+        let single_tile = coded.len() == 1;
+        let packet_threads = if single_tile { self.threads } else { 1 };
+        let (geoms, mut writers): (Vec<TileGeom>, Vec<TilePacketWriter>) =
+            run_tasks((0..coded.len()).collect(), self.threads, |tile| {
+                let geom = chart_tile_geom(siz, cod, tile as u16);
+                let writer = TilePacketWriter::warp(cod, siz, &geom, packet_threads);
+                (geom, writer)
+            })
+            .into_iter()
+            .unzip();
         let bands: Vec<TileBands> = coded
             .iter()
             .zip(&geoms)
             .map(|(tile, geom)| tile_bands(tile, geom, &self.max_bit_planes))
-            .collect();
-        let single_tile = coded.len() == 1;
-        let packet_threads = if single_tile { self.threads } else { 1 };
-        let mut writers: Vec<TilePacketWriter> = geoms
-            .iter()
-            .map(|geom| TilePacketWriter::warp(cod, siz, geom, packet_threads))
             .collect();
         let allocation = if single_tile {
             let allocation = allocate_rate(&mut writers[0], &bands[0], &self.rate)
