@@ -743,7 +743,11 @@ impl Sample for Q13Sample {
 
 #[inline(always)]
 fn untangle_q13(y: &mut [Q13Sample], cb: &mut [Q13Sample], cr: &mut [Q13Sample]) {
-    let q = |v: f32| Q13Sample(v.round_ties_even().clamp(-32768.0, 32767.0) as i16);
+    let q = |v: f32| {
+        let clamped = v.round_ties_even().clamp(-32768.0, 32767.0);
+        // SAFETY: i16 samples times finite factors are finite, and clamped is in the i16 range
+        Q13Sample(unsafe { clamped.to_int_unchecked::<i32>() } as i16)
+    };
     for ((y, cb), cr) in y.iter_mut().zip(cb.iter_mut()).zip(cr.iter_mut()) {
         let (yv, cbv, crv) = (y.0 as f32, cb.0 as f32, cr.0 as f32);
         let green = crv.mul_add(-CR_FACT_G, yv);
