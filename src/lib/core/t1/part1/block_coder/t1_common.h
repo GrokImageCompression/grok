@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cmath>
 #include <cassert>
+#include <optional>
 
 namespace grk::t1
 {
@@ -57,12 +58,22 @@ const uint32_t T1_CTXNO_AGG = T1_CTXNO_MAG + T1_NUMCTXS_MAG;
 const uint32_t T1_CTXNO_UNI = T1_CTXNO_AGG + T1_NUMCTXS_AGG;
 const uint32_t T1_NUMCTXS = T1_CTXNO_UNI + T1_NUMCTXS_UNI;
 
+struct MqPassEnd
+{
+  uint32_t c;
+  uint32_t a;
+  uint8_t ct;
+  uint8_t lastByte;
+  int32_t lastByteIndex;
+};
+
 struct pass_enc
 {
   uint16_t rate;
   double distortiondec;
   uint16_t len;
   bool term;
+  std::optional<MqPassEnd> unterminatedMqEnd;
 };
 
 struct cblk_enc

@@ -83,6 +83,8 @@ struct mqcoder_backup : public mqcoder_base
    */
   bool partial;
 
+  bool atSegmentStart;
+
   /**
    * @brief local runlen
    */

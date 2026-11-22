@@ -729,6 +729,42 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
 
   POP_MQC();
 }
+static uint16_t shortestMqLength(const uint8_t* data, uint16_t segmentLength, const MqPassEnd& end)
+{
+  // bit 27 - ct of the MQ C register has the weight of the lowest bit of the last output byte
+  uint32_t fractionBits = 27U - end.ct;
+  int64_t one = int64_t(1) << fractionBits;
+  int64_t carry = end.lastByteIndex < 0 ? 0 : (int64_t)data[end.lastByteIndex] - end.lastByte;
+  int64_t lower = (int64_t)end.c - carry * one;
+  int64_t upper = (int64_t)end.c + end.a - carry * one;
+  int32_t length = end.lastByteIndex + 1;
+  // passes need at least one byte, and no segment ends in 0xFF
+  while(length < segmentLength &&
+        (length == 0 || data[length - 1] == 0xFF || lower >= one || upper < one))
+  {
+    // bytes after 0xFF carry a stuffed zero bit
+    int64_t width = length > 0 && data[length - 1] == 0xFF ? 7 : 8;
+    int64_t next = (int64_t)data[length] << fractionBits;
+    lower = lower * (int64_t(1) << width) - next;
+    upper = upper * (int64_t(1) << width) - next;
+    ++length;
+  }
+  return (uint16_t)length;
+}
+
+static void updateUnterminatedMqRates(cblk_enc* cblk, uint8_t numPasses, uint16_t openSegmentLength)
+{
+  uint16_t segmentLength = openSegmentLength;
+  for(uint8_t passno = numPasses; passno > 0;)
+  {
+    auto* pass = cblk->passes + --passno;
+    if(pass->term)
+      segmentLength = pass->rate;
+    else if(pass->unterminatedMqEnd)
+      pass->rate = shortestMqLength(cblk->data, segmentLength, *pass->unterminatedMqEnd);
+  }
+}
+
 double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
                                  uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
                                  const double* mct_norms, uint16_t mct_numcomps, bool doRateControl,
@@ -818,6 +854,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
       mqc->flush_enc();
     pass->term = true;
     pass->rate = mqc->numbytes_enc();
+    pass->unterminatedMqEnd.reset();
   };
 
   double cumwmsedec = 0.0;
@@ -871,28 +908,19 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
     }
     else
     {
-      /* Non terminated pass */
-      // correction term is used for non-terminated passes,
-      // to ensure that maximal bits are
-      // extracted from the partial segment when code block
-      // is truncated at this pass
-      // See page 498 of Taubman and Marcellin for more details
-      // note: we add 1 because rates for non-terminated passes
-      // are based on mqc_numbytes(mqc),
-      // which is always 1 less than actual rate
-      uint16_t rate_extra_bytes;
+      pass->term = false;
       if(type == T1_TYPE_RAW)
       {
-        rate_extra_bytes = mqc->bypass_get_extra_bytes_enc((cblksty & GRK_CBLKSTY_PTERM));
+        pass->rate = (uint16_t)(mqc->numbytes_enc() +
+                                mqc->bypass_get_extra_bytes_enc((cblksty & GRK_CBLKSTY_PTERM)));
+        pass->unterminatedMqEnd.reset();
       }
       else
       {
-        rate_extra_bytes = 4 + 1;
-        if(mqc->ct < 5)
-          rate_extra_bytes++;
+        auto lastByteIndex = (int32_t)(mqc->bp - mqc->start);
+        pass->unterminatedMqEnd = MqPassEnd{mqc->c, mqc->a, mqc->ct, *mqc->bp, lastByteIndex};
+        pass->rate = (uint16_t)(lastByteIndex + 1);
       }
-      pass->term = false;
-      pass->rate = mqc->numbytes_enc() + rate_extra_bytes;
     }
     if(++passtype == 3)
     {
@@ -960,6 +988,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
       // can be noisy and unrepresentative of the overall trend.
       if(linearSlopeThreshold > 0.0f && passno >= 5)
       {
+        updateUnterminatedMqRates(cblk, (uint8_t)(passno + 1), mqc->numbytes_enc());
         int z = static_cast<int>(passno) - 1; // index of just-completed cleanup pass
         int numHullPoints = 0;
         int z0;
@@ -1056,6 +1085,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
       mqc->resetstates();
   }
   cblk->numPassesTotal = passno;
+  updateUnterminatedMqRates(cblk, cblk->numPassesTotal, mqc->numbytes_enc());
   if(cblk->numPassesTotal)
   {
     /* Make sure that pass rates are increasing */

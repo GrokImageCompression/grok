@@ -23,9 +23,9 @@ namespace grk::t1
 mqcoder_backup::mqcoder_backup(void)
     : mqcoder_base(true), flagsBackup_(nullptr), position(BACKUP_DISABLED), curctx_index_(0),
       i(BACKUP_DISABLED), j(BACKUP_DISABLED), k(BACKUP_DISABLED), partial(false),
-      runlen(BACKUP_DISABLED), dataPtr_(nullptr), flagsPtr_(nullptr), _flags(0),
-      numBpsToDecompress_(BACKUP_DISABLED), passno_(BACKUP_DISABLED), passtype_(BACKUP_DISABLED),
-      layer_(BACKUP_DISABLED)
+      atSegmentStart(false), runlen(BACKUP_DISABLED), dataPtr_(nullptr), flagsPtr_(nullptr),
+      _flags(0), numBpsToDecompress_(BACKUP_DISABLED), passno_(BACKUP_DISABLED),
+      passtype_(BACKUP_DISABLED), layer_(BACKUP_DISABLED)
 {}
 
 /**
@@ -68,6 +68,7 @@ mqcoder_backup& mqcoder_backup::operator=(const mqcoder_backup& other)
     j = other.j;
     k = other.k;
     partial = other.partial;
+    atSegmentStart = other.atSegmentStart;
     runlen = other.runlen;
     dataPtr_ = nullptr;
     flagsPtr_ = nullptr;
@@ -88,9 +89,9 @@ bool mqcoder_backup::operator==(const mqcoder_backup& other) const
   }
 
   if(position != other.position || i != other.i || j != other.j || k != other.k ||
-     partial != other.partial || runlen != other.runlen || _flags != other._flags ||
-     numBpsToDecompress_ != other.numBpsToDecompress_ || passno_ != other.passno_ ||
-     passtype_ != other.passtype_ || layer_ != other.layer_)
+     partial != other.partial || atSegmentStart != other.atSegmentStart || runlen != other.runlen ||
+     _flags != other._flags || numBpsToDecompress_ != other.numBpsToDecompress_ ||
+     passno_ != other.passno_ || passtype_ != other.passtype_ || layer_ != other.layer_)
   {
     return false;
   }

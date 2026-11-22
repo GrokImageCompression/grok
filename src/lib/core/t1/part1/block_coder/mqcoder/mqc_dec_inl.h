@@ -66,8 +66,9 @@ const uint8_t B12_POS = 12;
 
 const uint8_t red_zone = 6;
 
-#define DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder) \
-  (coder.backup_->i != BACKUP_DISABLED) && (passno == coder.backup_->passno_)
+#define DEC_PASS_HAS_BACKUP_FOR_CURRENT_PASS(coder)                          \
+  (coder.backup_->i != BACKUP_DISABLED) && !coder.backup_->atSegmentStart && \
+      (passno == coder.backup_->passno_)
 
 #define DEC_PASS_MQC_BACKUP_LOCAL(coder) \
   coder.backup_->a = a;                  \
@@ -89,6 +90,7 @@ const uint8_t red_zone = 6;
   DEC_PASS_MQC_BACKUP_LOCAL(coder);       \
   auto b = coder.backup_;                 \
   b->position = p;                        \
+  b->atSegmentStart = false;              \
   b->i = i;                               \
   b->j = j;                               \
   b->k = k;                               \

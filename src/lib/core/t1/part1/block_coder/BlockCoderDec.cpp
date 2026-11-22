@@ -27,7 +27,8 @@ void BlockCoder::decompressInitOrientation(uint8_t orientation)
 {
   coder.lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
 }
-void BlockCoder::decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks)
+void BlockCoder::decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks,
+                                       uint8_t passno, uint8_t passtype, uint8_t numBpsToDecompress)
 {
   if(type == T1_TYPE_RAW)
   {
@@ -37,6 +38,20 @@ void BlockCoder::decompressInitSegment(uint8_t type, const DataChunk* chunks, ui
   if(cacheAll(cacheStrategy_))
   {
     coder.init_dec(chunks, numChunks);
+    uint32_t availableBytes = 0;
+    for(uint16_t i = 0; i < numChunks; ++i)
+      availableBytes += chunks[i].length;
+    // init_dec reads past the end of short segments
+    if(!coder.finalLayer_ && coder.backup_->i == BACKUP_DISABLED && availableBytes <= red_zone)
+    {
+      decompressBackup();
+      auto backup = coder.backup_;
+      backup->atSegmentStart = true;
+      backup->i = 0;
+      backup->passno_ = passno;
+      backup->passtype_ = passtype;
+      backup->numBpsToDecompress_ = numBpsToDecompress;
+    }
     return;
   }
   uint32_t segmentLength = 0;
@@ -81,19 +96,22 @@ void BlockCoder::decompressBackup(void)
   }
 }
 
-void BlockCoder::decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress)
+bool BlockCoder::decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress)
 {
-  if(coder.cached_ && (coder.backup_->i != BACKUP_DISABLED))
-  {
-    auto cb = coder.backup_;
-    memcpy(uncompressedData_, cb->uncompressedBufBackup_.getBuffer(),
-           (size_t)w_ * h_ * sizeof(int32_t));
-    memcpy(flags_, cb->flagsBackup_, flagsLen_ * sizeof(grk_flag));
-    *passno = cb->passno_;
-    *passtype = cb->passtype_;
-    *numBpsToDecompress = cb->numBpsToDecompress_;
-    coder.restore();
-  }
+  if(!coder.cached_ || coder.backup_->i == BACKUP_DISABLED)
+    return false;
+  auto cb = coder.backup_;
+  memcpy(uncompressedData_, cb->uncompressedBufBackup_.getBuffer(),
+         (size_t)w_ * h_ * sizeof(int32_t));
+  memcpy(flags_, cb->flagsBackup_, flagsLen_ * sizeof(grk_flag));
+  *passno = cb->passno_;
+  *passtype = cb->passtype_;
+  *numBpsToDecompress = cb->numBpsToDecompress_;
+  coder.restore();
+  if(!cb->atSegmentStart)
+    return false;
+  cb->i = BACKUP_DISABLED;
+  return true;
 }
 
 void BlockCoder::decompressDiscardBackup(void)

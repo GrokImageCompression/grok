@@ -42,13 +42,14 @@ public:
   bool decompress_cblk(CodeblockDecompress* cblk, uint8_t orientation, uint32_t cblksty);
   int32_t* getUncompressedData(void);
   void decompressInitOrientation(uint8_t orientation);
-  void decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks);
+  void decompressInitSegment(uint8_t type, const DataChunk* chunks, uint16_t numChunks,
+                             uint8_t passno, uint8_t passtype, uint8_t numBpsToDecompress);
   void decompressUpdateSegment(const DataChunk* chunks, uint16_t numChunks);
   bool decompressPass(uint8_t passno, uint8_t passtype, uint8_t numBpsToDecompress, uint8_t type,
                       uint32_t cblksty);
   void decompressFinish(uint32_t cblksty, bool finalLayer);
   void decompressBackup(void);
-  void decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress);
+  bool decompressRestore(uint8_t* passno, uint8_t* passtype, uint8_t* numBpsToDecompress);
   void decompressDiscardBackup(void);
   void setFinalLayer(bool isFinal);
   static bool cacheAll(uint32_t strategy);

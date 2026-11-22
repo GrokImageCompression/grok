@@ -505,6 +505,40 @@ void BlockEncoder::alloc(uint16_t width, uint16_t height)
   stream_[1] = 0;
 }
 
+struct MqPassEnd
+{
+  uint32_t c;
+  uint32_t a;
+  uint8_t ct;
+  uint8_t lastByte;
+  int32_t lastByteIndex;
+};
+
+static uint16_t shortestMqLength(const uint8_t* data, uint16_t segmentLength, const MqPassEnd& end)
+{
+  // bit 27 - ct of the MQ C register has the weight of the lowest bit of the last output byte
+  uint32_t fractionBits = 27U - end.ct;
+  int64_t one = int64_t(1) << fractionBits;
+  int64_t carry = end.lastByteIndex < 0 ? 0 : (int64_t)data[end.lastByteIndex] - end.lastByte;
+  int64_t lower = (int64_t)end.c - carry * one;
+  int64_t upper = (int64_t)end.c + end.a - carry * one;
+  int32_t length = end.lastByteIndex + 1;
+  // passes need at least one byte, and no segment ends in 0xFF
+  while(length < segmentLength &&
+        (length == 0 || data[length - 1] == 0xFF || lower >= one || upper < one))
+  {
+    // bytes after 0xFF carry a stuffed zero bit
+    int64_t width = length > 0 && data[length - 1] == 0xFF ? 7 : 8;
+    int64_t next = (int64_t)data[length] << fractionBits;
+    lower = lower * (int64_t(1) << width) - next;
+    upper = upper * (int64_t(1) << width) - next;
+    ++length;
+  }
+  return (uint16_t)length;
+}
+
+constexpr uint32_t maxPasses = 3 * 32 - 2;
+
 int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t height,
                              uint32_t maxMagnitude, uint8_t orientation, uint16_t compno,
                              uint8_t level, double stepsize, const double* mctNorms,
@@ -527,6 +561,7 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
   coder.resetstates();
   coder.init_enc(data);
 
+  MqPassEnd passEnds[maxPasses];
   double cumulative = 0;
   int8_t bpno = (int8_t)(numbps - 1);
   uint8_t passtype = CLEANUP_PASS;
@@ -551,8 +586,8 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
     }
     else
     {
-      uint16_t extraBytes = coder.ct < 5 ? 6 : 5;
-      out.rates[passno] = (uint16_t)(coder.numbytes_enc() + extraBytes);
+      auto lastByteIndex = (int32_t)(coder.bp - coder.start);
+      passEnds[passno] = MqPassEnd{coder.c, coder.a, coder.ct, *coder.bp, lastByteIndex};
     }
     out.terminated[passno] = lastPass ? 1 : 0;
     if(++passtype == 3)
@@ -561,6 +596,10 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
       bpno--;
     }
   }
+
+  uint16_t segmentLength = coder.numbytes_enc();
+  for(int32_t p = 0; p + 1 < passno; ++p)
+    out.rates[p] = shortestMqLength(data, segmentLength, passEnds[p]);
 
   // grok's post pass: rates never decrease, and no pass ends on 0xFF
   uint16_t laterRate = coder.numbytes_enc();

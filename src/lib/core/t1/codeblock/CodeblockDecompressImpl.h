@@ -624,7 +624,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     auto seg = toBeDecompressedBegin();
 
     // restore from cache if needed
-    coder->decompressRestore(&passno_, &passtype_, &bitPlanesToDecompress_);
+    if(coder->decompressRestore(&passno_, &passtype_, &bitPlanesToDecompress_))
+      needsSegInit_ = true;
 
     //  IF we have maxed out segment passes
     //  AND this is the final layer so no more passes are possible
@@ -648,7 +649,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       auto numChunks = (uint16_t)seg->data_chunks_.size();
       if(needsSegInit_)
       {
-        coder->decompressInitSegment(type, chunks, numChunks);
+        coder->decompressInitSegment(type, chunks, numChunks, passno_, passtype_,
+                                     bitPlanesToDecompress_);
         needsSegInit_ = false;
       }
       else if(needsSegUpdate_)

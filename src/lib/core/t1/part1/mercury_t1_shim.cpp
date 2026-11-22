@@ -17,13 +17,13 @@
 #include "t1_common.h"
 #include "BlockCoder.h"
 #include "CodeblockDecompress.h"
+#include "grok.h"
 
-extern "C" const int32_t* mercury_grok_t1_decode(const uint8_t* coded_data, int32_t coded_length,
-                                                 int32_t num_passes, int32_t missing_msbs,
-                                                 int32_t k_max_prime, int32_t orientation,
-                                                 int32_t modes, int32_t num_cols, int32_t num_rows,
-                                                 const int32_t* segment_lengths,
-                                                 int32_t num_segments)
+extern "C" GRK_API const int32_t*
+    mercury_grok_t1_decode(const uint8_t* coded_data, int32_t coded_length, int32_t num_passes,
+                           int32_t missing_msbs, int32_t k_max_prime, int32_t orientation,
+                           int32_t modes, int32_t num_cols, int32_t num_rows,
+                           const int32_t* segment_lengths, int32_t num_segments)
 {
   using namespace grk;
   using namespace grk::t1;

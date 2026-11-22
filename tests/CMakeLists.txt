@@ -273,6 +273,10 @@ if(GRK_ENABLE_MERCURY)
   target_link_libraries(grk_mercury_forward_dwt_test ${GROK_CORE_NAME})
   add_test(NAME grk_mercury_forward_dwt_test COMMAND grk_mercury_forward_dwt_test)
 
+  add_executable(grk_mq_truncation_test GrkMqTruncationTest.cpp)
+  target_link_libraries(grk_mq_truncation_test ${GROK_CORE_NAME})
+  add_test(NAME grk_mq_truncation_test COMMAND grk_mq_truncation_test)
+
   add_executable(grk_mercury_forward_ict_test GrkMercuryForwardIctTest.cpp)
   target_link_libraries(grk_mercury_forward_ict_test ${GROK_CORE_NAME})
   add_test(NAME grk_mercury_forward_ict_test COMMAND grk_mercury_forward_ict_test)
