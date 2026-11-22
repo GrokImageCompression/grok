@@ -13,7 +13,7 @@ use super::component::{
     ReversibleRowFeed, XyzTables,
 };
 use super::rate_control::{ImageRateAllocation, RateTargets, allocate_image_rate, allocate_rate};
-use super::stripe_queue::{StripeQueue, StripeWorkers};
+use super::stripe_queue::StripeQueue;
 use super::task_pool::TaskPool;
 use super::tile_packets::{TileBand, TileBands, TilePacketWriter, plt_markers};
 
@@ -141,7 +141,6 @@ struct TileCoder<T: CoefficientSample> {
     components: Vec<ComponentCoding<T>>,
     t1: MercuryT1EncodeFn,
     stripe_queue: Option<Arc<StripeQueue<T>>>,
-    workers: Option<StripeWorkers<T>>,
     // [tile of the current tile row][component]
     row_encoders: Vec<Vec<ComponentEncoder<T>>>,
 }
@@ -151,18 +150,16 @@ impl<T: CoefficientSample> TileCoder<T> {
         header: &MainHeaderIn,
         components: Vec<ComponentCoding<T>>,
         threads: usize,
+        host: HostExecutor,
         t1: MercuryT1EncodeFn,
     ) -> Self {
         // the thread pushing rows codes stripes too whenever the queue is full
         let workers = threads.saturating_sub(1);
-        let stripe_queue =
-            (workers > 0).then(|| Arc::new(StripeQueue::warp(STRIPES_QUEUED_PER_WORKER * workers)));
+        let stripe_queue = (workers > 0)
+            .then(|| Arc::new(StripeQueue::warp(STRIPES_QUEUED_PER_WORKER * workers, host)));
         let mut coder = Self {
             components,
             t1,
-            workers: stripe_queue
-                .clone()
-                .map(|queue| StripeWorkers::spawn(queue, workers)),
             stripe_queue,
             row_encoders: Vec::new(),
         };
@@ -219,12 +216,6 @@ impl<T: CoefficientSample> TileCoder<T> {
             self.start_row(header, tile_row);
         }
         pending
-    }
-
-    fn stop_workers(&mut self) {
-        if let Some(workers) = self.workers.take() {
-            workers.finish();
-        }
     }
 }
 
@@ -347,7 +338,7 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Reversible {
-                    coder: TileCoder::warp(&header, components, params.threads, t1),
+                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
                     feed: ReversibleRowFeed {
                         precision,
                         mct: cod.use_ycc,
@@ -368,7 +359,7 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Int32 {
-                    coder: TileCoder::warp(&header, components, params.threads, t1),
+                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
                     feed: Int32RowFeed {
                         precision,
                         mct: cod.use_ycc,
@@ -389,7 +380,7 @@ impl ImageEncoder {
                     })
                     .collect();
                 TileSamples::Int16 {
-                    coder: TileCoder::warp(&header, components, params.threads, t1),
+                    coder: TileCoder::warp(&header, components, params.threads, params.host, t1),
                     feed: Int16RowFeed {
                         precision,
                         fraction_bits: wavelet.fraction_bits,
@@ -538,11 +529,6 @@ impl ImageEncoder {
 
     pub fn finish(mut self) -> u16 {
         assert_eq!(self.rows_left(), 0, "rows still to push");
-        match &mut self.samples {
-            TileSamples::Int32 { coder, .. } => coder.stop_workers(),
-            TileSamples::Int16 { coder, .. } => coder.stop_workers(),
-            TileSamples::Reversible { coder, .. } => coder.stop_workers(),
-        }
         if self.unwritten_tiles.is_empty() {
             return 0;
         }

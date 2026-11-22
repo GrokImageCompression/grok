@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::capi::MercuryT1EncodeFn;
 use crate::ffi_dwt::{mercury_hwy_quantize_16, mercury_hwy_quantize_97, mercury_rate_convex_hull};
 
-use super::stripe_queue::{StripeJob, StripeQueue, StripeResults};
+use super::stripe_queue::{QueuedStripes, StripeJob, StripeQueue, StripeResults};
 
 // classic's maxCodePassesPerBlock
 const MAX_CODING_PASSES: usize = 94;
@@ -361,6 +361,7 @@ impl<T: QuantizedSample> BandCoder<T> {
             sent: self.pooled.map(|pooled| SentStripes {
                 results: pooled.results,
                 count: pooled.stripes_sent,
+                queue: pooled.queue,
             }),
         }
     }
@@ -369,6 +370,7 @@ impl<T: QuantizedSample> BandCoder<T> {
 struct SentStripes {
     results: Arc<StripeResults>,
     count: usize,
+    queue: Arc<dyn QueuedStripes>,
 }
 
 pub(crate) struct PendingBand {
@@ -381,7 +383,7 @@ impl PendingBand {
         let Some(sent) = self.sent else {
             return self.coded;
         };
-        let stripes = sent.results.take(sent.count);
+        let stripes = sent.results.take(sent.count, sent.queue.as_ref());
         let mut coded = self.coded;
         coded
             .blocks

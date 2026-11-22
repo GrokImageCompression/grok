@@ -1,6 +1,11 @@
+use std::any::Any;
+use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::ffi::c_void;
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread::JoinHandle;
+
+use crate::weft::rt::HostExecutor;
 
 use super::band_coder::{CodedBand, QuantizedSample, StripeLayout, code_stripe};
 
@@ -25,7 +30,7 @@ impl<T: QuantizedSample> StripeJob<T> {
 struct StoredStripes {
     slots: Vec<Option<CodedBand>>,
     stored: usize,
-    abandoned: bool,
+    panic: Option<Box<dyn Any + Send>>,
 }
 
 // one band's coded stripes, filled in any order
@@ -46,15 +51,24 @@ impl StripeResults {
         self.changed.notify_all();
     }
 
-    fn abandon(&self) {
-        self.stripes.lock().unwrap().abandoned = true;
+    fn abandon(&self, panic: Box<dyn Any + Send>) {
+        self.stripes.lock().unwrap().panic.get_or_insert(panic);
         self.changed.notify_all();
     }
 
-    pub fn take(&self, stripes_sent: usize) -> Vec<CodedBand> {
+    fn all_stored(&self, stripes_sent: usize) -> bool {
+        self.stripes.lock().unwrap().stored >= stripes_sent
+    }
+
+    pub fn take(&self, stripes_sent: usize, queue: &dyn QueuedStripes) -> Vec<CodedBand> {
+        // host workers can all be blocked here, with this band's stripes still queued behind them
+        while !self.all_stored(stripes_sent) && queue.code_next() {}
         let mut stripes = self.stripes.lock().unwrap();
         while stripes.stored < stripes_sent {
-            assert!(!stripes.abandoned, "a stripe worker panicked");
+            if let Some(panic) = stripes.panic.take() {
+                drop(stripes);
+                resume_unwind(panic);
+            }
             stripes = self.changed.wait(stripes).unwrap();
         }
         std::mem::take(&mut stripes.slots)
@@ -64,52 +78,54 @@ impl StripeResults {
     }
 }
 
+pub(crate) trait QueuedStripes: Send + Sync {
+    fn code_next(&self) -> bool;
+}
+
+thread_local! {
+    static BLOCK_SCRATCH: RefCell<Vec<i32>> = const { RefCell::new(Vec::new()) };
+}
+
 struct QueueState<T> {
     jobs: VecDeque<StripeJob<T>>,
     spare: Vec<Vec<T>>,
-    closed: bool,
 }
 
 pub(crate) struct StripeQueue<T> {
     state: Mutex<QueueState<T>>,
-    job_ready: Condvar,
+    host: HostExecutor,
     capacity: usize,
 }
 
+extern "C" fn code_submitted_stripe<T: QuantizedSample>(pass: *mut c_void) {
+    // Safety: try_push hands every pass an Arc from Arc::into_raw and the host runs each pass once
+    let queue = unsafe { Arc::from_raw(pass.cast::<StripeQueue<T>>().cast_const()) };
+    queue.code_next();
+}
+
 impl<T: QuantizedSample> StripeQueue<T> {
-    pub fn warp(capacity: usize) -> Self {
+    pub fn warp(capacity: usize, host: HostExecutor) -> Self {
         Self {
             state: Mutex::new(QueueState {
                 jobs: VecDeque::new(),
                 spare: Vec::new(),
-                closed: false,
             }),
-            job_ready: Condvar::new(),
+            host,
             capacity,
         }
     }
 
-    pub fn try_push(&self, job: StripeJob<T>) -> Result<(), StripeJob<T>> {
-        let mut state = self.state.lock().unwrap();
-        if state.jobs.len() >= self.capacity {
-            return Err(job);
+    pub fn try_push(self: &Arc<Self>, job: StripeJob<T>) -> Result<(), StripeJob<T>> {
+        {
+            let mut state = self.state.lock().unwrap();
+            if state.jobs.len() >= self.capacity {
+                return Err(job);
+            }
+            state.jobs.push_back(job);
         }
-        state.jobs.push_back(job);
-        self.job_ready.notify_one();
+        let pass = Arc::into_raw(self.clone()).cast_mut().cast();
+        (self.host.submit)(self.host.ctx, code_submitted_stripe::<T>, pass);
         Ok(())
-    }
-
-    fn pop(&self) -> Option<StripeJob<T>> {
-        let mut state = self.state.lock().unwrap();
-        loop {
-            if let Some(job) = state.jobs.pop_front() {
-                return Some(job);
-            }
-            if state.closed {
-                return None;
-            }
-            state = self.job_ready.wait(state).unwrap();
-        }
     }
 
     pub fn spare_buffer(&self, len: usize) -> Vec<T> {
@@ -121,125 +137,112 @@ impl<T: QuantizedSample> StripeQueue<T> {
     pub fn recycle(&self, buffer: Vec<T>) {
         self.state.lock().unwrap().spare.push(buffer);
     }
-
-    fn close(&self) {
-        self.state.lock().unwrap().closed = true;
-        self.job_ready.notify_all();
-    }
 }
 
-pub(crate) struct StripeWorkers<T: QuantizedSample> {
-    queue: Arc<StripeQueue<T>>,
-    handles: Vec<JoinHandle<()>>,
-}
-
-impl<T: QuantizedSample> StripeWorkers<T> {
-    pub fn spawn(queue: Arc<StripeQueue<T>>, workers: usize) -> Self {
-        let mut pool = Self {
-            queue,
-            handles: Vec::with_capacity(workers),
+impl<T: QuantizedSample> QueuedStripes for StripeQueue<T> {
+    fn code_next(&self) -> bool {
+        let Some(job) = self.state.lock().unwrap().jobs.pop_front() else {
+            return false;
         };
-        for _ in 0..workers {
-            let queue = pool.queue.clone();
-            pool.handles.push(std::thread::spawn(move || {
-                let mut block = Vec::new();
-                while let Some(job) = queue.pop() {
-                    let results = job.results.clone();
-                    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        job.code(&mut block)
-                    })) {
-                        Ok(samples) => queue.recycle(samples),
-                        Err(panic) => {
-                            results.abandon();
-                            std::panic::resume_unwind(panic);
-                        }
-                    }
-                }
-            }));
+        let results = job.results.clone();
+        // host passes are extern "C", where an unwinding panic aborts the process
+        let coded = BLOCK_SCRATCH
+            .with_borrow_mut(|block| catch_unwind(AssertUnwindSafe(|| job.code(block))));
+        match coded {
+            Ok(samples) => self.recycle(samples),
+            Err(panic) => results.abandon(panic),
         }
-        pool
-    }
-
-    pub fn finish(mut self) {
-        self.queue.close();
-        for handle in std::mem::take(&mut self.handles) {
-            if let Err(panic) = handle.join() {
-                std::panic::resume_unwind(panic);
-            }
-        }
+        true
     }
 }
 
-// without this a panicking feed or a failed spawn leaves the workers waiting forever
-impl<T: QuantizedSample> Drop for StripeWorkers<T> {
-    fn drop(&mut self) {
-        self.queue.close();
-        for handle in self.handles.drain(..) {
-            let _ = handle.join();
-        }
-    }
-}
-
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(test)]
 mod tests {
     use super::*;
-    use std::process::{Command, Stdio};
-    use std::time::{Duration, Instant};
+    use crate::encode::band_coder::BandT1Params;
+    use crate::weft::rt::HostRunFn;
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
 
-    const CHILD_ENV: &str = "MERCURY_STRIPE_SPAWN_FAILURE_CHILD";
-    const WORKER_STACK_KB: usize = 256 << 10;
-    const ADDRESS_SPACE_KB: usize = 1536 << 10;
-    const CHILD_TIMEOUT: Duration = Duration::from_secs(30);
-    const WORKERS: usize = 8;
+    const WIDTH: usize = 64;
+    const ROWS: usize = 4;
+    const STRIPES: usize = 6;
 
-    fn address_space_kb() -> usize {
-        let status = std::fs::read_to_string("/proc/self/status").unwrap();
-        let line = status
-            .lines()
-            .find(|line| line.starts_with("VmSize:"))
-            .unwrap();
-        line.split_whitespace().nth(1).unwrap().parse().unwrap()
+    unsafe extern "C" fn no_passes(
+        _samples: *const i32,
+        _num_cols: i32,
+        _num_rows: i32,
+        _max_magnitude: u32,
+        _orientation: i32,
+        _compno: i32,
+        _level: i32,
+        _stepsize: f64,
+        _mct: i32,
+        _reversible: i32,
+        _coded_data: *mut *const u8,
+        _pass_rates: *mut u16,
+        _pass_distortions: *mut f64,
+        _pass_terminated: *mut u8,
+        _numbps: *mut i32,
+    ) -> i32 {
+        0
     }
 
-    // the child's address space limit lets a few workers spawn before one fails
-    #[test]
-    fn failed_worker_spawn_closes_the_queue() {
-        if std::env::var_os(CHILD_ENV).is_some() {
-            assert!(
-                address_space_kb() + 2 * WORKER_STACK_KB <= ADDRESS_SPACE_KB,
-                "no room for a worker to spawn before the failure"
-            );
-            let queue = Arc::new(StripeQueue::<f32>::warp(1));
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                StripeWorkers::spawn(queue, WORKERS)
-            }));
-            assert!(result.is_err(), "every worker spawned, no failure to test");
-            return;
+    struct HeldPasses(Mutex<Vec<(HostRunFn, usize)>>);
+
+    extern "C" fn hold(ctx: *mut c_void, run: HostRunFn, pass: *mut c_void) {
+        let held = unsafe { &*ctx.cast::<HeldPasses>() };
+        held.0.lock().unwrap().push((run, pass as usize));
+    }
+
+    fn layout() -> StripeLayout {
+        StripeLayout {
+            width: WIDTH,
+            x0: 0,
+            block_width: WIDTH,
+            inverse_step: 1.0,
+            t1_params: BandT1Params {
+                orientation: 0,
+                compno: 0,
+                level: 0,
+                stepsize: 1.0,
+                mct: false,
+                reversible: false,
+            },
+            t1: no_passes,
         }
-        let script = format!(
-            "ulimit -v {ADDRESS_SPACE_KB} && exec \"$0\" failed_worker_spawn_closes_the_queue --test-threads=1"
-        );
-        let mut child = Command::new("sh")
-            .arg("-c")
-            .arg(script)
-            .arg(std::env::current_exe().unwrap())
-            .env(CHILD_ENV, "1")
-            .env("RUST_MIN_STACK", (WORKER_STACK_KB << 10).to_string())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
-        let started = Instant::now();
-        loop {
-            if let Some(status) = child.try_wait().unwrap() {
-                assert!(status.success(), "child exited with {status}");
-                return;
-            }
-            if started.elapsed() > CHILD_TIMEOUT {
-                child.kill().unwrap();
-                panic!("workers hung after a failed spawn");
-            }
-            std::thread::sleep(Duration::from_millis(50));
+    }
+
+    #[test]
+    fn take_codes_stripes_the_host_never_started() {
+        let held = Box::leak(Box::new(HeldPasses(Mutex::new(Vec::new()))));
+        let host = HostExecutor {
+            submit: hold,
+            ctx: (held as *const HeldPasses).cast_mut().cast(),
+        };
+        let queue = Arc::new(StripeQueue::<f32>::warp(STRIPES, host));
+        let results = Arc::new(StripeResults::default());
+        for index in 0..STRIPES {
+            let job = StripeJob {
+                samples: vec![0.0; WIDTH * ROWS],
+                rows: ROWS,
+                layout: layout(),
+                results: results.clone(),
+                index,
+            };
+            assert!(queue.try_push(job).is_ok());
+        }
+        let (sender, receiver) = channel();
+        let taker = queue.clone();
+        std::thread::spawn(move || {
+            sender
+                .send(results.take(STRIPES, taker.as_ref()).len())
+                .unwrap();
+        });
+        let taken = receiver.recv_timeout(Duration::from_secs(30));
+        assert_eq!(taken, Ok(STRIPES), "take waited on stripes nobody codes");
+        for (run, pass) in std::mem::take(&mut *held.0.lock().unwrap()) {
+            run(pass as *mut c_void);
         }
     }
 }
