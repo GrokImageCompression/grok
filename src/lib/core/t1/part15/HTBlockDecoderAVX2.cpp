@@ -41,7 +41,7 @@
  *         ojph_block_decoder_avx2.cpp
  */
 
-#include "ojph_arch.h"
+#include "coding/ojph_defs.h"
 #if defined(OJPH_ARCH_I386) || defined(OJPH_ARCH_X86_64)
 
 #include <string>
@@ -53,7 +53,6 @@
 #include "coding/ojph_block_decoder.h"
 #include "HTBlockDecoder.h"
 #include <array>
-#include "ojph_message.h"
 
 #include <immintrin.h>
 
@@ -2731,60 +2730,32 @@ namespace grk::t1::ht {
                                     ui32 width, ui32 height, ui32 stride,
                                     bool stripe_causal)
     {
-      static bool insufficient_precision = false;
-      static bool modify_code = false;
-      static bool truncate_spp_mrp = false;
-
       if (num_passes > 1 && lengths2 == 0)
       {
-        OJPH_WARN(0x00010001, "A malformed codeblock that has more than "
-                              "one coding pass, but zero length for "
-                              "2nd and potential 3rd pass.");
+        grk::grklog.warn("HT code block has %u coding passes but no refinement "
+                         "bytes, decoding the cleanup pass only", num_passes);
         num_passes = 1;
       }
 
       if (num_passes > 3)
       {
-        OJPH_WARN(0x00010002, "We do not support more than 3 coding passes; "
-                              "This codeblocks has %d passes.",
-                              num_passes);
+        grk::grklog.error("HT code block has %u coding passes, at most 3 are "
+                          "allowed", num_passes);
         return false;
       }
 
-      if (missing_msbs > 30) // p < 0
+      if (missing_msbs >= 30)
       {
-        if (insufficient_precision == false)
-        {
-          insufficient_precision = true;
-          OJPH_WARN(0x00010003, "32 bits are not enough to decode this "
-                                "codeblock. This message will not be "
-                                "displayed again.");
-        }
+        grk::grklog.error("HT code block has %u missing MSBs, which leaves no "
+                          "bit plane for the cleanup pass in 32 bits",
+                          missing_msbs);
         return false;
       }
-      else if (missing_msbs == 30) // p == 0
-      { // not enough precision to decode and set the bin center to 1
-        if (modify_code == false) {
-          modify_code = true;
-          OJPH_WARN(0x00010004, "Not enough precision to decode the cleanup "
-                                "pass. The code can be modified to support "
-                                "this case. This message will not be "
-                                "displayed again.");
-        }
-         return false;         // 32 bits are not enough to decode this
-       }
-      else if (missing_msbs == 29) // if p is 1, then num_passes must be 1
+      else if (missing_msbs == 29 && num_passes > 1)
       {
-        if (num_passes > 1) {
-          num_passes = 1;
-          if (truncate_spp_mrp == false) {
-            truncate_spp_mrp = true;
-            OJPH_WARN(0x00010005, "Not enough precision to decode the SgnProp "
-                                  "nor MagRef passes; both will be skipped. "
-                                  "This message will not be displayed "
-                                  "again.");
-          }
-        }
+        grk::grklog.warn("HT code block has 29 missing MSBs, which leaves no "
+                         "bit plane for its refinement passes, skipping them");
+        num_passes = 1;
       }
       ui32 p = 30 - missing_msbs; // The least significant bitplane for CUP
       // There is a way to handle the case of p == 0, but a different path
@@ -2792,7 +2763,8 @@ namespace grk::t1::ht {
 
       if (lengths1 < 2)
       {
-        OJPH_WARN(0x00010006, "Wrong codeblock length.");
+        grk::grklog.error("HT code block cleanup segment has %u bytes, at "
+                          "least 2 are required", lengths1);
         return false;
       }
 

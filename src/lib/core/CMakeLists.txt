@@ -34,7 +34,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct
@@ -170,11 +169,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/PostDecodeFiltersOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_arch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
@@ -189,9 +184,6 @@ set(GROK_LIBRARY_SRCS
 # OpenJPH SIMD-accelerated block coding files
 if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64|amd64|i[3-6]86)")
-    # SSSE3-accelerated decoder
-    list(APPEND GROK_LIBRARY_SRCS
-      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp)
     # AVX2-accelerated decoder (grok's derived copy) and encoder
     list(APPEND GROK_LIBRARY_SRCS
       ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/HTBlockDecoderAVX2.cpp
@@ -211,9 +203,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     else()
       # -fno-lto: gcc LTO merges static constructors across translation units
       set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp
-        PROPERTIES COMPILE_FLAGS "-mssse3 -fno-lto -w")
-      set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/HTBlockDecoderAVX2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
         PROPERTIES COMPILE_FLAGS "-mavx2 -fno-lto -w")
@@ -228,11 +217,7 @@ endif()
 set_source_files_properties(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_arch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
   PROPERTIES COMPILE_OPTIONS "-w")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1952)

@@ -39,16 +39,35 @@
 #ifndef OJPH_TYPES_H
 #define OJPH_TYPES_H
 
+#include <bit>
 #include <cstdint>
-#include "ojph_version.h"
+#include <cstring>
+#include <stdexcept>
 
-namespace  grk::t1::ojph {
+#include "Logger.h"
 
-/////////////////////////////////////////////////////////////////////////////
-//                               types
-/////////////////////////////////////////////////////////////////////////////
+#ifdef _MSC_VER
+#define OJPH_COMPILER_MSVC
+#include <intrin.h>
+#endif
+
+#ifdef OJPH_COMPILER_MSVC
+  #define OJPH_FORCE_INLINE static __forceinline
+  #define OJPH_NO_INLINE    static __declspec(noinline)
+#else
+  #define OJPH_FORCE_INLINE static inline __attribute__((always_inline))
+  #define OJPH_NO_INLINE    static __attribute__((noinline))
+#endif
+
+#if defined(__x86_64) || defined(__x86_64__) || defined(__amd64) || defined(_M_X64)
+  #define OJPH_ARCH_X86_64
+#elif defined(__i386) || defined(__i386__) || defined(_M_IX86)
+  #define OJPH_ARCH_I386
+#endif
+
+namespace grk::t1::ojph {
+
 typedef uint8_t ui8;
-typedef int8_t si8;
 typedef uint16_t ui16;
 typedef int16_t si16;
 typedef uint32_t ui32;
@@ -56,27 +75,53 @@ typedef int32_t si32;
 typedef uint64_t ui64;
 typedef int64_t si64;
 
-/////////////////////////////////////////////////////////////////////////////
-#define OJPH_INT_STRINGIFY(I) #I
-#define OJPH_INT_TO_STRING(I) OJPH_INT_STRINGIFY(I)
-
-/////////////////////////////////////////////////////////////////////////////
-// number of fractional bits for 16 bit representation
-// for 32 bits, it is NUM_FRAC_BITS + 16
-// All numbers are in the range of [-0.5, 0.5)
-const int NUM_FRAC_BITS = 13;
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_div_ceil(a, b) (((a) + (b) - 1) / (b))
-
-/////////////////////////////////////////////////////////////////////////////
 #define ojph_max(a, b) (((a) > (b)) ? (a) : (b))
-
-/////////////////////////////////////////////////////////////////////////////
 #define ojph_min(a, b) (((a) < (b)) ? (a) : (b))
-
 #define ojph_unused(x) (void)(x)
 
+[[noreturn]] inline void fail_full_buffer(const char* buffer)
+{
+  grk::grklog.error("HT block encoder %s buffer is full", buffer);
+  throw std::runtime_error("HT block encoder buffer is full");
+}
+
+static inline ui32 population_count(ui32 val)
+{
+  return (ui32)std::popcount(val);
+}
+
+static inline ui32 count_leading_zeros(ui32 val)
+{
+  return (ui32)std::countl_zero(val);
+}
+
+static inline ui32 count_trailing_zeros(ui32 val)
+{
+  return (ui32)std::countr_zero(val);
+}
+
+static inline ui32 count_trailing_zeros(ui64 val)
+{
+  return (ui32)std::countr_zero(val);
+}
+
+static inline ui32 load_le_ui32(const ui8* p)
+{
+  ui32 val;
+  std::memcpy(&val, p, sizeof(val));
+  if constexpr(std::endian::native == std::endian::big)
+    val = std::byteswap(val);
+  return val;
+}
+
+static inline ui32 load_le_ui16x2(const ui16* p)
+{
+  if constexpr(std::endian::native == std::endian::big)
+    return (ui32)p[0] | ((ui32)p[1] << 16);
+  ui32 val;
+  std::memcpy(&val, p, sizeof(val));
+  return val;
+}
 
 }
 

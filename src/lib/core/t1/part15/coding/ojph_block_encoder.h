@@ -39,14 +39,11 @@
 #ifndef OJPH_BLOCK_ENCODER_H
 #define OJPH_BLOCK_ENCODER_H
 
+#include <vector>
+
 #include "ojph_defs.h"
 
 namespace grk::t1::ojph {
-
-  ////////////////////////////////////////////////////////////////////////////
-  // defined elsewhere
-  class mem_elastic_allocator;
-  struct coded_lists;
 
   namespace local {
 
@@ -55,29 +52,19 @@ namespace grk::t1::ojph {
       ojph_encode_codeblock32(ui32* buf, ui32 missing_msbs, ui32 num_passes,
                               ui32 width, ui32 height, ui32 stride,
                               ui32* lengths, 
-                              grk::t1::ojph::mem_elastic_allocator *elastic,
-                              grk::t1::ojph::coded_lists *& coded);
-
-    void
-      ojph_encode_codeblock64(ui64* buf, ui32 missing_msbs, ui32 num_passes,
-                              ui32 width, ui32 height, ui32 stride,
-                              ui32* lengths, 
-                              grk::t1::ojph::mem_elastic_allocator *elastic,
-                              grk::t1::ojph::coded_lists *& coded);
+                              std::vector<ui8>& coded);
 
     void
       ojph_encode_codeblock_avx2(ui32* buf, ui32 missing_msbs,
                                  ui32 num_passes, ui32 width, ui32 height,
                                  ui32 stride, ui32* lengths,
-                                 grk::t1::ojph::mem_elastic_allocator* elastic,
-                                 grk::t1::ojph::coded_lists*& coded);
+                                 std::vector<ui8>& coded);
 
     void
       ojph_encode_codeblock_avx512(ui32* buf, ui32 missing_msbs, 
                                    ui32 num_passes, ui32 width, ui32 height, 
                                    ui32 stride, ui32* lengths,
-                                   grk::t1::ojph::mem_elastic_allocator *elastic,
-                                   grk::t1::ojph::coded_lists *& coded);
+                                   std::vector<ui8>& coded);
 
     bool initialize_block_encoder_tables();
     bool initialize_block_encoder_tables_avx2();

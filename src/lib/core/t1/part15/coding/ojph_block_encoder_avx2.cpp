@@ -35,15 +35,10 @@
 // File: ojph_block_encoder_avx2.cpp
 //***************************************************************************/
 
-// Apple Clang on Intel produces corrupt bitstreams with several of the
-// scalar optimizations below (branchless VLC drain, 64-bit MagSgn, etc.)
-// for reasons not yet identified. Since this file is x86-only, the guard
-// does not affect Apple Silicon builds (which use NEON, not AVX2).
-#if defined(__apple_build_version__)
-#include "ojph_block_encoder_avx2_apple.h"
-#else
+// apple clang on intel compiles this encoder into one that writes corrupt bitstreams
+#if !defined(__apple_build_version__)
 
-#include "ojph_arch.h"
+#include "ojph_defs.h"
 #if defined(OJPH_ARCH_I386) || defined(OJPH_ARCH_X86_64)
 
 #include <cassert>
@@ -52,18 +47,12 @@
 #include <climits>
 #include <immintrin.h>
 #include <mutex>
-
-#include "ojph_mem.h"
-#include "ojph_arch.h"
 #include "ojph_block_encoder.h"
-#include "ojph_message.h"
 
 #ifdef OJPH_COMPILER_MSVC
   #define likely(x)       (x)
-  #define unlikely(x)     (x)
 #else
   #define likely(x)       __builtin_expect((x), 1)
-  #define unlikely(x)     __builtin_expect((x), 0)
 #endif
 
 namespace grk::t1::ojph {
@@ -487,7 +476,7 @@ namespace grk::t1::ojph {
         return;  //last mel byte cannot be 0xFF, since then
                  //melp->remaining_bits would be < 8
       if (melp->pos >= melp->buf_size)
-        OJPH_ERROR(0x00020003, "mel encoder's buffer is full");
+        fail_full_buffer("MEL");
       ui8 vlcp_tmp = (ui8)vlcp->tmp;
       int fuse = melp->tmp | vlcp_tmp;
       if ( ( ((fuse ^ melp->tmp) & mel_mask)
@@ -499,7 +488,7 @@ namespace grk::t1::ojph {
       else
       {
         if (vlcp->pos >= vlcp->buf_size)
-          OJPH_ERROR(0x00020004, "vlc encoder's buffer is full");
+          fail_full_buffer("VLC");
         melp->buf[melp->pos++] = (ui8)melp->tmp; //melp->tmp cannot be 0xFF
         *(vlcp->buf - vlcp->pos) = (ui8)vlcp_tmp;
         vlcp->pos++;
@@ -646,7 +635,7 @@ namespace grk::t1::ojph {
         if (byte != 0xFF)
         {
           if (msp->pos >= msp->buf_size)
-            OJPH_ERROR(0x00020006, "magnitude sign encoder's buffer is full");
+            fail_full_buffer("MagSgn");
           msp->buf[msp->pos++] = (ui8)byte;
         }
       }
@@ -1237,8 +1226,7 @@ OJPH_FORCE_INLINE void encode_x_loop(
 void ojph_encode_codeblock_avx2(ui32* buf, ui32 missing_msbs,
                                 ui32 num_passes, ui32 _width, ui32 height,
                                 ui32 stride, ui32* lengths,
-                                grk::t1::ojph::mem_elastic_allocator *elastic,
-                                grk::t1::ojph::coded_lists *& coded)
+                                std::vector<ui8>& coded)
 {
     ojph_unused(num_passes);                      //currently not used
 
@@ -1331,21 +1319,18 @@ void ojph_encode_codeblock_avx2(ui32* buf, ui32 missing_msbs,
     vlc_drain(&vlc);
     terminate_mel_vlc(&mel, &vlc);
 
-    //copy to elastic
     lengths[0] = mel.pos + vlc.pos + ms.pos;
-    elastic->get_buffer(mel.pos + vlc.pos + ms.pos, coded);
-    memcpy(coded->buf, ms.buf, ms.pos);
-    memcpy(coded->buf + ms.pos, mel.buf, mel.pos);
-    memcpy(coded->buf + ms.pos + mel.pos, vlc.buf - vlc.pos + 1, vlc.pos);
+    coded.resize(mel.pos + vlc.pos + ms.pos);
+    memcpy(coded.data(), ms.buf, ms.pos);
+    memcpy(coded.data() + ms.pos, mel.buf, mel.pos);
+    memcpy(coded.data() + ms.pos + mel.pos, vlc.buf - vlc.pos + 1, vlc.pos);
 
     // put in the interface locator word
     ui32 num_bytes = mel.pos + vlc.pos;
-    coded->buf[lengths[0]-1] = (ui8)(num_bytes >> 4);
-    coded->buf[lengths[0]-2] = coded->buf[lengths[0]-2] & 0xF0;
-    coded->buf[lengths[0]-2] =
-        (ui8)(coded->buf[lengths[0]-2] | (num_bytes & 0xF));
-
-    coded->avail_size -= lengths[0];
+    coded[lengths[0]-1] = (ui8)(num_bytes >> 4);
+    coded[lengths[0]-2] = coded[lengths[0]-2] & 0xF0;
+    coded[lengths[0]-2] =
+        (ui8)(coded[lengths[0]-2] | (num_bytes & 0xF));
 }
 
 } /* namespace local */

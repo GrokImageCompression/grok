@@ -15,13 +15,11 @@
  *
  */
 
+#include "hwy/targets.h"
 #include "simd.h"
-#include "../part15/common/ojph_arch.h"
-#include "../part15/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
 #include "HTBlockDecoder.h"
 #include "coding/ojph_block_encoder.h"
-#include "ojph_mem.h"
 #include "CoderOJPH.h"
 #include "Coder.h"
 
@@ -34,57 +32,36 @@
 // trailing pad must be at least that wide.
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 16;
 
-// Function pointer types for SIMD-dispatched block coding
-using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32, bool);
-using encode_cb_t = void (*)(grk::t1::ojph::ui32*, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32*, grk::t1::ojph::mem_elastic_allocator*,
-                             grk::t1::ojph::coded_lists*&);
+using decode_cb_t = bool (*)(uint8_t*, uint32_t*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+                             uint32_t, uint32_t, bool);
+using encode_cb_t = void (*)(uint32_t*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t*,
+                             std::vector<uint8_t>&);
 
 static decode_cb_t dispatch_decoder()
 {
-  using namespace grk::t1::ojph;
-  using namespace grk::t1::ojph::local;
-
-#ifndef OJPH_DISABLE_SIMD
 #if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
-#ifndef OJPH_DISABLE_AVX2
-  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
+  if(hwy::SupportedTargets() & HWY_AVX2)
     return grk::t1::ht::local::ht_decode_codeblock_avx2;
 #endif
-#ifndef OJPH_DISABLE_SSSE3
-  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_SSSE3)
-    return ojph_decode_codeblock_ssse3;
-#endif
-#endif
-#endif
-  return ojph_decode_codeblock32;
+  return grk::t1::ojph::local::ojph_decode_codeblock32;
 }
 
 static encode_cb_t dispatch_encoder()
 {
-  using namespace grk::t1::ojph;
   using namespace grk::t1::ojph::local;
-
-#ifndef OJPH_DISABLE_SIMD
-#if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
-#if defined(OJPH_ARCH_X86_64) && !defined(OJPH_DISABLE_AVX512)
-  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX512)
+#if defined(OJPH_ARCH_X86_64)
+  if(hwy::SupportedTargets() & HWY_AVX3)
   {
     initialize_block_encoder_tables_avx512();
     return ojph_encode_codeblock_avx512;
   }
 #endif
-#ifndef OJPH_DISABLE_AVX2
-  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
+#if (defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)) && !defined(__apple_build_version__)
+  if(hwy::SupportedTargets() & HWY_AVX2)
   {
     initialize_block_encoder_tables_avx2();
     return ojph_encode_codeblock_avx2;
   }
-#endif
-#endif
 #endif
   initialize_block_encoder_tables();
   return ojph_encode_codeblock32;
@@ -99,8 +76,7 @@ T1OJPH::T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
     : coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
       coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
       unencoded_data_size(((maxCblkW + 7u) & ~7u) * maxCblkH),
-      unencoded_data(new int32_t[unencoded_data_size]), maxCblkW_(maxCblkW), maxCblkH_(maxCblkH),
-      allocator(new mem_fixed_allocator), elastic_alloc(new mem_elastic_allocator(1048576))
+      unencoded_data(new int32_t[unencoded_data_size]), maxCblkW_(maxCblkW), maxCblkH_(maxCblkH)
 {
   if(!isCompressor)
     memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
@@ -110,8 +86,6 @@ T1OJPH::~T1OJPH()
   delete[] coded_data;
   delete[] unencoded_data;
   delete part1Coder_;
-  delete allocator;
-  delete elastic_alloc;
 }
 ICoder* T1OJPH::part1Coder()
 {
@@ -205,7 +179,6 @@ bool T1OJPH::compress(CompressBlockExec* block)
   if(!preCompress(block))
     return false;
 
-  coded_lists* next_coded = nullptr;
   auto cblk = block->cblk;
   cblk->setNumBps(0);
   // optimization below was causing errors in compressing
@@ -214,14 +187,13 @@ bool T1OJPH::compress(CompressBlockExec* block)
   uint16_t h = (uint16_t)cblk->height();
 
   uint32_t pass_length[2] = {0, 0};
-  g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length, elastic_alloc,
-              next_coded);
+  g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length, codedBytes_);
 
   auto pass = cblk->allocatePasses(1);
   pass->len_ = (uint16_t)pass_length[0];
   pass->rate_ = (uint16_t)pass_length[0];
   cblk->setNumBps(1);
-  cblk->storeCompressedBytes(next_coded->buf, pass_length[0]);
+  cblk->storeCompressedBytes(codedBytes_.data(), pass_length[0]);
 
   return true;
 }

@@ -17,13 +17,13 @@
 
 #pragma once
 
+#include <vector>
+
 #include "ICoder.h"
 #include "BlockExec.h"
 
 namespace grk::t1::ojph
 {
-class mem_fixed_allocator;
-class mem_elastic_allocator;
 
 class T1OJPH : public ICoder
 {
@@ -48,7 +48,6 @@ private:
   // mixed mode tiles hold Part 1 code blocks next to HT ones
   ICoder* part1Coder_ = nullptr;
 
-  mem_fixed_allocator* allocator;
-  mem_elastic_allocator* elastic_alloc;
+  std::vector<uint8_t> codedBytes_;
 };
 } // namespace grk::t1::ojph
