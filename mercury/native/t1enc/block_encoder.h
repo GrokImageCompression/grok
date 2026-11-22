@@ -23,8 +23,9 @@ class BlockEncoder
 public:
   static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
   int32_t encode(const int32_t* samples, uint16_t width, uint16_t height, uint32_t maxMagnitude,
-                 uint8_t orientation, uint16_t compno, uint8_t level, double stepsize,
-                 const double* mctNorms, uint16_t mctNumcomps, const EncodedPasses& out);
+                 uint8_t orientation, uint16_t compno, uint8_t level, uint8_t qmfbid,
+                 double stepsize, const double* mctNorms, uint16_t mctNumcomps,
+                 const EncodedPasses& out);
 
 private:
   void alloc(uint16_t width, uint16_t height);

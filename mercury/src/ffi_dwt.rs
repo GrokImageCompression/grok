@@ -162,6 +162,7 @@ unsafe extern "C" {
         level: i32,
         stepsize: f64,
         mct: i32,
+        reversible: i32,
         coded_data: *mut *const u8,
         pass_rates: *mut u16,
         pass_distortions: *mut f64,

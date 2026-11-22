@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use crate::capi::MercuryT1EncodeFn;
 use crate::codec::packet_order::PacketSlot;
-use crate::codec::params::{MAX_LEVELS, QcdParams, step_ranging};
+use crate::codec::params::{MAX_LEVELS, QcdParams, QuantStyle, step_ranging};
 use crate::codec::tile_geom::{TileGeom, chart_tile_geom};
 use crate::decode::plan::MainHeaderIn;
 
 use super::band_coder::{CodedBand, PendingBand};
 use super::component::{
-    CoefficientSample, ComponentEncoder, ComponentParams, Int16RowFeed, Int32RowFeed, XyzTables,
+    CoefficientSample, ComponentEncoder, ComponentParams, Int16RowFeed, Int32RowFeed,
+    ReversibleRowFeed, XyzTables,
 };
 use super::rate_control::{ImageRateAllocation, RateTargets, allocate_image_rate, allocate_rate};
 use super::stripe_queue::{StripeQueue, StripeWorkers};
@@ -29,7 +30,8 @@ pub(crate) struct TileEncodeParams<'a> {
     // RGB at this precision, converted like classic's applyXYZTransform
     pub xyz_source_precision: Option<u32>,
     pub threads: usize,
-    // None for int32 planes and the float 9/7
+    pub int16_planes: bool,
+    // None for int32 planes, the float 9/7 and the 5/3
     pub int16_wavelet: Option<Int16Wavelet<'a>>,
 }
 
@@ -58,7 +60,10 @@ fn orientation(bandno: usize) -> usize {
 fn quantize_bands(quant: &QcdParams, precision: u8, levels: u8) -> Vec<BandQuantization> {
     (0..3 * levels as usize + 1)
         .map(|bandno| {
-            let step = quant.steps[bandno];
+            let step = match quant.style {
+                QuantStyle::Reversible => 2f32.powi(-(quant.ranges[bandno] as i32)),
+                QuantStyle::Derived | QuantStyle::Expounded => quant.steps[bandno],
+            };
             let log2_gain = match orientation(bandno) {
                 0 => 0,
                 3 => 2,
@@ -247,6 +252,11 @@ enum TileSamples {
         coder: TileCoder<i16>,
         feed: Int16RowFeed,
     },
+    Reversible {
+        coder: TileCoder<i32>,
+        feed: ReversibleRowFeed,
+        int16_planes: bool,
+    },
 }
 
 struct TilePart {
@@ -324,6 +334,24 @@ impl ImageEncoder {
         let stepsizes =
             |bands: &[BandQuantization]| bands.iter().map(|band| band.stepsize).collect();
         let samples = match &params.int16_wavelet {
+            None if cod.comps[0].reversible => {
+                let components: Vec<ComponentCoding<i32>> = quantization
+                    .iter()
+                    .map(|bands| ComponentCoding {
+                        band_stepsizes: stepsizes(bands),
+                        band_inverse_steps: vec![1.0; bands.len()],
+                        level_lifting: vec![(); MAX_LEVELS as usize],
+                    })
+                    .collect();
+                TileSamples::Reversible {
+                    coder: TileCoder::warp(&header, components, params.threads, t1),
+                    feed: ReversibleRowFeed {
+                        precision,
+                        mct: cod.use_ycc,
+                    },
+                    int16_planes: params.int16_planes,
+                }
+            }
             None => {
                 let components: Vec<ComponentCoding<f32>> = quantization
                     .iter()
@@ -396,7 +424,14 @@ impl ImageEncoder {
     }
 
     pub fn takes_int16(&self) -> bool {
-        matches!(self.samples, TileSamples::Int16 { .. })
+        matches!(
+            self.samples,
+            TileSamples::Int16 { .. }
+                | TileSamples::Reversible {
+                    int16_planes: true,
+                    ..
+                }
+        )
     }
 
     pub fn width(&self) -> usize {
@@ -442,6 +477,36 @@ impl ImageEncoder {
                     self.threads,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
+                (
+                    TileSamples::Reversible {
+                        coder,
+                        feed,
+                        int16_planes: false,
+                    },
+                    TileRows::Int32(planes),
+                ) => push_tile_row(
+                    coder,
+                    columns,
+                    planes,
+                    first_sample,
+                    self.threads,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                ),
+                (
+                    TileSamples::Reversible {
+                        coder,
+                        feed,
+                        int16_planes: true,
+                    },
+                    TileRows::Int16(planes),
+                ) => push_tile_row(
+                    coder,
+                    columns,
+                    planes,
+                    first_sample,
+                    self.threads,
+                    |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
+                ),
                 _ => panic!("plane type does not match the encoder"),
             }
             done += count;
@@ -457,6 +522,7 @@ impl ImageEncoder {
         let finished = match &mut self.samples {
             TileSamples::Int32 { coder, .. } => coder.finish_row(&self.header, next),
             TileSamples::Int16 { coder, .. } => coder.finish_row(&self.header, next),
+            TileSamples::Reversible { coder, .. } => coder.finish_row(&self.header, next),
         };
         // without a rate target no later tile changes this row's packets
         if self.rate.max_layer_length == 0 {
@@ -472,6 +538,7 @@ impl ImageEncoder {
         match &mut self.samples {
             TileSamples::Int32 { coder, .. } => coder.stop_workers(),
             TileSamples::Int16 { coder, .. } => coder.stop_workers(),
+            TileSamples::Reversible { coder, .. } => coder.stop_workers(),
         }
         if self.unwritten_tiles.is_empty() {
             return 0;

@@ -68,6 +68,7 @@ impl<T: CoefficientSample> ComponentEncoder<T> {
                     level: level as i32,
                     stepsize: params.band_stepsizes[band_number],
                     mct: params.mct,
+                    reversible: params.style.reversible,
                 },
                 params.band_inverse_steps[band_number],
                 block_width,
@@ -316,6 +317,57 @@ impl Int16RowFeed {
             for (encoder, row) in encoders.iter_mut().zip(&shifted) {
                 encoder.push_row(|target| target.copy_from_slice(row));
             }
+        }
+    }
+}
+
+pub(crate) struct ReversibleRowFeed {
+    pub precision: u32,
+    pub mct: bool,
+}
+
+impl ReversibleRowFeed {
+    pub fn feed<S: Copy + Into<i32>>(
+        &self,
+        encoders: &mut [ComponentEncoder<i32>],
+        planes: &[&[S]],
+        stride: usize,
+        width: usize,
+        rows: usize,
+    ) {
+        let dc_shift = -(1i32 << (self.precision - 1));
+        for y in 0..rows {
+            let row = |c: usize| &planes[c][y * stride..y * stride + width];
+            if !self.mct {
+                for (c, encoder) in encoders.iter_mut().enumerate() {
+                    let source = row(c);
+                    encoder.push_row(|target| {
+                        for (sample, &value) in target.iter_mut().zip(source) {
+                            *sample = value.into() + dc_shift;
+                        }
+                    });
+                }
+                continue;
+            }
+            let (red, green, blue) = (row(0), row(1), row(2));
+            let shifted = |plane: &[S], x: usize| plane[x].into() + dc_shift;
+            // grok's CompressRev
+            encoders[0].push_row(|target| {
+                for (x, sample) in target.iter_mut().enumerate() {
+                    let green = shifted(green, x);
+                    *sample = (green + green + shifted(blue, x) + shifted(red, x)) >> 2;
+                }
+            });
+            encoders[1].push_row(|target| {
+                for (x, sample) in target.iter_mut().enumerate() {
+                    *sample = shifted(blue, x) - shifted(green, x);
+                }
+            });
+            encoders[2].push_row(|target| {
+                for (x, sample) in target.iter_mut().enumerate() {
+                    *sample = shifted(red, x) - shifted(green, x);
+                }
+            });
         }
     }
 }

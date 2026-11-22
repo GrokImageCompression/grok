@@ -26,7 +26,6 @@
 namespace mercury_native::t1enc
 {
 
-
 static const double dwt_norms[4][32] = {
     {1.0000000000000000,      1.4999999999999998,      2.7500000000000000,
      5.3750000000000000,      10.6875000000000000,     21.3437499999999964,
@@ -187,9 +186,9 @@ void BlockEncoder::initFlags(void)
   }
 }
 
-double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level, uint8_t orientation,
-                              int8_t bpno, uint32_t qmfbid, double stepsize,
-                              const double* mct_norms, uint32_t mct_numcomps)
+double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level,
+                                uint8_t orientation, int8_t bpno, uint32_t qmfbid, double stepsize,
+                                const double* mct_norms, uint32_t mct_numcomps)
 {
   double w1 = 1, w2, wmsedec;
 
@@ -207,27 +206,27 @@ double BlockEncoder::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level
   return wmsedec;
 }
 
-#define enc_sigpass_step_macro(datap, ci)                                                   \
-  {                                                                                          \
-    if((*flagsPtr & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))) == 0U &&                         \
-       (*flagsPtr & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U)                                    \
-    {                                                                                        \
-      uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));                                   \
-      uint8_t v = !!(smr_abs(*(datap)) & (uint32_t)one);                                     \
-      curctx = mqc->ctxs + ctxno;                                                            \
-      mqc_encode_macro(mqc, curctx, a, c, ct, v);                                            \
-      if(v)                                                                                  \
-      {                                                                                      \
-        uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, flagsPtr[-1], flagsPtr[1], ci);   \
-        ctxno = lut_ctxno_sc[lu];                                                            \
-        v = smr_sign(*(datap));                                                              \
-        nmsedec += getnmsedec_sig((uint32_t)smr_abs(*(datap)), (uint32_t)bpno);              \
-        curctx = mqc->ctxs + ctxno;                                                          \
-        mqc_encode_macro(mqc, curctx, a, c, ct, v ^ lut_spb[lu]);                            \
-        update_flags(flagsPtr, ci, v, flagsStride, 0);                                       \
-      }                                                                                      \
-      *flagsPtr |= T1_PI_THIS << (ci);                                                       \
-    }                                                                                        \
+#define enc_sigpass_step_macro(datap, ci)                                                  \
+  {                                                                                        \
+    if((*flagsPtr & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))) == 0U &&                       \
+       (*flagsPtr & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U)                                  \
+    {                                                                                      \
+      uint8_t ctxno = GETCTXNO_ZC(mqc, *flagsPtr >> (ci));                                 \
+      uint8_t v = !!(smr_abs(*(datap)) & (uint32_t)one);                                   \
+      curctx = mqc->ctxs + ctxno;                                                          \
+      mqc_encode_macro(mqc, curctx, a, c, ct, v);                                          \
+      if(v)                                                                                \
+      {                                                                                    \
+        uint32_t lu = getctxtno_sc_or_spb_index(*flagsPtr, flagsPtr[-1], flagsPtr[1], ci); \
+        ctxno = lut_ctxno_sc[lu];                                                          \
+        v = smr_sign(*(datap));                                                            \
+        nmsedec += getnmsedec_sig((uint32_t)smr_abs(*(datap)), (uint32_t)bpno);            \
+        curctx = mqc->ctxs + ctxno;                                                        \
+        mqc_encode_macro(mqc, curctx, a, c, ct, v ^ lut_spb[lu]);                          \
+        update_flags(flagsPtr, ci, v, flagsStride, 0);                                     \
+      }                                                                                    \
+      *flagsPtr |= T1_PI_THIS << (ci);                                                     \
+    }                                                                                      \
   }
 int32_t BlockEncoder::enc_sigpass(int8_t bpno)
 {
@@ -543,7 +542,7 @@ constexpr uint32_t maxPasses = 3 * 32 - 2;
 
 int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t height,
                              uint32_t maxMagnitude, uint8_t orientation, uint16_t compno,
-                             uint8_t level, double stepsize, const double* mctNorms,
+                             uint8_t level, uint8_t qmfbid, double stepsize, const double* mctNorms,
                              uint16_t mctNumcomps, const EncodedPasses& out)
 {
   alloc(width, height);
@@ -577,8 +576,8 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
       nmsedec = enc_refpass(bpno);
     else
       nmsedec = enc_clnpass(bpno);
-    cumulative +=
-        getwmsedec(nmsedec, compno, level, orientation, bpno, 0, stepsize, mctNorms, mctNumcomps);
+    cumulative += getwmsedec(nmsedec, compno, level, orientation, bpno, qmfbid, stepsize, mctNorms,
+                             mctNumcomps);
     out.distortions[passno] = cumulative;
     bool lastPass = passtype == CLEANUP_PASS && bpno == 0;
     if(lastPass)
@@ -622,6 +621,7 @@ int32_t BlockEncoder::encode(const int32_t* samples, uint16_t width, uint16_t he
 }
 
 static const double mct_norms_irrev[] = {std::sqrt(3.0000), std::sqrt(3.2584), std::sqrt(2.4755)};
+static const double mct_norms_rev[] = {std::sqrt(3.0), std::sqrt(0.6875), std::sqrt(0.6875)};
 
 } // namespace mercury_native::t1enc
 
@@ -631,18 +631,19 @@ static const double mct_norms_irrev[] = {std::sqrt(3.0000), std::sqrt(3.2584), s
 #define MERCURY_T1ENC_API __attribute__((visibility("default")))
 #endif
 
-// mct: the samples are a component of grok's irreversible colour transform
+// mct: the samples are a component of grok's colour transform, the RCT when reversible
 extern "C" MERCURY_T1ENC_API int32_t mercury_t1_encode_block(
     const int32_t* samples, int32_t num_cols, int32_t num_rows, uint32_t max_magnitude,
     int32_t orientation, int32_t compno, int32_t level, double stepsize, int32_t mct,
-    const uint8_t** coded_data, uint16_t* pass_rates, double* pass_distortions,
+    int32_t reversible, const uint8_t** coded_data, uint16_t* pass_rates, double* pass_distortions,
     uint8_t* pass_terminated, int32_t* numbps)
 {
   using namespace mercury_native::t1enc;
   thread_local BlockEncoder encoder;
   const uint16_t mctComponents = 3;
+  const double* mctNorms = reversible ? mct_norms_rev : mct_norms_irrev;
   return encoder.encode(samples, (uint16_t)num_cols, (uint16_t)num_rows, max_magnitude,
-                        (uint8_t)orientation, (uint16_t)compno, (uint8_t)level, stepsize,
-                        mct ? mct_norms_irrev : nullptr, mct ? mctComponents : 0,
+                        (uint8_t)orientation, (uint16_t)compno, (uint8_t)level, reversible ? 1 : 0,
+                        stepsize, mct ? mctNorms : nullptr, mct ? mctComponents : 0,
                         {pass_rates, pass_distortions, pass_terminated, coded_data, numbps});
 }

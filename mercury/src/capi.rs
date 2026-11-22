@@ -79,6 +79,7 @@ pub type MercuryT1EncodeFn = unsafe extern "C" fn(
     level: i32,
     stepsize: f64,
     mct: i32,
+    reversible: i32,
     coded_data: *mut *const u8,
     pass_rates: *mut u16,
     pass_distortions: *mut f64,
@@ -1973,7 +1974,7 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
         !comp.is_signed && comp.xr_siz == 1 && comp.yr_siz == 1 && comp.precision == first.precision
     });
     let styles_match = cod.comps.iter().all(|style| {
-        !style.reversible
+        style.reversible == cod.comps[0].reversible
             && style.modes.0 == 0
             && style.num_levels > 0
             && style.num_levels == cod.comps[0].num_levels
@@ -2031,11 +2032,14 @@ pub unsafe extern "C" fn mercury_encoder_new(
     let rect = header.siz.tile_rect(0);
     let tiled = header.siz.tiles_across() * header.siz.tiles_down() > 1;
     let xyz = params.xyz_source_precision != 0;
+    let reversible = header.cod.comps[0].reversible;
     let xyz_supported = !xyz
         || (header.cod.use_ycc
+            && !reversible
             && !params.int16_planes
             && (1..=MAX_XYZ_SOURCE_PRECISION).contains(&params.xyz_source_precision));
-    let int16_tables_given = !params.int16_planes
+    let int16_wavelet = params.int16_planes && !reversible;
+    let int16_tables_given = !int16_wavelet
         || (!params.int16_level_factors.is_null() && !params.int16_band_scales.is_null());
     if !tile_encodable(&header)
         || !xyz_supported
@@ -2062,17 +2066,16 @@ pub unsafe extern "C" fn mercury_encoder_new(
             0 => std::thread::available_parallelism().map_or(1, |count| count.get()),
             count => count as usize,
         },
-        int16_wavelet: params
-            .int16_planes
-            .then(|| crate::encode::tile::Int16Wavelet {
-                fraction_bits: params.int16_fraction_bits,
-                level_factors: unsafe {
-                    std::slice::from_raw_parts(params.int16_level_factors, levels)
-                },
-                band_scales: unsafe {
-                    std::slice::from_raw_parts(params.int16_band_scales.cast(), levels)
-                },
-            }),
+        int16_planes: params.int16_planes,
+        int16_wavelet: int16_wavelet.then(|| crate::encode::tile::Int16Wavelet {
+            fraction_bits: params.int16_fraction_bits,
+            level_factors: unsafe {
+                std::slice::from_raw_parts(params.int16_level_factors, levels)
+            },
+            band_scales: unsafe {
+                std::slice::from_raw_parts(params.int16_band_scales.cast(), levels)
+            },
+        }),
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         crate::encode::tile::ImageEncoder::warp(

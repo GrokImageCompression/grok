@@ -97,7 +97,7 @@ uint32_t mercury_hwy_quantize_16(const int16_t* stripe, int stride, int columns,
 /* grok's part-1 block coder for code-block style 0; returns the pass count */
 int32_t mercury_t1_encode_block(const int32_t* samples, int32_t num_cols, int32_t num_rows,
                                 uint32_t max_magnitude, int32_t orientation, int32_t compno,
-                                int32_t level, double stepsize, int32_t mct,
+                                int32_t level, double stepsize, int32_t mct, int32_t reversible,
                                 const uint8_t** coded_data, uint16_t* pass_rates,
                                 double* pass_distortions, uint8_t* pass_terminated,
                                 int32_t* numbps);

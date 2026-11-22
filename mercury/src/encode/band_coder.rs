@@ -46,6 +46,38 @@ impl QuantizedSample for i16 {
     }
 }
 
+impl QuantizedSample for i32 {
+    unsafe fn quantize(
+        stripe: *const i32,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        _inverse_step: f64,
+        block: *mut i32,
+    ) -> u32 {
+        const T1_NMSEDEC_FRACBITS: u32 = 6;
+        const SIGN_BIT: u32 = 0x8000_0000;
+        let (stride, columns) = (stride as usize, columns as usize);
+        let mut maximum = 0u32;
+        for row in 0..rows as usize {
+            let (source, target) = unsafe {
+                (
+                    std::slice::from_raw_parts(stripe.add(row * stride), columns),
+                    std::slice::from_raw_parts_mut(block.add(row * columns), columns),
+                )
+            };
+            // grok's Coder::preCompress for reversible blocks
+            for (sample, &coefficient) in target.iter_mut().zip(source) {
+                let value = coefficient << T1_NMSEDEC_FRACBITS;
+                let magnitude = value.unsigned_abs();
+                maximum = maximum.max(magnitude);
+                *sample = (magnitude | (value as u32 & SIGN_BIT)) as i32;
+            }
+        }
+        maximum
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct CodedPass {
     // cumulative bytes through this pass
@@ -108,6 +140,7 @@ pub(crate) struct BandT1Params {
     pub level: i32,
     pub stepsize: f32,
     pub mct: bool,
+    pub reversible: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -174,6 +207,7 @@ fn code_block(
             params.level,
             params.stepsize as f64,
             params.mct as i32,
+            params.reversible as i32,
             &mut coded,
             rates.as_mut_ptr(),
             distortions.as_mut_ptr(),

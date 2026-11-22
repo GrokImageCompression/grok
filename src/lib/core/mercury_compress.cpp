@@ -121,6 +121,7 @@ namespace
       bool sameStyle = tccp.numresolutions_ == first.numresolutions_ &&
                        tccp.cblkw_expn_ == first.cblkw_expn_ &&
                        tccp.cblkh_expn_ == first.cblkh_expn_ && tccp.csty_ == first.csty_ &&
+                       tccp.qmfbid_ == first.qmfbid_ &&
                        std::equal(tccp.precWidthExp_, tccp.precWidthExp_ + tccp.numresolutions_,
                                   first.precWidthExp_) &&
                        std::equal(tccp.precHeightExp_, tccp.precHeightExp_ + tccp.numresolutions_,
@@ -129,8 +130,8 @@ namespace
       auto oneSamplePrecincts =
           std::count(tccp.precWidthExp_ + 1, tccp.precWidthExp_ + tccp.numresolutions_, 0) +
           std::count(tccp.precHeightExp_ + 1, tccp.precHeightExp_ + tccp.numresolutions_, 0);
-      if(!sameStyle || tccp.qmfbid_ != 0 || tccp.cblkStyle_ != 0 || tccp.roishift_ != 0 ||
-         tccp.numresolutions_ < 2 || oneSamplePrecincts > 0)
+      if(!sameStyle || tccp.cblkStyle_ != 0 || tccp.roishift_ != 0 || tccp.numresolutions_ < 2 ||
+         oneSamplePrecincts > 0)
         return false;
     }
     return true;
@@ -165,9 +166,14 @@ namespace
          comp->w != first->w || comp->h != first->h || comp->data_type != first->data_type)
         return false;
     }
+    return first->data_type == GRK_INT_32 || first->data_type == GRK_INT_16;
+  }
+
+  bool int16PlanesMatchMercury(const GrkImage* image, TileCodingParams* tcp)
+  {
     // classic codes int16 planes with the int16 9/7 only up to forward97FitsInt16
-    return first->data_type == GRK_INT_32 ||
-           (first->data_type == GRK_INT_16 && forward97FitsInt16(first->prec));
+    return image->comps[0].data_type != GRK_INT_16 || tcp->tccps_[0].qmfbid_ == 1 ||
+           forward97FitsInt16(image->comps[0].prec);
   }
 
   bool imagePlanesMatchMercury(const GrkImage* image)
@@ -220,6 +226,7 @@ bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
       codingMatchesMercury(cp_, cp_.tcps_.get(0), headerImage_->numcomps) &&
       (numTiles == 1 || parameters->layer_rate[0] == 0.0 || usesImageWideRateControl(numTiles)) &&
       tilesMatchMercury(cp_, headerImage_->numcomps) &&
+      int16PlanesMatchMercury(headerImage_, cp_.tcps_.get(0)) &&
       (stripInput_ ? planeGeometryMatchesMercury(headerImage_)
                    : imagePlanesMatchMercury(headerImage_));
   if(mercuryEncode_ || !mercuryXyzSourcePrecision_)
@@ -268,7 +275,8 @@ bool CodeStreamCompress::createMercuryEncoder(void)
   const uint8_t levels = (uint8_t)(tcp->tccps_[0].numresolutions_ - 1);
   std::vector<int32_t> levelFactors(levels);
   std::vector<double> bandScales((size_t)levels * t1::BAND_NUM_ORIENTATIONS);
-  if(image->comps[0].data_type == GRK_INT_16)
+  params.int16_planes = image->comps[0].data_type == GRK_INT_16;
+  if(params.int16_planes && tcp->tccps_[0].qmfbid_ == 0)
   {
     for(uint8_t level = 0; level < levels; ++level)
     {
@@ -277,7 +285,6 @@ bool CodeStreamCompress::createMercuryEncoder(void)
         bandScales[(size_t)level * t1::BAND_NUM_ORIENTATIONS + orientation] =
             forward97Int16BandScale(level, orientation);
     }
-    params.int16_planes = true;
     params.int16_fraction_bits = wavelet97Int16FractionBits(image->comps[0].prec);
     params.int16_level_factors = levelFactors.data();
     params.int16_band_scales = bandScales.data();
