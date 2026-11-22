@@ -17,6 +17,9 @@
 
 #include "hwy_arm_disable_targets.h"
 
+#include <array>
+#include <cmath>
+
 #include "TFSingleton.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
@@ -1245,6 +1248,279 @@ namespace HWY_NAMESPACE
     return true;
   }
 
+  static int16_t q15(double value)
+  {
+    return (int16_t)std::lround(value * 32768.0);
+  }
+  static const int16_t fwd97_g = q15(2.0 + alpha);
+  static const int16_t fwd97_4beta = q15(4.0 * beta);
+  static const int16_t fwd97_half_gamma = q15(gamma / 2.0);
+  static const int16_t fwd97_2delta = q15(2.0 * delta);
+  static const int16_t fwd97_unhalved_0 = q15(1.0 + alpha);
+  static const int16_t fwd97_unhalved_2beta = q15(2.0 * beta);
+  static const int16_t fwd97_unhalved_gamma = q15(gamma);
+  static const int16_t fwd97_unhalved_delta = q15(delta);
+
+  template<class D, class V>
+  HWY_INLINE V halveTiesToEven(D d, V x)
+  {
+    // rounding ties up biases the low pass upward, and the bias adds up across levels
+    return ShiftRight<1>(x + And(ShiftRight<1>(x), Set(d, (int16_t)1)));
+  }
+
+  template<class D, class V>
+  HWY_INLINE V average16(D d, V a, V b)
+  {
+    const hwy::HWY_NAMESPACE::RebindToUnsigned<D> du;
+    const auto sign = Set(du, (uint16_t)0x8000);
+    auto roundedUp =
+        BitCast(d, Xor(AverageRound(Xor(BitCast(du, a), sign), Xor(BitCast(du, b), sign)), sign));
+    auto oddTie = And(And(Xor(a, b), roundedUp), Set(d, (int16_t)1));
+    return roundedUp - oddTie;
+  }
+
+  template<class D, class V>
+  HWY_INLINE V halvedPredict0(D d, V odd, V left, V right)
+  {
+    auto sum = left + right;
+    return halveTiesToEven(d, odd + MulFixedPoint15(sum, Set(d, fwd97_g))) - sum;
+  }
+  template<class D, class V>
+  HWY_INLINE V halvedUpdate1(D d, V even, V left, V right)
+  {
+    return even + MulFixedPoint15(average16(d, left, right), Set(d, fwd97_4beta));
+  }
+  template<class D, class V>
+  HWY_INLINE V halvedPredict2(D d, V odd, V left, V right)
+  {
+    return odd + MulFixedPoint15(left + right, Set(d, fwd97_half_gamma));
+  }
+  template<class D, class V>
+  HWY_INLINE V halvedUpdate3(D d, V even, V left, V right)
+  {
+    return even + MulFixedPoint15(left + right, Set(d, fwd97_2delta));
+  }
+  template<class D, class V>
+  HWY_INLINE V unhalvedPredict0(D d, V odd, V left, V right)
+  {
+    auto sum = left + right;
+    return odd - sum + MulFixedPoint15(sum, Set(d, fwd97_unhalved_0));
+  }
+  template<class D, class V>
+  HWY_INLINE V unhalvedUpdate1(D d, V even, V left, V right)
+  {
+    return even + MulFixedPoint15(average16(d, left, right), Set(d, fwd97_unhalved_2beta));
+  }
+  template<class D, class V>
+  HWY_INLINE V unhalvedPredict2(D d, V odd, V left, V right)
+  {
+    return odd + MulFixedPoint15(left + right, Set(d, fwd97_unhalved_gamma));
+  }
+  template<class D, class V>
+  HWY_INLINE V unhalvedUpdate3(D d, V even, V left, V right)
+  {
+    return even + MulFixedPoint15(left + right, Set(d, fwd97_unhalved_delta));
+  }
+
+  static int16_t scaleLoneSample(int16_t value, double factor)
+  {
+    return (int16_t)std::lround(value * factor);
+  }
+
+  void encode_97_16_v(int16_t* resolution, int16_t* scratch, uint32_t height, uint8_t parity,
+                      uint32_t stride, uint32_t numcols, int16_t dcShift, uint8_t sampleShift,
+                      int32_t factorQ15)
+  {
+    const HWY_FULL(int16_t) d;
+    const size_t lanes = Lanes(d);
+    // AMD runs masked stores as microcode
+    const bool fullStrip = numcols == lanes;
+    auto loadRow = [&](const int16_t* row) {
+      auto samples = fullStrip ? LoadU(d, row) : LoadN(d, row, numcols);
+      return ShiftLeftSame(samples - Set(d, dcShift), sampleShift);
+    };
+    auto storeRow = [&](auto v, int16_t* row) {
+      if(fullStrip)
+        StoreU(v, d, row);
+      else
+        StoreN(v, d, row, numcols);
+    };
+    const double factor = factorQ15 / 32768.0;
+    if(height <= 1)
+    {
+      if(height == 1)
+      {
+        storeRow(loadRow(resolution), resolution);
+        double loneFactor = parity ? factor / K : factor * K;
+        for(uint32_t j = 0; j < numcols; ++j)
+          resolution[j] = scaleLoneSample(resolution[j], loneFactor);
+      }
+      return;
+    }
+
+    const uint32_t sn = (height + !parity) >> 1;
+    const uint32_t dn = height - sn;
+    int16_t* E = scratch;
+    int16_t* O = scratch + sn * lanes;
+    for(uint32_t k = 0; k < sn; ++k)
+      Store(loadRow(resolution + size_t(2 * k + parity) * stride), d, E + k * lanes);
+    for(uint32_t k = 0; k < dn; ++k)
+      Store(loadRow(resolution + size_t(2 * k + !parity) * stride), d, O + k * lanes);
+
+    auto evenLeft = [&](uint32_t k) { return (parity == 0) ? k : ((k > 0) ? (k - 1) : 0); };
+    auto evenRight = [&](uint32_t k) {
+      return (parity == 0) ? ((k + 1 < sn) ? (k + 1) : k) : ((k < sn) ? k : (sn > 0 ? sn - 1 : 0));
+    };
+    auto oddLeft = [&](uint32_t k) { return (parity == 0) ? ((k > 0) ? (k - 1) : 0) : k; };
+    auto oddRight = [&](uint32_t k) {
+      return (parity == 0) ? ((k < dn) ? k : (dn > 0 ? dn - 1 : 0)) : ((k + 1 < dn) ? (k + 1) : k);
+    };
+
+    const bool unitFactor = factorQ15 == 32768;
+    for(uint32_t k = 0; k < dn; ++k)
+    {
+      auto left = Load(d, E + evenLeft(k) * lanes);
+      auto right = Load(d, E + evenRight(k) * lanes);
+      auto odd = Load(d, O + k * lanes);
+      if(unitFactor)
+      {
+        odd = halvedPredict0(d, odd, left, right);
+      }
+      else
+      {
+        auto halfFactor = Set(d, (int16_t)((factorQ15 + 1) >> 1));
+        auto halfFactorAlpha = Set(d, (int16_t)std::lround((double)factorQ15 * alpha / 2.0));
+        odd = MulFixedPoint15(odd, halfFactor) + MulFixedPoint15(left + right, halfFactorAlpha);
+      }
+      Store(odd, d, O + k * lanes);
+    }
+    for(uint32_t k = 0; k < sn; ++k)
+    {
+      auto even = Load(d, E + k * lanes);
+      if(!unitFactor)
+        even = MulFixedPoint15(even, Set(d, (int16_t)factorQ15));
+      Store(
+          halvedUpdate1(d, even, Load(d, O + oddLeft(k) * lanes), Load(d, O + oddRight(k) * lanes)),
+          d, E + k * lanes);
+    }
+    for(uint32_t k = 0; k < dn; ++k)
+      Store(halvedPredict2(d, Load(d, O + k * lanes), Load(d, E + evenLeft(k) * lanes),
+                           Load(d, E + evenRight(k) * lanes)),
+            d, O + k * lanes);
+    for(uint32_t k = 0; k < sn; ++k)
+      Store(halvedUpdate3(d, Load(d, E + k * lanes), Load(d, O + oddLeft(k) * lanes),
+                          Load(d, O + oddRight(k) * lanes)),
+            d, E + k * lanes);
+
+    for(uint32_t k = 0; k < sn; ++k)
+      storeRow(Load(d, E + k * lanes), resolution + size_t(k) * stride);
+    for(uint32_t k = 0; k < dn; ++k)
+      storeRow(Load(d, O + k * lanes), resolution + size_t(sn + k) * stride);
+  }
+
+  template<class Op>
+  HWY_ATTR static void lift97_16_row(int16_t* target, uint32_t targetCount,
+                                     const int16_t* neighbours, uint32_t neighbourCount,
+                                     int32_t offset, Op op)
+  {
+    const HWY_FULL(int16_t) d;
+    const size_t lanes = Lanes(d);
+    auto liftOne = [&](uint32_t k) {
+      int64_t left = (int64_t)k + offset;
+      int64_t right = left + 1;
+      if(left < 0)
+        left = right;
+      if(right >= (int64_t)neighbourCount)
+        right = left;
+      target[k] =
+          GetLane(op(d, Set(d, target[k]), Set(d, neighbours[left]), Set(d, neighbours[right])));
+    };
+    uint32_t begin = (uint32_t)std::min<int64_t>(-offset, targetCount);
+    int64_t lastInterior = (int64_t)neighbourCount - offset - 1;
+    uint32_t end = (uint32_t)std::clamp<int64_t>(lastInterior, begin, targetCount);
+    for(uint32_t k = 0; k < begin; ++k)
+      liftOne(k);
+    uint32_t k = begin;
+    for(; k + lanes <= end; k += (uint32_t)lanes)
+    {
+      auto left = LoadU(d, neighbours + (int64_t)k + offset);
+      auto right = LoadU(d, neighbours + (int64_t)k + offset + 1);
+      StoreU(op(d, LoadU(d, target + k), left, right), d, target + k);
+    }
+    for(; k < targetCount; ++k)
+      liftOne(k);
+  }
+
+  void encode_97_16_h(int16_t* rows, int16_t* scratch, uint32_t width, uint8_t parity,
+                      uint32_t stride, uint32_t numRows, uint32_t firstRow,
+                      uint32_t verticalLowRows)
+  {
+    const HWY_FULL(int16_t) d;
+    const size_t lanes = Lanes(d);
+    const uint32_t sn = (width + !parity) >> 1;
+    const uint32_t dn = width - sn;
+    int16_t* low = scratch;
+    int16_t* high = scratch + sn;
+    int16_t* evenSamples = parity ? high : low;
+    int16_t* oddSamples = parity ? low : high;
+    const int32_t highOffset = parity ? -1 : 0;
+    const int32_t lowOffset = parity ? 0 : -1;
+    for(uint32_t r = 0; r < numRows; ++r)
+    {
+      int16_t* row = rows + (size_t)r * stride;
+      bool halvedOdd = firstRow + r < verticalLowRows;
+      if(width == 1)
+      {
+        double loneFactor = parity ? (halvedOdd ? 1.0 / K : 2.0 / K) : K;
+        row[0] = scaleLoneSample(row[0], loneFactor);
+        continue;
+      }
+      uint32_t pair = 0;
+      for(; 2 * pair + 2 * lanes <= width; pair += (uint32_t)lanes)
+      {
+        auto first = LoadU(d, row + 2 * pair);
+        auto second = LoadU(d, row + 2 * pair + lanes);
+        StoreU(ConcatEven(d, second, first), d, evenSamples + pair);
+        StoreU(ConcatOdd(d, second, first), d, oddSamples + pair);
+      }
+      for(; 2 * pair < width; ++pair)
+      {
+        evenSamples[pair] = row[2 * pair];
+        if(2 * pair + 1 < width)
+          oddSamples[pair] = row[2 * pair + 1];
+      }
+      if(halvedOdd)
+      {
+        lift97_16_row(high, dn, low, sn, highOffset, [](auto dd, auto t, auto l, auto rr) {
+          return halvedPredict0(dd, t, l, rr);
+        });
+        lift97_16_row(low, sn, high, dn, lowOffset,
+                      [](auto dd, auto t, auto l, auto rr) { return halvedUpdate1(dd, t, l, rr); });
+        lift97_16_row(high, dn, low, sn, highOffset, [](auto dd, auto t, auto l, auto rr) {
+          return halvedPredict2(dd, t, l, rr);
+        });
+        lift97_16_row(low, sn, high, dn, lowOffset,
+                      [](auto dd, auto t, auto l, auto rr) { return halvedUpdate3(dd, t, l, rr); });
+      }
+      else
+      {
+        lift97_16_row(high, dn, low, sn, highOffset, [](auto dd, auto t, auto l, auto rr) {
+          return unhalvedPredict0(dd, t, l, rr);
+        });
+        lift97_16_row(low, sn, high, dn, lowOffset, [](auto dd, auto t, auto l, auto rr) {
+          return unhalvedUpdate1(dd, t, l, rr);
+        });
+        lift97_16_row(high, dn, low, sn, highOffset, [](auto dd, auto t, auto l, auto rr) {
+          return unhalvedPredict2(dd, t, l, rr);
+        });
+        lift97_16_row(low, sn, high, dn, lowOffset, [](auto dd, auto t, auto l, auto rr) {
+          return unhalvedUpdate3(dd, t, l, rr);
+        });
+      }
+      memcpy(row, scratch, (size_t)width * sizeof(int16_t));
+    }
+  }
+
   template<typename T, typename DWT>
   void encode_h(encode_info<T, DWT>* task)
   {
@@ -1255,10 +1531,10 @@ namespace HWY_NAMESPACE
     size_t inc = lanes * task->stride;
     for(j = task->min_j; j + lanes - 1 < task->max_j; j += (uint32_t)lanes, ind += inc)
       task->dwt.encode_h((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, (uint32_t)lanes, task->dcShift);
+                         task->stride, (uint32_t)lanes, j, task->level);
     if(j < task->max_j)
       task->dwt.encode_h((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, task->max_j - j, task->dcShift);
+                         task->stride, task->max_j - j, j, task->level);
   }
 
   template<typename T, typename DWT>
@@ -1271,14 +1547,14 @@ namespace HWY_NAMESPACE
     size_t inc = lanes;
     for(j = task->min_j; j + lanes - 1 < task->max_j; j += (uint32_t)lanes, ind += inc)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, (uint32_t)lanes, task->dcShift, task->intInput);
+                         task->stride, (uint32_t)lanes, task->level);
     if(j < task->max_j)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, task->max_j - j, task->dcShift, task->intInput);
+                         task->stride, task->max_j - j, task->level);
   }
 
   template<typename T, typename DWT>
-  bool encode(TileComponent* tilec, T dcShiftVal, bool intInput = false)
+  bool encode(TileComponent* tilec, const DWT& dwt)
   {
     if(tilec->num_resolutions_ == 1U)
       return true;
@@ -1318,7 +1594,6 @@ namespace HWY_NAMESPACE
       if(!scratch_pool)
         return false;
     }
-    DWT dwt;
     auto infoArray = std::make_unique<encode_info<T, DWT>[]>(num_threads);
     for(auto j = 0U; j < num_threads; ++j)
     {
@@ -1326,18 +1601,10 @@ namespace HWY_NAMESPACE
       info->line.mem = scratch_pool + (j * dataSize) / sizeof(T);
       info->stride = stride;
       info->tiledp = tiledp;
+      info->dwt = dwt;
     }
     while(i--)
     {
-      // DC shift only on first (finest) resolution level
-      bool isFirstLevel = (i == maxNumResolutions - 1);
-      T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      bool currentIntInput;
-      if constexpr(std::is_floating_point_v<T>)
-        currentIntInput = isFirstLevel && intInput;
-      else
-        currentIntInput = isFirstLevel ? intInput : true;
-
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
       // height of the resolution level computed
@@ -1350,17 +1617,16 @@ namespace HWY_NAMESPACE
       const uint8_t parity_row = currentRes->x0 & 1;
       const uint8_t parity_col = currentRes->y0 & 1;
 
+      const ForwardDwtLevel level{(uint8_t)(maxNumResolutions - 1 - i), rh_lower};
       uint32_t sn = rh_lower;
       uint32_t dn = rh - rh_lower;
       if(num_threads <= 1 || rw < (lanes << 1))
       {
         uint32_t j;
         for(j = 0; j + lanes - 1 < rw; j += lanes)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes, currentDcShift,
-                       currentIntInput);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes, level);
         if(j < rw)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j, currentDcShift,
-                       currentIntInput);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j, level);
       }
       else
       {
@@ -1385,8 +1651,7 @@ namespace HWY_NAMESPACE
           info->r_dim = rh;
           info->min_j = j * step_j;
           info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
-          info->dcShift = currentDcShift;
-          info->intInput = currentIntInput;
+          info->level = level;
           if(node)
           {
             node[j].work([info] {
@@ -1403,19 +1668,17 @@ namespace HWY_NAMESPACE
           TFSingleton::get().run(taskflow).wait();
       }
 
-      // DC shift applied only during vertical pass for first level;
-      // horizontal pass processes already-shifted data
       sn = rw_lower;
       dn = (uint32_t)(rw - rw_lower);
       if(num_threads <= 1 || rh < (lanes << 1))
       {
         uint32_t j;
         for(j = 0; j + lanes - 1 < rh; j += lanes)
-          dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch_pool, rw, parity_row, stride,
-                       lanes);
+          dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch_pool, rw, parity_row, stride, lanes,
+                       j, level);
         if(j < rh)
           dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch_pool, rw, parity_row, stride,
-                       rh - j);
+                       rh - j, j, level);
       }
       else
       {
@@ -1440,7 +1703,7 @@ namespace HWY_NAMESPACE
           info->r_dim = rw;
           info->min_j = j * step_j;
           info->max_j = (j + 1 == num_tasks) ? rh : (j + 1U) * step_j;
-          info->dcShift = T(0);
+          info->level = level;
           if(node)
             node[j].work([info] { encode_h(info); });
           else
@@ -1457,17 +1720,21 @@ namespace HWY_NAMESPACE
     return true;
   }
 
-  bool encode_53(TileComponent* tilec, int32_t dcShift)
+  bool encode_53(TileComponent* tilec, dwt53 dwt)
   {
-    return encode<int32_t, dwt53>(tilec, dcShift, false);
+    return encode<int32_t, dwt53>(tilec, dwt);
   }
-  bool encode_53_16_in_place(TileComponent* tilec, int16_t dcShift)
+  bool encode_53_16_in_place(TileComponent* tilec, dwt53_16 dwt)
   {
-    return encode<int16_t, dwt53_16>(tilec, dcShift, false);
+    return encode<int16_t, dwt53_16>(tilec, dwt);
   }
-  bool encode_97(TileComponent* tilec, float dcShift, bool intInput)
+  bool encode_97(TileComponent* tilec, dwt97 dwt)
   {
-    return encode<float, dwt97>(tilec, dcShift, intInput);
+    return encode<float, dwt97>(tilec, dwt);
+  }
+  bool encode_97_16(TileComponent* tilec, dwt97_16 dwt)
+  {
+    return encode<int16_t, dwt97_16>(tilec, dwt);
   }
 
   // Holds per-thread encode_info arrays for each (vert, horiz) pass at each level,
@@ -1492,9 +1759,8 @@ namespace HWY_NAMESPACE
   // Instead of run().wait(), tasks are added to the FlowComponents.
   template<typename T, typename DWT>
   std::unique_ptr<WaveletFwdScheduleData>
-      schedule_encode(TileComponent* tilec, T dcShiftVal,
-                      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
-                      bool intInput = false)
+      schedule_encode(TileComponent* tilec, const DWT& dwt,
+                      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
     if(tilec->num_resolutions_ == 1U)
       return nullptr;
@@ -1538,15 +1804,6 @@ namespace HWY_NAMESPACE
     uint8_t levelIdx = 0;
     while(i--)
     {
-      // DC shift only on first (finest) resolution level
-      bool isFirstLevel = (i == maxNumResolutions - 1);
-      T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
-      bool currentIntInput;
-      if constexpr(std::is_floating_point_v<T>)
-        currentIntInput = isFirstLevel && intInput;
-      else
-        currentIntInput = isFirstLevel ? intInput : true;
-
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
       // height of the resolution level computed
@@ -1561,6 +1818,7 @@ namespace HWY_NAMESPACE
 
       auto vertFlow = levelFlows[levelIdx].first;
       auto horizFlow = levelFlows[levelIdx].second;
+      const ForwardDwtLevel level{levelIdx, rh_lower};
 
       // --- Vertical pass ---
       {
@@ -1570,17 +1828,14 @@ namespace HWY_NAMESPACE
         {
           T* scratch = data->scratch_pool;
           // Lanes() is a runtime value on SVE and RVV
-          vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, currentDcShift,
-                                     currentIntInput, lanes = lanes] {
-            DWT dwt;
-            uint32_t j;
-            for(j = 0; j + lanes - 1 < rw; j += lanes)
-              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, currentDcShift,
-                           currentIntInput);
-            if(j < rw)
-              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, currentDcShift,
-                           currentIntInput);
-          });
+          vertFlow->nextTask().work(
+              [tiledp, scratch, rw, rh, parity_col, stride, dwt, level, lanes = lanes] {
+                uint32_t j;
+                for(j = 0; j + lanes - 1 < rw; j += lanes)
+                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, level);
+                if(j < rw)
+                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, level);
+              });
         }
         else
         {
@@ -1603,8 +1858,8 @@ namespace HWY_NAMESPACE
             info->r_dim = rh;
             info->min_j = j * step_j;
             info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
-            info->dcShift = currentDcShift;
-            info->intInput = currentIntInput;
+            info->level = level;
+            info->dwt = dwt;
             vertFlow->nextTask().work([info] { encode_v(info); });
           }
           data->passes.push_back(std::move(pass));
@@ -1612,8 +1867,6 @@ namespace HWY_NAMESPACE
       }
 
       // --- Horizontal pass ---
-      // DC shift applied only during vertical pass for first level;
-      // horizontal pass processes already-shifted data
       {
         uint32_t sn = rw_lower;
         uint32_t dn = (uint32_t)(rw - rw_lower);
@@ -1621,15 +1874,16 @@ namespace HWY_NAMESPACE
         {
           T* scratch = data->scratch_pool;
           // Lanes() is a runtime value on SVE and RVV
-          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes = lanes] {
-            DWT dwt;
-            uint32_t j;
-            for(j = 0; j + lanes - 1 < rh; j += lanes)
-              dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride, lanes);
-            if(j < rh)
-              dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
-                           rh - j);
-          });
+          horizFlow->nextTask().work(
+              [tiledp, scratch, rw, rh, parity_row, stride, dwt, level, lanes = lanes] {
+                uint32_t j;
+                for(j = 0; j + lanes - 1 < rh; j += lanes)
+                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
+                               lanes, j, level);
+                if(j < rh)
+                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
+                               rh - j, j, level);
+              });
         }
         else
         {
@@ -1652,7 +1906,8 @@ namespace HWY_NAMESPACE
             info->r_dim = rw;
             info->min_j = j * step_j;
             info->max_j = (j + 1 == num_tasks) ? rh : (j + 1U) * step_j;
-            info->dcShift = T(0);
+            info->level = level;
+            info->dwt = dwt;
             horizFlow->nextTask().work([info] { encode_h(info); });
           }
           data->passes.push_back(std::move(pass));
@@ -1668,23 +1923,28 @@ namespace HWY_NAMESPACE
   }
 
   std::unique_ptr<WaveletFwdScheduleData>
-      schedule_encode_53(TileComponent* tilec, int32_t dcShift,
+      schedule_encode_53(TileComponent* tilec, dwt53 dwt,
                          std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
-    return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows, false);
+    return schedule_encode<int32_t, dwt53>(tilec, dwt, levelFlows);
   }
   std::unique_ptr<WaveletFwdScheduleData> schedule_encode_53_16_in_place(
-      TileComponent* tilec, int16_t dcShift,
+      TileComponent* tilec, dwt53_16 dwt,
       std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
-    return schedule_encode<int16_t, dwt53_16>(tilec, dcShift, levelFlows, false);
+    return schedule_encode<int16_t, dwt53_16>(tilec, dwt, levelFlows);
   }
   std::unique_ptr<WaveletFwdScheduleData>
-      schedule_encode_97(TileComponent* tilec, float dcShift,
-                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
-                         bool intInput)
+      schedule_encode_97(TileComponent* tilec, dwt97 dwt,
+                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
-    return schedule_encode<float, dwt97>(tilec, dcShift, levelFlows, intInput);
+    return schedule_encode<float, dwt97>(tilec, dwt, levelFlows);
+  }
+  std::unique_ptr<WaveletFwdScheduleData>
+      schedule_encode_97_16(TileComponent* tilec, dwt97_16 dwt,
+                            std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    return schedule_encode<int16_t, dwt97_16>(tilec, dwt, levelFlows);
   }
 
 } // namespace HWY_NAMESPACE
@@ -1705,11 +1965,15 @@ HWY_EXPORT(encode_97_v);
 HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
+HWY_EXPORT(encode_97_16);
+HWY_EXPORT(encode_97_16_v);
+HWY_EXPORT(encode_97_16_h);
 HWY_EXPORT(encode_53_16);
 HWY_EXPORT(encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_53);
 HWY_EXPORT(schedule_encode_53_16_in_place);
 HWY_EXPORT(schedule_encode_97);
+HWY_EXPORT(schedule_encode_97_16);
 
 template<typename T>
 struct dwt_line
@@ -1729,80 +1993,251 @@ struct encode_info
   T* tiledp;
   uint32_t min_j;
   uint32_t max_j;
-  T dcShift;
-  bool intInput = false; // true when tile buffer contains int32_t (9/7 first level)
+  ForwardDwtLevel level;
   DWT dwt;
 };
+
+namespace
+{
+  struct Filter
+  {
+    int64_t origin = 0;
+    std::vector<double> taps;
+  };
+
+  Filter shifted(const Filter& filter, int64_t offset)
+  {
+    return {filter.origin + offset, filter.taps};
+  }
+
+  Filter plusScaled(const Filter& first, const Filter& second, double coefficient)
+  {
+    int64_t begin = std::min(first.origin, second.origin);
+    int64_t end = std::max(first.origin + (int64_t)first.taps.size(),
+                           second.origin + (int64_t)second.taps.size());
+    Filter sum{begin, std::vector<double>((size_t)(end - begin), 0.0)};
+    for(size_t i = 0; i < first.taps.size(); ++i)
+      sum.taps[(size_t)(first.origin - begin) + i] += first.taps[i];
+    for(size_t i = 0; i < second.taps.size(); ++i)
+      sum.taps[(size_t)(second.origin - begin) + i] += coefficient * second.taps[i];
+    return sum;
+  }
+
+  double absoluteSum(const Filter& filter)
+  {
+    double sum = 0;
+    for(double tap : filter.taps)
+      sum += std::fabs(tap);
+    return sum;
+  }
+
+  struct LiftingGains
+  {
+    double step0Sum;
+    double step0Unhalved;
+    double afterStep0;
+    Filter low;
+    Filter high;
+  };
+
+  LiftingGains liftingGains(const Filter& input, int64_t stride, bool halvedOdd)
+  {
+    const double alpha = -1.586134342, beta = -0.052980118, gamma = 0.882911075,
+                 delta = 0.443506852;
+    const double oddScale = halvedOdd ? 0.5 : 1.0;
+    LiftingGains gains;
+    Filter even = input;
+    Filter odd = shifted(input, stride);
+    Filter sum = plusScaled(even, shifted(even, 2 * stride), 1.0);
+    gains.step0Sum = absoluteSum(sum);
+    gains.step0Unhalved = absoluteSum(plusScaled(odd, sum, 2.0 + alpha));
+    odd = plusScaled(odd, sum, alpha);
+    for(double& tap : odd.taps)
+      tap *= oddScale;
+    double peak = absoluteSum(odd);
+    even = plusScaled(even, plusScaled(shifted(odd, -2 * stride), odd, 1.0), beta / oddScale);
+    peak = std::max(peak, absoluteSum(even));
+    sum = plusScaled(even, shifted(even, 2 * stride), 1.0);
+    peak = std::max(peak, absoluteSum(sum));
+    odd = plusScaled(odd, sum, gamma * oddScale);
+    peak = std::max(peak, absoluteSum(odd));
+    sum = plusScaled(shifted(odd, -2 * stride), odd, 1.0);
+    peak = std::max(peak, absoluteSum(sum));
+    even = plusScaled(even, sum, delta / oddScale);
+    peak = std::max(peak, absoluteSum(even));
+    gains.afterStep0 = peak;
+    gains.low = std::move(even);
+    gains.high = std::move(odd);
+    return gains;
+  }
+
+  struct Forward97Int16Plan
+  {
+    std::array<int32_t, GRK_MAX_DECOMP_LVLS> levelFactors;
+    std::array<std::array<double, t1::BAND_NUM_ORIENTATIONS>, GRK_MAX_DECOMP_LVLS> bandScales;
+  };
+
+  Forward97Int16Plan makeForward97Int16Plan()
+  {
+    const double K = 1.230174105;
+    // samples peak at 2^12, the margin covers rounding in the lifting
+    const double limit = 0.995 * 32768.0 / 4096.0;
+    // impulse responses double in length every level, and their gains agree to six digits after 11
+    const uint8_t exactLevels = 12;
+    Forward97Int16Plan plan{};
+    Filter rowInput{0, {1.0}};
+    LiftingGains halved, unhalved;
+    double cumulativeFactor = 1.0;
+    for(uint8_t level = 0; level < GRK_MAX_DECOMP_LVLS; ++level)
+    {
+      if(level < exactLevels)
+      {
+        int64_t stride = (int64_t)1 << level;
+        halved = liftingGains(rowInput, stride, true);
+        unhalved = liftingGains(rowInput, stride, false);
+      }
+      double rowGain = absoluteSum(rowInput);
+      double scale = cumulativeFactor * std::pow(K, 2.0 * level);
+      double horizontal =
+          std::max(absoluteSum(halved.low) *
+                       std::max({halved.step0Sum, halved.step0Unhalved, halved.afterStep0}),
+                   absoluteSum(halved.high) * std::max(unhalved.step0Sum, unhalved.afterStep0));
+      auto fits = [&](int32_t factorQ15) {
+        double factor = factorQ15 / 32768.0;
+        double unscaled = halved.step0Sum;
+        if(factorQ15 == 32768)
+          unscaled = std::max(unscaled, halved.step0Unhalved);
+        double scaled = std::max(halved.afterStep0 * rowGain, horizontal);
+        return std::max(unscaled * rowGain, scaled * factor) * scale <= limit;
+      };
+      int32_t factorQ15 = 32768;
+      while(factorQ15 > 1024 && !fits(factorQ15))
+        factorQ15 -= 1024;
+      plan.levelFactors[level] = factorQ15;
+      cumulativeFactor *= factorQ15 / 32768.0;
+      double bandScale = cumulativeFactor * std::pow(K, 2.0 * level);
+      plan.bandScales[level][t1::BAND_ORIENT_LL] = bandScale * K * K;
+      plan.bandScales[level][t1::BAND_ORIENT_HL] = bandScale * 0.5;
+      plan.bandScales[level][t1::BAND_ORIENT_LH] = bandScale * 0.5;
+      plan.bandScales[level][t1::BAND_ORIENT_HH] = bandScale * 0.5 / (K * K);
+      if(level + 1 < exactLevels)
+      {
+        rowInput = halved.low;
+        for(double& tap : rowInput.taps)
+          tap /= K;
+      }
+    }
+    return plan;
+  }
+
+  const Forward97Int16Plan& forward97Int16Plan()
+  {
+    static const Forward97Int16Plan plan = makeForward97Int16Plan();
+    return plan;
+  }
+} // namespace
+
+int32_t forward97Int16LevelFactor(uint8_t level)
+{
+  return forward97Int16Plan().levelFactors[level];
+}
+
+double forward97Int16BandScale(uint8_t level, uint8_t orientation)
+{
+  return forward97Int16Plan().bandScales[level][orientation];
+}
+
+static dwt97_16 makeDwt97_16(const TileComponent* tile_comp, DcShiftParam dcShift, bool intInput)
+{
+  return {(int16_t)(dcShift.enabled ? dcShift.shift : 0),
+          (uint8_t)(intInput ? tile_comp->qShift() : 0)};
+}
 
 bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
                               bool intInput)
 {
+  int32_t shift = dcShift.enabled ? dcShift.shift : 0;
   if(qmfbid == 1)
   {
     if(tile_comp->is16BitDwt())
     {
       if(tile_comp->uses16BitWindow())
-        return HWY_DYNAMIC_DISPATCH(encode_53_16_in_place)(
-            tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0));
-      return HWY_DYNAMIC_DISPATCH(encode_53_16)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
+        return HWY_DYNAMIC_DISPATCH(encode_53_16_in_place)(tile_comp, dwt53_16{(int16_t)shift});
+      return HWY_DYNAMIC_DISPATCH(encode_53_16)(tile_comp, shift);
     }
-    return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
+    return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dwt53{shift});
   }
-  else
-  {
-    return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f,
-                                           intInput);
-  }
+  if(tile_comp->is16BitDwt())
+    return HWY_DYNAMIC_DISPATCH(encode_97_16)(tile_comp,
+                                              makeDwt97_16(tile_comp, dcShift, intInput));
+  return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp, dwt97{(float)shift, intInput});
 }
 std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
     TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
     std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput)
 {
+  int32_t shift = dcShift.enabled ? dcShift.shift : 0;
   if(qmfbid == 1)
   {
     if(tile_comp->uses16BitWindow())
       return HWY_DYNAMIC_DISPATCH(schedule_encode_53_16_in_place)(
-          tile_comp, (int16_t)(dcShift.enabled ? dcShift.shift : 0), levelFlows);
-    return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0,
-                                                    levelFlows);
+          tile_comp, dwt53_16{(int16_t)shift}, levelFlows);
+    return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dwt53{shift}, levelFlows);
   }
-  else
-    return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
-        tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows, intInput);
+  if(tile_comp->is16BitDwt())
+    return HWY_DYNAMIC_DISPATCH(schedule_encode_97_16)(
+        tile_comp, makeDwt97_16(tile_comp, dcShift, intInput), levelFlows);
+  return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(tile_comp, dwt97{(float)shift, intInput},
+                                                  levelFlows);
 }
-void dwt53::encode_v(int32_t* res, int32_t* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols, int32_t dcShift,
-                     [[maybe_unused]] bool intInput)
+void dwt53::encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity,
+                     uint32_t stride, uint32_t numcols, ForwardDwtLevel level) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_v)(res, scratch, height, parity, stride, numcols, dcShift);
+  HWY_DYNAMIC_DISPATCH(encode_53_v)(res, scratch, height, parity, stride, numcols,
+                                    level.index == 0 ? dcShift : 0);
 }
-void dwt53::encode_h(int32_t* res, int32_t* scratch, const uint32_t width, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numrows, int32_t dcShift)
+void dwt53::encode_h(int32_t* rows, int32_t* scratch, uint32_t width, uint8_t parity,
+                     uint32_t stride, uint32_t numRows, uint32_t, ForwardDwtLevel) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_h)(res, scratch, width, parity, stride, numrows, dcShift);
+  HWY_DYNAMIC_DISPATCH(encode_53_h)(rows, scratch, width, parity, stride, numRows, 0);
 }
-void dwt97::encode_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols, float dcShift, bool intInput)
+void dwt97::encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                     uint32_t numcols, ForwardDwtLevel level) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols, dcShift,
-                                    intInput);
+  bool finest = level.index == 0;
+  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols,
+                                    finest ? dcShift : 0.0f, finest && intInput);
 }
-void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numrows, float dcShift)
+void dwt97::encode_h(float* rows, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                     uint32_t numRows, uint32_t, ForwardDwtLevel) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows, dcShift);
+  HWY_DYNAMIC_DISPATCH(encode_97_h)(rows, scratch, width, parity, stride, numRows, 0.0f);
 }
-void dwt53_16::encode_v(int16_t* resolution, int16_t* scratch, uint32_t height, uint8_t parity,
-                        uint32_t stride, uint32_t columns, int16_t dcShift, bool intInput)
+void dwt53_16::encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity,
+                        uint32_t stride, uint32_t columns, ForwardDwtLevel level) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_16_v_in_place)(resolution, scratch, height, parity, stride,
-                                                columns, dcShift, intInput);
+  HWY_DYNAMIC_DISPATCH(encode_53_16_v_in_place)(res, scratch, height, parity, stride, columns,
+                                                level.index == 0 ? dcShift : (int16_t)0, false);
 }
-void dwt53_16::encode_h(int16_t* resolution, int16_t* scratch, uint32_t width, uint8_t parity,
-                        uint32_t stride, uint32_t rows, int16_t dcShift)
+void dwt53_16::encode_h(int16_t* rows, int16_t* scratch, uint32_t width, uint8_t parity,
+                        uint32_t stride, uint32_t numRows, uint32_t, ForwardDwtLevel) const
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_16_h_in_place)(resolution, scratch, width, parity, stride, rows,
-                                                dcShift);
+  HWY_DYNAMIC_DISPATCH(encode_53_16_h_in_place)(rows, scratch, width, parity, stride, numRows, 0);
+}
+void dwt97_16::encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity,
+                        uint32_t stride, uint32_t columns, ForwardDwtLevel level) const
+{
+  bool finest = level.index == 0;
+  HWY_DYNAMIC_DISPATCH(encode_97_16_v)(
+      res, scratch, height, parity, stride, columns, finest ? dcShift : (int16_t)0,
+      finest ? sampleShift : (uint8_t)0, forward97Int16LevelFactor(level.index));
+}
+void dwt97_16::encode_h(int16_t* rows, int16_t* scratch, uint32_t width, uint8_t parity,
+                        uint32_t stride, uint32_t numRows, uint32_t firstRow,
+                        ForwardDwtLevel level) const
+{
+  HWY_DYNAMIC_DISPATCH(encode_97_16_h)(rows, scratch, width, parity, stride, numRows, firstRow,
+                                       level.verticalLowRows);
 }
 
 } // namespace grk

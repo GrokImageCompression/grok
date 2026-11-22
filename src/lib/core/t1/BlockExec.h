@@ -129,6 +129,7 @@ struct CompressBlockExec : public BlockExec
   uint8_t level = 0;
   uint64_t precinctIndex = 0;
   float inv_step_ht = 0;
+  double fixedPointInverseStep = 0;
   const double* mct_norms = nullptr;
 #ifdef DEBUG_LOSSLESS_T1
   int32_t* unencodedData = nullptr;

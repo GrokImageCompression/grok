@@ -1178,7 +1178,7 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
     if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec <= 13 &&
        tileComp->num_resolutions_ > 1)
-      tileComp->setQShift((uint8_t)(13 - imageComp->prec));
+      tileComp->setQShift(wavelet97Int16FractionBits(imageComp->prec));
     else
       tileComp->setQShift(0);
     auto unreducedImageCompWindow =

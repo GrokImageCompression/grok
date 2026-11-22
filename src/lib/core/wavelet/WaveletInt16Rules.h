@@ -40,6 +40,17 @@ inline bool inverse97FitsInt16(uint8_t prec)
   return prec + 6U <= 16;
 }
 
+inline bool forward97FitsInt16(uint8_t prec)
+{
+  return prec + 6U <= 16;
+}
+
+inline uint8_t wavelet97Int16FractionBits(uint8_t prec)
+{
+  // int16 9/7 samples are scaled so the full sample range spans 2^13
+  return (uint8_t)(13 - prec);
+}
+
 bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
                             bool irreversibleInt16);
 

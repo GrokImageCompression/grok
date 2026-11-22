@@ -126,17 +126,25 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
   // don't need to allocate any buffers if this is from the plugin.
   if(current_plugin_tile_)
     return true;
+  auto waveletFitsInt16 = [this](uint16_t compno, bool isRctChroma) {
+    auto imageComp = headerImage_->comps + compno;
+    auto tileComp = tile_->comps_ + compno;
+    if(tileComp->num_resolutions_ <= 1)
+      return false;
+    if(tcp_->tccps_[compno].qmfbid_ == 0)
+      return forward97FitsInt16(imageComp->prec);
+    return wavelet53FitsInt16(imageComp->prec, isRctChroma,
+                              (uint8_t)(tileComp->num_resolutions_ - 1));
+  };
   bool use16BitMctWindows = tcp_->mct_ == 1 && headerImage_->numcomps >= 3;
   for(uint16_t compno = 0; use16BitMctWindows && compno < 3; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
-    auto tileComp = tile_->comps_ + compno;
-    auto tccp = tcp_->tccps_ + compno;
-    bool isRctChroma = compno > 0;
-    bool use16BitDwt =
-        tileComp->num_resolutions_ > 1 && tccp->qmfbid_ == 1 &&
-        wavelet53FitsInt16(imageComp->prec, isRctChroma, (uint8_t)(tileComp->num_resolutions_ - 1));
-    use16BitMctWindows = use16BitDwt && imageComp->data_type == GRK_INT_16;
+    // ICT output of all three components shares one fraction bit count
+    bool matchingPrecision =
+        tcp_->tccps_[compno].qmfbid_ == 1 || imageComp->prec == headerImage_->comps[0].prec;
+    use16BitMctWindows = waveletFitsInt16(compno, compno > 0) &&
+                         imageComp->data_type == GRK_INT_16 && matchingPrecision;
   }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
@@ -147,19 +155,17 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     if(!tileComp->canCreateWindow(Rect32(tileComp)))
       return false;
     auto unreducedTileComp = tileComp;
-    auto tccp = tcp_->tccps_ + compno;
-    bool use16BitDwt = false;
-    if(tileComp->num_resolutions_ > 1)
-    {
-      bool isRctChroma = needsMctDecompress(compno) && tcp_->mct_ == 1 && compno > 0;
-      use16BitDwt =
-          tccp->qmfbid_ == 1 && wavelet53FitsInt16(imageComp->prec, isRctChroma,
-                                                   (uint8_t)(tileComp->num_resolutions_ - 1));
-    }
-    tileComp->setUse16BitDwt(use16BitDwt);
+    bool isRctChroma = needsMctDecompress(compno) && tcp_->mct_ == 1 && compno > 0;
+    bool use16BitDwt = waveletFitsInt16(compno, isRctChroma);
     bool isMctComponent = tcp_->mct_ == 1 && compno < 3;
     bool use16BitWindow = use16BitDwt && imageComp->data_type == GRK_INT_16 && tcp_->mct_ != 2 &&
                           (!isMctComponent || use16BitMctWindows);
+    bool irreversible = tcp_->tccps_[compno].qmfbid_ == 0;
+    if(irreversible)
+      use16BitDwt = use16BitWindow;
+    tileComp->setUse16BitDwt(use16BitDwt);
+    tileComp->setQShift(irreversible && use16BitDwt ? wavelet97Int16FractionBits(imageComp->prec)
+                                                    : (uint8_t)0);
     tileComp->createWindow(Rect32(unreducedTileComp), use16BitWindow,
                            std::pmr::new_delete_resource());
   }

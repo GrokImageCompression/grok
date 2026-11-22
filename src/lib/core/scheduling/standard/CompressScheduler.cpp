@@ -55,6 +55,7 @@ struct ITileProcessor;
 #include "CoderFactory.h"
 #include "CompressScheduler.h"
 #include "RateControl.h"
+#include "WaveletFwd.h"
 
 #include <algorithm>
 #include <random>
@@ -72,6 +73,15 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
       mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {
   rateControlStats_.init(tile->numcomps_);
+}
+
+static double fixedPointInverseStep(const TileComponent* tilec, uint8_t resno,
+                                    t1::eBandOrientation orientation, float stepsize)
+{
+  // resolution 0 is the LL band of the coarsest level
+  uint8_t level = (uint8_t)(tilec->num_resolutions_ - 1 - std::max<uint8_t>(resno, 1));
+  double scale = forward97Int16BandScale(level, orientation) * (double)(1u << tilec->qShift());
+  return 1.0 / (stepsize * scale);
 }
 
 bool CompressScheduler::scheduleT1(ITileProcessor* proc)
@@ -129,6 +139,9 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
             block->level = (uint8_t)((tile_->comps_ + compno)->num_resolutions_ - 1 - resno);
             block->inv_step_ht = 1.0f / band->stepsize_;
             block->stepsize = band->stepsize_;
+            if(block->uses16BitBuffer && block->qmfbid == 0)
+              block->fixedPointInverseStep =
+                  fixedPointInverseStep(tilec, resno, band->orientation_, band->stepsize_);
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
@@ -226,6 +239,9 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
             block->level = (uint8_t)((tile_->comps_ + compno)->num_resolutions_ - 1 - resno);
             block->inv_step_ht = 1.0f / band->stepsize_;
             block->stepsize = band->stepsize_;
+            if(block->uses16BitBuffer && block->qmfbid == 0)
+              block->fixedPointInverseStep =
+                  fixedPointInverseStep(tilec, resno, band->orientation_, band->stepsize_);
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());

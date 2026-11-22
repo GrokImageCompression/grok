@@ -91,7 +91,7 @@ HWY_EXPORT(classic_forward_ict);
 
 template<typename T, typename DWT>
 static void classicForwardDwt(T* data, uint32_t stride, const uint32_t bounds[4], uint32_t levels,
-                              T dcShift, bool intInput)
+                              const DWT& dwt)
 {
   const uint32_t lanes = HWY_DYNAMIC_DISPATCH(float_lanes)();
   auto scaled = [](uint32_t coordinate, uint32_t level) {
@@ -99,22 +99,19 @@ static void classicForwardDwt(T* data, uint32_t stride, const uint32_t bounds[4]
   };
   const uint32_t maxDim = std::max(bounds[2] - bounds[0], bounds[3] - bounds[1]);
   auto scratch = hwy::AllocateAligned<T>((size_t)std::max(maxDim, 1U) * lanes);
-  DWT dwt;
   for(uint32_t level = 0; level < levels; ++level)
   {
     const uint32_t rx0 = scaled(bounds[0], level);
     const uint32_t ry0 = scaled(bounds[1], level);
     const uint32_t rw = scaled(bounds[2], level) - rx0;
     const uint32_t rh = scaled(bounds[3], level) - ry0;
-    const bool firstLevel = level == 0;
-    const T levelShift = firstLevel ? dcShift : T(0);
-    const bool levelIntInput = firstLevel && intInput;
+    const ForwardDwtLevel dwtLevel{(uint8_t)level, (rh + !(ry0 & 1)) >> 1};
     for(uint32_t j = 0; j < rw; j += lanes)
       dwt.encode_v(data + j, scratch.get(), rh, (uint8_t)(ry0 & 1), stride, std::min(lanes, rw - j),
-                   levelShift, levelIntInput);
+                   dwtLevel);
     for(uint32_t j = 0; j < rh; j += lanes)
       dwt.encode_h(data + (size_t)j * stride, scratch.get(), rw, (uint8_t)(rx0 & 1), stride,
-                   std::min(lanes, rh - j));
+                   std::min(lanes, rh - j), j, dwtLevel);
   }
 }
 } // namespace grk
@@ -125,11 +122,11 @@ extern "C" GRK_MERCURY_ORACLE_API int32_t grk_classic_forward_dwt_tile(
     int32_t dcShift, bool intInput)
 {
   if(reversible)
-    grk::classicForwardDwt<int32_t, grk::dwt53>((int32_t*)data, stride, bounds, levels, dcShift,
-                                                false);
+    grk::classicForwardDwt<int32_t, grk::dwt53>((int32_t*)data, stride, bounds, levels,
+                                                grk::dwt53{dcShift});
   else
-    grk::classicForwardDwt<float, grk::dwt97>((float*)data, stride, bounds, levels, (float)dcShift,
-                                              intInput);
+    grk::classicForwardDwt<float, grk::dwt97>((float*)data, stride, bounds, levels,
+                                              grk::dwt97{(float)dcShift, intInput});
   return 0;
 }
 

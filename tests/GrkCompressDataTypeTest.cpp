@@ -238,7 +238,9 @@ bool recommendedDataTypesMatch()
   parameters.numresolution = defaultResolutionCount;
 
   parameters.irreversible = true;
-  expect("irreversible single tile", 8, false, GRK_INT_32);
+  expect("irreversible single tile", 8, false, GRK_INT_16);
+  expect("irreversible single tile 10 bit", 10, false, GRK_INT_16);
+  expect("irreversible single tile 11 bit", 11, false, GRK_INT_32);
   parameters.tile_size_on = true;
   expect("irreversible tiles", 8, false, GRK_INT_16);
   expect("irreversible tiles 16 bit", 16, false, GRK_INT_32);
@@ -261,12 +263,12 @@ bool recommendedDataTypesMatch()
   expect("Cinema", 8, false, GRK_INT_32);
 
   parameters.rsiz = GRK_PROFILE_BC_SINGLE;
-  expect("lossy Broadcast", 8, false, GRK_INT_32);
+  expect("lossy Broadcast", 8, false, GRK_INT_16);
   parameters.rsiz = GRK_PROFILE_BC_MULTI_R;
   expect("reversible Broadcast", 12, false, GRK_INT_16);
 
   parameters.rsiz = GRK_PROFILE_IMF_2K;
-  expect("lossy IMF", 8, false, GRK_INT_32);
+  expect("lossy IMF", 8, false, GRK_INT_16);
   parameters.rsiz = GRK_PROFILE_IMF_2K_R;
   expect("reversible IMF", 12, false, GRK_INT_16);
 
@@ -282,10 +284,8 @@ bool recommendedDataTypesMatch()
   return success;
 }
 
-std::vector<uint8_t> compressIrreversibleTiles(grk_data_type dataType)
+std::vector<uint8_t> compressIrreversibleTiles(const CompressionCase& testCase)
 {
-  const CompressionCase testCase = {
-      "irreversible tiles", dataType, 8, false, 3, true, true, false, true};
   auto image = makeImage(testCase);
   if(!image)
     return {};
@@ -314,16 +314,73 @@ std::vector<uint8_t> compressIrreversibleTiles(grk_data_type dataType)
   return compressed;
 }
 
-bool irreversibleTilesMatchAcrossDataTypes()
+std::vector<int32_t> decodeSamples(const std::vector<uint8_t>& compressed)
 {
-  auto fromInt16 = compressIrreversibleTiles(GRK_INT_16);
-  auto fromInt32 = compressIrreversibleTiles(GRK_INT_32);
-  if(fromInt32.empty() || fromInt16 != fromInt32)
+  std::vector<int32_t> samples;
+  grk_decompress_parameters parameters = {};
+  grk_stream_params stream = {};
+  stream.buf = const_cast<uint8_t*>(compressed.data());
+  stream.buf_len = compressed.size();
+  stream.is_read_stream = true;
+  auto codec = grk_decompress_init(&stream, &parameters);
+  if(!codec)
+    return samples;
+  grk_header_info headerInfo = {};
+  auto image = grk_decompress_read_header(codec, &headerInfo) && grk_decompress(codec, nullptr)
+                   ? grk_decompress_get_image(codec)
+                   : nullptr;
+  for(uint16_t componentIndex = 0; image && componentIndex < image->numcomps; ++componentIndex)
+  {
+    auto component = image->comps + componentIndex;
+    for(uint32_t y = 0; y < component->h; ++y)
+      for(uint32_t x = 0; x < component->w; ++x)
+      {
+        size_t sampleIndex = (size_t)y * component->stride + x;
+        samples.push_back(component->data_type == GRK_INT_16
+                              ? static_cast<int16_t*>(component->data)[sampleIndex]
+                              : static_cast<int32_t*>(component->data)[sampleIndex]);
+      }
+  }
+  grk_object_unref(codec);
+  return samples;
+}
+
+std::optional<double> irreversibleTilesMeanSquaredError(grk_data_type dataType)
+{
+  const CompressionCase testCase = {
+      "irreversible tiles", dataType, 8, false, 3, true, true, false, true};
+  auto compressed = compressIrreversibleTiles(testCase);
+  auto decoded = compressed.empty() ? std::vector<int32_t>{} : decodeSamples(compressed);
+  if(decoded.size() != (size_t)imageWidth * imageHeight * testCase.componentCount)
+    return std::nullopt;
+  double sumSquaredError = 0;
+  size_t decodedIndex = 0;
+  for(uint16_t componentIndex = 0; componentIndex < testCase.componentCount; ++componentIndex)
+    for(uint32_t y = 0; y < imageHeight; ++y)
+      for(uint32_t x = 0; x < imageWidth; ++x)
+      {
+        double error = decoded[decodedIndex++] - expectedSample(testCase, componentIndex, x, y);
+        sumSquaredError += error * error;
+      }
+  return sumSquaredError / (double)decoded.size();
+}
+
+bool irreversibleTilesCloseAcrossDataTypes()
+{
+  // ten to the power 0.05, half a decibel of PSNR
+  const double maxMeanSquaredErrorRatio = 1.122;
+  auto fromInt16 = irreversibleTilesMeanSquaredError(GRK_INT_16);
+  auto fromInt32 = irreversibleTilesMeanSquaredError(GRK_INT_32);
+  if(!fromInt16 || !fromInt32)
+  {
+    std::fprintf(stderr, "irreversible tiles: compression or decompression failed\n");
+    return false;
+  }
+  if(*fromInt16 > *fromInt32 * maxMeanSquaredErrorRatio)
   {
     std::fprintf(stderr,
-                 "irreversible tiles: int16 codestream (%zu bytes) differs from int32 "
-                 "codestream (%zu bytes)\n",
-                 fromInt16.size(), fromInt32.size());
+                 "irreversible tiles: int16 mean squared error %f, int32 mean squared error %f\n",
+                 *fromInt16, *fromInt32);
     return false;
   }
   return true;
@@ -659,7 +716,7 @@ int main()
       ++failures;
   if(!tileLevelOverrideIsChecked())
     ++failures;
-  if(!irreversibleTilesMatchAcrossDataTypes())
+  if(!irreversibleTilesCloseAcrossDataTypes())
     ++failures;
   grk_deinitialize();
 

@@ -18,7 +18,7 @@ The 16-bit path is selected at runtime in `TileProcessor::decompressInit()`
    - Reversible 5/3, encode and decode: `prec + 3 ≤ 16` up to five levels,
      `prec + 4 ≤ 16` above, plus one bit for RCT chroma
    - Decode, irreversible 9/7: `prec + 6 ≤ 16`
-   - Compress, irreversible 9/7: never
+   - Compress, irreversible 9/7: `prec + 6 ≤ 16`, with an int16 source image
 
 A region (partial) decode qualifies on the same terms as a whole-tile decode,
 under either filter, and the mercury fast path applies the same rule, so both
@@ -212,9 +212,24 @@ decision, and a tile that needs more headroom fails the decode instead of
 producing wrong samples.
 
 **9/7.** The decoder lifts in fixed point with 3 fraction bits to keep sub-LSB
-precision, on top of a synthesis gain of 2^2.79, so it needs `prec + 6`. The
-encoder always uses float. Forward fixed-point lifting rounds at every step and
-would change the coefficients compared with the float path.
+precision, on top of a synthesis gain of 2^2.79, so it needs `prec + 6`.
+
+The encoder scales samples so the sample range spans 2^13, which gives
+`13 - prec` fraction bits. It stores the high-pass branch at half scale, so
+every lifting factor is below one, and skips the K multiplies. Instead each
+level multiplies its input by a factor in steps of 1/32. The factor is the
+largest one for which no stored value and no summed neighbour pair can exceed
+int16, bounding each 2D value by the product of its row and column impulse
+response sums. The factors come out at 1, 0.875, 0.719 and then about 0.66 per
+level. The quantizer divides each band by the scale that results, between 0.33
+and 2.3 at every depth. Rows of the vertical high pass are lifted without a
+second halving.
+
+The halving and the neighbour average round ties to even. Rounding them up
+raises the low pass by a fraction of an LSB per level, and an RGB image shows
+it after the inverse ICT. At 10 bits, with 3 fraction bits, a near-lossless
+round trip of sharp synthetic patterns can still miss by one code more than
+the float path. At 8 bits, natural images lose up to 0.04 dB at the same size.
 
 ## Overflow-Safe SIMD Averaging
 

@@ -586,6 +586,12 @@ namespace HWY_NAMESPACE
     }
   };
 
+  const float ictRed = 0.299f;
+  const float ictGreen = 0.587f;
+  const float ictBlue = 0.114f;
+  const float ictBlueDifference = 0.5f / (1.0f - ictBlue);
+  const float ictRedDifference = 0.5f / (1.0f - ictRed);
+
   /**
    * Apply MCT with optional DC shift to irreversible compressed image
    */
@@ -602,11 +608,11 @@ namespace HWY_NAMESPACE
       const HWY_FULL(float) df;
       const HWY_FULL(int32_t) di;
       const uint32_t lanes = (uint32_t)Lanes(di);
-      auto va_r = Set(df, a_r);
-      auto va_g = Set(df, a_g);
-      auto va_b = Set(df, a_b);
-      auto vcb = Set(df, cb);
-      auto vcr = Set(df, cr);
+      auto va_r = Set(df, ictRed);
+      auto va_g = Set(df, ictGreen);
+      auto va_b = Set(df, ictBlue);
+      auto vcb = Set(df, ictBlueDifference);
+      auto vcr = Set(df, ictRedDifference);
       auto vdcr = Set(di, shiftInfo[0]._shift);
       auto vdcg = Set(di, shiftInfo[1]._shift);
       auto vdcb = Set(di, shiftInfo[2]._shift);
@@ -639,13 +645,68 @@ namespace HWY_NAMESPACE
         }
       }
     }
+  };
 
-  private:
-    const float a_r = 0.299f;
-    const float a_g = 0.587f;
-    const float a_b = 0.114f;
-    const float cb = 0.5f / (1.0f - a_b);
-    const float cr = 0.5f / (1.0f - a_r);
+  class CompressIrrev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto window0 = info.tile->comps_[0].getWindow16()->getResWindowBufferHighestSimple();
+      auto chan0 = window0.buf_;
+      auto chan1 = info.tile->comps_[1].getWindow16()->getResWindowBufferHighestSimple().buf_;
+      auto chan2 = info.tile->comps_[2].getWindow16()->getResWindowBufferHighestSimple().buf_;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      const HWY_FULL(float) df;
+      const HWY_FULL(int32_t) di;
+      const hwy::HWY_NAMESPACE::Rebind<int16_t, decltype(di)> d16;
+      const uint32_t lanes = (uint32_t)Lanes(di);
+      auto va_r = Set(df, ictRed);
+      auto va_g = Set(df, ictGreen);
+      auto va_b = Set(df, ictBlue);
+      auto vcb = Set(df, ictBlueDifference);
+      auto vcr = Set(df, ictRedDifference);
+      auto vdcr = Set(di, shiftInfo[0]._shift);
+      auto vdcg = Set(di, shiftInfo[1]._shift);
+      auto vdcb = Set(di, shiftInfo[2]._shift);
+      auto fractionScale = [&](uint16_t compno) {
+        return Set(df, (float)(1u << info.tile->comps_[compno].qShift()));
+      };
+      auto scale0 = fractionScale(0);
+      auto scale1 = fractionScale(1);
+      auto scale2 = fractionScale(2);
+      const uint32_t width = info.tile->comps_[0].width();
+
+      for(uint32_t row = info.yBegin; row < info.yEnd; ++row)
+      {
+        uint64_t rowOffset = (uint64_t)row * window0.stride_;
+        auto toFixedPoint = [&](auto v, auto scale) {
+          return DemoteTo(d16, NearestInt(v * scale));
+        };
+        auto transform = [&](uint64_t index, auto load, auto store) {
+          auto r = ConvertTo(df, PromoteTo(di, load(chan0 + index)) + vdcr);
+          auto g = ConvertTo(df, PromoteTo(di, load(chan1 + index)) + vdcg);
+          auto b = ConvertTo(df, PromoteTo(di, load(chan2 + index)) + vdcb);
+          auto y = va_r * r + va_g * g + va_b * b;
+          store(toFixedPoint(y, scale0), chan0 + index);
+          store(toFixedPoint(vcb * (b - y), scale1), chan1 + index);
+          store(toFixedPoint(vcr * (r - y), scale2), chan2 + index);
+        };
+        // AMD runs masked stores as microcode, so only the row tail uses them
+        uint32_t column = 0;
+        for(; column + lanes <= width; column += lanes)
+          transform(
+              rowOffset + column, [&](const int16_t* p) { return LoadU(d16, p); },
+              [&](auto v, int16_t* p) { StoreU(v, d16, p); });
+        if(column < width)
+        {
+          size_t count = width - column;
+          transform(
+              rowOffset + column, [&](const int16_t* p) { return LoadN(d16, p, count); },
+              [&](auto v, int16_t* p) { StoreN(v, d16, p, count); });
+        }
+      }
+    }
   };
 
   template<class T>
@@ -752,6 +813,11 @@ namespace HWY_NAMESPACE
     vscheduler16<CompressRev16>(info);
   }
 
+  void hwy_compress_irrev16(ScheduleInfo info)
+  {
+    vscheduler16<CompressIrrev16>(info);
+  }
+
   void hwy_schedule_decompress_dc_shift_irrev16(ScheduleInfo info)
   {
     vscheduler16<DecompressDcShiftIrrev16>(info);
@@ -781,6 +847,7 @@ namespace grk
 HWY_EXPORT(hwy_compress_rev);
 HWY_EXPORT(hwy_compress_rev16);
 HWY_EXPORT(hwy_compress_irrev);
+HWY_EXPORT(hwy_compress_irrev16);
 HWY_EXPORT(hwy_schedule_decompress_rev);
 HWY_EXPORT(hwy_schedule_decompress_irrev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_irrev);
@@ -871,6 +938,12 @@ void Mct::compress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, singleTileRowsPerStrip);
   genShift(applyDcShift ? -1 : 0, info.shiftInfo);
+  if(tile_->comps_[0].uses16BitWindow() && tile_->comps_[1].uses16BitWindow() &&
+     tile_->comps_[2].uses16BitWindow())
+  {
+    HWY_DYNAMIC_DISPATCH(hwy_compress_irrev16)(info);
+    return;
+  }
   HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
   (info);
 }

@@ -34,34 +34,60 @@
 namespace grk
 {
 
+struct ForwardDwtLevel
+{
+  uint8_t index;
+  uint32_t verticalLowRows;
+};
+
 class dwt53
 {
 public:
-  void encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols, int32_t dcShift = 0, bool intInput = false);
+  int32_t dcShift = 0;
 
-  void encode_h(int32_t* row, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
-                uint32_t rows, int32_t dcShift = 0);
+  void encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols, ForwardDwtLevel level) const;
+
+  void encode_h(int32_t* rows, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t numRows, uint32_t firstRow, ForwardDwtLevel level) const;
 };
 
 class dwt53_16
 {
 public:
-  void encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols, int16_t dcShift = 0, bool intInput = false);
+  int16_t dcShift = 0;
 
-  void encode_h(int16_t* row, int16_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
-                uint32_t rows, int16_t dcShift = 0);
+  void encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols, ForwardDwtLevel level) const;
+
+  void encode_h(int16_t* rows, int16_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t numRows, uint32_t firstRow, ForwardDwtLevel level) const;
 };
 
 class dwt97
 {
 public:
-  void encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols, float dcShift = 0.0f, bool intInput = false);
+  float dcShift = 0.0f;
+  bool intInput = false;
 
-  void encode_h(float* row, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
-                uint32_t rows, float dcShift = 0.0f);
+  void encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols, ForwardDwtLevel level) const;
+
+  void encode_h(float* rows, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t numRows, uint32_t firstRow, ForwardDwtLevel level) const;
+};
+
+class dwt97_16
+{
+public:
+  int16_t dcShift = 0;
+  uint8_t sampleShift = 0;
+
+  void encode_v(int16_t* res, int16_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols, ForwardDwtLevel level) const;
+
+  void encode_h(int16_t* rows, int16_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t numRows, uint32_t firstRow, ForwardDwtLevel level) const;
 };
 
 template<typename T, size_t N>

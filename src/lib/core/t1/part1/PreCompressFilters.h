@@ -26,4 +26,6 @@ uint32_t toSignMagnitude16(int32_t* dest, const int16_t* src, size_t srcStride, 
                            uint32_t height);
 uint32_t quantizeToSignMagnitude(int32_t* dest, const float* src, size_t srcStride, uint32_t width,
                                  uint32_t height, double inverseStep);
+uint32_t quantize16ToSignMagnitude(int32_t* dest, const int16_t* src, size_t srcStride,
+                                   uint32_t width, uint32_t height, double inverseStep);
 } // namespace grk::t1

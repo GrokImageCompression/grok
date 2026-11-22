@@ -81,6 +81,12 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
       }
     }
   }
+  else if(block->uses16BitBuffer)
+  {
+    maximum =
+        quantize16ToSignMagnitude(uncompressedData, static_cast<const int16_t*>(block->tileData),
+                                  block->tile_width, w, h, block->fixedPointInverseStep);
+  }
   else
   {
     maximum = quantizeToSignMagnitude(uncompressedData, static_cast<const float*>(block->tileData),

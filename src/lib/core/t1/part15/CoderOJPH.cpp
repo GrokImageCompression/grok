@@ -165,6 +165,22 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
       }
     }
   }
+  else if(block->uses16BitBuffer)
+  {
+    auto tileData = static_cast<const int16_t*>(block->tileData);
+    float inverseStep = (float)block->fixedPointInverseStep;
+    for(auto j = 0U; j < h; ++j)
+    {
+      for(auto i = 0U; i < w; ++i)
+      {
+        int32_t t = (int32_t)((float)*tileData++ * inverseStep * (float)(1 << shift));
+        uint32_t val = t >= 0 ? (uint32_t)t : -(uint32_t)t;
+        uint32_t sign = t >= 0 ? 0U : 0x80000000U;
+        unencoded_data[cblk_index++] = (int32_t)(sign | val);
+      }
+      tileData += tileLineAdvance;
+    }
+  }
   else
   {
     auto tileData = static_cast<const float*>(block->tileData);

@@ -84,6 +84,33 @@ namespace HWY_NAMESPACE
     }
     return (uint32_t)hn::ReduceMax(di, maximum);
   }
+
+  uint32_t hwy_quantize16_to_sign_magnitude(int32_t* dest, const int16_t* src, size_t srcStride,
+                                            uint32_t width, uint32_t height, double inverseStep)
+  {
+    const hn::ScalableTag<int32_t> di;
+    const hn::Rebind<int16_t, decltype(di)> d16;
+    const hn::Rebind<float, decltype(di)> df;
+    const size_t lanes = hn::Lanes(di);
+    const auto scale = hn::Set(df, (float)(inverseStep * (1 << T1_NMSEDEC_FRACBITS)));
+    const auto signBit = hn::Set(di, INT32_MIN);
+    auto maximum = hn::Zero(di);
+    auto convert = [&](auto samples) {
+      auto value = hn::NearestInt(hn::Mul(hn::ConvertTo(df, hn::PromoteTo(di, samples)), scale));
+      auto magnitude = hn::Abs(value);
+      maximum = hn::Max(maximum, magnitude);
+      return hn::Or(magnitude, hn::And(value, signBit));
+    };
+    for(uint32_t row = 0; row < height; ++row, src += srcStride, dest += width)
+    {
+      size_t i = 0;
+      for(; i + lanes <= width; i += lanes)
+        hn::StoreU(convert(hn::LoadU(d16, src + i)), di, dest + i);
+      if(i < width)
+        hn::StoreN(convert(hn::LoadN(d16, src + i, width - i)), di, dest + i, width - i);
+    }
+    return (uint32_t)hn::ReduceMax(di, maximum);
+  }
 } // namespace HWY_NAMESPACE
 } // namespace grk::t1
 HWY_AFTER_NAMESPACE();
@@ -93,6 +120,7 @@ namespace grk::t1
 {
 HWY_EXPORT(hwy_to_sign_magnitude16);
 HWY_EXPORT(hwy_quantize_to_sign_magnitude);
+HWY_EXPORT(hwy_quantize16_to_sign_magnitude);
 
 uint32_t toSignMagnitude16(int32_t* dest, const int16_t* src, size_t srcStride, uint32_t width,
                            uint32_t height)
@@ -105,6 +133,13 @@ uint32_t quantizeToSignMagnitude(int32_t* dest, const float* src, size_t srcStri
 {
   return HWY_DYNAMIC_DISPATCH(hwy_quantize_to_sign_magnitude)(dest, src, srcStride, width, height,
                                                               inverseStep);
+}
+
+uint32_t quantize16ToSignMagnitude(int32_t* dest, const int16_t* src, size_t srcStride,
+                                   uint32_t width, uint32_t height, double inverseStep)
+{
+  return HWY_DYNAMIC_DISPATCH(hwy_quantize16_to_sign_magnitude)(dest, src, srcStride, width, height,
+                                                                inverseStep);
 }
 } // namespace grk::t1
 #endif
