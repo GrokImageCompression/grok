@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
+use std::thread::JoinHandle;
 
 use super::band_coder::{CodedBand, QuantizedSample, StripeLayout, code_stripe};
 
@@ -105,32 +106,47 @@ impl<T: QuantizedSample> StripeQueue<T> {
     }
 }
 
-// without this a panicking feed or a failed spawn leaves the workers waiting forever
-struct CloseOnDrop<'a, T: QuantizedSample>(&'a StripeQueue<T>);
-
-impl<T: QuantizedSample> Drop for CloseOnDrop<'_, T> {
-    fn drop(&mut self) {
-        self.0.close();
-    }
+pub(crate) struct StripeWorkers<T: QuantizedSample> {
+    queue: Arc<StripeQueue<T>>,
+    handles: Vec<JoinHandle<()>>,
 }
 
-pub(crate) fn run_stripe_workers<T: QuantizedSample, R>(
-    queue: &StripeQueue<T>,
-    workers: usize,
-    feed: impl FnOnce() -> R,
-) -> R {
-    std::thread::scope(|scope| {
-        let _close = CloseOnDrop(queue);
+impl<T: QuantizedSample> StripeWorkers<T> {
+    pub fn spawn(queue: Arc<StripeQueue<T>>, workers: usize) -> Self {
+        let mut pool = Self {
+            queue,
+            handles: Vec::with_capacity(workers),
+        };
         for _ in 0..workers {
-            scope.spawn(|| {
+            let queue = pool.queue.clone();
+            pool.handles.push(std::thread::spawn(move || {
                 let mut block = Vec::new();
                 while let Some(job) = queue.pop() {
                     queue.recycle(job.code(&mut block));
                 }
-            });
+            }));
         }
-        feed()
-    })
+        pool
+    }
+
+    pub fn finish(mut self) {
+        self.queue.close();
+        for handle in std::mem::take(&mut self.handles) {
+            if let Err(panic) = handle.join() {
+                std::panic::resume_unwind(panic);
+            }
+        }
+    }
+}
+
+// without this a panicking feed or a failed spawn leaves the workers waiting forever
+impl<T: QuantizedSample> Drop for StripeWorkers<T> {
+    fn drop(&mut self) {
+        self.queue.close();
+        for handle in self.handles.drain(..) {
+            let _ = handle.join();
+        }
+    }
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -162,9 +178,9 @@ mod tests {
                 address_space_kb() + 2 * WORKER_STACK_KB <= ADDRESS_SPACE_KB,
                 "no room for a worker to spawn before the failure"
             );
-            let queue = StripeQueue::<f32>::warp(1);
+            let queue = Arc::new(StripeQueue::<f32>::warp(1));
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                run_stripe_workers(&queue, WORKERS, || ())
+                StripeWorkers::spawn(queue, WORKERS)
             }));
             assert!(result.is_err(), "every worker spawned, no failure to test");
             return;

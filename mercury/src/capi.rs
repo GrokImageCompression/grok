@@ -1986,21 +1986,18 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
         && styles_match
 }
 
+pub struct MercuryEncoder(crate::encode::tile::TileEncoder);
+
 /// # Safety
-/// `header` is valid as for `mercury_warp_loom`, `params` points to one value,
-/// `planes` to one plane per component of the tile's samples, rows `stride`
-/// samples apart, and `slope_threshold` to one value.
+/// `header` is valid as for `mercury_warp_loom`, `params` points to one value whose int16 tables
+/// span the decomposition levels, and `encoder` to one pointer.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn mercury_encode_tile(
+pub unsafe extern "C" fn mercury_encoder_new(
     header: *const MercuryMainHeader,
     params: *const MercuryEncodeParams,
-    planes: *const *const c_void,
-    stride: u32,
-    write_tile_part: MercuryTilePartFn,
-    write_ctx: *mut c_void,
-    slope_threshold: *mut u16,
+    encoder: *mut *mut MercuryEncoder,
 ) -> i32 {
-    if params.is_null() || planes.is_null() || slope_threshold.is_null() {
+    if params.is_null() || encoder.is_null() {
         return MERCURY_EBADARG;
     }
     let Ok(header) = (unsafe { draft_header_in(header) }) else {
@@ -2008,7 +2005,6 @@ pub unsafe extern "C" fn mercury_encode_tile(
     };
     let params = unsafe { &*params };
     let rect = header.siz.tile_rect(0);
-    let (width, height) = (rect.x1 - rect.x0, rect.y1 - rect.y0);
     let xyz = params.xyz_source_precision != 0;
     let xyz_supported = !xyz
         || (header.cod.use_ycc
@@ -2019,37 +2015,12 @@ pub unsafe extern "C" fn mercury_encode_tile(
     if !tile_encodable(&header)
         || !xyz_supported
         || !int16_tables_given
-        || width == 0
-        || height == 0
-        || width > stride
+        || rect.x1 == rect.x0
+        || rect.y1 == rect.y0
     {
         return MERCURY_EBADARG;
     }
-    let samples = (height as usize - 1) * stride as usize + width as usize;
-    let comps = header.siz.comp_count();
     let levels = header.cod.comps[0].num_levels as usize;
-    let planes = if params.int16_planes {
-        crate::encode::tile::TilePlanes::Int16 {
-            planes: (0..comps)
-                .map(|c| unsafe { std::slice::from_raw_parts((*planes.add(c)).cast(), samples) })
-                .collect(),
-            wavelet: crate::encode::tile::Int16Wavelet {
-                fraction_bits: params.int16_fraction_bits,
-                level_factors: unsafe {
-                    std::slice::from_raw_parts(params.int16_level_factors, levels)
-                },
-                band_scales: unsafe {
-                    std::slice::from_raw_parts(params.int16_band_scales.cast(), levels)
-                },
-            },
-        }
-    } else {
-        crate::encode::tile::TilePlanes::Int32(
-            (0..comps)
-                .map(|c| unsafe { std::slice::from_raw_parts((*planes.add(c)).cast(), samples) })
-                .collect(),
-        )
-    };
     let encode_params = crate::encode::tile::TileEncodeParams {
         rate: crate::encode::rate_control::RateTargets {
             max_layer_length: params.max_layer_length,
@@ -2063,22 +2034,111 @@ pub unsafe extern "C" fn mercury_encode_tile(
             0 => std::thread::available_parallelism().map_or(1, |count| count.get()),
             count => count as usize,
         },
+        int16_wavelet: params
+            .int16_planes
+            .then(|| crate::encode::tile::Int16Wavelet {
+                fraction_bits: params.int16_fraction_bits,
+                level_factors: unsafe {
+                    std::slice::from_raw_parts(params.int16_level_factors, levels)
+                },
+                band_scales: unsafe {
+                    std::slice::from_raw_parts(params.int16_band_scales.cast(), levels)
+                },
+            }),
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        crate::encode::tile::encode_tile(
-            &planes,
-            stride as usize,
-            &header,
-            &encode_params,
+        crate::encode::tile::TileEncoder::warp(
+            header,
+            encode_params,
             crate::ffi_dwt::mercury_t1_encode_block,
-            |bytes| write_tile_part(write_ctx, bytes.as_ptr(), bytes.len() as u64),
         )
+    }));
+    let Ok(tile_encoder) = r else {
+        return MERCURY_EPANIC;
+    };
+    unsafe { *encoder = Box::into_raw(Box::new(MercuryEncoder(tile_encoder))) };
+    MERCURY_OK
+}
+
+/// # Safety
+/// `encoder` comes from `mercury_encoder_new` and has not failed, `planes` points to one plane
+/// per component, each holding `rows` rows `stride` samples apart, of int16 samples when the
+/// encoder was made with `int16_planes` and int32 otherwise.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_encoder_push_rows(
+    encoder: *mut MercuryEncoder,
+    planes: *const *const c_void,
+    stride: u32,
+    rows: u32,
+) -> i32 {
+    if encoder.is_null() || planes.is_null() {
+        return MERCURY_EBADARG;
+    }
+    let encoder = unsafe { &mut (*encoder).0 };
+    let (stride, rows) = (stride as usize, rows as usize);
+    let width = encoder.width();
+    if rows == 0 || rows > encoder.rows_left() || width > stride {
+        return MERCURY_EBADARG;
+    }
+    let samples = (rows - 1) * stride + width;
+    let comps = encoder.components();
+    let plane = |c: usize| unsafe { *planes.add(c) };
+    let planes = if encoder.takes_int16() {
+        crate::encode::tile::TileRows::Int16(
+            (0..comps)
+                .map(|c| unsafe { std::slice::from_raw_parts(plane(c).cast(), samples) })
+                .collect(),
+        )
+    } else {
+        crate::encode::tile::TileRows::Int32(
+            (0..comps)
+                .map(|c| unsafe { std::slice::from_raw_parts(plane(c).cast(), samples) })
+                .collect(),
+        )
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        encoder.push_rows(&planes, stride, rows)
+    }));
+    match r {
+        Ok(()) => MERCURY_OK,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
+/// # Safety
+/// `encoder` comes from `mercury_encoder_new`, has not failed, and every row has been pushed.
+/// The encoder is freed, whatever the result. `slope_threshold` points to one value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_encoder_finish(
+    encoder: *mut MercuryEncoder,
+    write_tile_part: MercuryTilePartFn,
+    write_ctx: *mut c_void,
+    slope_threshold: *mut u16,
+) -> i32 {
+    if encoder.is_null() {
+        return MERCURY_EBADARG;
+    }
+    let encoder = unsafe { Box::from_raw(encoder) }.0;
+    if slope_threshold.is_null() || encoder.rows_left() != 0 {
+        return MERCURY_EBADARG;
+    }
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        encoder.finish(|bytes| write_tile_part(write_ctx, bytes.as_ptr(), bytes.len() as u64))
     }));
     let Ok(threshold) = r else {
         return MERCURY_EPANIC;
     };
     unsafe { *slope_threshold = threshold };
     MERCURY_OK
+}
+
+/// # Safety
+/// `encoder` comes from `mercury_encoder_new` and was not passed to `mercury_encoder_finish`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_encoder_free(encoder: *mut MercuryEncoder) {
+    if !encoder.is_null() {
+        drop(unsafe { Box::from_raw(encoder) });
+    }
 }
 
 #[cfg(test)]

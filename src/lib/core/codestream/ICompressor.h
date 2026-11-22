@@ -26,6 +26,15 @@ struct ICompressor
   virtual bool init(grk_cparameters* param, GrkImage* image) = 0;
   virtual bool start(void) = 0;
   virtual uint64_t compress(grk_plugin_tile* tile) = 0;
+  virtual bool acceptStrips(void)
+  {
+    return false;
+  }
+  virtual bool pushStrip(const grk_strip* strip)
+  {
+    (void)strip;
+    return false;
+  }
   virtual uint64_t compressFrame(GrkImage* image, grk_plugin_tile* tile)
   {
     (void)image;

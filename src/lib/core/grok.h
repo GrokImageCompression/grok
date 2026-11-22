@@ -1977,6 +1977,20 @@ GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
  */
 GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
                                                    grk_cparameters* parameters, grk_image* image);
+
+typedef struct _grk_strip
+{
+  uint32_t rows;
+  /* one plane per component, in the component's data type */
+  const void* const* planes;
+  /* samples between rows, the same for every plane */
+  uint32_t stride;
+} grk_strip;
+
+GRK_API grk_object* GRK_CALLCONV grk_compress_init_strips(grk_stream_params* stream_params,
+                                                          grk_cparameters* parameters,
+                                                          grk_image* image);
+GRK_API bool GRK_CALLCONV grk_compress_push_strip(grk_object* codec, const grk_strip* strip);
 /**
  * @brief Compresses the image into a JPEG 2000 codestream.
  *

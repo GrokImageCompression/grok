@@ -133,7 +133,7 @@ namespace
   }
 
   // precision is left to the callers
-  bool imagePlanesMatchMercury(const GrkImage* image)
+  bool planeGeometryMatchesMercury(const GrkImage* image)
   {
     if(image->x0 != 0 || image->y0 != 0)
       return false;
@@ -142,13 +142,23 @@ namespace
     {
       auto comp = image->comps + c;
       if(comp->prec != first->prec || comp->sgnd || comp->dx != 1 || comp->dy != 1 ||
-         comp->w != first->w || comp->h != first->h || comp->stride != first->stride ||
-         comp->data_type != first->data_type || !comp->data)
+         comp->w != first->w || comp->h != first->h || comp->data_type != first->data_type)
         return false;
     }
     // classic codes int16 planes with the int16 9/7 only up to forward97FitsInt16
     return first->data_type == GRK_INT_32 ||
            (first->data_type == GRK_INT_16 && forward97FitsInt16(first->prec));
+  }
+
+  bool imagePlanesMatchMercury(const GrkImage* image)
+  {
+    auto first = image->comps;
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+    {
+      if(image->comps[c].stride != first->stride || !image->comps[c].data)
+        return false;
+    }
+    return planeGeometryMatchesMercury(image);
   }
 
   struct MercuryTilePartSink
@@ -174,7 +184,8 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, Gr
   bool cinema =
       parameters->rsiz == GRK_PROFILE_CINEMA_2K || parameters->rsiz == GRK_PROFILE_CINEMA_4K;
   if(mercuryEncodeDisabled() || pluginAcceleratesCompress(parameters) || !cinema ||
-     image->numcomps != cinemaComponents || !imagePlanesMatchMercury(image) ||
+     image->numcomps != cinemaComponents ||
+     !(stripInput_ ? planeGeometryMatchesMercury(image) : imagePlanesMatchMercury(image)) ||
      image->comps[0].data_type != GRK_INT_32 || image->comps[0].prec > maxXyzSourcePrecision)
     return false;
   mercuryXyzSourcePrecision_ = image->comps[0].prec;
@@ -188,19 +199,29 @@ bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
 {
   mercuryEncode_ = !mercuryEncodeDisabled() && parametersMatchMercury(parameters) &&
                    codingMatchesMercury(cp_, cp_.tcps_.get(0), headerImage_->numcomps) &&
-                   imagePlanesMatchMercury(headerImage_);
+                   (stripInput_ ? planeGeometryMatchesMercury(headerImage_)
+                                : imagePlanesMatchMercury(headerImage_));
   if(mercuryEncode_ || !mercuryXyzSourcePrecision_)
     return true;
-  for(uint16_t c = 0; c < headerImage_->numcomps; ++c)
-    headerImage_->comps[c].prec = *mercuryXyzSourcePrecision_;
+  auto xyzSourcePrecision = *mercuryXyzSourcePrecision_;
   mercuryXyzSourcePrecision_.reset();
+  classicXyzPerStrip_ = stripInput_;
+  if(stripInput_)
+    return true;
+  for(uint16_t c = 0; c < headerImage_->numcomps; ++c)
+    headerImage_->comps[c].prec = xyzSourcePrecision;
   if(applyXYZTransform(headerImage_, cinemaPrecision))
     return true;
   grklog.error("Failed to apply XYZ colour transform");
   return false;
 }
 
-uint64_t CodeStreamCompress::compressWithMercury(void)
+void CodeStreamCompress::MercuryEncoderFree::operator()(MercuryEncoder* encoder) const
+{
+  mercury_encoder_free(encoder);
+}
+
+bool CodeStreamCompress::createMercuryEncoder(void)
 {
   auto image = headerImage_;
   auto tcp = cp_.tcps_.get(0);
@@ -233,13 +254,44 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
     params.int16_level_factors = levelFactors.data();
     params.int16_band_scales = bandScales.data();
   }
-  std::vector<const void*> planes(image->numcomps);
-  for(uint16_t c = 0; c < image->numcomps; ++c)
-    planes[c] = image->comps[c].data;
+  MercuryEncoder* encoder = nullptr;
+  int32_t rc = mercury_encoder_new(&coding.header, &params, &encoder);
+  if(rc != MERCURY_OK)
+  {
+    grklog.error("mercury failed to start the encode, error %d", rc);
+    return false;
+  }
+  mercuryEncoder_.reset(encoder);
+  return true;
+}
+
+bool CodeStreamCompress::pushMercuryRows(const void* const* planes, uint32_t stride, uint32_t rows)
+{
+  int32_t rc = mercury_encoder_push_rows(mercuryEncoder_.get(), planes, stride, rows);
+  if(rc == MERCURY_OK)
+    return true;
+  grklog.error("mercury failed to compress %u rows, error %d", rows, rc);
+  mercuryEncoder_.reset();
+  return false;
+}
+
+uint64_t CodeStreamCompress::compressWithMercury(void)
+{
+  auto image = headerImage_;
+  auto tcp = cp_.tcps_.get(0);
+  if(!stripInput_)
+  {
+    std::vector<const void*> planes(image->numcomps);
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+      planes[c] = image->comps[c].data;
+    if(!createMercuryEncoder() ||
+       !pushMercuryRows(planes.data(), image->comps[0].stride, image->comps[0].h))
+      return 0;
+  }
   MercuryTilePartSink sink{stream_, cp_.tlmMarkers_.get()};
   uint16_t threshold = 0;
-  int32_t rc = mercury_encode_tile(&coding.header, &params, planes.data(), image->comps[0].stride,
-                                   writeMercuryTilePart, &sink, &threshold);
+  int32_t rc =
+      mercury_encoder_finish(mercuryEncoder_.release(), writeMercuryTilePart, &sink, &threshold);
   if(rc != MERCURY_OK)
   {
     grklog.error("mercury failed to compress the image, error %d", rc);
@@ -273,6 +325,15 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters*, GrkImage*)
 bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters*)
 {
   return true;
+}
+void CodeStreamCompress::MercuryEncoderFree::operator()(MercuryEncoder*) const {}
+bool CodeStreamCompress::createMercuryEncoder(void)
+{
+  return false;
+}
+bool CodeStreamCompress::pushMercuryRows(const void* const*, uint32_t, uint32_t)
+{
+  return false;
 }
 uint64_t CodeStreamCompress::compressWithMercury(void)
 {

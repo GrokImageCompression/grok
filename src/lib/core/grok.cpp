@@ -927,8 +927,8 @@ bool grk_apply_xyz_transform(grk_image* image)
 {
   return grk::applyXYZTransform(image);
 }
-grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* parameters,
-                              grk_image* image)
+static grk_object* createCompressCodec(grk_stream_params* streamParams, grk_cparameters* parameters,
+                                       grk_image* image)
 {
   if(!parameters || !image)
     return nullptr;
@@ -971,6 +971,12 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
       break;
   }
 
+  return codecWrapper;
+}
+
+static grk_object* startCompressCodec(grk_object* codecWrapper, grk_cparameters* parameters,
+                                      grk_image* image)
+{
   auto codec = Codec::getImpl(codecWrapper);
   bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)image) : false;
   if(!rc)
@@ -984,6 +990,37 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
   }
 
   return codecWrapper;
+}
+
+grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* parameters,
+                              grk_image* image)
+{
+  auto codecWrapper = createCompressCodec(streamParams, parameters, image);
+  return codecWrapper ? startCompressCodec(codecWrapper, parameters, image) : nullptr;
+}
+
+grk_object* grk_compress_init_strips(grk_stream_params* streamParams, grk_cparameters* parameters,
+                                     grk_image* image)
+{
+  auto codecWrapper = createCompressCodec(streamParams, parameters, image);
+  if(!codecWrapper)
+    return nullptr;
+  auto codec = Codec::getImpl(codecWrapper);
+  if(!codec->compressor_ || !codec->compressor_->acceptStrips())
+  {
+    grklog.error("Strip input supports J2K and JP2 output only");
+    grk_object_unref(codecWrapper);
+    return nullptr;
+  }
+  return startCompressCodec(codecWrapper, parameters, image);
+}
+
+bool grk_compress_push_strip(grk_object* codecWrapper, const grk_strip* strip)
+{
+  if(!codecWrapper || !strip)
+    return false;
+  auto codec = Codec::getImpl(codecWrapper);
+  return codec->compressor_ && codec->compressor_->pushStrip(strip);
 }
 
 uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)

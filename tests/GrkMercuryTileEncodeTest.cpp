@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "grok.h"
+#include "GrkCompressInStrips.h"
 
 namespace
 {
@@ -79,13 +80,19 @@ void setMercuryEncode(bool enabled)
 #endif
 }
 
+enum class Input
+{
+  WholeImage,
+  Strips,
+};
+
 uint64_t nextRandom(uint64_t& state)
 {
   state = state * 6364136223846793005ULL + 1442695040888963407ULL;
   return state >> 33;
 }
 
-std::vector<uint8_t> encode(const Case& test, bool mercury)
+std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
 {
   std::vector<grk_image_comp> comps(test.numcomps);
   for(auto& comp : comps)
@@ -177,46 +184,113 @@ std::vector<uint8_t> encode(const Case& test, bool mercury)
   stream.buf_len = out.size();
   setMercuryEncode(mercury);
   mercuryCompressed = false;
-  auto codec = grk_compress_init(&stream, &params, image);
-  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
-  grk_object_unref(codec);
+  uint64_t length = 0;
+  if(input == Input::Strips)
+  {
+    length = compressInStrips(&stream, &params, image);
+  }
+  else
+  {
+    auto codec = grk_compress_init(&stream, &params, image);
+    length = codec ? grk_compress(codec, nullptr) : 0;
+    grk_object_unref(codec);
+  }
   grk_object_unref(&image->obj);
   out.resize(length);
   return out;
 }
 
+bool sameCodestream(const Case& test, const char* label, const std::vector<uint8_t>& classic,
+                    const std::vector<uint8_t>& other)
+{
+  if(classic.empty() || other.empty())
+  {
+    fprintf(stderr, "%s: encode failed, classic %zu bytes, %s %zu bytes\n", test.name,
+            classic.size(), label, other.size());
+    return false;
+  }
+  if(classic == other)
+    return true;
+  size_t at = 0;
+  while(at < std::min(classic.size(), other.size()) && classic[at] == other[at])
+    ++at;
+  fprintf(stderr, "%s: codestreams differ at byte %zu, classic %zu bytes, %s %zu bytes\n",
+          test.name, at, classic.size(), label, other.size());
+  return false;
+}
+
 bool runCase(const Case& test)
 {
-  auto classic = encode(test, false);
+  auto classic = encode(test, false, Input::WholeImage);
   if(mercuryCompressed)
   {
     fprintf(stderr, "%s: mercury ran with %s=0\n", test.name, MERCURY_ENCODE_VARIABLE);
     return false;
   }
-  auto withMercury = encode(test, true);
-  if(mercuryCompressed != test.expectMercury)
+  for(auto input : {Input::WholeImage, Input::Strips})
   {
-    fprintf(stderr, "%s: grok %s the image to mercury\n", test.name,
-            test.expectMercury ? "did not hand" : "handed");
-    return false;
-  }
-  if(classic.empty() || withMercury.empty())
-  {
-    fprintf(stderr, "%s: encode failed, classic %zu bytes, mercury %zu bytes\n", test.name,
-            classic.size(), withMercury.size());
-    return false;
-  }
-  if(classic != withMercury)
-  {
-    size_t at = 0;
-    while(at < std::min(classic.size(), withMercury.size()) && classic[at] == withMercury[at])
-      ++at;
-    fprintf(stderr, "%s: codestreams differ at byte %zu, classic %zu bytes, mercury %zu bytes\n",
-            test.name, at, classic.size(), withMercury.size());
-    return false;
+    const char* label = input == Input::Strips ? "strips" : "mercury";
+    auto other = encode(test, true, input);
+    if(mercuryCompressed != test.expectMercury)
+    {
+      fprintf(stderr, "%s: grok %s the %s to mercury\n", test.name,
+              test.expectMercury ? "did not hand" : "handed", label);
+      return false;
+    }
+    if(!sameCodestream(test, label, classic, other))
+      return false;
   }
   printf("%s: %zu bytes identical\n", test.name, classic.size());
   return true;
+}
+
+bool stripMisuseFails()
+{
+  const uint32_t width = 64;
+  const uint32_t height = 32;
+  grk_image_comp comp = {};
+  comp.w = width;
+  comp.h = height;
+  comp.dx = 1;
+  comp.dy = 1;
+  comp.prec = 8;
+  comp.data_type = GRK_INT_16;
+  auto image = grk_image_new(1, &comp, GRK_CLRSPC_GRAY, false);
+  std::vector<int16_t> samples((size_t)width * (height + 1));
+  const void* planes[] = {samples.data()};
+  grk_cparameters params;
+  grk_compress_set_default_params(&params);
+  params.cod_format = GRK_FMT_J2K;
+  params.irreversible = true;
+  params.numlayers = 1;
+  params.layer_rate[0] = 10.0;
+  std::vector<uint8_t> out(OUTPUT_CAPACITY);
+  grk_stream_params stream = {};
+  stream.buf = out.data();
+  stream.buf_len = out.size();
+  bool ok = true;
+  for(uint32_t rows : {height + 1, height - 1})
+  {
+    auto codec = grk_compress_init_strips(&stream, &params, image);
+    grk_strip strip = {rows, planes, width};
+    bool pushed = codec && grk_compress_push_strip(codec, &strip);
+    uint64_t length = pushed ? grk_compress(codec, nullptr) : 0;
+    grk_object_unref(codec);
+    if(rows > height && pushed)
+    {
+      fprintf(stderr, "a strip of %u rows was taken for an image of %u rows\n", rows, height);
+      ok = false;
+    }
+    if(rows < height && (!pushed || length))
+    {
+      fprintf(stderr, "compressing after %u of %u rows did not fail\n", rows, height);
+      ok = false;
+    }
+  }
+  grk_object_unref(&image->obj);
+  if(ok)
+    printf("strip misuse fails\n");
+  return ok;
 }
 
 } // namespace
@@ -268,6 +342,7 @@ int main()
   bool ok = true;
   for(const auto& test : cases)
     ok = runCase(test) && ok;
+  ok = stripMisuseFails() && ok;
   grk_deinitialize();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

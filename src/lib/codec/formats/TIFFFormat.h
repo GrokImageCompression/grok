@@ -674,6 +674,8 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType);
+  bool pushStrips(grk_object* codec, grk_data_type dataType);
   bool readMetadata(const std::string& filename, grk_image* image, grk_cparameters* parameters);
 
 private:
@@ -689,6 +691,10 @@ private:
 
   template<typename T>
   bool readSamples(grk_image* image);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
+  std::unique_ptr<grk_image_comp[]> componentParameters(grk_data_type dataType);
+  bool describeImage(grk_image* image, grk_cparameters* parameters);
 
   template<typename T>
   bool readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
@@ -1612,6 +1618,34 @@ static inline bool convertRowTIFF(const uint8_t* datau8, T* buffer32s, size_t pi
   return true;
 }
 
+struct TiffRowFormat
+{
+  uint32_t width;
+  uint16_t samplesPerPixel;
+  uint16_t targetPlanes;
+  uint8_t precision;
+  bool sgnd;
+  bool invert;
+};
+
+template<typename T>
+static bool deinterleaveTiffRow(const uint8_t* rowBytes, T** rowPlanes, const TiffRowFormat& format,
+                                std::vector<T>& rowBuffer)
+{
+  if(format.precision == 8 && !format.sgnd && !format.invert)
+  {
+    grk::hwy_deinterleave(rowBytes, rowPlanes, format.width, format.targetPlanes);
+    return true;
+  }
+  size_t pixelCount = (size_t)format.width * format.samplesPerPixel;
+  rowBuffer.resize(pixelCount);
+  if(!convertRowTIFF<T>(rowBytes, rowBuffer.data(), pixelCount, format.precision, format.sgnd,
+                        format.invert))
+    return false;
+  grk::hwy_deinterleave(rowBuffer.data(), rowPlanes, format.width, format.targetPlanes);
+  return true;
+}
+
 template<typename T>
 bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                                 uint16_t tiPC, uint16_t tiPhoto)
@@ -1625,7 +1659,6 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   uint8_t prec = comps[0].prec;
   bool sgnd = comps[0].sgnd;
   bool invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
-  size_t pixelCount = (size_t)width * tiSpp;
   auto rowStride = (tsize_t)(((uint64_t)width * tiSpp * prec + 7U) / 8U);
   tsize_t stripSize = TIFFStripSize(tif);
   uint32_t rowsPerStrip = height;
@@ -1698,7 +1731,7 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
   uint32_t stripsBeingRead = 0;
   bool success = true;
 
-  bool unsignedBytes = prec == 8 && !sgnd && !invert;
+  const TiffRowFormat rowFormat{width, tiSpp, targetPlanes, prec, sgnd, invert};
   auto convertRows = [&](const RowChunk& chunk, std::vector<T>& rowBuffer, T** rowPlanes) {
     for(uint32_t r = chunk.beginRow; r < chunk.endRow; ++r)
     {
@@ -1708,15 +1741,8 @@ bool TIFFFormat::readTiffStrips(TIFF* tif, grk_image_comp* comps, uint16_t numco
         auto comp = comps + chunk.plane + k;
         rowPlanes[k] = (T*)comp->data + (size_t)(chunk.stripFirstRow + r) * comp->stride;
       }
-      if(unsignedBytes)
-      {
-        grk::hwy_deinterleave(rowBytes, rowPlanes, width, targetPlanes);
-        continue;
-      }
-      rowBuffer.resize(pixelCount);
-      if(!convertRowTIFF<T>(rowBytes, rowBuffer.data(), pixelCount, prec, sgnd, invert))
+      if(!deinterleaveTiffRow(rowBytes, rowPlanes, rowFormat, rowBuffer))
         return false;
-      grk::hwy_deinterleave(rowBuffer.data(), rowPlanes, width, targetPlanes);
     }
     return true;
   };
@@ -2402,16 +2428,9 @@ cleanup:
   return std::nullopt;
 }
 
-inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline std::unique_ptr<grk_image_comp[]> TIFFFormat::componentParameters(grk_data_type dataType)
 {
-  bool found_assocalpha = false;
-  size_t alpha_count = 0;
-  grk_image* image = nullptr;
-  bool success = false;
-  uint16_t *red_orig = nullptr, *green_orig = nullptr, *blue_orig = nullptr;
-
   auto cmptparm = std::make_unique<grk_image_comp[]>(numcomps_);
-  // 4. create image
   for(uint16_t j = 0; j < numcomps_; j++)
   {
     auto img_comp = &cmptparm[j];
@@ -2424,10 +2443,14 @@ inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_t
     img_comp->w = grk::ceildiv<uint32_t>(imageWidth_, img_comp->dx);
     img_comp->h = grk::ceildiv<uint32_t>(imageHeight_, img_comp->dy);
   }
-  image = grk_image_new(numcomps_, &cmptparm[0], colorSpace_, true);
-  if(!image)
-    goto cleanup;
+  return cmptparm;
+}
 
+inline bool TIFFFormat::describeImage(grk_image* image, grk_cparameters* parameters)
+{
+  bool found_assocalpha = false;
+  size_t alpha_count = 0;
+  uint16_t *red_orig = nullptr, *green_orig = nullptr, *blue_orig = nullptr;
   /* set image offset and reference grid */
   image->x0 = parameters->image_offset_x0;
   image->x1 = image->x0 + (imageWidth_ - 1) * 1 + 1;
@@ -2436,7 +2459,7 @@ inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_t
     spdlog::error("TIFFFormat::readPixels: Bad value for image->x1({}) vs. "
                   "image->x0({}).",
                   image->x1, image->x0);
-    goto cleanup;
+    return false;
   }
   image->y0 = parameters->image_offset_y0;
   image->y1 = image->y0 + (imageHeight_ - 1) * 1 + 1;
@@ -2445,14 +2468,14 @@ inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_t
     spdlog::error("TIFFFormat::readPixels: Bad value for image->y1({}) vs. "
                   "image->y0({}).",
                   image->y1, image->y0);
-    goto cleanup;
+    return false;
   }
   if(photometric_ == PHOTOMETRIC_PALETTE)
   {
     if(!TIFFGetField(tif_, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
     {
       spdlog::error("TIFFFormat::readPixels: Missing required \"Colormap\" tag");
-      goto cleanup;
+      return false;
     }
     uint16_t palette_num_entries = (uint16_t)(1U << bitsPerSample_);
     uint8_t num_channels = 3U;
@@ -2535,13 +2558,19 @@ inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_t
   if(needSignedPixelReader_ && isFinalOutputSubsampled(image))
   {
     spdlog::error("TIFF: subsampling not supported for signed 8 and 16 bit images");
-    goto cleanup;
+    return false;
   }
 
   readMetadataTags(tif_, image, parameters, isCIE_);
-  success =
+  return true;
+}
+
+inline grk_image* TIFFFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = grk_image_new(numcomps_, componentParameters(dataType).get(), colorSpace_, true);
+  bool success =
+      image && describeImage(image, parameters) &&
       readSamplesAs(dataType, [&](auto sample) { return readSamples<decltype(sample)>(image); });
-cleanup:
   TIFFClose(tif_);
   tif_ = nullptr;
   if(success)
@@ -2550,6 +2579,100 @@ cleanup:
     grk_object_unref(&image->obj);
 
   return nullptr;
+}
+
+inline grk_image* TIFFFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  if(needSignedPixelReader_ || chroma_subsample_x != 1 || chroma_subsample_y != 1)
+    return nullptr;
+  auto comps = componentParameters(dataType);
+  if(rescaleTo12Bit_)
+  {
+    for(uint16_t j = 0; j < numcomps_; ++j)
+      comps[j].prec = 12;
+  }
+  auto image = grk_image_new(numcomps_, comps.get(), colorSpace_, false);
+  if(image && !describeImage(image, parameters))
+  {
+    grk_object_unref(&image->obj);
+    return nullptr;
+  }
+  return image;
+}
+
+template<typename T>
+bool TIFFFormat::pushStrips(grk_object* codec)
+{
+  // libtiff maps the file by default, and mapped pages count toward the resident size
+  TIFFClose(tif_);
+  tif_ = TIFFOpen(fileName_.c_str(), "rm");
+  if(!tif_)
+  {
+    spdlog::error("TIFFFormat::pushStrips: failed to reopen {}", fileName_);
+    return false;
+  }
+  bool separatePlanes = planarConfig_ == PLANARCONFIG_SEPARATE;
+  uint16_t samplesPerPixel = separatePlanes ? (uint16_t)1 : samplesPerPixel_;
+  uint16_t targetPlanes = samplesPerPixel == 1 ? (uint16_t)1 : numcomps_;
+  const TiffRowFormat rowFormat{imageWidth_,  samplesPerPixel,
+                                targetPlanes, (uint8_t)bitsPerSample_,
+                                isSigned_,    photometric_ == PHOTOMETRIC_MINISWHITE};
+  auto rowStride = (tsize_t)(((uint64_t)imageWidth_ * samplesPerPixel * bitsPerSample_ + 7U) / 8U);
+  uint32_t rowsPerStrip = imageHeight_;
+  TIFFGetFieldDefaulted(tif_, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+  rowsPerStrip = (std::min)(rowsPerStrip, imageHeight_);
+  uint32_t stripsPerPlane = (imageHeight_ + rowsPerStrip - 1) / rowsPerStrip;
+  tsize_t stripSize = TIFFStripSize(tif_);
+  std::vector<uint8_t> stripBytes((size_t)stripSize);
+  std::vector<std::vector<T>> planes(numcomps_, std::vector<T>((size_t)rowsPerStrip * imageWidth_));
+  std::vector<const void*> planePointers(numcomps_);
+  for(uint16_t c = 0; c < numcomps_; ++c)
+    planePointers[c] = planes[c].data();
+  std::vector<T> rowBuffer;
+  std::vector<T*> rowPlanes(targetPlanes);
+  for(uint32_t strip = 0; strip < stripsPerPlane; ++strip)
+  {
+    uint32_t rows = (std::min)(rowsPerStrip, imageHeight_ - strip * rowsPerStrip);
+    tsize_t expectedBytes = (tsize_t)rows * rowStride;
+    for(uint16_t plane = 0; plane < numcomps_; plane += targetPlanes)
+    {
+      uint32_t stripIndex = (separatePlanes ? plane * stripsPerPlane : 0) + strip;
+      tsize_t readBytes = TIFFReadEncodedStrip(tif_, stripIndex, stripBytes.data(), stripSize);
+      if(readBytes < expectedBytes)
+      {
+        spdlog::error("TIFF strip {} has {} bytes, {} expected", stripIndex, (long long)readBytes,
+                      (long long)expectedBytes);
+        return false;
+      }
+      for(uint32_t r = 0; r < rows; ++r)
+      {
+        for(uint16_t k = 0; k < targetPlanes; ++k)
+          rowPlanes[k] = planes[plane + k].data() + (size_t)r * imageWidth_;
+        if(!deinterleaveTiffRow(stripBytes.data() + (size_t)r * (size_t)rowStride, rowPlanes.data(),
+                                rowFormat, rowBuffer))
+          return false;
+      }
+    }
+    for(uint16_t c = 0; rescaleTo12Bit_ && c < numcomps_; ++c)
+    {
+      grk_image_comp comp = {};
+      comp.w = imageWidth_;
+      comp.h = rows;
+      comp.stride = imageWidth_;
+      comp.prec = (uint8_t)bitsPerSample_;
+      comp.data = planes[c].data();
+      scaleComponent<T>(&comp, 12);
+    }
+    grk_strip pushed = {rows, planePointers.data(), imageWidth_};
+    if(!grk_compress_push_strip(codec, &pushed))
+      return false;
+  }
+  return true;
+}
+
+inline bool TIFFFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
 
 template<typename T>

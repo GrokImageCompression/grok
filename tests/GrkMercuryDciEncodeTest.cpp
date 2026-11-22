@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "grok.h"
+#include "GrkCompressInStrips.h"
 
 namespace
 {
@@ -61,6 +62,16 @@ struct Case
   bool cinemaCaps;
   // mercury writes no PLT
   bool writePlt;
+  // 16-bit X'Y'Z' that grok cuts to 12 bits, else the test cuts it
+  bool cutInGrok = false;
+  grk_data_type dataType = GRK_INT_32;
+};
+
+enum class Route
+{
+  Buffer,
+  File,
+  Strips,
 };
 
 void recordInfo(const char* message, void*)
@@ -126,7 +137,7 @@ struct Encoded
 };
 
 Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>& planes,
-                      uint16_t slopeHint, bool mercury, bool toFile)
+                      uint16_t slopeHint, bool mercury, Route route)
 {
   grk_image_comp comps[COMPONENTS] = {};
   for(auto& comp : comps)
@@ -135,18 +146,27 @@ Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>&
     comp.h = test.height;
     comp.dx = 1;
     comp.dy = 1;
-    comp.prec = test.xyzPrecision ? test.xyzPrecision : CODED_PRECISION;
+    comp.prec = test.xyzPrecision ? test.xyzPrecision
+                                  : (test.cutInGrok ? SOURCE_PRECISION : CODED_PRECISION);
     comp.sgnd = false;
+    comp.data_type = test.dataType;
   }
   auto image = grk_image_new(COMPONENTS, comps, GRK_CLRSPC_SRGB, true);
-  uint32_t shift = test.xyzPrecision ? 0 : SIXTEEN_TO_TWELVE_SHIFT;
+  uint32_t shift = test.xyzPrecision || test.cutInGrok ? 0 : SIXTEEN_TO_TWELVE_SHIFT;
   for(uint32_t c = 0; c < COMPONENTS; ++c)
   {
-    auto data = (int32_t*)image->comps[c].data;
     for(uint32_t y = 0; y < test.height; ++y)
+    {
       for(uint32_t x = 0; x < test.width; ++x)
-        data[(size_t)y * image->comps[c].stride + x] =
-            planes[c][(size_t)y * test.width + x] >> shift;
+      {
+        size_t index = (size_t)y * image->comps[c].stride + x;
+        int32_t value = planes[c][(size_t)y * test.width + x] >> shift;
+        if(test.dataType == GRK_INT_16)
+          ((int16_t*)image->comps[c].data)[index] = (int16_t)value;
+        else
+          ((int32_t*)image->comps[c].data)[index] = value;
+      }
+    }
   }
   grk_cparameters params;
   grk_compress_set_default_params(&params);
@@ -173,7 +193,7 @@ Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>&
   params.rate_control_tolerance = test.tolerance;
   std::vector<uint8_t> out(OUTPUT_CAPACITY);
   grk_stream_params stream = {};
-  if(toFile)
+  if(route == Route::File)
   {
     snprintf(stream.file, sizeof(stream.file), "%s", OUTPUT_FILE);
   }
@@ -185,12 +205,21 @@ Encoded libraryEncode(const Case& test, const std::vector<std::vector<int32_t>>&
   setMercuryEncode(mercury);
   mercuryCompressed = false;
   classicXyzRan = false;
-  auto codec = grk_compress_init(&stream, &params, image);
-  uint64_t length = codec ? grk_compress(codec, nullptr) : 0;
-  uint16_t slopeThreshold = codec ? grk_compress_get_slope_threshold(codec) : 0;
-  grk_object_unref(codec);
+  uint64_t length = 0;
+  uint16_t slopeThreshold = 0;
+  if(route == Route::Strips)
+  {
+    length = compressInStrips(&stream, &params, image);
+  }
+  else
+  {
+    auto codec = grk_compress_init(&stream, &params, image);
+    length = codec ? grk_compress(codec, nullptr) : 0;
+    slopeThreshold = codec ? grk_compress_get_slope_threshold(codec) : 0;
+    grk_object_unref(codec);
+  }
   grk_object_unref(&image->obj);
-  if(toFile)
+  if(route == Route::File)
   {
     auto file = fopen(OUTPUT_FILE, "rb");
     length = file ? fread(out.data(), 1, out.size(), file) : 0;
@@ -227,18 +256,28 @@ bool runCase(const Case& test)
   uint16_t slopeHint = 0;
   if(test.hintOffset)
   {
-    auto unhinted = libraryEncode(test, planes, 0, false, false);
+    auto unhinted = libraryEncode(test, planes, 0, false, Route::Buffer);
     slopeHint = (uint16_t)(unhinted.slopeThreshold + test.hintOffset);
   }
-  auto classic = libraryEncode(test, planes, slopeHint, false, false).codestream;
+  auto classic = libraryEncode(test, planes, slopeHint, false, Route::Buffer).codestream;
   if(mercuryCompressed)
   {
     fprintf(stderr, "%s: mercury ran with %s=0\n", test.name, MERCURY_ENCODE_VARIABLE);
     return false;
   }
-  for(bool toFile : {false, true})
+  auto classicStrips = libraryEncode(test, planes, slopeHint, false, Route::Strips).codestream;
+  if(mercuryCompressed)
   {
-    auto throughGrok = libraryEncode(test, planes, slopeHint, true, toFile).codestream;
+    fprintf(stderr, "%s: mercury ran on strips with %s=0\n", test.name, MERCURY_ENCODE_VARIABLE);
+    return false;
+  }
+  if(!sameCodestream(test, "classic strips", classic, classicStrips))
+    return false;
+  for(auto route : {Route::Buffer, Route::File, Route::Strips})
+  {
+    const char* label =
+        route == Route::File ? "grok file" : (route == Route::Strips ? "grok strips" : "grok");
+    auto throughGrok = libraryEncode(test, planes, slopeHint, true, route).codestream;
     if(mercuryCompressed == test.writePlt)
     {
       fprintf(stderr, "%s: grok %s the frame to mercury\n", test.name,
@@ -251,7 +290,7 @@ bool runCase(const Case& test)
               test.writePlt ? "did not run" : "ran before mercury");
       return false;
     }
-    if(!sameCodestream(test, toFile ? "grok file" : "grok", classic, throughGrok))
+    if(!sameCodestream(test, label, classic, throughGrok))
       return false;
   }
   printf("%s: %zu bytes identical\n", test.name, classic.size());
@@ -283,6 +322,10 @@ int main()
       {"2k ratio 10", false, 1024, 540, 20000, 0, 0.0, 0, 10.0, false},
       {"4k xyz ratio 10 under cap", true, 1500, 800, 20000, 0, 0.0, 16, 10.0, true},
       {"2k xyz 10 bit plt", false, 999, 317, 30000, 0, 0.0, 10, 0.0, true, true},
+      {"2k xyz 12 bit int16", false, 999, 317, 30000, 0, 0.0, 12, 0.0, true, false, false,
+       GRK_INT_16},
+      {"2k 16 bit cut by grok", false, 999, 317, 30000, 0, 0.0, 0, 0.0, true, false, true},
+      {"4k 16 bit cut by grok plt", true, 1283, 611, 30000, 0, 0.0, 0, 0.0, true, true, true},
   };
   bool ok = true;
   for(const auto& test : cases)

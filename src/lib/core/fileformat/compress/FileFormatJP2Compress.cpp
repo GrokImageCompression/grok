@@ -963,6 +963,14 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
 
   return true;
 }
+bool FileFormatJP2Compress::acceptStrips(void)
+{
+  return codeStream->acceptStrips();
+}
+bool FileFormatJP2Compress::pushStrip(const grk_strip* strip)
+{
+  return codeStream->pushStrip(strip);
+}
 uint64_t FileFormatJP2Compress::compress(grk_plugin_tile* tile)
 {
   auto rc = codeStream->compress(tile);

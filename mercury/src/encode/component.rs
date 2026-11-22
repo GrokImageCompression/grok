@@ -191,66 +191,71 @@ impl Drop for XyzTables {
     }
 }
 
-// with `xyz`, samples are at the source precision
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn feed_tile_rows(
-    encoders: &mut [ComponentEncoder<f32>],
-    planes: &[&[i32]],
-    stride: usize,
-    width: usize,
-    height: usize,
-    precision: u32,
-    mct: bool,
-    xyz: Option<&XyzTables>,
-) {
-    // classic adds a negative DC shift
-    let dc_shift = -(1i32 << (precision - 1));
-    let mut shifted = vec![vec![0f32; width]; if mct { 3 } else { 0 }];
-    for y in 0..height {
-        let row = |c: usize| planes[c][y * stride..y * stride + width].as_ptr();
-        if !mct {
-            for (encoder, plane) in encoders.iter_mut().zip(planes) {
-                let source = &plane[y * stride..y * stride + width];
-                encoder.push_row(|target| {
-                    for (sample, &value) in target.iter_mut().zip(source) {
-                        *sample = (value + dc_shift) as f32;
-                    }
-                });
+pub(crate) struct Int32RowFeed {
+    pub precision: u32,
+    pub mct: bool,
+    // samples arrive at the source precision with xyz
+    pub xyz: Option<XyzTables>,
+}
+
+impl Int32RowFeed {
+    pub fn feed(
+        &self,
+        encoders: &mut [ComponentEncoder<f32>],
+        planes: &[&[i32]],
+        stride: usize,
+        width: usize,
+        rows: usize,
+    ) {
+        // classic adds a negative DC shift
+        let dc_shift = -(1i32 << (self.precision - 1));
+        let mut shifted = vec![vec![0f32; width]; if self.mct { 3 } else { 0 }];
+        for y in 0..rows {
+            let row = |c: usize| planes[c][y * stride..y * stride + width].as_ptr();
+            if !self.mct {
+                for (encoder, plane) in encoders.iter_mut().zip(planes) {
+                    let source = &plane[y * stride..y * stride + width];
+                    encoder.push_row(|target| {
+                        for (sample, &value) in target.iter_mut().zip(source) {
+                            *sample = (value + dc_shift) as f32;
+                        }
+                    });
+                }
+                continue;
             }
-            continue;
-        }
-        let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
-            unreachable!("three components");
-        };
-        match xyz {
-            Some(tables) => unsafe {
-                mercury_hwy_forward_xyz_ict(
-                    tables.0,
-                    row(0),
-                    row(1),
-                    row(2),
-                    dc_shift,
-                    luma.as_mut_ptr(),
-                    chroma_blue.as_mut_ptr(),
-                    chroma_red.as_mut_ptr(),
-                    width as i32,
-                );
-            },
-            None => unsafe {
-                crate::ffi_dwt::mercury_hwy_forward_ict(
-                    row(0),
-                    row(1),
-                    row(2),
-                    dc_shift,
-                    luma.as_mut_ptr(),
-                    chroma_blue.as_mut_ptr(),
-                    chroma_red.as_mut_ptr(),
-                    width as i32,
-                );
-            },
-        }
-        for (encoder, row) in encoders.iter_mut().zip(&shifted) {
-            encoder.push_row(|target| target.copy_from_slice(row));
+            let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
+                unreachable!("three components");
+            };
+            match &self.xyz {
+                Some(tables) => unsafe {
+                    mercury_hwy_forward_xyz_ict(
+                        tables.0,
+                        row(0),
+                        row(1),
+                        row(2),
+                        dc_shift,
+                        luma.as_mut_ptr(),
+                        chroma_blue.as_mut_ptr(),
+                        chroma_red.as_mut_ptr(),
+                        width as i32,
+                    );
+                },
+                None => unsafe {
+                    crate::ffi_dwt::mercury_hwy_forward_ict(
+                        row(0),
+                        row(1),
+                        row(2),
+                        dc_shift,
+                        luma.as_mut_ptr(),
+                        chroma_blue.as_mut_ptr(),
+                        chroma_red.as_mut_ptr(),
+                        width as i32,
+                    );
+                },
+            }
+            for (encoder, row) in encoders.iter_mut().zip(&shifted) {
+                encoder.push_row(|target| target.copy_from_slice(row));
+            }
         }
     }
 }
@@ -260,51 +265,57 @@ pub(crate) fn int16_finest_sample(value: i16, dc_shift: i16, fraction_bits: u32)
     value.wrapping_sub(dc_shift).wrapping_shl(fraction_bits)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn feed_tile_rows_16(
-    encoders: &mut [ComponentEncoder<i16>],
-    planes: &[&[i16]],
-    stride: usize,
-    width: usize,
-    height: usize,
-    precision: u32,
-    fraction_bits: u32,
-    mct: bool,
-) {
-    let dc_shift = 1i32 << (precision - 1);
-    // grok's CompressIrrev16 with the ICT, else the finest level's encode_97_16_v load
-    let mut shifted = vec![vec![0i16; width]; if mct { 3 } else { 0 }];
-    for y in 0..height {
-        let row = |c: usize| &planes[c][y * stride..y * stride + width];
-        if !mct {
-            for (c, encoder) in encoders.iter_mut().enumerate() {
-                let source = row(c);
-                encoder.push_row(|target| {
-                    for (sample, &value) in target.iter_mut().zip(source) {
-                        *sample = int16_finest_sample(value, dc_shift as i16, fraction_bits);
-                    }
-                });
+pub(crate) struct Int16RowFeed {
+    pub precision: u32,
+    pub fraction_bits: u32,
+    pub mct: bool,
+}
+
+impl Int16RowFeed {
+    pub fn feed(
+        &self,
+        encoders: &mut [ComponentEncoder<i16>],
+        planes: &[&[i16]],
+        stride: usize,
+        width: usize,
+        rows: usize,
+    ) {
+        let dc_shift = 1i32 << (self.precision - 1);
+        // grok's CompressIrrev16 with the ICT, else the finest level's encode_97_16_v load
+        let mut shifted = vec![vec![0i16; width]; if self.mct { 3 } else { 0 }];
+        for y in 0..rows {
+            let row = |c: usize| &planes[c][y * stride..y * stride + width];
+            if !self.mct {
+                for (c, encoder) in encoders.iter_mut().enumerate() {
+                    let source = row(c);
+                    encoder.push_row(|target| {
+                        for (sample, &value) in target.iter_mut().zip(source) {
+                            *sample =
+                                int16_finest_sample(value, dc_shift as i16, self.fraction_bits);
+                        }
+                    });
+                }
+                continue;
             }
-            continue;
-        }
-        let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
-            unreachable!("three components");
-        };
-        unsafe {
-            mercury_hwy_forward_ict_16(
-                row(0).as_ptr(),
-                row(1).as_ptr(),
-                row(2).as_ptr(),
-                -dc_shift,
-                fraction_bits,
-                luma.as_mut_ptr(),
-                chroma_blue.as_mut_ptr(),
-                chroma_red.as_mut_ptr(),
-                width as i32,
-            );
-        }
-        for (encoder, row) in encoders.iter_mut().zip(&shifted) {
-            encoder.push_row(|target| target.copy_from_slice(row));
+            let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
+                unreachable!("three components");
+            };
+            unsafe {
+                mercury_hwy_forward_ict_16(
+                    row(0).as_ptr(),
+                    row(1).as_ptr(),
+                    row(2).as_ptr(),
+                    -dc_shift,
+                    self.fraction_bits,
+                    luma.as_mut_ptr(),
+                    chroma_blue.as_mut_ptr(),
+                    chroma_red.as_mut_ptr(),
+                    width as i32,
+                );
+            }
+            for (encoder, row) in encoders.iter_mut().zip(&shifted) {
+                encoder.push_row(|target| target.copy_from_slice(row));
+            }
         }
     }
 }

@@ -194,6 +194,8 @@ bool CodeStreamCompress::start(void)
   if(!exec(procedureList_))
     return false;
   headerEndPosition_ = stream_->tell();
+  if(stripInput_ && mercuryEncode_)
+    return createMercuryEncoder();
 
   return true;
 }
@@ -222,6 +224,130 @@ static void reduceComponentPrecision(grk_image_comp* comp, uint8_t targetPrec)
       row[x] = std::min((row[x] + half) >> shift, maxVal);
   }
   comp->prec = targetPrec;
+}
+
+bool CodeStreamCompress::acceptStrips(void)
+{
+  stripInput_ = true;
+  return true;
+}
+
+bool CodeStreamCompress::initStripInput(GrkImage* image)
+{
+  auto first = image->comps;
+  for(uint16_t c = 0; c < image->numcomps; ++c)
+  {
+    auto comp = image->comps + c;
+    if(comp->w != first->w || comp->h != first->h || comp->data_type != first->data_type)
+    {
+      grklog.error("Strip input needs components of one size and one data type");
+      return false;
+    }
+    comp->data = nullptr;
+    stripSourcePrecisions_.push_back(comp->prec);
+  }
+  stripDataType_ = first->data_type;
+  return true;
+}
+
+bool CodeStreamCompress::preprocessStrip(int32_t* const* planes, uint32_t stride, uint32_t rows)
+{
+  auto image = headerImage_;
+  std::vector<grk_image_comp> comps(image->comps, image->comps + image->numcomps);
+  for(uint16_t c = 0; c < image->numcomps; ++c)
+  {
+    comps[c].data = planes[c];
+    comps[c].owns_data = false;
+    comps[c].h = rows;
+    comps[c].stride = stride;
+    comps[c].prec = stripSourcePrecisions_[c];
+  }
+  grk_image strip = {};
+  strip.numcomps = image->numcomps;
+  strip.comps = comps.data();
+  if(classicXyzPerStrip_ && !applyXYZTransform(&strip, image->comps[0].prec))
+    return false;
+  for(uint16_t c = 0; c < image->numcomps; ++c)
+  {
+    if(comps[c].prec > image->comps[c].prec)
+      reduceComponentPrecision(&comps[c], image->comps[c].prec);
+  }
+  return true;
+}
+
+bool CodeStreamCompress::pushStrip(const grk_strip* strip)
+{
+  auto image = headerImage_;
+  if(!stripInput_ || !image)
+  {
+    grklog.error("The codec was not initialised for strip input");
+    return false;
+  }
+  const uint32_t width = image->comps[0].w;
+  const uint32_t rowsLeft = image->comps[0].h - stripRowsPushed_;
+  bool planesGiven = strip->planes && std::all_of(strip->planes, strip->planes + image->numcomps,
+                                                  [](const void* plane) { return plane; });
+  if(!planesGiven || strip->rows == 0 || strip->rows > rowsLeft || strip->stride < width)
+  {
+    grklog.error("Strip of %u rows with stride %u does not fit %u rows of width %u", strip->rows,
+                 strip->stride, rowsLeft, width);
+    return false;
+  }
+  // mercury converts to XYZ from the source precision
+  bool cutStrip = false;
+  for(uint16_t c = 0; c < image->numcomps && !mercuryXyzSourcePrecision_; ++c)
+    cutStrip = cutStrip || stripSourcePrecisions_[c] > image->comps[c].prec;
+  bool transformStrip = classicXyzPerStrip_ || cutStrip;
+  bool widenStrip = stripDataType_ != image->comps[0].data_type;
+  if(mercuryEncode_ && !widenStrip && !transformStrip)
+  {
+    if(!pushMercuryRows(strip->planes, strip->stride, strip->rows))
+      return false;
+    stripRowsPushed_ += strip->rows;
+    return true;
+  }
+
+  const size_t sampleSize = GrkImage::sizeOfDataType(image->comps[0].data_type);
+  std::vector<void*> targets(image->numcomps);
+  uint32_t targetStride = width;
+  if(mercuryEncode_)
+  {
+    preprocessedStrip_.resize(image->numcomps);
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+    {
+      preprocessedStrip_[c].resize((size_t)strip->rows * width);
+      targets[c] = preprocessedStrip_[c].data();
+    }
+  }
+  else
+  {
+    targetStride = image->comps[0].stride;
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+      targets[c] =
+          (uint8_t*)image->comps[c].data + (size_t)stripRowsPushed_ * targetStride * sampleSize;
+  }
+  for(uint16_t c = 0; c < image->numcomps; ++c)
+  {
+    for(uint32_t y = 0; y < strip->rows; ++y)
+    {
+      size_t sourceRow = (size_t)y * strip->stride;
+      size_t targetRow = (size_t)y * targetStride;
+      if(!widenStrip)
+      {
+        memcpy((uint8_t*)targets[c] + targetRow * sampleSize,
+               (const uint8_t*)strip->planes[c] + sourceRow * sampleSize, width * sampleSize);
+        continue;
+      }
+      auto source = (const int16_t*)strip->planes[c] + sourceRow;
+      std::copy(source, source + width, (int32_t*)targets[c] + targetRow);
+    }
+  }
+  if(transformStrip && !preprocessStrip((int32_t* const*)targets.data(), targetStride, strip->rows))
+    return false;
+  if(mercuryEncode_ && !pushMercuryRows(targets.data(), targetStride, strip->rows))
+    return false;
+  stripRowsPushed_ += strip->rows;
+  return true;
 }
 
 static bool widen16BitComponents(GrkImage* image)
@@ -300,11 +426,18 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   headerImage_ = new GrkImage();
   image->copyHeaderTo(headerImage_);
   image = headerImage_;
+  if(stripInput_ && !initStripInput(image))
+    return false;
 
   bool requires32BitInput = compressionUses32BitPreprocessing(parameters);
   if(requires32BitInput && !widen16BitComponents(image))
     return false;
 
+  if(parameters->apply_icc && stripInput_)
+  {
+    grklog.error("Strip input does not support applying the ICC profile");
+    return false;
+  }
   if(parameters->apply_icc)
     image->applyICC<int32_t>();
 
@@ -314,9 +447,18 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     // whether the source is 8 or 16
     uint8_t xyzTargetPrec = xyzTargetPrecision(parameters->rsiz);
     // skip when the caller (e.g. the CLI) already transformed this image
-    bool transformed = image->color_space == GRK_CLRSPC_CUSTOM_CIE ||
-                       deferXyzToMercury(parameters, image) ||
-                       applyXYZTransform(image, xyzTargetPrec);
+    bool transformed =
+        image->color_space == GRK_CLRSPC_CUSTOM_CIE || deferXyzToMercury(parameters, image);
+    if(!transformed && stripInput_ && image->numcomps >= 3)
+    {
+      classicXyzPerStrip_ = true;
+      for(uint16_t c = 0; c < 3 && xyzTargetPrec; ++c)
+        image->comps[c].prec = xyzTargetPrec;
+      image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+      transformed = true;
+    }
+    if(!transformed && !stripInput_)
+      transformed = applyXYZTransform(image, xyzTargetPrec);
     if(!transformed)
     {
       grklog.error("Failed to apply XYZ colour transform");
@@ -332,7 +474,12 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     for(uint16_t i = 0; i < image->numcomps; ++i)
     {
       auto comp = image->comps + i;
-      if(comp->prec > 12 && !comp->sgnd && comp->data)
+      bool deeperThanCinema = comp->prec > 12 && !comp->sgnd;
+      if(deeperThanCinema && stripInput_)
+      {
+        comp->prec = 12;
+      }
+      else if(deeperThanCinema && comp->data)
       {
         reduceComponentPrecision(comp, 12);
         grklog.info("Reduced component %u to 12-bit for cinema profile", i);
@@ -341,7 +488,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   }
 
   // the plugin gets the image after the colour transform and precision cut above
-  if(pluginAcceleratesCompress(parameters))
+  if(pluginAcceleratesCompress(parameters) && !stripInput_)
     pluginParameters_ = std::make_unique<grk_cparameters>(*parameters);
 
   if(isHT)
@@ -872,6 +1019,12 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   }
   if(!selectMercuryEncode(parameters))
     return false;
+  bool collectStrips = stripInput_ && !mercuryEncode_;
+  for(uint16_t c = 0; collectStrips && c < headerImage_->numcomps; ++c)
+  {
+    if(!GrkImage::allocData(headerImage_->comps + c))
+      return false;
+  }
   grk_free(parameters->mct_data);
   parameters->mct_data = nullptr;
 
@@ -892,6 +1045,11 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
+  if(stripInput_ && stripRowsPushed_ != headerImage_->comps[0].h)
+  {
+    grklog.error("%u of %u rows were pushed", stripRowsPushed_, headerImage_->comps[0].h);
+    return 0;
+  }
   // Pin the global executor so a concurrent grk_initialize resize or
   // grk_deinitialize cannot destroy it while this compress is in flight.
   // A codec on its own executor never touches the global one, so it is not built for it.

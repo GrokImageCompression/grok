@@ -19,6 +19,9 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
+
+struct MercuryEncoder;
 
 namespace grk
 {
@@ -38,8 +41,14 @@ public:
   uint64_t compress(grk_plugin_tile* tile) override;
   uint16_t getSlopeThreshold(void) const override;
   bool prepareNextFrame(uint16_t rateControlSlopeHint) override;
+  bool acceptStrips(void) override;
+  bool pushStrip(const grk_strip* strip) override;
 
 private:
+  struct MercuryEncoderFree
+  {
+    void operator()(MercuryEncoder* encoder) const;
+  };
   void recordSlopeThreshold(uint16_t tileThreshold);
   std::atomic<uint16_t> slopeThreshold_{0};
   // the parameters the plugin compresses with, copied at init
@@ -53,7 +62,18 @@ private:
   bool deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image);
   // runs the deferred XYZ transform when mercury turns the frame down
   bool selectMercuryEncode(const grk_cparameters* parameters);
+  bool createMercuryEncoder(void);
+  bool pushMercuryRows(const void* const* planes, uint32_t stride, uint32_t rows);
   uint64_t compressWithMercury(void);
+  std::unique_ptr<MercuryEncoder, MercuryEncoderFree> mercuryEncoder_;
+  bool stripInput_ = false;
+  grk_data_type stripDataType_ = GRK_INT_32;
+  std::vector<uint8_t> stripSourcePrecisions_;
+  bool classicXyzPerStrip_ = false;
+  uint32_t stripRowsPushed_ = 0;
+  std::vector<std::vector<int32_t>> preprocessedStrip_;
+  bool initStripInput(GrkImage* image);
+  bool preprocessStrip(int32_t* const* planes, uint32_t stride, uint32_t rows);
   bool usesImageWideRateControl(uint32_t numTiles);
   bool allocateImageWideRate(std::vector<std::unique_ptr<TileProcessorCompress>>& tiles);
   uint64_t compressTilesWithImageWideRate(uint32_t numTiles);

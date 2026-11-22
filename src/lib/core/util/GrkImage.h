@@ -92,6 +92,7 @@ public:
    * @return 		      true if successful
    */
   static bool allocData(grk_image_comp* imageComp);
+  static size_t sizeOfDataType(grk_data_type type);
 
   /**
    * Allocate data for tile compositing
@@ -239,7 +240,6 @@ private:
   template<typename T>
   bool postProcess_T(void);
 
-  static size_t sizeOfDataType(grk_data_type type);
   static void single_component_data_free(grk_image_comp* comp);
   std::string getColourSpaceString(void) const;
   std::string getICCColourSpaceString(cmsColorSpaceSignature color_space) const;

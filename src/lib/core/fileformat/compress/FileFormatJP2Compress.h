@@ -28,6 +28,8 @@ public:
   bool init(grk_cparameters* param, GrkImage* image) override;
   bool start(void) override;
   uint64_t compress(grk_plugin_tile* tile) override;
+  bool acceptStrips(void) override;
+  bool pushStrip(const grk_strip* strip) override;
 
   /* Transcode: write JP2 boxes then copy raw codestream from source */
   uint64_t transcode(IStream* srcStream);

@@ -113,6 +113,8 @@ namespace grk
 static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* info);
 
 grk_img_fol img_fol_plugin, out_fol_plugin;
+// grok compresses strip input without the plugin
+bool pluginReady = false;
 
 static void compress_help_display(void)
 {
@@ -266,6 +268,23 @@ static void validateCinema(const std::string& arg, uint16_t profile, grk_cparame
   parameters->numgbits = (profile == GRK_PROFILE_CINEMA_2K) ? 1 : 2;
 }
 
+static grk_data_type compressDataType(const ImageFileHeader& header,
+                                      const grk_cparameters* parameters)
+{
+  grk_cparameters resolvedParameters = *parameters;
+  if(resolvedParameters.mct == 255)
+    resolvedParameters.mct = (header.numcomps >= 3) ? 1 : 0;
+  grk_data_type dataType = GRK_INT_16;
+  for(uint16_t compno = 0; compno < header.numcomps; ++compno)
+  {
+    bool isMctComponent = resolvedParameters.mct == 1 && compno < 3;
+    if(grk_compress_get_recommended_data_type(&resolvedParameters, header.maxPrecision,
+                                              isMctComponent) != GRK_INT_16)
+      dataType = GRK_INT_32;
+  }
+  return dataType;
+}
+
 static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
 {
   GRK_SUPPORTED_FILE_FMT fmt = parameters->decod_format;
@@ -315,21 +334,29 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
   auto header = reader->readHeader(filename, parameters);
   if(!header)
     return nullptr;
-
-  grk_cparameters resolvedParameters = *parameters;
-  if(resolvedParameters.mct == 255)
-    resolvedParameters.mct = (header->numcomps >= 3) ? 1 : 0;
-  grk_data_type dataType = GRK_INT_16;
-  for(uint16_t compno = 0; compno < header->numcomps; ++compno)
-  {
-    bool isMctComponent = resolvedParameters.mct == 1 && compno < 3;
-    if(grk_compress_get_recommended_data_type(&resolvedParameters, header->maxPrecision,
-                                              isMctComponent) != GRK_INT_16)
-      dataType = GRK_INT_32;
-  }
-
-  return reader->readPixels(parameters, dataType);
+  return reader->readPixels(parameters, compressDataType(*header, parameters));
 }
+
+#ifdef GROK_HAVE_LIBTIFF
+struct TiffInput
+{
+  // without sample buffers when stripReader is set
+  grk_image* image = nullptr;
+  std::unique_ptr<TIFFFormat> stripReader;
+};
+
+static TiffInput loadTiffInput(const char* filename, grk_cparameters* parameters)
+{
+  auto reader = std::make_unique<TIFFFormat>();
+  auto header = reader->readHeader(filename, parameters);
+  if(!header)
+    return {};
+  auto dataType = compressDataType(*header, parameters);
+  if(auto image = reader->readStripHeader(parameters, dataType))
+    return {image, std::move(reader)};
+  return {reader->readPixels(parameters, dataType), nullptr};
+}
+#endif
 
 int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stream_params* stream)
 {
@@ -798,6 +825,7 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
     spdlog::info("Failed to create codec");
     return GrkRCFail;
   }
+  pluginReady = true;
 
   // 1. batch encode
   uint32_t state = grk_plugin_get_debug_state();
@@ -2153,6 +2181,9 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   uint64_t compressedBytes = 0;
   grk_object* codec = nullptr;
   grk_image* image = info->image;
+#ifdef GROK_HAVE_LIBTIFF
+  std::unique_ptr<TIFFFormat> stripReader;
+#endif
   bool createdImage = false;
   bool attachedPluginMetadata = false;
   std::string outfile;
@@ -2204,7 +2235,22 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       }
     }
     /* decode the source image */
+#ifdef GROK_HAVE_LIBTIFF
+    bool stripInput = !pluginReady && parameters->decod_format == GRK_FMT_TIF &&
+                      parameters->cod_format != GRK_FMT_MJ2 && !parameters->apply_icc;
+    if(stripInput)
+    {
+      auto tiff = loadTiffInput(info->input_file_name, parameters);
+      image = tiff.image;
+      stripReader = std::move(tiff.stripReader);
+    }
+    else
+    {
+      image = loadInputImage(info->input_file_name, info->compressor_parameters);
+    }
+#else
     image = loadInputImage(info->input_file_name, info->compressor_parameters);
+#endif
     if(!image)
     {
       spdlog::error("Unable to load input file");
@@ -2367,7 +2413,23 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   {
     safe_strcpy(info->stream_params.file, outfile.c_str());
   }
+#ifdef GROK_HAVE_LIBTIFF
+  if(stripReader)
+  {
+    codec = grk_compress_init_strips(&info->stream_params, &frameParameters, image);
+    if(codec && !stripReader->pushStrips(codec, image->comps[0].data_type))
+    {
+      spdlog::error("failed to compress image strips");
+      goto cleanup;
+    }
+  }
+  else
+  {
+    codec = grk_compress_init(&info->stream_params, &frameParameters, image);
+  }
+#else
   codec = grk_compress_init(&info->stream_params, &frameParameters, image);
+#endif
   if(!codec)
   {
     spdlog::error("failed to compress image: grk_compress_init");
