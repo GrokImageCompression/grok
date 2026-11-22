@@ -1,4 +1,5 @@
 #include "transform/dwt_kernels.h"
+#include "Forward97Constants.h"
 
 #include <cmath>
 
@@ -14,13 +15,10 @@ namespace HWY_NAMESPACE
 {
   namespace hn = hwy::HWY_NAMESPACE;
 
-  // must match grok's forward 9/7 constants and expressions bit for bit
-  static const float alpha = -1.586134342f;
-  static const float beta = -0.052980118f;
-  static const float gamma = 0.882911075f;
-  static const float delta = 0.443506852f;
-  static const float K = 1.230174105f;
-  static const float invK = (float)(1.0 / 1.230174105);
+  using grk::alpha, grk::beta, grk::gamma, grk::delta, grk::K, grk::invK;
+  using grk::fwd97_g, grk::fwd97_4beta, grk::fwd97_half_gamma, grk::fwd97_2delta;
+  using grk::fwd97_unhalved_0, grk::fwd97_unhalved_2beta, grk::fwd97_unhalved_gamma,
+      grk::fwd97_unhalved_delta;
 
   template<bool SCALED>
   static void lift_97(float* target, const float* left, const float* right, int samples,
@@ -97,19 +95,7 @@ namespace HWY_NAMESPACE
     }
   }
 
-  static int16_t q15(double value)
-  {
-    return (int16_t)std::lround(value * 32768.0);
-  }
-  // grok's encode_97_16_v and encode_97_16_h constants and expressions
-  static const int16_t fwd97_g = q15(2.0 + alpha);
-  static const int16_t fwd97_4beta = q15(4.0 * beta);
-  static const int16_t fwd97_half_gamma = q15(gamma / 2.0);
-  static const int16_t fwd97_2delta = q15(2.0 * delta);
-  static const int16_t fwd97_unhalved_0 = q15(1.0 + alpha);
-  static const int16_t fwd97_unhalved_2beta = q15(2.0 * beta);
-  static const int16_t fwd97_unhalved_gamma = q15(gamma);
-  static const int16_t fwd97_unhalved_delta = q15(delta);
+  // grok's encode_97_16_v and encode_97_16_h expressions
   static const int32_t UNIT_FACTOR_Q15 = 32768;
 
   template<class D, class V>
@@ -123,10 +109,9 @@ namespace HWY_NAMESPACE
   {
     const hn::RebindToUnsigned<D> du;
     const auto sign = hn::Set(du, (uint16_t)0x8000);
-    auto roundedUp = hn::BitCast(
-        d, hn::Xor(hn::AverageRound(hn::Xor(hn::BitCast(du, a), sign),
-                                    hn::Xor(hn::BitCast(du, b), sign)),
-                   sign));
+    auto roundedUp = hn::BitCast(d, hn::Xor(hn::AverageRound(hn::Xor(hn::BitCast(du, a), sign),
+                                                             hn::Xor(hn::BitCast(du, b), sign)),
+                                            sign));
     auto oddTie = hn::And(hn::And(hn::Xor(a, b), roundedUp), hn::Set(d, (int16_t)1));
     return roundedUp - oddTie;
   }
@@ -156,8 +141,7 @@ namespace HWY_NAMESPACE
     const hn::ScalableTag<int16_t> d;
     const bool unitFactor = factorQ15 == UNIT_FACTOR_Q15;
     const auto halfFactor = hn::Set(d, (int16_t)((factorQ15 + 1) >> 1));
-    const auto halfFactorAlpha =
-        hn::Set(d, (int16_t)std::lround((double)factorQ15 * alpha / 2.0));
+    const auto halfFactorAlpha = hn::Set(d, (int16_t)std::lround((double)factorQ15 * alpha / 2.0));
     const auto levelFactor = hn::Set(d, (int16_t)factorQ15);
     switch(step)
     {
@@ -167,8 +151,7 @@ namespace HWY_NAMESPACE
             return hn::MulFixedPoint15(value, halfFactor) +
                    hn::MulFixedPoint15(l + r, halfFactorAlpha);
           auto sum = l + r;
-          return halveTiesToEven(dd, value + hn::MulFixedPoint15(sum, hn::Set(dd, fwd97_g))) -
-                 sum;
+          return halveTiesToEven(dd, value + hn::MulFixedPoint15(sum, hn::Set(dd, fwd97_g))) - sum;
         });
         break;
       case 1:

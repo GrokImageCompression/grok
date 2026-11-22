@@ -54,6 +54,7 @@ struct ITileProcessor;
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
 #include "WaveletInt16Rules.h"
+#include "Forward97Constants.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "wavelet/WaveletFwd.cpp"
@@ -71,13 +72,6 @@ struct encode_info;
 
 namespace HWY_NAMESPACE
 {
-  static const float alpha = -1.586134342f;
-  static const float beta = -0.052980118f;
-  static const float gamma = 0.882911075f;
-  static const float delta = 0.443506852f;
-  static const float K = 1.230174105f;
-  static const float invK = (float)(1.0 / 1.230174105);
-
   template<typename T>
   void deinterleave_h(const T* src, T* dst, const uint32_t dn, const uint32_t sn,
                       const uint32_t stride, const uint32_t parity, const uint32_t numrows)
@@ -1248,19 +1242,6 @@ namespace HWY_NAMESPACE
     grk_aligned_free(scratch_pool);
     return true;
   }
-
-  static int16_t q15(double value)
-  {
-    return (int16_t)std::lround(value * 32768.0);
-  }
-  static const int16_t fwd97_g = q15(2.0 + alpha);
-  static const int16_t fwd97_4beta = q15(4.0 * beta);
-  static const int16_t fwd97_half_gamma = q15(gamma / 2.0);
-  static const int16_t fwd97_2delta = q15(2.0 * delta);
-  static const int16_t fwd97_unhalved_0 = q15(1.0 + alpha);
-  static const int16_t fwd97_unhalved_2beta = q15(2.0 * beta);
-  static const int16_t fwd97_unhalved_gamma = q15(gamma);
-  static const int16_t fwd97_unhalved_delta = q15(delta);
 
   template<class D, class V>
   HWY_INLINE V halveTiesToEven(D d, V x)

@@ -366,7 +366,7 @@ if(GRK_ENABLE_MERCURY)
   target_compile_definitions(mercury_kernels PRIVATE
     HWY_STATIC_DEFINE TOOLCHAIN_MISS_ASM_HWCAP_H NDEBUG)
   target_include_directories(mercury_kernels PRIVATE
-    ${MERCURY_DIR}/native ${CMAKE_CURRENT_SOURCE_DIR}/highway)
+    ${MERCURY_DIR}/native ${CMAKE_CURRENT_SOURCE_DIR}/highway ${CMAKE_CURRENT_SOURCE_DIR}/wavelet)
   target_link_libraries(mercury_kernels PRIVATE hwy)
 
   target_sources(${GROK_CORE_NAME} PRIVATE

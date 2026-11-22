@@ -79,6 +79,14 @@ jobs:
         ln -s ${{ github.workspace }}/build/bin/compare_images sde-bin/compare_images
         python3 tests/mercury_ab_sweep.py sde-bin build/sweepwork-avx512 sde-corpus
 
+    - name: lossy encode under an emulated cpu without avx
+      # sde -p4p is a pentium 4, which runs only the sse2 and scalar highway targets
+      run: |
+        input=$DATA_ROOT/input/nonregression/Bretagne1.ppm
+        build/bin/grk_compress -i $input -o native.j2k -I -r 20
+        sde-external-9.48.0-2024-11-25-lin/sde64 -p4p -- build/bin/grk_compress -i $input -o p4p.j2k -I -r 20
+        cmp native.j2k p4p.j2k
+
     - name: ctest with classic forced
       # mercury_ab_sweep.py already compares classic and mercury pixels over the whole corpus
       working-directory: ${{ github.workspace }}/build
