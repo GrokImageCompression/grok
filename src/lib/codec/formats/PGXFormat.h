@@ -33,39 +33,7 @@
 #include "PGXFormat.h"
 #include "convert.h"
 
-template<typename T>
-T readchar(FILE* f)
-{
-  T c1;
-  if(!fread(&c1, 1, 1, f))
-  {
-    spdlog::error(" fread return a number of element different from the expected.");
-    return 0;
-  }
-  return c1;
-}
-
-template<typename T>
-T readshort(FILE* f, bool bigendian)
-{
-  uint8_t c1, c2;
-  if(!fread(&c1, 1, 1, f))
-  {
-    spdlog::error("  fread return a number of element different from the expected.");
-    return 0;
-  }
-  if(!fread(&c2, 1, 1, f))
-  {
-    spdlog::error("  fread return a number of element different from the expected.");
-    return 0;
-  }
-  if(bigendian)
-    return (T)((c1 << 8) + c2);
-  else
-    return (T)((c2 << 8) + c1);
-}
-
-class PGXFormat : public ImageFormat
+class PGXFormat : public ImageFormat, public IStripReader
 {
 public:
   bool writeHeader(void) override;
@@ -76,10 +44,15 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
+  grk_image* createImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
   template<typename T>
-  void readSamples(grk_image* image);
+  bool readRows(uint32_t rows, T* dest, size_t stride, std::vector<uint8_t>& fileBytes);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
 
   uint32_t width_ = 0;
   uint32_t height_ = 0;
@@ -150,7 +123,8 @@ cleanup:
   return std::nullopt;
 }
 
-inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline grk_image* PGXFormat::createImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   grk_image_comp cmptparm; /* maximum of 1 component  */
   memset(&cmptparm, 0, sizeof(grk_image_comp));
@@ -161,72 +135,97 @@ inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_ty
   cmptparm.data_type = dataType;
   cmptparm.dx = parameters->subsampling_dx;
   cmptparm.dy = parameters->subsampling_dy;
-
-  /* create the image */
-  auto image = grk_image_new(1, &cmptparm, GRK_CLRSPC_GRAY, true);
-  if(image)
-  {
-    /* set image offset and reference grid */
-    image->x0 = parameters->image_offset_x0;
-    image->y0 = parameters->image_offset_y0;
-    image->x1 = image->x0 + (width_ - 1) * parameters->subsampling_dx + 1;
-    image->y1 = image->y0 + (height_ - 1) * parameters->subsampling_dy + 1;
-    if(!readSamplesAs(dataType, [&](auto sample) {
-         readSamples<decltype(sample)>(image);
-         return true;
-       }))
-    {
-      grk_object_unref(&image->obj);
-      image = nullptr;
-    }
-  }
-  if(!fileIO_->close() && image)
-  {
-    grk_object_unref(&image->obj);
-    image = nullptr;
-  }
-
+  auto image = grk_image_new(1, &cmptparm, GRK_CLRSPC_GRAY, allocData);
+  if(!image)
+    return nullptr;
+  image->x0 = parameters->image_offset_x0;
+  image->y0 = parameters->image_offset_y0;
+  image->x1 = image->x0 + (width_ - 1) * parameters->subsampling_dx + 1;
+  image->y1 = image->y0 + (height_ - 1) * parameters->subsampling_dy + 1;
   return image;
 }
 
 template<typename T>
-void PGXFormat::readSamples(grk_image* image)
+bool PGXFormat::readRows(uint32_t rows, T* dest, size_t stride, std::vector<uint8_t>& fileBytes)
 {
-  auto f = fileIO_->getFileHandle();
-  uint64_t index = 0;
-  uint32_t stride_diff = image->comps->stride - width_;
-  uint8_t shift = (uint8_t)(sizeof(T) * 8 - prec_);
-  auto dest = (T*)image->comps->data;
-  for(uint32_t j = 0; j < height_; ++j)
+  size_t bytesPerSample = prec_ <= 8 ? 1 : 2;
+  size_t expectedBytes = (size_t)width_ * rows * bytesPerSample;
+  fileBytes.resize(expectedBytes);
+  size_t bytesRead = fread(fileBytes.data(), 1, expectedBytes, fileIO_->getFileHandle());
+  if(bytesRead != expectedBytes)
   {
-    for(uint32_t k = 0; k < width_; ++k)
+    spdlog::error("PGX: bytes read ({}) are less than expected number of bytes ({})", bytesRead,
+                  expectedBytes);
+    return false;
+  }
+  auto shift = (uint8_t)(sizeof(T) * 8 - prec_);
+  const uint8_t* bytes = fileBytes.data();
+  for(uint32_t r = 0; r < rows; ++r)
+  {
+    T* row = dest + r * stride;
+    for(uint32_t x = 0; x < width_; ++x)
     {
-      int32_t v = 0;
-      if(prec_ < 8)
+      int32_t v;
+      if(bytesPerSample == 1)
       {
-        v = sgnd_ ? sign_extend((T)readchar<int8_t>(f), shift) : readchar<int8_t>(f);
+        uint8_t byte = *bytes++;
+        if(prec_ < 8)
+          v = sgnd_ ? sign_extend((T)(int8_t)byte, shift) : (int8_t)byte;
+        else
+          v = sgnd_ ? (int8_t)byte : byte;
       }
       else
       {
-        if(image->comps->prec == 8)
-        {
-          if(!image->comps->sgnd)
-            v = (T)readchar<uint8_t>(f);
-          else
-            v = (T)readchar<int8_t>(f);
-        }
-        else
-        {
-          if(!image->comps->sgnd)
-            v = (T)readshort<uint16_t>(f, bigEndian_);
-          else
-            v = (T)readshort<int16_t>(f, bigEndian_);
-        }
+        auto value =
+            (uint16_t)(bigEndian_ ? (bytes[0] << 8) | bytes[1] : (bytes[1] << 8) | bytes[0]);
+        bytes += 2;
+        v = sgnd_ ? (int16_t)value : value;
       }
-      dest[index++] = (T)v;
+      row[x] = (T)v;
     }
-    index += stride_diff;
   }
+  return true;
+}
+
+inline grk_image* PGXFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = createImage(parameters, dataType, true);
+  bool read =
+      image && readSamplesAs(dataType, [&](auto sample) {
+        using T = decltype(sample);
+        std::vector<uint8_t> fileBytes;
+        return readRows<T>(height_, (T*)image->comps->data, image->comps->stride, fileBytes);
+      });
+  if(!fileIO_->close() || !read)
+  {
+    if(image)
+      grk_object_unref(&image->obj);
+    return nullptr;
+  }
+  return image;
+}
+
+inline grk_image* PGXFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  return createImage(parameters, dataType, false);
+}
+
+template<typename T>
+bool PGXFormat::pushStrips(grk_object* codec)
+{
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height_);
+  std::vector<uint8_t> fileBytes;
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t rows = (std::min)(rowsPerStrip, height_ - strip * rowsPerStrip);
+    return readRows<T>(rows, planes[0].data(), width_, fileBytes);
+  };
+  bool pushed = pushStripsReadAhead<T>(codec, 1, width_, height_, rowsPerStrip, readStrip);
+  return fileIO_->close() && pushed;
+}
+
+inline bool PGXFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
 
 inline bool PGXFormat::writeHeader(void)
