@@ -29,15 +29,14 @@ typedef uint32_t grk_flag;
 #define MQC_NUMCTXS 19
 
 #define PUSH_MQC()            \
-  auto curctx = coder.curctx; \
+  uint32_t* curctx = nullptr; \
   uint32_t c = coder.c;       \
   uint32_t a = coder.a;       \
   uint8_t ct = coder.ct
 
-#define POP_MQC()        \
-  coder.curctx = curctx; \
-  coder.c = c;           \
-  coder.a = a;           \
+#define POP_MQC() \
+  coder.c = c;    \
+  coder.a = a;    \
   coder.ct = ct;
 
 /** We hold the state of individual data points for the BlockCoder compressor using
@@ -212,8 +211,7 @@ struct mqcoder
   uint8_t ct;
   uint8_t* bp;
   uint8_t* start;
-  const mqc_state* ctxs[MQC_NUMCTXS];
-  const mqc_state** curctx;
+  uint32_t ctxs[MQC_NUMCTXS];
   const uint8_t* lut_ctxno_zc_orient;
 };
 

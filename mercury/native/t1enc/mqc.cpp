@@ -26,10 +26,10 @@ namespace mercury_native::t1enc
 void mqcoder::resetstates(void)
 {
   for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
-    ctxs[i] = mqc_states;
-  ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
-  ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
-  ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
+    ctxs[i] = mqc_pack(mqc_states);
+  ctxs[T1_CTXNO_UNI] = mqc_pack(mqc_states + (uint32_t)(46 << 1));
+  ctxs[T1_CTXNO_AGG] = mqc_pack(mqc_states + (uint32_t)(3 << 1));
+  ctxs[T1_CTXNO_ZC] = mqc_pack(mqc_states + (uint32_t)(4 << 1));
 }
 
 uint16_t mqcoder::numbytes_enc(void)
@@ -47,10 +47,6 @@ void mqcoder::setbits_enc(void)
 
 void mqcoder::init_enc(uint8_t* data)
 {
-  /* To avoid the curctx pointer to be dangling, but not strictly */
-  /* required as the current context is always set before compressing */
-  curctx = ctxs;
-
   /* As specified in Figure C.10 - Initialization of the compressor */
   /* (C.2.8 Initialization of the compressor (INITENC)) */
   a = 0x8000;
