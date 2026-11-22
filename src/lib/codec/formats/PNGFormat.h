@@ -19,7 +19,6 @@
 
 #include <string>
 #include <thread>
-#include <atomic>
 #include <png.h>
 #include "ImageFormat.h"
 #include "grk_apps_config.h"
@@ -35,7 +34,7 @@ static constexpr int MAGIC_SIZE = 8;
 
 void pngSetVerboseFlag(bool verbose);
 
-class PNGFormat : public ImageFormat
+class PNGFormat : public ImageFormat, public IStripReader
 {
 public:
   PNGFormat();
@@ -52,16 +51,28 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
+  grk_image* createImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
+  std::vector<png_bytep> allocateRows(std::vector<uint8_t>& packedRows, uint32_t rows);
+  bool readImage(png_bytep* rowPointers);
+  bool readRows(png_bytep* rowPointers, uint32_t rows);
+  bool closeRead(void);
   template<typename T>
-  bool readSamples(void);
+  void convertRows(const png_bytep* rowPointers, uint32_t rows, T* const* planes, size_t stride,
+                   std::vector<T>& rowSamples);
+  template<typename T>
+  void convertImage(const png_bytep* rowPointers, grk_image* image);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
 
   png_infop info_;
   png_structp png_;
   uint8_t* row_buf_;
-  uint8_t** row_buf_array_;
   int32_t* row32s_;
+  bool interlaced_ = false;
   GRK_COLOR_SPACE colorSpace_;
   uint8_t prec_;
   uint16_t nr_comp_;
@@ -94,7 +105,7 @@ static inline void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const
 }
 
 inline PNGFormat::PNGFormat()
-    : info_(nullptr), png_(nullptr), row_buf_(nullptr), row_buf_array_(nullptr), row32s_(nullptr),
+    : info_(nullptr), png_(nullptr), row_buf_(nullptr), row32s_(nullptr),
       colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0), interleaver_(nullptr),
       interleaver16_(nullptr)
 {}
@@ -458,7 +469,8 @@ inline std::optional<ImageFileHeader> PNGFormat::readHeader(const std::string& f
   if(!width || !height)
     goto beach;
 
-  if(interlace_type == PNG_INTERLACE_ADAM7)
+  interlaced_ = interlace_type == PNG_INTERLACE_ADAM7;
+  if(interlaced_)
   {
     [[maybe_unused]] auto number_of_passes = png_set_interlace_handling(png_);
     assert(number_of_passes == 7);
@@ -534,7 +546,8 @@ beach:
   return std::nullopt;
 }
 
-inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline grk_image* PNGFormat::createImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   png_uint_32 width = png_get_image_width(png_, info_);
   png_uint_32 height = png_get_image_height(png_, info_);
@@ -543,27 +556,6 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
   int num_comments = 0;
   int unit;
   png_uint_32 resx, resy;
-
-  if(setjmp(png_jmpbuf(png_)))
-    goto beach;
-
-  row_buf_array_ = (uint8_t**)calloc(height, sizeof(uint8_t*));
-  if(row_buf_array_ == nullptr)
-  {
-    spdlog::error("pngtoimage: out of memory");
-    goto beach;
-  }
-  for(uint32_t i = 0; i < height; ++i)
-  {
-    row_buf_array_[i] = (uint8_t*)malloc(png_get_rowbytes(png_, info_));
-    if(!row_buf_array_[i])
-    {
-      spdlog::error("pngtoimage: out of memory");
-      goto beach;
-    }
-  }
-
-  png_read_image(png_, row_buf_array_);
 
   /* Create image */
   memset(cmptparm, 0, sizeof(cmptparm));
@@ -579,19 +571,19 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     img_comp->h = grk::ceildiv<uint32_t>(height, img_comp->dy);
   }
 
-  image_ = grk_image_new(nr_comp_, &cmptparm[0], colorSpace_, true);
-  if(image_ == nullptr)
-    goto beach;
-  image_->x0 = parameters->image_offset_x0;
-  image_->y0 = parameters->image_offset_y0;
-  image_->x1 = image_->x0 + (width - 1) * parameters->subsampling_dx + 1;
-  image_->y1 = image_->y0 + (height - 1) * parameters->subsampling_dy + 1;
+  auto image = grk_image_new(nr_comp_, &cmptparm[0], colorSpace_, allocData);
+  if(!image)
+    return nullptr;
+  image->x0 = parameters->image_offset_x0;
+  image->y0 = parameters->image_offset_y0;
+  image->x1 = image->x0 + (width - 1) * parameters->subsampling_dx + 1;
+  image->y1 = image->y0 + (height - 1) * parameters->subsampling_dy + 1;
 
   /* Set alpha channel. Only non-premultiplied alpha is supported */
   if((nr_comp_ & 1U) == 0)
   {
-    image_->comps[nr_comp_ - 1U].type = GRK_CHANNEL_TYPE_OPACITY;
-    image_->comps[nr_comp_ - 1U].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
+    image->comps[nr_comp_ - 1U].type = GRK_CHANNEL_TYPE_OPACITY;
+    image->comps[nr_comp_ - 1U].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
   }
 
   // See if iCCP chunk is present
@@ -603,7 +595,7 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     png_charp ProfileName = nullptr;
     if(png_get_iCCP(png_, info_, &ProfileName, &Compression, &ProfileData, &ProfileLen) ==
        PNG_INFO_iCCP)
-      copyICC(image_, ProfileData, ProfileLen);
+      copyICC(image, ProfileData, ProfileLen);
   }
 
   if(png_get_valid(png_, info_, PNG_INFO_gAMA))
@@ -649,10 +641,10 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
       {
         if(text_ptr[i].text_length)
         {
-          createMeta(image_);
-          image_->meta->xmp_len = text_ptr[i].text_length;
-          image_->meta->xmp_buf = new uint8_t[image_->meta->xmp_len];
-          memcpy(image_->meta->xmp_buf, text_ptr[i].text, image_->meta->xmp_len);
+          createMeta(image);
+          image->meta->xmp_len = text_ptr[i].text_length;
+          image->meta->xmp_buf = new uint8_t[image->meta->xmp_len];
+          memcpy(image->meta->xmp_buf, text_ptr[i].text, image->meta->xmp_len);
         }
       }
       // other comments
@@ -668,10 +660,10 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     if(png_get_eXIf_1(png_, info_, &exif_len, &exif_data) == PNG_INFO_eXIf && exif_len > 0 &&
        exif_data)
     {
-      createMeta(image_);
-      image_->meta->exif_len = exif_len;
-      image_->meta->exif_buf = new uint8_t[exif_len];
-      memcpy(image_->meta->exif_buf, exif_data, exif_len);
+      createMeta(image);
+      image->meta->exif_len = exif_len;
+      image->meta->exif_buf = new uint8_t[exif_len];
+      memcpy(image->meta->exif_buf, exif_data, exif_len);
     }
   }
 
@@ -679,8 +671,8 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
   {
     if(unit == PNG_RESOLUTION_METER)
     {
-      image_->capture_resolution[0] = resx;
-      image_->capture_resolution[1] = resy;
+      image->capture_resolution[0] = resx;
+      image->capture_resolution[1] = resy;
     }
     else
     {
@@ -689,108 +681,167 @@ inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_ty
     }
   }
 
-  if(!readSamplesAs(dataType, [&](auto sample) { return readSamples<decltype(sample)>(); }))
-  {
-    grk_object_unref(&image_->obj);
-    image_ = nullptr;
-  }
-beach:
-  if(row_buf_array_)
-  {
-    for(uint32_t i = 0; i < height; ++i)
-      free(row_buf_array_[i]);
-    free(row_buf_array_);
-  }
-  free(row32s_);
-  if(png_)
-    png_destroy_read_struct(&png_, &info_, nullptr);
-  fileIO_->close();
-  return image_;
+  return image;
+}
+
+inline std::vector<png_bytep> PNGFormat::allocateRows(std::vector<uint8_t>& packedRows,
+                                                      uint32_t rows)
+{
+  size_t rowBytes = png_get_rowbytes(png_, info_);
+  packedRows.resize((size_t)rows * rowBytes);
+  std::vector<png_bytep> rowPointers(rows);
+  for(uint32_t r = 0; r < rows; ++r)
+    rowPointers[r] = packedRows.data() + r * rowBytes;
+  return rowPointers;
+}
+
+inline bool PNGFormat::readImage(png_bytep* rowPointers)
+{
+  if(setjmp(png_jmpbuf(png_)))
+    return false;
+  png_read_image(png_, rowPointers);
+  return true;
+}
+
+inline bool PNGFormat::readRows(png_bytep* rowPointers, uint32_t rows)
+{
+  if(setjmp(png_jmpbuf(png_)))
+    return false;
+  png_read_rows(png_, rowPointers, nullptr, rows);
+  return true;
+}
+
+inline bool PNGFormat::closeRead(void)
+{
+  png_destroy_read_struct(&png_, &info_, nullptr);
+  return fileIO_->close();
 }
 
 template<typename T>
-bool PNGFormat::readSamples(void)
+void PNGFormat::convertRows(const png_bytep* rowPointers, uint32_t rows, T* const* planes,
+                            size_t stride, std::vector<T>& rowSamples)
+{
+  uint32_t width = png_get_image_width(png_, info_);
+  size_t rowSampleCount = (size_t)width * nr_comp_;
+  rowSamples.resize(rowSampleCount);
+  T* rowPlanes[4];
+  for(uint32_t r = 0; r < rows; ++r)
+  {
+    switch(prec_)
+    {
+      case 1:
+        convertToOutput<1, false, T>(rowPointers[r], rowSamples.data(), rowSampleCount, false);
+        break;
+      case 2:
+        convertToOutput<2, false, T>(rowPointers[r], rowSamples.data(), rowSampleCount, false);
+        break;
+      case 4:
+        convertToOutput<4, false, T>(rowPointers[r], rowSamples.data(), rowSampleCount, false);
+        break;
+      case 8:
+        convertToOutput<8, false, T>(rowPointers[r], rowSamples.data(), rowSampleCount, false);
+        break;
+      case 16:
+        convertToOutput<16, false, T>(rowPointers[r], rowSamples.data(), rowSampleCount, false);
+        break;
+    }
+    for(uint16_t c = 0; c < nr_comp_; ++c)
+      rowPlanes[c] = planes[c] + r * stride;
+    grk::hwy_deinterleave(rowSamples.data(), rowPlanes, width, nr_comp_);
+  }
+}
+
+template<typename T>
+void PNGFormat::convertImage(const png_bytep* rowPointers, grk_image* image)
+{
+  uint32_t height = png_get_image_height(png_, info_);
+  size_t stride = image->comps[0].stride;
+  auto worker = [&](uint32_t rowBegin, uint32_t rowEnd) {
+    std::vector<T> rowSamples;
+    T* planes[4];
+    for(uint16_t c = 0; c < nr_comp_; ++c)
+      planes[c] = (T*)image->comps[c].data + rowBegin * stride;
+    convertRows<T>(rowPointers + rowBegin, rowEnd - rowBegin, planes, stride, rowSamples);
+  };
+  const uint32_t numThreads =
+      (height >= 4) ? std::min((uint32_t)std::thread::hardware_concurrency(), height) : 1;
+  if(numThreads <= 1)
+  {
+    worker(0, height);
+    return;
+  }
+  const uint32_t rowsPerThread = height / numThreads;
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads - 1);
+  uint32_t rowBegin = 0;
+  for(uint32_t t = 0; t < numThreads - 1; ++t)
+  {
+    uint32_t rowEnd = rowBegin + rowsPerThread;
+    threads.emplace_back(worker, rowBegin, rowEnd);
+    rowBegin = rowEnd;
+  }
+  worker(rowBegin, height);
+  for(auto& t : threads)
+    t.join();
+}
+
+inline grk_image* PNGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  std::vector<uint8_t> packedRows;
+  auto rowPointers = allocateRows(packedRows, png_get_image_height(png_, info_));
+  image_ = readImage(rowPointers.data()) ? createImage(parameters, dataType, true) : nullptr;
+  bool converted = image_ && readSamplesAs(dataType, [&](auto sample) {
+                     convertImage<decltype(sample)>(rowPointers.data(), image_);
+                     return true;
+                   });
+  if(!closeRead() || !converted)
+  {
+    if(image_)
+      grk_object_unref(&image_->obj);
+    image_ = nullptr;
+  }
+  return image_;
+}
+
+inline grk_image* PNGFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  return createImage(parameters, dataType, false);
+}
+
+template<typename T>
+bool PNGFormat::pushStrips(grk_object* codec)
 {
   uint32_t width = png_get_image_width(png_, info_);
   uint32_t height = png_get_image_height(png_, info_);
-  uint32_t stride = image_->comps[0].stride;
-
-  // parallel row conversion — all row data is available from png_read_image
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height);
+  std::vector<uint8_t> packedRows;
+  // libpng completes Adam7 rows only on the last pass
+  auto rowPointers = allocateRows(packedRows, interlaced_ ? height : rowsPerStrip);
+  if(interlaced_ && !readImage(rowPointers.data()))
   {
-    const size_t pixelCount = (size_t)width * nr_comp_;
-    std::atomic<bool> convError{false};
-
-    // precompute per-component base pointers
-    T* planeBase[4];
-    for(uint16_t c = 0; c < nr_comp_; ++c)
-      planeBase[c] = (T*)image_->comps[c].data;
-
-    auto worker = [&](uint32_t rowBegin, uint32_t rowEnd) {
-      // per-thread temp buffer
-      T* row32s = (T*)malloc(pixelCount * sizeof(T));
-      if(!row32s)
-      {
-        convError.store(true, std::memory_order_relaxed);
-        return;
-      }
-      for(uint32_t r = rowBegin; r < rowEnd; ++r)
-      {
-        switch(prec_)
-        {
-          case 1:
-            convertToOutput<1, false, T>(row_buf_array_[r], row32s, pixelCount, false);
-            break;
-          case 2:
-            convertToOutput<2, false, T>(row_buf_array_[r], row32s, pixelCount, false);
-            break;
-          case 4:
-            convertToOutput<4, false, T>(row_buf_array_[r], row32s, pixelCount, false);
-            break;
-          case 8:
-            convertToOutput<8, false, T>(row_buf_array_[r], row32s, pixelCount, false);
-            break;
-          case 16: /* 16 bpp is specific to PNG */
-            convertToOutput<16, false, T>(row_buf_array_[r], row32s, pixelCount, false);
-            break;
-          default:
-            convError.store(true, std::memory_order_relaxed);
-            free(row32s);
-            return;
-        }
-        // de-interleave into per-component planes at correct row offset
-        T* rowPlanes[4];
-        for(uint16_t c = 0; c < nr_comp_; ++c)
-          rowPlanes[c] = planeBase[c] + (size_t)r * stride;
-        grk::hwy_deinterleave(row32s, rowPlanes, width, nr_comp_);
-      }
-      free(row32s);
-    };
-
-    const uint32_t numThreads =
-        (height >= 4) ? std::min((uint32_t)std::thread::hardware_concurrency(), height) : 1;
-    if(numThreads <= 1)
-    {
-      worker(0, height);
-    }
-    else
-    {
-      const uint32_t rowsPerThread = height / numThreads;
-      std::vector<std::thread> threads;
-      threads.reserve(numThreads - 1);
-      uint32_t rowBegin = 0;
-      for(uint32_t t = 0; t < numThreads - 1; ++t)
-      {
-        uint32_t rowEnd = rowBegin + rowsPerThread;
-        threads.emplace_back(worker, rowBegin, rowEnd);
-        rowBegin = rowEnd;
-      }
-      // last chunk on calling thread
-      worker(rowBegin, height);
-      for(auto& t : threads)
-        t.join();
-    }
-    if(convError.load())
-      return false;
+    closeRead();
+    return false;
   }
-  return true;
+  std::vector<T> rowSamples;
+  std::vector<T*> planePointers(nr_comp_);
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t firstRow = strip * rowsPerStrip;
+    uint32_t rows = (std::min)(rowsPerStrip, height - firstRow);
+    png_bytep* stripRows = rowPointers.data();
+    if(interlaced_)
+      stripRows += firstRow;
+    else if(!readRows(stripRows, rows))
+      return false;
+    for(uint16_t c = 0; c < nr_comp_; ++c)
+      planePointers[c] = planes[c].data();
+    convertRows<T>(stripRows, rows, planePointers.data(), width, rowSamples);
+    return true;
+  };
+  bool pushed = pushStripsReadAhead<T>(codec, nr_comp_, width, height, rowsPerStrip, readStrip);
+  return closeRead() && pushed;
+}
+
+inline bool PNGFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
