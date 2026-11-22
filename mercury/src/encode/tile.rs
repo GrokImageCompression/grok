@@ -118,17 +118,31 @@ type PendingTile = Vec<Vec<Vec<PendingBand>>>;
 type CodedTile = Vec<Vec<Vec<CodedBand>>>;
 
 fn collect_tiles(pending: Vec<PendingTile>, pool: &TaskPool) -> Vec<CodedTile> {
-    pool.run(pending, |components| {
-        components
-            .into_iter()
-            .map(|resolutions| {
-                resolutions
-                    .into_iter()
-                    .map(|bands| bands.into_iter().map(PendingBand::collect).collect())
-                    .collect()
-            })
-            .collect()
-    })
+    let band_counts: Vec<Vec<Vec<usize>>> = pending
+        .iter()
+        .map(|components| {
+            components
+                .iter()
+                .map(|resolutions| resolutions.iter().map(Vec::len).collect())
+                .collect()
+        })
+        .collect();
+    let bands: Vec<PendingBand> = pending.into_iter().flatten().flatten().flatten().collect();
+    let mut coded = pool.run(bands, PendingBand::collect).into_iter();
+    band_counts
+        .iter()
+        .map(|components| {
+            components
+                .iter()
+                .map(|resolutions| {
+                    resolutions
+                        .iter()
+                        .map(|&count| coded.by_ref().take(count).collect())
+                        .collect()
+                })
+                .collect()
+        })
+        .collect()
 }
 
 struct ComponentCoding<T: CoefficientSample> {
