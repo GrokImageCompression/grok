@@ -1461,8 +1461,11 @@ fn dress_tile_loom(
                             if c0 >= c1 {
                                 continue;
                             }
-                            let slots = AlignedVec::ring_slots(cap_rows, slot_bytes);
-                            let (prod, con) = spin_block_rows(slots, &rows_per_block_row);
+                            let (prod, con) = spin_block_rows(
+                                cap_rows,
+                                &rows_per_block_row,
+                                Box::new(move || AlignedVec::ring_slots(cap_rows, slot_bytes)),
+                            );
                             spec.slices[level][slot].push(LeafSlice {
                                 cons: con,
                                 producers: column_nodes.clone(),

@@ -1,7 +1,8 @@
 //! SPSC ring of pre-allocated slots — the edge type of the weft graph.
 //!
 //! Connects exactly one producer node to one consumer node. Slots are
-//! allocated once at graph-build time; the producer fills unpublished slots
+//! allocated once, at graph-build time or, for a block-row ring, when its
+//! first block row is written; the producer fills unpublished slots
 //! in place and beats them across, the consumer reads a *window* of published
 //! slots (vertical lifting needs several rows at once) and unwinds the
 //! oldest when done. Nothing is copied at the boundary.
@@ -17,10 +18,11 @@
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 struct Shared<T> {
-    slots: Box<[UnsafeCell<T>]>,
+    slots: OnceLock<Box<[UnsafeCell<T>]>>,
+    span: usize,
     /// Slots unwound by the consumer, monotonic count.
     head: AtomicUsize,
     /// Slots beaten across by the producer, monotonic count.
@@ -33,6 +35,14 @@ struct Shared<T> {
 // peer's access to it. Each handle is a single owner.
 unsafe impl<T: Send> Sync for Shared<T> {}
 unsafe impl<T: Send> Send for Shared<T> {}
+
+impl<T> Shared<T> {
+    fn slots(&self) -> &[UnsafeCell<T>] {
+        self.slots
+            .get()
+            .expect("ring slots are made before the first row is published")
+    }
+}
 
 /// Write end of a ring. Owned by exactly one node.
 pub struct Producer<T> {
@@ -51,7 +61,8 @@ pub struct Consumer<T> {
 pub fn spin<T>(slots: Vec<T>) -> (Producer<T>, Consumer<T>) {
     assert!(!slots.is_empty(), "ring capacity must be at least 1");
     let shared = Arc::new(Shared {
-        slots: slots.into_iter().map(UnsafeCell::new).collect(),
+        span: slots.len(),
+        slots: OnceLock::from(slots.into_iter().map(UnsafeCell::new).collect::<Box<[_]>>()),
         head: AtomicUsize::new(0),
         tail: AtomicUsize::new(0),
     });
@@ -65,7 +76,7 @@ pub fn spin<T>(slots: Vec<T>) -> (Producer<T>, Consumer<T>) {
 
 impl<T> Producer<T> {
     pub fn span(&self) -> usize {
-        self.shared.slots.len()
+        self.shared.span
     }
 
     /// Number of slots the producer may currently fill.
@@ -85,7 +96,7 @@ impl<T> Producer<T> {
         // Safety: slot is unpublished (>= tail) and unreleased space
         // (< head + capacity), so the consumer cannot touch it; &mut self
         // prevents aliasing on this side.
-        unsafe { &mut *self.shared.slots[idx].get() }
+        unsafe { &mut *self.shared.slots()[idx].get() }
     }
 
     /// Beat the first `n` filled slots across to the consumer.
@@ -100,7 +111,7 @@ impl<T> Producer<T> {
 
 impl<T> Consumer<T> {
     pub fn span(&self) -> usize {
-        self.shared.slots.len()
+        self.shared.span
     }
 
     /// Number of beaten-across slots available to read.
@@ -118,7 +129,7 @@ impl<T> Consumer<T> {
         let idx = (head + i) % self.span();
         // Safety: slot is published and not yet released, so the producer
         // cannot touch it.
-        unsafe { &*self.shared.slots[idx].get() }
+        unsafe { &*self.shared.slots()[idx].get() }
     }
 
     /// Unwind the `n` oldest slots back to the producer for reuse.
@@ -131,31 +142,39 @@ impl<T> Consumer<T> {
     }
 }
 
+pub type MakeSlots<T> = Box<dyn Fn() -> Vec<T> + Send + Sync>;
+
 pub struct BlockRowProducer<T> {
     shared: Arc<Shared<T>>,
+    make_slots: MakeSlots<T>,
     block_row_starts: Box<[usize]>,
     finished: Box<[AtomicBool]>,
     next_unpublished: Mutex<usize>,
 }
 
 pub fn spin_block_rows<T>(
-    slots: Vec<T>,
+    span: usize,
     rows_per_block_row: &[u32],
+    make_slots: MakeSlots<T>,
 ) -> (Arc<BlockRowProducer<T>>, Consumer<T>) {
-    let (producer, consumer) = spin(slots);
+    assert!(span > 0, "ring capacity must be at least 1");
+    let shared = Arc::new(Shared {
+        slots: OnceLock::new(),
+        span,
+        head: AtomicUsize::new(0),
+        tail: AtomicUsize::new(0),
+    });
     let mut block_row_starts = Vec::with_capacity(rows_per_block_row.len() + 1);
     let mut start = 0usize;
     block_row_starts.push(start);
     for &rows in rows_per_block_row {
-        assert!(
-            rows as usize <= producer.span(),
-            "a block row fits in its ring"
-        );
+        assert!(rows as usize <= span, "a block row fits in its ring");
         start += rows as usize;
         block_row_starts.push(start);
     }
     let producer = BlockRowProducer {
-        shared: producer.shared,
+        shared: Arc::clone(&shared),
+        make_slots,
         block_row_starts: block_row_starts.into_boxed_slice(),
         finished: rows_per_block_row
             .iter()
@@ -163,19 +182,24 @@ pub fn spin_block_rows<T>(
             .collect(),
         next_unpublished: Mutex::new(0),
     };
-    (Arc::new(producer), consumer)
+    (Arc::new(producer), Consumer { shared })
 }
 
 impl<T> BlockRowProducer<T> {
     pub fn block_row_fits(&self, block_row: usize) -> bool {
         let head = self.shared.head.load(Ordering::Acquire);
-        self.block_row_starts[block_row + 1] <= head + self.shared.slots.len()
+        self.block_row_starts[block_row + 1] <= head + self.shared.span
     }
 
     pub fn block_row_slot(&self, block_row: usize, row: usize) -> *mut T {
         let index = self.block_row_starts[block_row] + row;
         debug_assert!(index < self.block_row_starts[block_row + 1]);
-        self.shared.slots[index % self.shared.slots.len()].get()
+        let slots = self.shared.slots.get_or_init(|| {
+            let slots = (self.make_slots)();
+            assert_eq!(slots.len(), self.shared.span, "made slots fill the ring");
+            slots.into_iter().map(UnsafeCell::new).collect()
+        });
+        slots[index % self.shared.span].get()
     }
 
     pub fn finish_block_row(&self, block_row: usize) {
@@ -196,7 +220,7 @@ mod tests {
 
     #[test]
     fn block_rows_finished_out_of_order_publish_in_order() {
-        let (producer, mut consumer) = spin_block_rows(vec![0u32; 4], &[2, 2, 1]);
+        let (producer, mut consumer) = spin_block_rows(4, &[2, 2, 1], Box::new(|| vec![0u32; 4]));
         assert!(producer.block_row_fits(0) && producer.block_row_fits(1));
         assert!(!producer.block_row_fits(2));
         for (block_row, row) in [(1, 0), (1, 1), (0, 0), (0, 1)] {
@@ -210,6 +234,28 @@ mod tests {
         assert_eq!(rows, [0, 1, 10, 11]);
         consumer.unwind(1);
         assert!(producer.block_row_fits(2));
+    }
+
+    #[test]
+    fn block_row_slots_are_made_once_on_first_write() {
+        let made = Arc::new(AtomicUsize::new(0));
+        let counter = Arc::clone(&made);
+        let (producer, consumer) = spin_block_rows(
+            2,
+            &[1, 1],
+            Box::new(move || {
+                counter.fetch_add(1, Ordering::Relaxed);
+                vec![0u32; 2]
+            }),
+        );
+        assert!(producer.block_row_fits(1));
+        assert_eq!(made.load(Ordering::Relaxed), 0);
+        unsafe { *producer.block_row_slot(1, 0) = 7 };
+        unsafe { *producer.block_row_slot(0, 0) = 3 };
+        assert_eq!(made.load(Ordering::Relaxed), 1);
+        producer.finish_block_row(0);
+        producer.finish_block_row(1);
+        assert_eq!((*consumer.peek(0), *consumer.peek(1)), (3, 7));
     }
 
     #[test]
