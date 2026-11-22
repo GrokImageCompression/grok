@@ -216,13 +216,13 @@ impl PrecinctCoder {
         (y * blocks_across + x) as usize
     }
 
-    // the returned length counts the body even when it is not written
-    pub fn write_packet(
+    // the returned length counts the body even when its slices are not collected
+    pub fn write_packet<'s>(
         &mut self,
         layer: u16,
-        sources: &[BandPacketSource],
+        sources: &[BandPacketSource<'s>],
         out: &mut Vec<u8>,
-        with_body: bool,
+        mut bodies: Option<&mut Vec<&'s [u8]>>,
     ) -> usize {
         let start = out.len();
         let mut body_length = 0;
@@ -323,15 +323,16 @@ impl PrecinctCoder {
                 if included == state.passes_written {
                     continue;
                 }
-                if with_body {
-                    let block = &source.coded.blocks[index];
-                    let passes = source.coded.block_passes(block);
+                if let Some(bodies) = bodies.as_mut() {
+                    let coded: &'s CodedBand = source.coded;
+                    let block = &coded.blocks[index];
+                    let passes = coded.block_passes(block);
                     let from = match state.passes_written {
                         0 => 0,
                         written => passes[written as usize - 1].rate as usize,
                     };
                     let to = passes[included as usize - 1].rate as usize;
-                    out.extend_from_slice(&source.coded.block_bytes(block)[from..to]);
+                    bodies.push(&coded.block_bytes(block)[from..to]);
                 }
                 state.passes_written = included;
             }
@@ -464,7 +465,11 @@ mod tests {
                     })
                     .collect();
                 let mut packet = Vec::new();
-                let length = coder.write_packet(layer, &sources, &mut packet, true);
+                let mut bodies = Vec::new();
+                let length = coder.write_packet(layer, &sources, &mut packet, Some(&mut bodies));
+                for body in bodies {
+                    packet.extend_from_slice(body);
+                }
                 assert_eq!(length, packet.len());
 
                 let parsed = comb_packet_header(

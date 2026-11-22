@@ -47,7 +47,6 @@ struct Search<'w, 'a> {
     targets: &'w RateTargets,
     num_comps: usize,
     included: Vec<Vec<u8>>,
-    scratch: Vec<u8>,
     component_bytes: Vec<u64>,
     min_slope: u32,
     // [comp][slope + 1]: body bytes of the passes a threshold at slope keeps
@@ -107,7 +106,6 @@ impl<'w, 'a> Search<'w, 'a> {
                 .iter()
                 .map(|band| vec![0; band.coded.blocks.len()])
                 .collect(),
-            scratch: Vec::new(),
             component_bytes: vec![0; num_comps],
             min_slope,
             body_bytes_above,
@@ -220,19 +218,11 @@ impl<'w, 'a> Search<'w, 'a> {
 
     fn simulate(&mut self) -> u64 {
         self.component_bytes.fill(0);
-        let component_bytes = &mut self.component_bytes;
-        let scratch = &mut self.scratch;
-        scratch.clear();
-        self.writer.write_packets(
-            self.bands,
-            &self.included,
-            scratch,
-            false,
-            |slot, length| {
-                component_bytes[slot.comp as usize] += length as u64;
-            },
-        );
-        component_bytes.iter().sum()
+        let written = self.writer.write_packets(self.bands, &self.included, false);
+        for packet in written.iter() {
+            self.component_bytes[packet.slot.comp as usize] += packet.length as u64;
+        }
+        self.component_bytes.iter().sum()
     }
 
     fn components_within_cap(&self) -> bool {

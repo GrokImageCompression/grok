@@ -169,13 +169,18 @@ namespace
     bool written = true;
   };
 
-  void writeMercuryTilePart(void* context, const uint8_t* bytes, uint64_t length)
+  void startMercuryTilePart(void* context, uint64_t length)
   {
     auto sink = (MercuryTilePartSink*)context;
     ++sink->parts;
-    sink->written = sink->written && sink->stream->writeBytes(bytes, length) == length;
     if(sink->tlm)
       sink->tlm->add(0, (uint32_t)length);
+  }
+
+  void writeMercuryBytes(void* context, const uint8_t* bytes, uint64_t length)
+  {
+    auto sink = (MercuryTilePartSink*)context;
+    sink->written = sink->written && sink->stream->writeBytes(bytes, length) == length;
   }
 } // namespace
 
@@ -290,8 +295,8 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
   }
   MercuryTilePartSink sink{stream_, cp_.tlmMarkers_.get()};
   uint16_t threshold = 0;
-  int32_t rc =
-      mercury_encoder_finish(mercuryEncoder_.release(), writeMercuryTilePart, &sink, &threshold);
+  int32_t rc = mercury_encoder_finish(mercuryEncoder_.release(), startMercuryTilePart,
+                                      writeMercuryBytes, &sink, &threshold);
   if(rc != MERCURY_OK)
   {
     grklog.error("mercury failed to compress the image, error %d", rc);

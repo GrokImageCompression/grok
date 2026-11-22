@@ -355,8 +355,10 @@ typedef struct MercuryEncodeParams
   const double* int16_band_scales;
 } MercuryEncodeParams;
 
-/* called once per tile-part with its bytes from SOT to the last packet */
-typedef void (*mercury_tile_part_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
+/* called before each tile-part's bytes with its length from SOT to the last packet */
+typedef void (*mercury_tile_part_start_fn)(void* ctx, uint64_t length);
+/* called with the codestream bytes in order, a tile-part in many pieces */
+typedef void (*mercury_write_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
 
 typedef struct MercuryEncoder MercuryEncoder;
 
@@ -367,8 +369,8 @@ int32_t mercury_encoder_new(const MercuryMainHeader* header, const MercuryEncode
 int32_t mercury_encoder_push_rows(MercuryEncoder* encoder, const void* const* planes,
                                   uint32_t stride, uint32_t rows);
 /* frees the encoder whatever the result */
-int32_t mercury_encoder_finish(MercuryEncoder* encoder, mercury_tile_part_fn write_tile_part,
-                               void* write_ctx, uint16_t* slope_threshold);
+int32_t mercury_encoder_finish(MercuryEncoder* encoder, mercury_tile_part_start_fn start_tile_part,
+                               mercury_write_fn write, void* write_ctx, uint16_t* slope_threshold);
 /* for an encoder that is not finished */
 void mercury_encoder_free(MercuryEncoder* encoder);
 

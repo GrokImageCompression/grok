@@ -1961,7 +1961,8 @@ pub struct MercuryEncodeParams {
     pub int16_band_scales: *const f64,
 }
 
-pub type MercuryTilePartFn = extern "C" fn(ctx: *mut c_void, bytes: *const u8, len: u64);
+pub type MercuryTilePartStartFn = extern "C" fn(ctx: *mut c_void, length: u64);
+pub type MercuryWriteFn = extern "C" fn(ctx: *mut c_void, bytes: *const u8, len: u64);
 
 fn tile_encodable(header: &MainHeaderIn) -> bool {
     let (siz, cod) = (&header.siz, &header.cod);
@@ -2111,7 +2112,8 @@ pub unsafe extern "C" fn mercury_encoder_push_rows(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn mercury_encoder_finish(
     encoder: *mut MercuryEncoder,
-    write_tile_part: MercuryTilePartFn,
+    start_tile_part: MercuryTilePartStartFn,
+    write: MercuryWriteFn,
     write_ctx: *mut c_void,
     slope_threshold: *mut u16,
 ) -> i32 {
@@ -2123,7 +2125,10 @@ pub unsafe extern "C" fn mercury_encoder_finish(
         return MERCURY_EBADARG;
     }
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        encoder.finish(|bytes| write_tile_part(write_ctx, bytes.as_ptr(), bytes.len() as u64))
+        encoder.finish(
+            |length| start_tile_part(write_ctx, length as u64),
+            |bytes| write(write_ctx, bytes.as_ptr(), bytes.len() as u64),
+        )
     }));
     let Ok(threshold) = r else {
         return MERCURY_EPANIC;

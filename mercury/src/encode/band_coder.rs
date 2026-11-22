@@ -326,7 +326,17 @@ impl<T: QuantizedSample> BandCoder<T> {
         let Some(pooled) = self.pooled.take() else {
             return;
         };
-        for stripe in pooled.results.take() {
+        let stripes = pooled.results.take();
+        self.coded
+            .blocks
+            .reserve(stripes.iter().map(|stripe| stripe.blocks.len()).sum());
+        self.coded
+            .passes
+            .reserve(stripes.iter().map(|stripe| stripe.passes.len()).sum());
+        self.coded
+            .bytes
+            .reserve(stripes.iter().map(|stripe| stripe.bytes.len()).sum());
+        for stripe in stripes {
             self.coded.append(stripe);
         }
     }

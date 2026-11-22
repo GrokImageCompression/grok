@@ -4,6 +4,7 @@ use crate::codec::packet_order::{
 use crate::codec::params::{CodParams, SizParams};
 use crate::codec::tile_geom::TileGeom;
 
+use std::ops::Range;
 use std::sync::Mutex;
 
 use super::band_coder::CodedBand;
@@ -26,17 +27,55 @@ pub(crate) struct TileBands<'a> {
 pub(crate) struct TilePacketWriter {
     order: Vec<PacketSlot>,
     precincts: Vec<PrecinctCoder>,
-    // [comp][res] index in `precincts` of the resolution's first precinct
-    first_precinct: Vec<Vec<usize>>,
     // [precinct] indices in `order` of its packets
     precinct_packets: Vec<Vec<usize>>,
+    // [order index] precinct, and the packet's index among the precinct's packets
+    packet_positions: Vec<(usize, usize)>,
     threads: usize,
 }
 
-struct PrecinctPackets {
-    bytes: Vec<u8>,
-    // (bytes written, packet length) per packet, in layer order
-    lengths: Vec<(usize, usize)>,
+struct PacketExtent {
+    header: Range<usize>,
+    bodies: Range<usize>,
+    length: usize,
+}
+
+struct PrecinctPackets<'a> {
+    headers: Vec<u8>,
+    bodies: Vec<&'a [u8]>,
+    packets: Vec<PacketExtent>,
+}
+
+pub(crate) struct WrittenPacket<'p> {
+    pub slot: PacketSlot,
+    // counts the body even when its slices were not collected
+    pub length: usize,
+    pub header: &'p [u8],
+    pub bodies: &'p [&'p [u8]],
+}
+
+pub(crate) struct WrittenPackets<'a, 'w> {
+    order: &'w [PacketSlot],
+    packet_positions: &'w [(usize, usize)],
+    precincts: Vec<PrecinctPackets<'a>>,
+}
+
+impl WrittenPackets<'_, '_> {
+    pub fn iter(&self) -> impl Iterator<Item = WrittenPacket<'_>> {
+        self.order
+            .iter()
+            .zip(self.packet_positions)
+            .map(|(&slot, &(precinct, packet))| {
+                let written = &self.precincts[precinct];
+                let extent = &written.packets[packet];
+                WrittenPacket {
+                    slot,
+                    length: extent.length,
+                    header: &written.headers[extent.header.clone()],
+                    bodies: &written.bodies[extent.bodies.clone()],
+                }
+            })
+    }
 }
 
 impl TilePacketWriter {
@@ -65,35 +104,36 @@ impl TilePacketWriter {
             first_precinct.push(comp_first);
         }
         let mut precinct_packets = vec![Vec::new(); precincts.len()];
+        let mut packet_positions = Vec::with_capacity(order.len());
         for (index, slot) in order.iter().enumerate() {
             let precinct =
                 first_precinct[slot.comp as usize][slot.res as usize] + slot.prec as usize;
+            packet_positions.push((precinct, precinct_packets[precinct].len()));
             precinct_packets[precinct].push(index);
         }
         Self {
             order,
             precincts,
-            first_precinct,
             precinct_packets,
+            packet_positions,
             threads,
         }
     }
 
     // `included` holds the passes each block includes, per band of `bands`
-    pub fn write_packets(
+    pub fn write_packets<'a>(
         &mut self,
-        bands: &TileBands,
-        included: &[Vec<u8>],
-        out: &mut Vec<u8>,
+        bands: &TileBands<'a>,
+        included: &'a [Vec<u8>],
         with_body: bool,
-        mut packet_written: impl FnMut(PacketSlot, usize),
-    ) {
+    ) -> WrittenPackets<'a, '_> {
         let order = &self.order;
         let precinct_count = self.precincts.len();
         let write_precinct = |coder: &mut PrecinctCoder, packets: &[usize]| {
             let mut written = PrecinctPackets {
-                bytes: Vec::new(),
-                lengths: Vec::with_capacity(packets.len()),
+                headers: Vec::new(),
+                bodies: Vec::new(),
+                packets: Vec::with_capacity(packets.len()),
             };
             let mut sources: Vec<BandPacketSource> = Vec::with_capacity(3);
             for &index in packets {
@@ -108,10 +148,18 @@ impl TilePacketWriter {
                     max_bit_planes: bands.bands[b].max_bit_planes,
                     included_passes: &included[b],
                 }));
-                let start = written.bytes.len();
-                let length =
-                    coder.write_packet(slot.layer, &sources, &mut written.bytes, with_body);
-                written.lengths.push((written.bytes.len() - start, length));
+                let (header_start, bodies_start) = (written.headers.len(), written.bodies.len());
+                let length = coder.write_packet(
+                    slot.layer,
+                    &sources,
+                    &mut written.headers,
+                    with_body.then_some(&mut written.bodies),
+                );
+                written.packets.push(PacketExtent {
+                    header: header_start..written.headers.len(),
+                    bodies: bodies_start..written.bodies.len(),
+                    length,
+                });
             }
             written
         };
@@ -143,20 +191,13 @@ impl TilePacketWriter {
                 written[precinct] = Some(packets);
             }
         });
-
-        let mut cursors = vec![(0usize, 0usize); written.len()];
-        for slot in order {
-            let precinct =
-                self.first_precinct[slot.comp as usize][slot.res as usize] + slot.prec as usize;
-            let packets = written[precinct]
-                .as_ref()
-                .expect("every precinct is written");
-            let (byte, packet) = &mut cursors[precinct];
-            let (bytes_written, length) = packets.lengths[*packet];
-            out.extend_from_slice(&packets.bytes[*byte..*byte + bytes_written]);
-            *byte += bytes_written;
-            *packet += 1;
-            packet_written(*slot, length);
+        WrittenPackets {
+            order,
+            packet_positions: &self.packet_positions,
+            precincts: written
+                .into_iter()
+                .map(|packets| packets.expect("every precinct is written"))
+                .collect(),
         }
     }
 }

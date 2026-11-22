@@ -174,6 +174,12 @@ enum TileSamples {
     },
 }
 
+struct TilePart {
+    first: PacketSlot,
+    length: usize,
+    packets: usize,
+}
+
 pub(crate) struct TileEncoder {
     header: MainHeaderIn,
     rate: RateTargets,
@@ -295,7 +301,11 @@ impl TileEncoder {
         self.rows_left -= rows;
     }
 
-    pub fn finish(self, mut write_tile_part: impl FnMut(&[u8])) -> u16 {
+    pub fn finish(
+        self,
+        mut start_tile_part: impl FnMut(usize),
+        mut write: impl FnMut(&[u8]),
+    ) -> u16 {
         assert_eq!(self.rows_left, 0, "rows still to push");
         let (siz, cod) = (&self.header.siz, &self.header.cod);
         let coded = match self.samples {
@@ -331,34 +341,37 @@ impl TileEncoder {
         let allocation =
             allocate_rate(&mut packets, &bands, &self.rate).expect("rate control finds a fit");
 
-        let mut packet_bytes = Vec::new();
+        let written = packets.write_packets(&bands, &allocation.included, true);
         // classic starts a tile-part at every POC volume
-        let mut part_lengths: Vec<(PacketSlot, usize)> = Vec::new();
-        packets.write_packets(
-            &bands,
-            &allocation.included,
-            &mut packet_bytes,
-            true,
-            |slot, length| match part_lengths.last_mut() {
-                Some((first, total))
-                    if first.progression_volume == slot.progression_volume
-                        && (!self.split_by_component || first.comp == slot.comp) =>
+        let mut parts: Vec<TilePart> = Vec::new();
+        for packet in written.iter() {
+            match parts.last_mut() {
+                Some(part)
+                    if part.first.progression_volume == packet.slot.progression_volume
+                        && (!self.split_by_component || part.first.comp == packet.slot.comp) =>
                 {
-                    *total += length
+                    part.length += packet.length;
+                    part.packets += 1;
                 }
-                _ => part_lengths.push((slot, length)),
-            },
-        );
-        let count = u8::try_from(part_lengths.len()).expect("classic allows 255 tile-parts");
-        let mut packet_start = 0;
-        let mut tile_part = Vec::new();
-        for (index, &(_, length)) in part_lengths.iter().enumerate() {
-            let psot = (SOT_SOD_BYTES + length) as u32;
-            tile_part.clear();
-            tile_part.extend_from_slice(&tile_part_header(index as u8, count, psot));
-            tile_part.extend_from_slice(&packet_bytes[packet_start..packet_start + length]);
-            packet_start += length;
-            write_tile_part(&tile_part);
+                _ => parts.push(TilePart {
+                    first: packet.slot,
+                    length: packet.length,
+                    packets: 1,
+                }),
+            }
+        }
+        let count = u8::try_from(parts.len()).expect("classic allows 255 tile-parts");
+        let mut packets = written.iter();
+        for (index, part) in parts.iter().enumerate() {
+            let psot = SOT_SOD_BYTES + part.length;
+            start_tile_part(psot);
+            write(&tile_part_header(index as u8, count, psot as u32));
+            for packet in packets.by_ref().take(part.packets) {
+                write(packet.header);
+                for body in packet.bodies {
+                    write(body);
+                }
+            }
         }
         allocation.slope_threshold
     }
