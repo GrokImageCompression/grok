@@ -62,6 +62,16 @@ namespace HWY_NAMESPACE
   }
 
   // must match grok's hwy_quantize16_to_sign_magnitude bit for bit
+  template<class DI, class DF, class V16>
+  HWY_INLINE hn::Vec<DI> quantize16(DI di, DF df, V16 samples, hn::Vec<DF> scale,
+                                    hn::Vec<DI> signBit, hn::Vec<DI>& maximum)
+  {
+    auto value = hn::NearestInt(hn::Mul(hn::ConvertTo(df, hn::PromoteTo(di, samples)), scale));
+    auto magnitude = hn::Abs(value);
+    maximum = hn::Max(maximum, magnitude);
+    return hn::Or(magnitude, hn::And(value, signBit));
+  }
+
   static uint32_t Impl_quantize_16(const int16_t* stripe, int stride, int columns, int rows,
                                    double inverseStep, int32_t* block)
   {
@@ -72,21 +82,18 @@ namespace HWY_NAMESPACE
     const auto scale = hn::Set(df, (float)(inverseStep * FRACTION_SCALE));
     const auto signBit = hn::Set(di, (int32_t)SIGN_BIT);
     auto maximum = hn::Zero(di);
-    auto convert = [&](auto samples) {
-      auto value = hn::NearestInt(hn::Mul(hn::ConvertTo(df, hn::PromoteTo(di, samples)), scale));
-      auto magnitude = hn::Abs(value);
-      maximum = hn::Max(maximum, magnitude);
-      return hn::Or(magnitude, hn::And(value, signBit));
-    };
     for(int row = 0; row < rows; ++row)
     {
       const int16_t* source = stripe + (size_t)row * stride;
       int32_t* target = block + (size_t)row * columns;
       size_t i = 0;
       for(; i + lanes <= (size_t)columns; i += lanes)
-        hn::StoreU(convert(hn::LoadU(d16, source + i)), di, target + i);
+        hn::StoreU(quantize16(di, df, hn::LoadU(d16, source + i), scale, signBit, maximum), di,
+                   target + i);
       if(i < (size_t)columns)
-        hn::StoreN(convert(hn::LoadN(d16, source + i, columns - i)), di, target + i, columns - i);
+        hn::StoreN(
+            quantize16(di, df, hn::LoadN(d16, source + i, columns - i), scale, signBit, maximum),
+            di, target + i, columns - i);
     }
     return (uint32_t)hn::ReduceMax(di, maximum);
   }
