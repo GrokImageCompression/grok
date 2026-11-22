@@ -55,7 +55,7 @@ struct ITileProcessor;
 #include "CoderFactory.h"
 #include "CompressScheduler.h"
 #include "RateControl.h"
-#include "WaveletFwd.h"
+#include "WaveletInt16Rules.h"
 
 #include <algorithm>
 #include <random>

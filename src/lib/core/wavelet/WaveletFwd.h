@@ -36,9 +36,6 @@ struct WaveletFwdScheduleData
   virtual ~WaveletFwdScheduleData() = default;
 };
 
-int32_t forward97Int16LevelFactor(uint8_t level);
-double forward97Int16BandScale(uint8_t level, uint8_t orientation);
-
 class WaveletFwdImpl
 {
 public:

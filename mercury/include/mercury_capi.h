@@ -346,13 +346,20 @@ typedef struct MercuryEncodeParams
   uint32_t xyz_source_precision;
   /* 0 for every core */
   uint32_t threads;
+  /* int16 planes take grok's int16 9/7, int32 planes the float 9/7 */
+  bool int16_planes;
+  uint32_t int16_fraction_bits;
+  /* one Q15 factor per decomposition level, finest first */
+  const int32_t* int16_level_factors;
+  /* four per decomposition level, finest first, by orientation LL, HL, LH, HH */
+  const double* int16_band_scales;
 } MercuryEncodeParams;
 
 /* called once per tile-part with its bytes from SOT to the last packet */
 typedef void (*mercury_tile_part_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
 
 int32_t mercury_encode_tile(const MercuryMainHeader* header, const MercuryEncodeParams* params,
-                            const int32_t* const* planes, uint32_t stride,
+                            const void* const* planes, uint32_t stride,
                             mercury_tile_part_fn write_tile_part, void* write_ctx,
                             uint16_t* slope_threshold);
 

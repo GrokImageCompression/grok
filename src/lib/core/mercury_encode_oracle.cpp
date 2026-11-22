@@ -30,6 +30,11 @@ namespace HWY_NAMESPACE
     return (uint32_t)hwy::HWY_NAMESPACE::Lanes(HWY_FULL(float)());
   }
 
+  static uint32_t int16_lanes()
+  {
+    return (uint32_t)hwy::HWY_NAMESPACE::Lanes(HWY_FULL(int16_t)());
+  }
+
   // grok's CompressIrrev over aligned rows of whole vectors
   static const float a_r = 0.299f;
   static const float a_g = 0.587f;
@@ -77,6 +82,7 @@ HWY_AFTER_NAMESPACE();
 #include <cstdint>
 
 #include "wavelet/WaveletCommon.h"
+#include "wavelet/WaveletInt16Rules.h"
 
 #if defined(_WIN32)
 #define GRK_MERCURY_ORACLE_API __declspec(dllexport)
@@ -87,13 +93,16 @@ HWY_AFTER_NAMESPACE();
 namespace grk
 {
 HWY_EXPORT(float_lanes);
+HWY_EXPORT(int16_lanes);
 HWY_EXPORT(classic_forward_ict);
 
 template<typename T, typename DWT>
 static void classicForwardDwt(T* data, uint32_t stride, const uint32_t bounds[4], uint32_t levels,
                               const DWT& dwt)
 {
-  const uint32_t lanes = HWY_DYNAMIC_DISPATCH(float_lanes)();
+  // grok's int16 kernels index their scratch by int16 lanes
+  const uint32_t lanes = sizeof(T) == sizeof(int16_t) ? HWY_DYNAMIC_DISPATCH(int16_lanes)()
+                                                      : HWY_DYNAMIC_DISPATCH(float_lanes)();
   auto scaled = [](uint32_t coordinate, uint32_t level) {
     return (uint32_t)(((uint64_t)coordinate + (1ULL << level) - 1) >> level);
   };
@@ -128,6 +137,21 @@ extern "C" GRK_MERCURY_ORACLE_API int32_t grk_classic_forward_dwt_tile(
     grk::classicForwardDwt<float, grk::dwt97>((float*)data, stride, bounds, levels,
                                               grk::dwt97{(float)dcShift, intInput});
   return 0;
+}
+
+// data as for grk_classic_forward_dwt_tile
+extern "C" GRK_MERCURY_ORACLE_API int32_t
+    grk_classic_forward_dwt_tile_16(int16_t* data, uint32_t stride, const uint32_t* bounds,
+                                    uint32_t levels, int16_t dcShift, uint8_t fractionBits)
+{
+  grk::classicForwardDwt<int16_t, grk::dwt97_16>(data, stride, bounds, levels,
+                                                 grk::dwt97_16{dcShift, fractionBits});
+  return 0;
+}
+
+extern "C" GRK_MERCURY_ORACLE_API int32_t grk_classic_forward97_int16_level_factor(uint8_t level)
+{
+  return grk::forward97Int16LevelFactor(level);
 }
 
 // planes are vector aligned and padded to whole vectors; transformed in place to floats

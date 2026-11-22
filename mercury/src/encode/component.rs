@@ -2,32 +2,40 @@ use std::sync::Arc;
 
 use crate::capi::MercuryT1EncodeFn;
 use crate::codec::params::CompCodingStyle;
-use crate::dwt::analysis::{BandSplit, LevelAnalysis, VerticalBand};
+use crate::dwt::analysis::{AnalysisSample, BandSplit, LevelAnalysis, VerticalBand};
 use crate::ffi_dwt::{
-    MercuryXyzTables, mercury_hwy_forward_xyz_ict, mercury_xyz_tables_free, mercury_xyz_tables_new,
+    MercuryXyzTables, mercury_hwy_forward_ict_16, mercury_hwy_forward_xyz_ict,
+    mercury_xyz_tables_free, mercury_xyz_tables_new,
 };
 
-use super::band_coder::{BandCoder, BandGeometry, BandT1Params, CodedBand};
+use super::band_coder::{BandCoder, BandGeometry, BandT1Params, CodedBand, QuantizedSample};
 use super::stripe_queue::StripeQueue;
 
-pub(crate) struct ComponentParams<'a> {
+pub(crate) trait CoefficientSample: AnalysisSample + QuantizedSample {}
+
+impl<T: AnalysisSample + QuantizedSample> CoefficientSample for T {}
+
+pub(crate) struct ComponentParams<'a, T: CoefficientSample> {
     pub compno: i32,
     pub bounds: [u32; 4],
     pub style: &'a CompCodingStyle,
     // classic band order: LL, then HL, LH, HH from the lowest resolution up
     pub band_stepsizes: &'a [f32],
+    pub band_inverse_steps: &'a [f64],
+    // finest level first
+    pub level_lifting: &'a [T::LevelLifting],
     pub mct: bool,
     pub t1: MercuryT1EncodeFn,
     // None codes each stripe on the thread that feeds the rows
-    pub stripe_queue: Option<Arc<StripeQueue>>,
+    pub stripe_queue: Option<Arc<StripeQueue<T>>>,
 }
 
 // one tile component: rows in, every code-block of every subband coded
-pub(crate) struct ComponentEncoder {
-    levels: Vec<LevelAnalysis<f32>>,
+pub(crate) struct ComponentEncoder<T: CoefficientSample> {
+    levels: Vec<LevelAnalysis<T>>,
     // details[level] holds HL, LH, HH
-    details: Vec<[BandCoder; 3]>,
-    lowest: BandCoder,
+    details: Vec<[BandCoder<T>; 3]>,
+    lowest: BandCoder<T>,
 }
 
 const ORIENTATION_LL: i32 = 0;
@@ -35,8 +43,8 @@ const ORIENTATION_HL: i32 = 1;
 const ORIENTATION_LH: i32 = 2;
 const ORIENTATION_HH: i32 = 3;
 
-impl ComponentEncoder {
-    pub fn warp(params: &ComponentParams) -> Self {
+impl<T: CoefficientSample> ComponentEncoder<T> {
+    pub fn warp(params: &ComponentParams<T>) -> Self {
         let [x0, y0, x1, y1] = params.bounds;
         let num_levels = params.style.num_levels as u32;
         let scaled = |coordinate: u32, level: u32| coordinate.div_ceil(1 << level);
@@ -61,6 +69,7 @@ impl ComponentEncoder {
                     stepsize: params.band_stepsizes[band_number],
                     mct: params.mct,
                 },
+                params.band_inverse_steps[band_number],
                 block_width,
                 block_height,
                 params.t1,
@@ -90,7 +99,13 @@ impl ComponentEncoder {
             let (rx0, ry0) = (scaled(x0, level), scaled(y0, level));
             let width = (scaled(x1, level) - rx0) as usize;
             let height = (scaled(y1, level) - ry0) as usize;
-            let analysis = LevelAnalysis::warp(rx0, ry0, width, height);
+            let analysis = LevelAnalysis::warp(
+                rx0,
+                ry0,
+                width,
+                height,
+                params.level_lifting[level as usize],
+            );
             let (columns, rows) = (analysis.columns(), analysis.rows_split());
             let band_geometry = |high_x, high_y| geometry(columns, rows, rx0, ry0, high_x, high_y);
             details.push([
@@ -114,7 +129,7 @@ impl ComponentEncoder {
         }
     }
 
-    pub fn push_row(&mut self, fill: impl FnOnce(&mut [f32])) {
+    pub fn push_row(&mut self, fill: impl FnOnce(&mut [T])) {
         self.levels[0].feed(fill);
         self.drain(0);
     }
@@ -144,13 +159,13 @@ impl ComponentEncoder {
         }
     }
 
-    // band 0 is LL at resolution 0, then HL, LH, HH
-    pub fn coded_band(&self, res: usize, band: usize) -> &CodedBand {
-        if res == 0 {
-            &self.lowest.coded
-        } else {
-            &self.details[self.levels.len() - res][band].coded
+    // [resolution][band], LL alone at resolution 0, then HL, LH, HH
+    pub fn into_coded_bands(self) -> Vec<Vec<CodedBand>> {
+        let mut resolutions = vec![vec![self.lowest.coded]];
+        for [hl, lh, hh] in self.details.into_iter().rev() {
+            resolutions.push(vec![hl.coded, lh.coded, hh.coded]);
         }
+        resolutions
     }
 
     pub fn collect_stripes(&mut self) {
@@ -179,7 +194,7 @@ impl Drop for XyzTables {
 // with `xyz`, samples are at the source precision
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn feed_tile_rows(
-    encoders: &mut [ComponentEncoder],
+    encoders: &mut [ComponentEncoder<f32>],
     planes: &[&[i32]],
     stride: usize,
     width: usize,
@@ -233,6 +248,60 @@ pub(crate) fn feed_tile_rows(
                     width as i32,
                 );
             },
+        }
+        for (encoder, row) in encoders.iter_mut().zip(&shifted) {
+            encoder.push_row(|target| target.copy_from_slice(row));
+        }
+    }
+}
+
+pub(crate) fn int16_finest_sample(value: i16, dc_shift: i16, fraction_bits: u32) -> i16 {
+    // grok's encode_97_16_v load at the finest level, in wrapping int16 lanes
+    value.wrapping_sub(dc_shift).wrapping_shl(fraction_bits)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn feed_tile_rows_16(
+    encoders: &mut [ComponentEncoder<i16>],
+    planes: &[&[i16]],
+    stride: usize,
+    width: usize,
+    height: usize,
+    precision: u32,
+    fraction_bits: u32,
+    mct: bool,
+) {
+    let dc_shift = 1i32 << (precision - 1);
+    // grok's CompressIrrev16 with the ICT, else the finest level's encode_97_16_v load
+    let mut shifted = vec![vec![0i16; width]; if mct { 3 } else { 0 }];
+    for y in 0..height {
+        let row = |c: usize| &planes[c][y * stride..y * stride + width];
+        if !mct {
+            for (c, encoder) in encoders.iter_mut().enumerate() {
+                let source = row(c);
+                encoder.push_row(|target| {
+                    for (sample, &value) in target.iter_mut().zip(source) {
+                        *sample = int16_finest_sample(value, dc_shift as i16, fraction_bits);
+                    }
+                });
+            }
+            continue;
+        }
+        let [luma, chroma_blue, chroma_red] = &mut shifted[..] else {
+            unreachable!("three components");
+        };
+        unsafe {
+            mercury_hwy_forward_ict_16(
+                row(0).as_ptr(),
+                row(1).as_ptr(),
+                row(2).as_ptr(),
+                -dc_shift,
+                fraction_bits,
+                luma.as_mut_ptr(),
+                chroma_blue.as_mut_ptr(),
+                chroma_red.as_mut_ptr(),
+                width as i32,
+            );
         }
         for (encoder, row) in encoders.iter_mut().zip(&shifted) {
             encoder.push_row(|target| target.copy_from_slice(row));

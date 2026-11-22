@@ -75,9 +75,24 @@ void mercury_hwy_analysis_lift_97(int step, float* target, const float* left, co
 void mercury_hwy_analysis_deinterleave_32(const uint32_t* row, uint32_t* even, uint32_t* odd,
                                           int pairs);
 
+/* grok's int16 forward 9/7 lifting, one step over one row, with a Q15 level factor */
+void mercury_hwy_analysis_lift_97_16(int step, int32_t factor_q15, int16_t* target,
+                                     const int16_t* left, const int16_t* right, int samples);
+
+/* grok's int16 forward 9/7 lifting of rows in the high vertical band */
+void mercury_hwy_analysis_lift_97_16_unhalved(int step, int16_t* target, const int16_t* left,
+                                              const int16_t* right, int samples);
+
+void mercury_hwy_analysis_deinterleave_16(const uint16_t* row, uint16_t* even, uint16_t* odd,
+                                          int pairs);
+
 /* grok's irreversible quantization into sign-magnitude with six fraction bits */
 uint32_t mercury_hwy_quantize_97(const float* stripe, int stride, int columns, int rows,
                                  double quant, int32_t* block);
+
+/* grok's quantize16ToSignMagnitude */
+uint32_t mercury_hwy_quantize_16(const int16_t* stripe, int stride, int columns, int rows,
+                                 double inverse_step, int32_t* block);
 
 /* grok's part-1 block coder for code-block style 0; returns the pass count */
 int32_t mercury_t1_encode_block(const int32_t* samples, int32_t num_cols, int32_t num_rows,
@@ -91,6 +106,11 @@ int32_t mercury_t1_encode_block(const int32_t* samples, int32_t num_cols, int32_
 void mercury_hwy_forward_ict(const int32_t* red, const int32_t* green, const int32_t* blue,
                              int32_t dc_shift, float* luma, float* chroma_blue, float* chroma_red,
                              int samples);
+
+/* grok's CompressIrrev16: the ICT with samples scaled by 2^fraction_bits into int16 */
+void mercury_hwy_forward_ict_16(const int16_t* red, const int16_t* green, const int16_t* blue,
+                                int32_t dc_shift, uint32_t fraction_bits, int16_t* luma,
+                                int16_t* chroma_blue, int16_t* chroma_red, int samples);
 
 typedef struct MercuryXyzTables MercuryXyzTables;
 MercuryXyzTables* mercury_xyz_tables_new(uint32_t precision, uint32_t out_precision);

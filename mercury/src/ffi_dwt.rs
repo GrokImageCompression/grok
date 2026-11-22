@@ -210,4 +210,49 @@ unsafe extern "C" {
         odd: *mut u32,
         pairs: i32,
     );
+
+    pub fn mercury_hwy_analysis_lift_97_16(
+        step: i32,
+        factor_q15: i32,
+        target: *mut i16,
+        left: *const i16,
+        right: *const i16,
+        samples: i32,
+    );
+
+    pub fn mercury_hwy_analysis_lift_97_16_unhalved(
+        step: i32,
+        target: *mut i16,
+        left: *const i16,
+        right: *const i16,
+        samples: i32,
+    );
+
+    pub fn mercury_hwy_analysis_deinterleave_16(
+        row: *const u16,
+        even: *mut u16,
+        odd: *mut u16,
+        pairs: i32,
+    );
+
+    pub fn mercury_hwy_quantize_16(
+        stripe: *const i16,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        inverse_step: f64,
+        block: *mut i32,
+    ) -> u32;
+
+    pub fn mercury_hwy_forward_ict_16(
+        red: *const i16,
+        green: *const i16,
+        blue: *const i16,
+        dc_shift: i32,
+        fraction_bits: u32,
+        luma: *mut i16,
+        chroma_blue: *mut i16,
+        chroma_red: *mut i16,
+        samples: i32,
+    );
 }

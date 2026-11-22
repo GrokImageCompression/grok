@@ -52,6 +52,7 @@ struct Case
   bool sop;
   uint32_t tileSide;
   bool expectMercury;
+  grk_data_type dataType = GRK_INT_32;
 };
 
 void recordInfo(const char* message, void*)
@@ -95,6 +96,7 @@ std::vector<uint8_t> encode(const Case& test, bool mercury)
     comp.dy = 1;
     comp.prec = test.precision;
     comp.sgnd = false;
+    comp.data_type = test.dataType;
   }
   auto colorSpace = test.numcomps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
   auto image = grk_image_new(test.numcomps, comps.data(), colorSpace, true);
@@ -112,7 +114,11 @@ std::vector<uint8_t> encode(const Case& test, bool mercury)
         // noisier toward the right so blocks spread over many slopes
         value +=
             (int64_t)(nextRandom(state) % ((uint64_t)maxValue * (x + 1) / (4 * test.width) + 1));
-        data[(size_t)y * image->comps[c].stride + x] = (int32_t)std::min(value, maxValue);
+        size_t index = (size_t)y * image->comps[c].stride + x;
+        if(test.dataType == GRK_INT_16)
+          ((int16_t*)image->comps[c].data)[index] = (int16_t)std::min(value, maxValue);
+        else
+          data[index] = (int32_t)std::min(value, maxValue);
       }
     }
   }
@@ -242,6 +248,22 @@ int main()
        false},
       {"sop", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, true, 0, false},
       {"tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false, 256, false},
+      {"int16 rgb 8 bit defaults", 1001, 733, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 24.0, 1,
+       false, 0, true, GRK_INT_16},
+      {"int16 rgb 10 bit rpcl precincts", 777, 515, 3, 10, true, 5, 32, GRK_RPCL, 128, false, false,
+       10.0, 1, false, 0, true, GRK_INT_16},
+      {"int16 gray 8 bit rlcp", 999, 317, 1, 8, false, 4, 64, GRK_RLCP, 0, false, false, 8.0, 1,
+       false, 0, true, GRK_INT_16},
+      {"int16 three planes without mct", 513, 389, 3, 9, false, 6, 32, GRK_LRCP, 0, false, false,
+       16.0, 1, false, 0, true, GRK_INT_16},
+      {"int16 two columns", 2, 300, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 4.0, 1, false, 0,
+       true, GRK_INT_16},
+      {"int16 two rows", 300, 2, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 4.0, 1, false, 0,
+       true, GRK_INT_16},
+      {"int16 odd tiny", 5, 3, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 2.0, 1, false, 0, true,
+       GRK_INT_16},
+      {"int16 12 bit", 640, 480, 3, 12, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false, 0,
+       false, GRK_INT_16},
   };
   bool ok = true;
   for(const auto& test : cases)

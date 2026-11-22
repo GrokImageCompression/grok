@@ -53,6 +53,7 @@ struct ITileProcessor;
 #include "WaveletCommon.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
+#include "WaveletInt16Rules.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "wavelet/WaveletFwd.cpp"

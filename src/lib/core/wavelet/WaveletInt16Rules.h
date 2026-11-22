@@ -51,6 +51,9 @@ inline uint8_t wavelet97Int16FractionBits(uint8_t prec)
   return (uint8_t)(13 - prec);
 }
 
+int32_t forward97Int16LevelFactor(uint8_t level);
+double forward97Int16BandScale(uint8_t level, uint8_t orientation);
+
 bool wholeImageUses16BitDwt(const TileCodingParams* tcp, const GrkImage* image,
                             bool irreversibleInt16);
 

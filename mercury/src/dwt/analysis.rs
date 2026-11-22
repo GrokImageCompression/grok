@@ -1,12 +1,19 @@
 use std::collections::VecDeque;
 
-use crate::ffi_dwt::{mercury_hwy_analysis_deinterleave_32, mercury_hwy_analysis_lift_97};
+use crate::ffi_dwt::{
+    mercury_hwy_analysis_deinterleave_16, mercury_hwy_analysis_deinterleave_32,
+    mercury_hwy_analysis_lift_97, mercury_hwy_analysis_lift_97_16,
+    mercury_hwy_analysis_lift_97_16_unhalved,
+};
 
+// SAFETY for the unsafe fns: each pointer spans `samples` elements and `target`
+// aliases neither neighbour
 pub(crate) trait AnalysisSample: Copy + Default {
     const LIFTING_STEPS: u8;
+    type LevelLifting: Copy;
 
-    // SAFETY: each pointer spans `samples` elements, `target` aliases neither neighbour
-    unsafe fn lift(
+    unsafe fn lift_vertical(
+        level: Self::LevelLifting,
         step: u8,
         target: *mut Self,
         left: *const Self,
@@ -14,13 +21,29 @@ pub(crate) trait AnalysisSample: Copy + Default {
         samples: usize,
     );
 
-    fn lone_high_pass(self) -> Self;
+    unsafe fn lift_horizontal(
+        row_band: VerticalBand,
+        step: u8,
+        target: *mut Self,
+        left: *const Self,
+        right: *const Self,
+        samples: usize,
+    );
+
+    fn lone_vertical(level: Self::LevelLifting, sample: Self, row_band: VerticalBand) -> Self;
+
+    fn lone_horizontal(sample: Self, column_band: VerticalBand, row_band: VerticalBand) -> Self;
+
+    // SAFETY: `row` spans 2 * `pairs` samples, `even` and `odd` `pairs` each
+    unsafe fn deinterleave(row: *const Self, even: *mut Self, odd: *mut Self, pairs: usize);
 }
 
 impl AnalysisSample for f32 {
     const LIFTING_STEPS: u8 = 4;
+    type LevelLifting = ();
 
-    unsafe fn lift(
+    unsafe fn lift_vertical(
+        _: (),
         step: u8,
         target: *mut f32,
         left: *const f32,
@@ -30,15 +53,41 @@ impl AnalysisSample for f32 {
         unsafe { mercury_hwy_analysis_lift_97(step as i32, target, left, right, samples as i32) }
     }
 
-    fn lone_high_pass(self) -> f32 {
-        self + self
+    unsafe fn lift_horizontal(
+        _: VerticalBand,
+        step: u8,
+        target: *mut f32,
+        left: *const f32,
+        right: *const f32,
+        samples: usize,
+    ) {
+        unsafe { Self::lift_vertical((), step, target, left, right, samples) }
+    }
+
+    fn lone_vertical(_: (), sample: f32, row_band: VerticalBand) -> f32 {
+        match row_band {
+            VerticalBand::Low => sample,
+            VerticalBand::High => sample + sample,
+        }
+    }
+
+    fn lone_horizontal(sample: f32, column_band: VerticalBand, _: VerticalBand) -> f32 {
+        Self::lone_vertical((), sample, column_band)
+    }
+
+    unsafe fn deinterleave(row: *const f32, even: *mut f32, odd: *mut f32, pairs: usize) {
+        unsafe {
+            mercury_hwy_analysis_deinterleave_32(row.cast(), even.cast(), odd.cast(), pairs as i32)
+        }
     }
 }
 
 impl AnalysisSample for i32 {
     const LIFTING_STEPS: u8 = 2;
+    type LevelLifting = ();
 
-    unsafe fn lift(
+    unsafe fn lift_vertical(
+        _: (),
         step: u8,
         target: *mut i32,
         left: *const i32,
@@ -64,8 +113,114 @@ impl AnalysisSample for i32 {
         }
     }
 
-    fn lone_high_pass(self) -> i32 {
-        self << 1
+    unsafe fn lift_horizontal(
+        _: VerticalBand,
+        step: u8,
+        target: *mut i32,
+        left: *const i32,
+        right: *const i32,
+        samples: usize,
+    ) {
+        unsafe { Self::lift_vertical((), step, target, left, right, samples) }
+    }
+
+    fn lone_vertical(_: (), sample: i32, row_band: VerticalBand) -> i32 {
+        match row_band {
+            VerticalBand::Low => sample,
+            VerticalBand::High => sample << 1,
+        }
+    }
+
+    fn lone_horizontal(sample: i32, column_band: VerticalBand, _: VerticalBand) -> i32 {
+        Self::lone_vertical((), sample, column_band)
+    }
+
+    unsafe fn deinterleave(row: *const i32, even: *mut i32, odd: *mut i32, pairs: usize) {
+        unsafe {
+            mercury_hwy_analysis_deinterleave_32(row.cast(), even.cast(), odd.cast(), pairs as i32)
+        }
+    }
+}
+
+// grok's forward 9/7 K as a float
+const K: f64 = 1.230_174_1_f32 as f64;
+pub(crate) const UNIT_FACTOR_Q15: i32 = 32768;
+
+fn scale_lone_sample(sample: i16, factor: f64) -> i16 {
+    // grok's scaleLoneSample
+    ((sample as f64 * factor).round() as i64) as i16
+}
+
+impl AnalysisSample for i16 {
+    const LIFTING_STEPS: u8 = 4;
+    type LevelLifting = i32;
+
+    unsafe fn lift_vertical(
+        factor_q15: i32,
+        step: u8,
+        target: *mut i16,
+        left: *const i16,
+        right: *const i16,
+        samples: usize,
+    ) {
+        unsafe {
+            mercury_hwy_analysis_lift_97_16(
+                step as i32,
+                factor_q15,
+                target,
+                left,
+                right,
+                samples as i32,
+            )
+        }
+    }
+
+    unsafe fn lift_horizontal(
+        row_band: VerticalBand,
+        step: u8,
+        target: *mut i16,
+        left: *const i16,
+        right: *const i16,
+        samples: usize,
+    ) {
+        match row_band {
+            VerticalBand::Low => unsafe {
+                Self::lift_vertical(UNIT_FACTOR_Q15, step, target, left, right, samples)
+            },
+            VerticalBand::High => unsafe {
+                mercury_hwy_analysis_lift_97_16_unhalved(
+                    step as i32,
+                    target,
+                    left,
+                    right,
+                    samples as i32,
+                )
+            },
+        }
+    }
+
+    fn lone_vertical(factor_q15: i32, sample: i16, row_band: VerticalBand) -> i16 {
+        let factor = factor_q15 as f64 / UNIT_FACTOR_Q15 as f64;
+        let lone_factor = match row_band {
+            VerticalBand::Low => factor * K,
+            VerticalBand::High => factor / K,
+        };
+        scale_lone_sample(sample, lone_factor)
+    }
+
+    fn lone_horizontal(sample: i16, column_band: VerticalBand, row_band: VerticalBand) -> i16 {
+        let lone_factor = match (column_band, row_band) {
+            (VerticalBand::Low, _) => K,
+            (VerticalBand::High, VerticalBand::Low) => 1.0 / K,
+            (VerticalBand::High, VerticalBand::High) => 2.0 / K,
+        };
+        scale_lone_sample(sample, lone_factor)
+    }
+
+    unsafe fn deinterleave(row: *const i16, even: *mut i16, odd: *mut i16, pairs: usize) {
+        unsafe {
+            mercury_hwy_analysis_deinterleave_16(row.cast(), even.cast(), odd.cast(), pairs as i32)
+        }
     }
 }
 
@@ -119,10 +274,11 @@ pub(crate) struct LevelAnalysis<T: AnalysisSample> {
     emitted: usize,
     next_target: [usize; 4],
     spare_rows: Vec<Vec<T>>,
+    lifting: T::LevelLifting,
 }
 
 impl<T: AnalysisSample> LevelAnalysis<T> {
-    pub fn warp(x0: u32, y0: u32, width: usize, height: usize) -> Self {
+    pub fn warp(x0: u32, y0: u32, width: usize, height: usize, lifting: T::LevelLifting) -> Self {
         let rows_split = BandSplit::warp(y0, height);
         let mut next_target = [0usize; 4];
         for (step, target) in next_target.iter_mut().enumerate() {
@@ -147,6 +303,7 @@ impl<T: AnalysisSample> LevelAnalysis<T> {
             emitted: 0,
             next_target,
             spare_rows: Vec::new(),
+            lifting,
         }
     }
 
@@ -173,10 +330,8 @@ impl<T: AnalysisSample> LevelAnalysis<T> {
         let position = self.received;
         let band = self.rows_split.band_at(position);
         let state = if self.height == 1 {
-            if band == VerticalBand::High {
-                for sample in row.iter_mut() {
-                    *sample = sample.lone_high_pass();
-                }
+            for sample in row.iter_mut() {
+                *sample = T::lone_vertical(self.lifting, *sample, band);
             }
             FINAL_STATE
         } else if band == VerticalBand::Low {
@@ -202,7 +357,13 @@ impl<T: AnalysisSample> LevelAnalysis<T> {
     pub fn emit(&mut self, low: &mut [T], high: &mut [T]) {
         assert!(self.ready().is_some(), "no finished row to emit");
         let row = &self.rows[self.emitted - self.first_held_row];
-        split_row(row, self.columns, low, high);
+        split_row(
+            row,
+            self.columns,
+            self.rows_split.band_at(self.emitted),
+            low,
+            high,
+        );
         self.emitted += 1;
         let keep_from = if self.emitted == self.height {
             self.height
@@ -259,7 +420,16 @@ impl<T: AnalysisSample> LevelAnalysis<T> {
         let target_row = self.rows[target - base].as_mut_ptr();
         let left_row = self.rows[left - base].as_ptr();
         let right_row = self.rows[right - base].as_ptr();
-        unsafe { T::lift(step, target_row, left_row, right_row, self.width) };
+        unsafe {
+            T::lift_vertical(
+                self.lifting,
+                step,
+                target_row,
+                left_row,
+                right_row,
+                self.width,
+            )
+        };
         let next_state = step + 2;
         self.states[target - base] = if next_state >= T::LIFTING_STEPS {
             FINAL_STATE
@@ -271,16 +441,22 @@ impl<T: AnalysisSample> LevelAnalysis<T> {
     }
 }
 
-fn split_row<T: AnalysisSample>(row: &[T], columns: BandSplit, low: &mut [T], high: &mut [T]) {
+fn split_row<T: AnalysisSample>(
+    row: &[T],
+    columns: BandSplit,
+    row_band: VerticalBand,
+    low: &mut [T],
+    high: &mut [T],
+) {
     let width = row.len();
     if width == 0 {
         return;
     }
     if width == 1 {
         if columns.high == 1 {
-            high[0] = row[0].lone_high_pass();
+            high[0] = T::lone_horizontal(row[0], VerticalBand::High, row_band);
         } else {
-            low[0] = row[0];
+            low[0] = T::lone_horizontal(row[0], VerticalBand::Low, row_band);
         }
         return;
     }
@@ -292,32 +468,30 @@ fn split_row<T: AnalysisSample>(row: &[T], columns: BandSplit, low: &mut [T], hi
     }
     for step in 0..T::LIFTING_STEPS {
         if step % 2 == 0 {
-            lift_band(step, high, low, parity == 1);
+            lift_band(step, row_band, high, low, parity == 1);
         } else {
-            lift_band(step, low, high, parity == 0);
+            lift_band(step, row_band, low, high, parity == 0);
         }
     }
 }
 
 fn deinterleave<T: AnalysisSample>(row: &[T], even: &mut [T], odd: &mut [T]) {
-    const { assert!(std::mem::size_of::<T>() == 4) };
     let pairs = row.len() / 2;
     assert!(even.len() >= row.len() - pairs && odd.len() >= pairs);
-    unsafe {
-        mercury_hwy_analysis_deinterleave_32(
-            row.as_ptr().cast(),
-            even.as_mut_ptr().cast(),
-            odd.as_mut_ptr().cast(),
-            pairs as i32,
-        );
-    }
+    unsafe { T::deinterleave(row.as_ptr(), even.as_mut_ptr(), odd.as_mut_ptr(), pairs) };
     if row.len() % 2 == 1 {
         even[pairs] = row[2 * pairs];
     }
 }
 
 // target[j] lifts from neighbours[j - lead] and the next one, repeating the edge sample past either end
-fn lift_band<T: AnalysisSample>(step: u8, target: &mut [T], neighbours: &[T], target_leads: bool) {
+fn lift_band<T: AnalysisSample>(
+    step: u8,
+    row_band: VerticalBand,
+    target: &mut [T],
+    neighbours: &[T],
+    target_leads: bool,
+) {
     let lead = target_leads as usize;
     let last = neighbours.len() - 1;
     let interior_end = (last + lead).min(target.len());
@@ -326,10 +500,11 @@ fn lift_band<T: AnalysisSample>(step: u8, target: &mut [T], neighbours: &[T], ta
     let edge = |index: usize| &neighbours[index] as *const T;
     unsafe {
         if lead == 1 {
-            T::lift(step, target_samples, edge(0), edge(0), 1);
+            T::lift_horizontal(row_band, step, target_samples, edge(0), edge(0), 1);
         }
         let left = neighbours.as_ptr().add(interior_start - lead);
-        T::lift(
+        T::lift_horizontal(
+            row_band,
             step,
             target_samples.add(interior_start),
             left,
@@ -337,7 +512,14 @@ fn lift_band<T: AnalysisSample>(step: u8, target: &mut [T], neighbours: &[T], ta
             interior_end - interior_start,
         );
         for j in interior_end..target.len() {
-            T::lift(step, target_samples.add(j), edge(last), edge(last), 1);
+            T::lift_horizontal(
+                row_band,
+                step,
+                target_samples.add(j),
+                edge(last),
+                edge(last),
+                1,
+            );
         }
     }
 }

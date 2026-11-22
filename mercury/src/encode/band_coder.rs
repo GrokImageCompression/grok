@@ -1,12 +1,50 @@
 use std::sync::Arc;
 
 use crate::capi::MercuryT1EncodeFn;
-use crate::ffi_dwt::{mercury_hwy_quantize_97, mercury_rate_convex_hull};
+use crate::ffi_dwt::{mercury_hwy_quantize_16, mercury_hwy_quantize_97, mercury_rate_convex_hull};
 
 use super::stripe_queue::{StripeJob, StripeQueue, StripeResults};
 
 // classic's maxCodePassesPerBlock
 const MAX_CODING_PASSES: usize = 94;
+
+pub(crate) trait QuantizedSample: Copy + Default + Send + 'static {
+    // SAFETY: `stripe` spans `rows` rows of `columns` samples `stride` apart, `block` columns * rows
+    unsafe fn quantize(
+        stripe: *const Self,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        inverse_step: f64,
+        block: *mut i32,
+    ) -> u32;
+}
+
+impl QuantizedSample for f32 {
+    unsafe fn quantize(
+        stripe: *const f32,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        inverse_step: f64,
+        block: *mut i32,
+    ) -> u32 {
+        unsafe { mercury_hwy_quantize_97(stripe, stride, columns, rows, inverse_step, block) }
+    }
+}
+
+impl QuantizedSample for i16 {
+    unsafe fn quantize(
+        stripe: *const i16,
+        stride: i32,
+        columns: i32,
+        rows: i32,
+        inverse_step: f64,
+        block: *mut i32,
+    ) -> u32 {
+        unsafe { mercury_hwy_quantize_16(stripe, stride, columns, rows, inverse_step, block) }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub(crate) struct CodedPass {
@@ -77,32 +115,32 @@ pub(crate) struct StripeLayout {
     pub width: usize,
     pub x0: usize,
     pub block_width: usize,
+    pub inverse_step: f64,
     pub t1_params: BandT1Params,
     pub t1: MercuryT1EncodeFn,
 }
 
-pub(crate) fn code_stripe(
+pub(crate) fn code_stripe<T: QuantizedSample>(
     layout: &StripeLayout,
-    stripe: &[f32],
+    stripe: &[T],
     rows: usize,
     block: &mut Vec<i32>,
     coded: &mut CodedBand,
 ) {
     let width = layout.width;
     let block_width = layout.block_width;
-    let quant = 1.0 / layout.t1_params.stepsize as f64;
     block.resize(block_width * rows, 0);
     let mut column = 0;
     while column < width {
         let boundary = ((layout.x0 + column) / block_width + 1) * block_width;
         let columns = boundary.min(layout.x0 + width) - (layout.x0 + column);
         let max_magnitude = unsafe {
-            mercury_hwy_quantize_97(
+            T::quantize(
                 stripe[column..].as_ptr(),
                 width as i32,
                 columns as i32,
                 rows as i32,
-                quant,
+                layout.inverse_step,
                 block.as_mut_ptr(),
             )
         };
@@ -178,47 +216,49 @@ fn code_block(
     }
 }
 
-struct PooledStripes {
-    queue: Arc<StripeQueue>,
+struct PooledStripes<T> {
+    queue: Arc<StripeQueue<T>>,
     results: Arc<StripeResults>,
     stripes_sent: usize,
 }
 
 // one irreversible subband: collects a block row of rows, then quantizes and codes its blocks
-pub(crate) struct BandCoder {
+pub(crate) struct BandCoder<T: QuantizedSample> {
     layout: StripeLayout,
     y0: usize,
     height: usize,
     block_height: usize,
-    stripe: Vec<f32>,
+    stripe: Vec<T>,
     stripe_first_row: usize,
     rows_in_stripe: usize,
     block: Vec<i32>,
-    pooled: Option<PooledStripes>,
+    pooled: Option<PooledStripes<T>>,
     pub coded: CodedBand,
 }
 
-impl BandCoder {
+impl<T: QuantizedSample> BandCoder<T> {
     pub fn warp(
         geometry: BandGeometry,
         t1_params: BandT1Params,
+        inverse_step: f64,
         block_width: u32,
         block_height: u32,
         t1: MercuryT1EncodeFn,
-        stripe_queue: Option<Arc<StripeQueue>>,
+        stripe_queue: Option<Arc<StripeQueue<T>>>,
     ) -> Self {
         Self {
             layout: StripeLayout {
                 width: geometry.width,
                 x0: geometry.x0 as usize,
                 block_width: block_width as usize,
+                inverse_step,
                 t1_params,
                 t1,
             },
             y0: geometry.y0 as usize,
             height: geometry.height,
             block_height: block_height as usize,
-            stripe: vec![0.0; geometry.width * block_height as usize],
+            stripe: vec![T::default(); geometry.width * block_height as usize],
             stripe_first_row: 0,
             rows_in_stripe: 0,
             block: Vec::new(),
@@ -231,7 +271,7 @@ impl BandCoder {
         }
     }
 
-    pub fn next_row(&mut self) -> &mut [f32] {
+    pub fn next_row(&mut self) -> &mut [T] {
         let width = self.layout.width;
         let start = self.rows_in_stripe * width;
         &mut self.stripe[start..start + width]

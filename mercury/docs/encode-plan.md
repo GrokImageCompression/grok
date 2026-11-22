@@ -101,12 +101,7 @@ passes together.
 
    Test: byte-identical with classic on DCI 2K and 4K, then other parameter sets.
 5. **Parameters over the C ABI.** Done. Grok passes the same `MercuryMainHeader` the decoder takes (`fillMercuryCodingHeader`), plus classic's layer byte budget, the component cap and the tile-part split. Classic writes the main header, so mercury has no marker writer, and band steps come from the header's QCD and QCC. `codingMatchesMercury` and `parametersMatchMercury` in `mercury_compress.cpp` list what mercury takes: one tile, one layer, PCRD, 9/7, code-block style 0, int32 unsigned planes of one precision, any progression and POC, precincts, and tile-parts split by component under CPRL. `grk_mercury_tile_encode_test` compares eight parameter sets with classic and checks three that go to classic.
-6. **int16 lossy path.** Classic keeps lossy images up to 10 bit in int16 through the ICT, the 9/7 and quantization (`forward97FitsInt16`). Mercury matches it bit for bit:
-   - an `AnalysisSample` impl for `i16`
-   - row kernels in `native/transform/hwy_dwt_analysis.cpp` with classic's Q15 expressions and `forward97Int16LevelFactor`
-   - band coder input quantized like `hwy_quantize16_to_sign_magnitude`
-
-   Classic's `encode_97_16_v` lifts in row order with the same arithmetic per sample, so a row kernel can match it exactly. `grk_mercury_forward_dwt_test` gets an int16 oracle.
+6. **int16 lossy path.** Done. Int16 planes up to 10 bit take classic's int16 ICT, 9/7 and quantization bit for bit: `AnalysisSample for i16`, the int16 kernels in `native/transform/hwy_dwt_analysis.cpp`, `hwy_ict.cpp` and `hwy_quantize.cpp`, and grok's level factors and band scales passed in `MercuryEncodeParams`. `grk_mercury_forward_dwt_test` compares 8 and 10 bit int16 against classic's `dwt97_16`, and `grk_mercury_tile_encode_test` compares whole codestreams.
 7. **PCRD memory.** Measure the bytes PCRD holds for s2, every coded pass of the tile, before counting on the memory gain.
 8. **Threading on one large image.** DCI feeds rows from one thread for all components. The 9/7 runs at 10 ms per 4K plane, about 8.8 M samples, so the analysis of s2's 362 M samples takes about 410 ms on one thread. Split the front end, either one feeder per component or each level's vertical lifting split by columns across threads, and keep whichever measures faster.
 9. **Strip API in grok.** Push entry point, eligibility checks, and the classic fallback. `grk_compress` reads TIFF strip by strip and pushes them. Phases 5 to 8 take whole int16 planes and serve only for byte-identity and timing until this lands.

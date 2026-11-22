@@ -77,6 +77,41 @@ namespace HWY_NAMESPACE
     }
   }
 
+  // grok's CompressIrrev16
+  static void Impl_forward_ict_16(const int16_t* red, const int16_t* green, const int16_t* blue,
+                                  int32_t dcShift, uint32_t fractionBits, int16_t* luma,
+                                  int16_t* chromaBlue, int16_t* chromaRed, int samples)
+  {
+    const HWY_FULL(float) df;
+    const HWY_FULL(int32_t) di;
+    const Rebind<int16_t, decltype(di)> d16;
+    const int lanes = (int)Lanes(di);
+    auto vdc = Set(di, dcShift);
+    auto scale = Set(df, (float)(1u << fractionBits));
+    Vec<decltype(df)> y, u, v;
+    auto transform = [&](int j, auto load, auto store) {
+      auto r = ConvertTo(df, PromoteTo(di, load(red + j)) + vdc);
+      auto g = ConvertTo(df, PromoteTo(di, load(green + j)) + vdc);
+      auto b = ConvertTo(df, PromoteTo(di, load(blue + j)) + vdc);
+      ict(df, r, g, b, y, u, v);
+      store(DemoteTo(d16, NearestInt(y * scale)), luma + j);
+      store(DemoteTo(d16, NearestInt(u * scale)), chromaBlue + j);
+      store(DemoteTo(d16, NearestInt(v * scale)), chromaRed + j);
+    };
+    int j = 0;
+    for(; j + lanes <= samples; j += lanes)
+      transform(
+          j, [&](const int16_t* p) { return LoadU(d16, p); },
+          [&](auto value, int16_t* p) { StoreU(value, d16, p); });
+    if(j < samples)
+    {
+      const size_t count = (size_t)(samples - j);
+      transform(
+          j, [&](const int16_t* p) { return LoadN(d16, p, count); },
+          [&](auto value, int16_t* p) { StoreN(value, d16, p, count); });
+    }
+  }
+
   // grok's Hwy_rgb_to_xyz matrix, which gcc contracts to fma(M02, b, fma(M00, r, M01 * g))
   static constexpr float DCI_COEFFICIENT = 48.0f / 52.37f;
   static constexpr float M00 = 0.4124564f * DCI_COEFFICIENT;
@@ -177,6 +212,7 @@ namespace mercury_native
 {
 
 HWY_EXPORT(Impl_forward_ict);
+HWY_EXPORT(Impl_forward_ict_16);
 HWY_EXPORT(Impl_forward_xyz_ict);
 
 } // namespace mercury_native
@@ -194,6 +230,17 @@ extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict(const int32_t* red, cons
 {
   HWY_DYNAMIC_DISPATCH(mercury_native::Impl_forward_ict)(red, green, blue, dc_shift, luma,
                                                          chroma_blue, chroma_red, samples);
+}
+
+extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict_16(const int16_t* red,
+                                                           const int16_t* green,
+                                                           const int16_t* blue, int32_t dc_shift,
+                                                           uint32_t fraction_bits, int16_t* luma,
+                                                           int16_t* chroma_blue,
+                                                           int16_t* chroma_red, int samples)
+{
+  HWY_DYNAMIC_DISPATCH(mercury_native::Impl_forward_ict_16)(
+      red, green, blue, dc_shift, fraction_bits, luma, chroma_blue, chroma_red, samples);
 }
 
 extern "C" MERCURY_ICT_API MercuryXyzTables* mercury_xyz_tables_new(uint32_t precision,

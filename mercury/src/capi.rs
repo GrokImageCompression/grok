@@ -1796,6 +1796,7 @@ fn forward_dwt_mallat<S: Copy, T: crate::dwt::analysis::AnalysisSample>(
     stride: usize,
     bounds: [u32; 4],
     levels: u32,
+    level_lifting: &[T::LevelLifting],
     convert: impl Fn(S) -> T,
 ) {
     let [x0, y0, x1, y1] = bounds;
@@ -1805,7 +1806,13 @@ fn forward_dwt_mallat<S: Copy, T: crate::dwt::analysis::AnalysisSample>(
             let (rx0, ry0) = (scaled(x0, level), scaled(y0, level));
             let width = (scaled(x1, level) - rx0) as usize;
             let height = (scaled(y1, level) - ry0) as usize;
-            crate::dwt::analysis::LevelAnalysis::warp(rx0, ry0, width, height)
+            crate::dwt::analysis::LevelAnalysis::warp(
+                rx0,
+                ry0,
+                width,
+                height,
+                level_lifting[level as usize],
+            )
         })
         .collect();
     let mut pyramid = MallatPyramid {
@@ -1826,6 +1833,53 @@ fn forward_dwt_mallat<S: Copy, T: crate::dwt::analysis::AnalysisSample>(
         pyramid.drain(0);
     }
 }
+
+/// # Safety
+/// as for `mercury_forward_dwt_tile`, and `level_factors` points to `levels` values
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_forward_dwt_tile_16(
+    input: *const i16,
+    output: *mut i16,
+    stride: u32,
+    bounds: *const u32,
+    levels: u32,
+    dc_shift: i16,
+    fraction_bits: u32,
+    level_factors: *const i32,
+) -> i32 {
+    if input.is_null() || output.is_null() || bounds.is_null() || level_factors.is_null() {
+        return MERCURY_EBADARG;
+    }
+    if levels == 0 || fraction_bits >= 16 {
+        return MERCURY_EBADARG;
+    }
+    let bounds: [u32; 4] = unsafe { std::ptr::read(bounds.cast()) };
+    let [x0, y0, x1, y1] = bounds;
+    if x1 < x0 || y1 < y0 || ((x1 - x0) as usize) > stride as usize {
+        return MERCURY_EBADARG;
+    }
+    let (width, height, stride) = ((x1 - x0) as usize, (y1 - y0) as usize, stride as usize);
+    let samples = if height == 0 {
+        0
+    } else {
+        (height - 1) * stride + width
+    };
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let input = unsafe { std::slice::from_raw_parts(input, samples) };
+        let output = unsafe { std::slice::from_raw_parts_mut(output, samples) };
+        let level_factors = unsafe { std::slice::from_raw_parts(level_factors, levels as usize) };
+        forward_dwt_mallat(input, output, stride, bounds, levels, level_factors, |s| {
+            crate::encode::component::int16_finest_sample(s, dc_shift, fraction_bits)
+        });
+    }));
+    match r {
+        Ok(()) => MERCURY_OK,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
+const NO_LIFTING: [(); crate::codec::params::MAX_LEVELS as usize] =
+    [(); crate::codec::params::MAX_LEVELS as usize];
 
 /// # Safety
 /// `input` and `output` hold the tile's rows `stride` samples apart and do not overlap,
@@ -1860,17 +1914,19 @@ pub unsafe extern "C" fn mercury_forward_dwt_tile(
             let input = unsafe { std::slice::from_raw_parts(input.cast::<i32>(), samples) };
             if reversible {
                 let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
-                forward_dwt_mallat(input, output, stride, bounds, levels, |s| s - dc_shift);
+                forward_dwt_mallat(input, output, stride, bounds, levels, &NO_LIFTING, |s| {
+                    s - dc_shift
+                });
             } else {
                 let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
-                forward_dwt_mallat(input, output, stride, bounds, levels, |s| {
+                forward_dwt_mallat(input, output, stride, bounds, levels, &NO_LIFTING, |s| {
                     s as f32 - dc_shift as f32
                 });
             }
         } else {
             let input = unsafe { std::slice::from_raw_parts(input.cast::<f32>(), samples) };
             let output = unsafe { std::slice::from_raw_parts_mut(output.cast(), samples) };
-            forward_dwt_mallat(input, output, stride, bounds, levels, |s| {
+            forward_dwt_mallat(input, output, stride, bounds, levels, &NO_LIFTING, |s| {
                 s - dc_shift as f32
             });
         }
@@ -1896,6 +1952,13 @@ pub struct MercuryEncodeParams {
     pub xyz_source_precision: u32,
     // 0 for every core
     pub threads: u32,
+    // int16 planes take grok's int16 9/7, int32 planes the float 9/7
+    pub int16_planes: bool,
+    pub int16_fraction_bits: u32,
+    // one Q15 factor per decomposition level, finest first
+    pub int16_level_factors: *const i32,
+    // four per decomposition level, finest first, by orientation LL, HL, LH, HH
+    pub int16_band_scales: *const f64,
 }
 
 pub type MercuryTilePartFn = extern "C" fn(ctx: *mut c_void, bytes: *const u8, len: u64);
@@ -1906,10 +1969,12 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
     let components_match = siz.components.iter().all(|comp| {
         !comp.is_signed && comp.xr_siz == 1 && comp.yr_siz == 1 && comp.precision == first.precision
     });
-    let styles_match = cod
-        .comps
-        .iter()
-        .all(|style| !style.reversible && style.modes.0 == 0 && style.num_levels > 0);
+    let styles_match = cod.comps.iter().all(|style| {
+        !style.reversible
+            && style.modes.0 == 0
+            && style.num_levels > 0
+            && style.num_levels == cod.comps[0].num_levels
+    });
     siz.tiles_across() * siz.tiles_down() == 1
         && siz.x_o_siz == 0
         && siz.y_o_siz == 0
@@ -1929,7 +1994,7 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
 pub unsafe extern "C" fn mercury_encode_tile(
     header: *const MercuryMainHeader,
     params: *const MercuryEncodeParams,
-    planes: *const *const i32,
+    planes: *const *const c_void,
     stride: u32,
     write_tile_part: MercuryTilePartFn,
     write_ctx: *mut c_void,
@@ -1947,14 +2012,44 @@ pub unsafe extern "C" fn mercury_encode_tile(
     let xyz = params.xyz_source_precision != 0;
     let xyz_supported = !xyz
         || (header.cod.use_ycc
+            && !params.int16_planes
             && (1..=MAX_XYZ_SOURCE_PRECISION).contains(&params.xyz_source_precision));
-    if !tile_encodable(&header) || !xyz_supported || width == 0 || height == 0 || width > stride {
+    let int16_tables_given = !params.int16_planes
+        || (!params.int16_level_factors.is_null() && !params.int16_band_scales.is_null());
+    if !tile_encodable(&header)
+        || !xyz_supported
+        || !int16_tables_given
+        || width == 0
+        || height == 0
+        || width > stride
+    {
         return MERCURY_EBADARG;
     }
     let samples = (height as usize - 1) * stride as usize + width as usize;
-    let planes: Vec<&[i32]> = (0..header.siz.comp_count())
-        .map(|c| unsafe { std::slice::from_raw_parts(*planes.add(c), samples) })
-        .collect();
+    let comps = header.siz.comp_count();
+    let levels = header.cod.comps[0].num_levels as usize;
+    let planes = if params.int16_planes {
+        crate::encode::tile::TilePlanes::Int16 {
+            planes: (0..comps)
+                .map(|c| unsafe { std::slice::from_raw_parts((*planes.add(c)).cast(), samples) })
+                .collect(),
+            wavelet: crate::encode::tile::Int16Wavelet {
+                fraction_bits: params.int16_fraction_bits,
+                level_factors: unsafe {
+                    std::slice::from_raw_parts(params.int16_level_factors, levels)
+                },
+                band_scales: unsafe {
+                    std::slice::from_raw_parts(params.int16_band_scales.cast(), levels)
+                },
+            },
+        }
+    } else {
+        crate::encode::tile::TilePlanes::Int32(
+            (0..comps)
+                .map(|c| unsafe { std::slice::from_raw_parts((*planes.add(c)).cast(), samples) })
+                .collect(),
+        )
+    };
     let encode_params = crate::encode::tile::TileEncodeParams {
         rate: crate::encode::rate_control::RateTargets {
             max_layer_length: params.max_layer_length,

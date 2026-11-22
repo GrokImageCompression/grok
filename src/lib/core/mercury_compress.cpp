@@ -58,6 +58,7 @@ struct ITileProcessor;
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
 #include "XYZTransform.h"
+#include "WaveletInt16Rules.h"
 #include "plugin_accelerate.h"
 
 #include <algorithm>
@@ -142,10 +143,12 @@ namespace
       auto comp = image->comps + c;
       if(comp->prec != first->prec || comp->sgnd || comp->dx != 1 || comp->dy != 1 ||
          comp->w != first->w || comp->h != first->h || comp->stride != first->stride ||
-         comp->data_type != GRK_INT_32 || !comp->data)
+         comp->data_type != first->data_type || !comp->data)
         return false;
     }
-    return true;
+    // classic codes int16 planes with the int16 9/7 only up to forward97FitsInt16
+    return first->data_type == GRK_INT_32 ||
+           (first->data_type == GRK_INT_16 && forward97FitsInt16(first->prec));
   }
 
   struct MercuryTilePartSink
@@ -172,7 +175,7 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, Gr
       parameters->rsiz == GRK_PROFILE_CINEMA_2K || parameters->rsiz == GRK_PROFILE_CINEMA_4K;
   if(mercuryEncodeDisabled() || pluginAcceleratesCompress(parameters) || !cinema ||
      image->numcomps != cinemaComponents || !imagePlanesMatchMercury(image) ||
-     image->comps[0].prec > maxXyzSourcePrecision)
+     image->comps[0].data_type != GRK_INT_32 || image->comps[0].prec > maxXyzSourcePrecision)
     return false;
   mercuryXyzSourcePrecision_ = image->comps[0].prec;
   for(uint16_t c = 0; c < image->numcomps; ++c)
@@ -213,9 +216,26 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
   params.split_by_component = enc.enableTilePartGeneration_;
   params.xyz_source_precision = mercuryXyzSourcePrecision_.value_or(0);
   params.threads = (uint32_t)TFSingleton::num_threads();
-  std::vector<const int32_t*> planes(image->numcomps);
+  const uint8_t levels = (uint8_t)(tcp->tccps_[0].numresolutions_ - 1);
+  std::vector<int32_t> levelFactors(levels);
+  std::vector<double> bandScales((size_t)levels * t1::BAND_NUM_ORIENTATIONS);
+  if(image->comps[0].data_type == GRK_INT_16)
+  {
+    for(uint8_t level = 0; level < levels; ++level)
+    {
+      levelFactors[level] = forward97Int16LevelFactor(level);
+      for(uint8_t orientation = 0; orientation < t1::BAND_NUM_ORIENTATIONS; ++orientation)
+        bandScales[(size_t)level * t1::BAND_NUM_ORIENTATIONS + orientation] =
+            forward97Int16BandScale(level, orientation);
+    }
+    params.int16_planes = true;
+    params.int16_fraction_bits = wavelet97Int16FractionBits(image->comps[0].prec);
+    params.int16_level_factors = levelFactors.data();
+    params.int16_band_scales = bandScales.data();
+  }
+  std::vector<const void*> planes(image->numcomps);
   for(uint16_t c = 0; c < image->numcomps; ++c)
-    planes[c] = (const int32_t*)image->comps[c].data;
+    planes[c] = image->comps[c].data;
   MercuryTilePartSink sink{stream_, cp_.tlmMarkers_.get()};
   uint16_t threshold = 0;
   int32_t rc = mercury_encode_tile(&coding.header, &params, planes.data(), image->comps[0].stride,

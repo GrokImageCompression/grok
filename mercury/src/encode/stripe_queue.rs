@@ -1,18 +1,18 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 
-use super::band_coder::{CodedBand, StripeLayout, code_stripe};
+use super::band_coder::{CodedBand, QuantizedSample, StripeLayout, code_stripe};
 
-pub(crate) struct StripeJob {
-    pub samples: Vec<f32>,
+pub(crate) struct StripeJob<T> {
+    pub samples: Vec<T>,
     pub rows: usize,
     pub layout: StripeLayout,
     pub results: Arc<StripeResults>,
     pub index: usize,
 }
 
-impl StripeJob {
-    pub fn code(self, block: &mut Vec<i32>) -> Vec<f32> {
+impl<T: QuantizedSample> StripeJob<T> {
+    pub fn code(self, block: &mut Vec<i32>) -> Vec<T> {
         let mut coded = CodedBand::default();
         code_stripe(&self.layout, &self.samples, self.rows, block, &mut coded);
         self.results.store(self.index, coded);
@@ -41,29 +41,32 @@ impl StripeResults {
     }
 }
 
-#[derive(Default)]
-struct QueueState {
-    jobs: VecDeque<StripeJob>,
-    spare: Vec<Vec<f32>>,
+struct QueueState<T> {
+    jobs: VecDeque<StripeJob<T>>,
+    spare: Vec<Vec<T>>,
     closed: bool,
 }
 
-pub(crate) struct StripeQueue {
-    state: Mutex<QueueState>,
+pub(crate) struct StripeQueue<T> {
+    state: Mutex<QueueState<T>>,
     job_ready: Condvar,
     capacity: usize,
 }
 
-impl StripeQueue {
+impl<T: QuantizedSample> StripeQueue<T> {
     pub fn warp(capacity: usize) -> Self {
         Self {
-            state: Mutex::new(QueueState::default()),
+            state: Mutex::new(QueueState {
+                jobs: VecDeque::new(),
+                spare: Vec::new(),
+                closed: false,
+            }),
             job_ready: Condvar::new(),
             capacity,
         }
     }
 
-    pub fn try_push(&self, job: StripeJob) -> Result<(), StripeJob> {
+    pub fn try_push(&self, job: StripeJob<T>) -> Result<(), StripeJob<T>> {
         let mut state = self.state.lock().unwrap();
         if state.jobs.len() >= self.capacity {
             return Err(job);
@@ -73,7 +76,7 @@ impl StripeQueue {
         Ok(())
     }
 
-    fn pop(&self) -> Option<StripeJob> {
+    fn pop(&self) -> Option<StripeJob<T>> {
         let mut state = self.state.lock().unwrap();
         loop {
             if let Some(job) = state.jobs.pop_front() {
@@ -86,13 +89,13 @@ impl StripeQueue {
         }
     }
 
-    pub fn spare_buffer(&self, len: usize) -> Vec<f32> {
+    pub fn spare_buffer(&self, len: usize) -> Vec<T> {
         let mut buffer = self.state.lock().unwrap().spare.pop().unwrap_or_default();
-        buffer.resize(len, 0.0);
+        buffer.resize(len, T::default());
         buffer
     }
 
-    pub fn recycle(&self, buffer: Vec<f32>) {
+    pub fn recycle(&self, buffer: Vec<T>) {
         self.state.lock().unwrap().spare.push(buffer);
     }
 
@@ -103,16 +106,16 @@ impl StripeQueue {
 }
 
 // without this a panicking feed or a failed spawn leaves the workers waiting forever
-struct CloseOnDrop<'a>(&'a StripeQueue);
+struct CloseOnDrop<'a, T: QuantizedSample>(&'a StripeQueue<T>);
 
-impl Drop for CloseOnDrop<'_> {
+impl<T: QuantizedSample> Drop for CloseOnDrop<'_, T> {
     fn drop(&mut self) {
         self.0.close();
     }
 }
 
-pub(crate) fn run_stripe_workers<R>(
-    queue: &StripeQueue,
+pub(crate) fn run_stripe_workers<T: QuantizedSample, R>(
+    queue: &StripeQueue<T>,
     workers: usize,
     feed: impl FnOnce() -> R,
 ) -> R {
@@ -159,7 +162,7 @@ mod tests {
                 address_space_kb() + 2 * WORKER_STACK_KB <= ADDRESS_SPACE_KB,
                 "no room for a worker to spawn before the failure"
             );
-            let queue = StripeQueue::warp(1);
+            let queue = StripeQueue::<f32>::warp(1);
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 run_stripe_workers(&queue, WORKERS, || ())
             }));

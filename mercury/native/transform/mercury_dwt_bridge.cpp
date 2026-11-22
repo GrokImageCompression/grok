@@ -144,4 +144,22 @@ void mercury_hwy_analysis_deinterleave_32(const uint32_t* row, uint32_t* even, u
   hwy_analysis_deinterleave_32(row, even, odd, pairs);
 }
 
+void mercury_hwy_analysis_lift_97_16(int step, int32_t factor_q15, int16_t* target,
+                                     const int16_t* left, const int16_t* right, int samples)
+{
+  hwy_analysis_lift_97_16(step, factor_q15, target, left, right, samples);
+}
+
+void mercury_hwy_analysis_lift_97_16_unhalved(int step, int16_t* target, const int16_t* left,
+                                              const int16_t* right, int samples)
+{
+  hwy_analysis_lift_97_16_unhalved(step, target, left, right, samples);
+}
+
+void mercury_hwy_analysis_deinterleave_16(const uint16_t* row, uint16_t* even, uint16_t* odd,
+                                          int pairs)
+{
+  hwy_analysis_deinterleave_16(row, even, odd, pairs);
+}
+
 } /* extern "C" */
