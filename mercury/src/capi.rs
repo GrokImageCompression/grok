@@ -32,8 +32,9 @@ use crate::codec::params::{
 };
 use crate::codec::tile_geom::Dims;
 use crate::decode::graph::{
-    launch_comps_with_coder, launch_with_coder, uniform_subsampling, weave_comps_with_coder,
-    weave_with_coder, CompRow, CompRowSink, RowSink, Rows, WovenFn,
+    launch_comps_with_coder, launch_segments_with_coder, uniform_subsampling,
+    weave_comps_with_coder, weave_segments_with_coder, weave_with_coder, CompRow, CompRowSink,
+    RowSink, Rows, SegmentSink, WovenFn,
 };
 use crate::decode::plan::{
     draft, DecodePlan, Drafted, FetchedPacketFeed, MainHeaderIn, PacketFeed, PltUse,
@@ -1381,6 +1382,7 @@ fn dye_comp_row<T: OutputSample>(
 
 struct SendPtr(*mut c_void);
 unsafe impl Send for SendPtr {}
+unsafe impl Sync for SendPtr {}
 
 type JointRowFn<T> =
     extern "C" fn(ctx: *mut c_void, row: u32, comps: *const *const T, num_comps: u32, width: u64);
@@ -1537,6 +1539,73 @@ fn weave_rows<T: OutputSample>(
     }
 }
 
+#[repr(C)]
+pub struct MercurySegmentSink {
+    pub row_open: Option<MercuryRowOpenFn>,
+    pub row_close: Option<MercuryRowCloseFn>,
+    pub rows_done: Option<MercuryRowsDoneFn>,
+    pub row_ctx: *mut c_void,
+}
+
+fn weave_segments<T: OutputSample>(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    segments: &MercurySegmentSink,
+    threads: u32,
+) -> i32 {
+    let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, t1) {
+        Ok(taken) => taken,
+        Err(rc) => return rc,
+    };
+    let (Some(open), Some(close), Some(rows_done)) =
+        (segments.row_open, segments.row_close, segments.rows_done)
+    else {
+        return MERCURY_EBADARG;
+    };
+    let (sink, height) =
+        match segment_row_sink::<T>(&plan, open, close, rows_done, segments.row_ctx) {
+            Ok(sink) => sink,
+            Err(rc) => return rc,
+        };
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        weave_segments_with_coder(src, plan, worker_count(threads), sink, coder)
+    }));
+    match result {
+        Ok(Ok(emitted)) if emitted == height => MERCURY_OK,
+        Ok(Ok(_)) | Ok(Err(_)) => MERCURY_EDECODE,
+        Err(_) => MERCURY_EPANIC,
+    }
+}
+
+/// # Safety
+/// `segments` must point to a filled `MercurySegmentSink`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_weave_segments(
+    plan: *mut MercuryPlan,
+    t1: Option<MercuryT1Fn>,
+    samples: u32,
+    segments: *const MercurySegmentSink,
+    threads: u32,
+) -> i32 {
+    let Some(segments) = (unsafe { segments.as_ref() }) else {
+        if !plan.is_null() {
+            drop(unsafe { Box::from_raw(plan) });
+        }
+        return MERCURY_EBADARG;
+    };
+    match samples {
+        MERCURY_ROWS_I32 => weave_segments::<i32>(plan, t1, segments, threads),
+        MERCURY_ROWS_I16 => weave_segments::<i16>(plan, t1, segments, threads),
+        MERCURY_ROWS_U16 => weave_segments::<u16>(plan, t1, segments, threads),
+        _ => {
+            if !plan.is_null() {
+                drop(unsafe { Box::from_raw(plan) });
+            }
+            MERCURY_EBADARG
+        }
+    }
+}
+
 /// Decode `plan` to completion, streaming one component row at a time.
 /// Consumes and frees `plan` even on failure.
 fn weave_comp_rows<T: OutputSample>(
@@ -1572,6 +1641,15 @@ pub const MERCURY_ROWS_I16: u32 = 1;
 pub const MERCURY_ROWS_U16: u32 = 2;
 
 pub type MercuryWeaveDoneFn = extern "C" fn(ctx: *mut c_void, rc: i32);
+pub type MercuryRowOpenFn = extern "C" fn(
+    ctx: *mut c_void,
+    row: u32,
+    width: u64,
+    comps: *mut *mut c_void,
+    num_comps: u32,
+) -> *mut c_void;
+pub type MercuryRowCloseFn = extern "C" fn(ctx: *mut c_void, row_handle: *mut c_void);
+pub type MercuryRowsDoneFn = extern "C" fn(ctx: *mut c_void, rows: u32);
 
 #[repr(C)]
 pub struct MercuryHostedWeave {
@@ -1579,6 +1657,9 @@ pub struct MercuryHostedWeave {
     pub samples: u32,
     pub per_component: bool,
     pub row_fn: *const c_void,
+    pub row_open: Option<MercuryRowOpenFn>,
+    pub row_close: Option<MercuryRowCloseFn>,
+    pub rows_done: Option<MercuryRowsDoneFn>,
     pub row_ctx: *mut c_void,
     pub submit: Option<HostSubmitFn>,
     pub submit_ctx: *mut c_void,
@@ -1599,16 +1680,71 @@ fn hosted_done(weave: &MercuryHostedWeave, expected: Vec<u64>) -> Option<WovenFn
     }))
 }
 
+fn segment_row_sink<T: OutputSample>(
+    plan: &DecodePlan,
+    open: MercuryRowOpenFn,
+    close: MercuryRowCloseFn,
+    rows_done: MercuryRowsDoneFn,
+    row_ctx: *mut c_void,
+) -> Result<(SegmentSink, u64), i32> {
+    if !plan
+        .siz
+        .components
+        .iter()
+        .all(|component| T::supports(component.precision as u32, component.is_signed))
+    {
+        return Err(MERCURY_EBADARG);
+    }
+    let height = plan.comp_dims[0].height() as u64;
+    let width = plan.comp_dims[0].width() as u64;
+    let comps: Vec<(u32, bool)> = plan
+        .siz
+        .components
+        .iter()
+        .map(|c| (c.precision as u32, c.is_signed))
+        .collect();
+    let write_ctx = SendPtr(row_ctx);
+    let done_ctx = SendPtr(row_ctx);
+    let write = Box::new(move |row: u32, x0: usize, rows: Rows<'_>| {
+        let ctx = &write_ctx;
+        let mut dest = vec![std::ptr::null_mut::<c_void>(); comps.len()];
+        let handle = open(ctx.0, row, width, dest.as_mut_ptr(), comps.len() as u32);
+        for (component, (&(prec, signed), &out)) in comps.iter().zip(&dest).enumerate() {
+            if out.is_null() {
+                continue;
+            }
+            let len = match rows.comp(component) {
+                CompRow::I16(samples) | CompRow::Q13(samples) => samples.len(),
+                CompRow::I32(samples) => samples.len(),
+                CompRow::F32(samples) => samples.len(),
+            };
+            debug_assert!(x0 + len <= width as usize);
+            let out = unsafe { std::slice::from_raw_parts_mut((out as *mut T).add(x0), len) };
+            dye_comp_row(&rows, component, prec, signed, out);
+        }
+        close(ctx.0, handle);
+    });
+    let rows_done = Box::new(move |rows: u32| {
+        let ctx = &done_ctx;
+        rows_done(ctx.0, rows);
+    });
+    Ok((SegmentSink { write, rows_done }, height))
+}
+
 fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWeave) -> i32 {
     let (MercuryPlan { plan, src, .. }, coder) = match take_plan(plan, weave.t1) {
         Ok(taken) => taken,
         Err(rc) => return rc,
     };
-    let (Some(submit), false) = (weave.submit, weave.row_fn.is_null()) else {
+    let (Some(submit), Some(open), Some(close), Some(rows_done)) = (
+        weave.submit,
+        weave.row_open,
+        weave.row_close,
+        weave.rows_done,
+    ) else {
         return MERCURY_EBADARG;
     };
-    let row_fn = unsafe { std::mem::transmute::<*const c_void, JointRowFn<T>>(weave.row_fn) };
-    let (sink, height) = match joint_row_sink(&plan, row_fn, weave.row_ctx) {
+    let (sink, height) = match segment_row_sink::<T>(&plan, open, close, rows_done, weave.row_ctx) {
         Ok(sink) => sink,
         Err(rc) => return rc,
     };
@@ -1622,7 +1758,7 @@ fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWea
         ctx: weave.submit_ctx,
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        launch_with_coder(src, plan, host, sink, coder, woven)
+        launch_segments_with_coder(src, plan, host, sink, coder, woven)
     }));
     match r {
         Ok(Ok(())) => MERCURY_OK,

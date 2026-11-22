@@ -132,6 +132,14 @@ impl<T> Consumer<T> {
         unsafe { &*self.shared.slots()[idx].get() }
     }
 
+    pub fn peek_mut(&mut self, i: usize) -> &mut T {
+        debug_assert!(i < self.picks_ready(), "peek index beyond available");
+        let head = self.shared.head.load(Ordering::Relaxed);
+        let idx = (head + i) % self.span();
+        // Safety: as in peek, and &mut self prevents aliasing on this side.
+        unsafe { &mut *self.shared.slots()[idx].get() }
+    }
+
     /// Unwind the `n` oldest slots back to the producer for reuse.
     pub fn unwind(&mut self, n: usize) {
         debug_assert!(n <= self.picks_ready(), "unwinding more than available");

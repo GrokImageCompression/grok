@@ -4796,6 +4796,63 @@ mod tests {
         Arc::try_unwrap(rows).unwrap().into_inner().unwrap()
     }
 
+    fn decode_segment_rows(stream: &[u8], plan: DecodePlan) -> Vec<Vec<i64>> {
+        use crate::decode::graph::{Rows, SegmentSink, weave_segments_with_coder};
+        use std::sync::{Arc, Mutex};
+
+        let width = plan.comp_dims[0].width() as usize;
+        let height = plan.comp_dims[0].height() as usize;
+        let rows = Arc::new(Mutex::new(vec![vec![None::<i64>; width]; height]));
+        let reported = Arc::new(Mutex::new(Vec::new()));
+        let written_rows = Arc::clone(&rows);
+        let done_rows = Arc::clone(&rows);
+        let done_reported = Arc::clone(&reported);
+        let sink = SegmentSink {
+            write: Box::new(move |row, x0, samples| {
+                let values: Vec<i64> = match samples {
+                    Rows::I16(rows) | Rows::Q13(rows) => {
+                        rows[0].iter().map(|&value| value.into()).collect()
+                    }
+                    Rows::I32(rows) => rows[0].iter().map(|&value| value.into()).collect(),
+                    Rows::F32(rows) => rows[0]
+                        .iter()
+                        .map(|&value| value.to_bits().into())
+                        .collect(),
+                };
+                let mut got = written_rows.lock().unwrap();
+                for (column, value) in values.into_iter().enumerate() {
+                    let previous = got[row as usize][x0 + column].replace(value);
+                    assert!(
+                        previous.is_none(),
+                        "row {row} column {} arrives once",
+                        x0 + column
+                    );
+                }
+            }),
+            rows_done: Box::new(move |done| {
+                let got = done_rows.lock().unwrap();
+                assert!(
+                    got[..done as usize].iter().flatten().all(Option::is_some),
+                    "rows below {done} are written"
+                );
+                done_reported.lock().unwrap().push(done);
+            }),
+        };
+        weave_segments_with_coder(Arc::new(stream.to_vec()), plan, 4, sink, patterned_coder)
+            .expect("decode must run");
+        let reported = reported.lock().unwrap();
+        assert!(reported.windows(2).all(|pair| pair[0] < pair[1]));
+        assert_eq!(reported.last().copied(), Some(height as u32));
+        let rows = rows.lock().unwrap();
+        rows.iter()
+            .map(|row| {
+                row.iter()
+                    .map(|v| v.expect("every sample arrives"))
+                    .collect()
+            })
+            .collect()
+    }
+
     #[test]
     fn column_strips_decode_each_block_once_and_emit_the_same_rows() {
         use std::sync::atomic::Ordering;
@@ -4835,6 +4892,15 @@ mod tests {
                 assert!(
                     rows == baseline_rows,
                     "reduce {reduce} window {window:?} strips {max_strips}"
+                );
+            }
+            for max_strips in [1, 3, 4] {
+                let mut plan = draft_plan(&stream, &hdr, reduce, 0, PltUse::InOrder, window, false)
+                    .expect("plan must build");
+                plan.max_strips = max_strips;
+                assert!(
+                    decode_segment_rows(&stream, plan) == baseline_rows,
+                    "segments reduce {reduce} window {window:?} strips {max_strips}"
                 );
             }
         }

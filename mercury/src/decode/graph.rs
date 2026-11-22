@@ -28,6 +28,8 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::decode::ReadAt;
+use std::marker::PhantomData;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::codec::tile_geom::Dims;
@@ -604,6 +606,13 @@ pub type RowSink = Box<dyn FnMut(u32, Rows<'_>) + Send>;
 /// interleave in no fixed order. Never carries a color transform.
 pub type CompRowSink = Box<dyn FnMut(usize, u32, CompRow<'_>) + Send>;
 
+pub type SegmentWrite = Box<dyn Fn(u32, usize, Rows<'_>) + Send + Sync>;
+
+pub struct SegmentSink {
+    pub write: SegmentWrite,
+    pub rows_done: Box<dyn Fn(u32) + Send + Sync>,
+}
+
 /// One tile column's tree outputs feeding the merge sink.
 struct ColInput {
     /// Per-component consumers (tree output rings).
@@ -867,6 +876,111 @@ impl<T: Sample> Node for MergeSinkNode<T> {
     }
 }
 
+fn strip_row<T>(input: &Consumer<AlignedVec>, i: usize, src_off: usize, width: usize) -> &[T] {
+    let row = input.peek(i);
+    unsafe { std::slice::from_raw_parts((row.as_ptr() as *const T).add(src_off), width) }
+}
+
+fn strip_row_mut<T>(
+    input: &mut Consumer<AlignedVec>,
+    i: usize,
+    src_off: usize,
+    width: usize,
+) -> &mut [T] {
+    let row = input.peek_mut(i);
+    unsafe { std::slice::from_raw_parts_mut((row.as_mut_ptr() as *mut T).add(src_off), width) }
+}
+
+struct StripProgress {
+    rows_written: Box<[AtomicU32]>,
+    rows_done: Mutex<u32>,
+}
+
+struct StripSink {
+    col: ColInput,
+    index: usize,
+    ycc: bool,
+    row_base: u32,
+    rows_seen: u32,
+    discard: u32,
+    progress: Arc<StripProgress>,
+    sink: Arc<SegmentSink>,
+}
+
+struct StripSinkNode<T> {
+    strip: StripSink,
+    sample: PhantomData<T>,
+}
+
+impl<T: Sample> Node for StripSinkNode<T> {
+    fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
+        let strip = &mut self.strip;
+        let mut ready = strip
+            .col
+            .inputs
+            .iter()
+            .map(|input| input.picks_ready())
+            .min()
+            .unwrap_or(0);
+        if ready == 0 {
+            return;
+        }
+        if strip.discard > 0 {
+            let dropped = (strip.discard as usize).min(ready);
+            for input in &mut strip.col.inputs {
+                input.unwind(dropped);
+            }
+            strip.discard -= dropped as u32;
+            ready -= dropped;
+        }
+        let (src_off, width) = (strip.col.src_off, strip.col.width);
+        for i in 0..ready {
+            if strip.ycc {
+                let (luma, chroma) = strip.col.inputs.split_at_mut(1);
+                let (blue, red) = chroma.split_at_mut(1);
+                T::untangle_color(
+                    strip_row_mut(&mut luma[0], i, src_off, width),
+                    strip_row_mut(&mut blue[0], i, src_off, width),
+                    strip_row_mut(&mut red[0], i, src_off, width),
+                );
+            }
+            let refs: Vec<&[T]> = strip
+                .col
+                .inputs
+                .iter()
+                .map(|input| strip_row(input, i, src_off, width))
+                .collect();
+            (strip.sink.write)(
+                strip.row_base + strip.rows_seen + i as u32,
+                strip.col.x0,
+                T::skein(&refs),
+            );
+        }
+        strip.rows_seen += ready as u32;
+        for input in &mut strip.col.inputs {
+            input.unwind(ready);
+        }
+        if ready > 0 {
+            strip.progress.rows_written[strip.index].store(strip.rows_seen, Ordering::Relaxed);
+            let mut rows_done = strip.progress.rows_done.lock().unwrap();
+            let complete = strip
+                .progress
+                .rows_written
+                .iter()
+                .map(|rows| rows.load(Ordering::Relaxed))
+                .min()
+                .expect("a tile row has at least one strip");
+            if complete > *rows_done {
+                *rows_done = complete;
+                (strip.sink.rows_done)(strip.row_base + complete);
+            }
+        }
+        for &producer in &strip.col.producers {
+            ctx.tug(producer);
+        }
+    }
+}
+
 /// One tile column's contribution to one component of the per-component sink.
 struct CompColInput {
     input: Consumer<AlignedVec>,
@@ -991,6 +1105,7 @@ pub type WovenFn = Box<dyn FnOnce(Result<Vec<u64>, DecodeError>) + Send>;
 enum EmitSink {
     Joint(Arc<Mutex<RowSink>>),
     PerComp(Arc<Mutex<CompRowSink>>),
+    Segments(Arc<SegmentSink>),
 }
 
 /// Do all components share one subsampling factor? Only then do they land on
@@ -1016,6 +1131,27 @@ pub fn weave_with_coder(
     let sink = joint_sink(&plan, sink)?;
     let rows = weave_sink(file, plan, workers, sink, coder)?;
     Ok(rows.first().copied().unwrap_or(0))
+}
+
+pub fn weave_segments_with_coder(
+    file: Arc<dyn ReadAt>,
+    plan: DecodePlan,
+    workers: usize,
+    sink: SegmentSink,
+    coder: BlockCoder,
+) -> Result<u64, DecodeError> {
+    let sink = segment_sink(&plan, sink)?;
+    let rows = weave_sink(file, plan, workers, sink, coder)?;
+    Ok(rows.first().copied().unwrap_or(0))
+}
+
+fn segment_sink(plan: &DecodePlan, sink: SegmentSink) -> Result<EmitSink, DecodeError> {
+    if !uniform_subsampling(&plan.siz) {
+        return Err(DecodeError::Logic(
+            "weft graph: one segment row cannot carry components of different sizes".into(),
+        ));
+    }
+    Ok(EmitSink::Segments(Arc::new(sink)))
 }
 
 fn joint_sink(plan: &DecodePlan, sink: RowSink) -> Result<EmitSink, DecodeError> {
@@ -1058,15 +1194,15 @@ pub fn weave_comps_with_coder(
     weave_sink(file, plan, workers, sink, coder)
 }
 
-pub fn launch_with_coder(
+pub fn launch_segments_with_coder(
     file: Arc<dyn ReadAt>,
     plan: DecodePlan,
     host: HostExecutor,
-    sink: RowSink,
+    sink: SegmentSink,
     coder: BlockCoder,
     woven: WovenFn,
 ) -> Result<(), DecodeError> {
-    let sink = joint_sink(&plan, sink)?;
+    let sink = segment_sink(&plan, sink)?;
     launch_sink(file, plan, host, sink, coder, woven)
 }
 
@@ -1553,7 +1689,8 @@ fn dress_tile_loom(
                 .sum::<u32>()
         })
         .sum();
-    let sink_id = NodeId::heddle(num_band_nodes + num_level_nodes);
+    let first_sink = num_band_nodes + num_level_nodes;
+    let sink_id = NodeId::heddle(first_sink);
     let mut next_level = num_band_nodes;
     let mut level_nodes: Vec<LevelNode> = Vec::with_capacity(num_level_nodes as usize);
     /// One finished chain: which tile column and component it feeds the sink
@@ -1607,7 +1744,10 @@ fn dress_tile_loom(
                     },
                     out: out_prod,
                     consumer: if is_top {
-                        sink_id
+                        match sink {
+                            EmitSink::Segments(_) => NodeId::heddle(first_sink + col_idx as u32),
+                            _ => sink_id,
+                        }
                     } else {
                         NodeId::heddle(base + l as u32 + 1)
                     },
@@ -1682,13 +1822,14 @@ fn dress_tile_loom(
                     })
                     .collect(),
             }),
+            EmitSink::Segments(_) => unreachable!("segment sinks mount one node per strip"),
         }
     }
 
     let mut cols: Vec<ColInput> = Vec::new();
     let mut per_comp: Vec<Vec<CompColInput>> = (0..num_comps).map(|_| Vec::new()).collect();
     match sink {
-        EmitSink::Joint(_) => {
+        EmitSink::Joint(_) | EmitSink::Segments(_) => {
             let mut cur_col = usize::MAX;
             for f in feeds {
                 if f.col != cur_col {
@@ -1728,13 +1869,56 @@ fn dress_tile_loom(
         }
     }
 
+    let ycc = !matches!(sink, EmitSink::PerComp(_)) && plan.cod.use_ycc && num_comps >= 3;
+    if let EmitSink::Segments(segments) = sink {
+        let progress = Arc::new(StripProgress {
+            rows_written: cols.iter().map(|_| AtomicU32::new(0)).collect(),
+            rows_done: Mutex::new(0),
+        });
+        for (index, col) in cols.into_iter().enumerate() {
+            let strip_sink = StripSink {
+                col,
+                index,
+                ycc,
+                row_base: row_base[0],
+                rows_seen: 0,
+                discard: sink_discard[0],
+                progress: Arc::clone(&progress),
+                sink: Arc::clone(segments),
+            };
+            let node: Box<dyn Node> = match path {
+                Path::I16 => Box::new(StripSinkNode::<i16> {
+                    strip: strip_sink,
+                    sample: PhantomData,
+                }),
+                Path::I32 => Box::new(StripSinkNode::<i32> {
+                    strip: strip_sink,
+                    sample: PhantomData,
+                }),
+                Path::F32 => Box::new(StripSinkNode::<f32> {
+                    strip: strip_sink,
+                    sample: PhantomData,
+                }),
+                Path::Q13 => Box::new(StripSinkNode::<Q13Sample> {
+                    strip: strip_sink,
+                    sample: PhantomData,
+                }),
+            };
+            assert_eq!(b.mount(node), NodeId::heddle(first_sink + index as u32));
+        }
+        return Ok(Some(WeftDecoder {
+            loom: b,
+            kick,
+            rows_total,
+        }));
+    }
     let hem_args = HemArgs {
         cols,
         per_comp,
         widths: out_rect.iter().map(|d| d.width() as usize).collect(),
         row_base,
         discard: sink_discard,
-        ycc: matches!(sink, EmitSink::Joint(_)) && plan.cod.use_ycc && num_comps >= 3,
+        ycc,
         num_comps,
     };
     let got_sink = b.mount(match path {

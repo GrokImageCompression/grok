@@ -99,15 +99,21 @@ namespace
   {
     void** planes;
     uint32_t* strides;
+    size_t sampleBytes;
   };
 
-  template<typename T>
-  void rowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps, uint64_t width)
+  void* planeRowOpen(void* c, uint32_t row, uint64_t, void** comps, uint32_t numComps)
   {
     auto ctx = (RowCtx*)c;
     for(uint32_t i = 0; i < numComps; i++)
-      writeRow(ctx->planes[i], (size_t)row * ctx->strides[i], comps[i], width);
+      comps[i] = static_cast<uint8_t*>(ctx->planes[i]) +
+                 (size_t)row * ctx->strides[i] * ctx->sampleBytes;
+    return nullptr;
   }
+
+  void planeRowClose(void*, void*) {}
+
+  void planeRowsDone(void*, uint32_t) {}
 
   template<typename T>
   void compRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width)
@@ -598,6 +604,9 @@ namespace
                    uint64_t width);
   template<typename T>
   void tileCompRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width);
+  void* tileRowOpen(void* c, uint32_t row, uint64_t width, void** comps, uint32_t numComps);
+  void tileRowClose(void* c, void* rowHandle);
+  void tileRowsDone(void* c, uint32_t rows);
 
   enum class TileSamples
   {
@@ -1000,24 +1009,21 @@ namespace
       if(tileSamples == TileSamples::Int16)
       {
         hosted.samples = MERCURY_ROWS_I16;
-        hosted.row_fn = uniformSubsampling
-                            ? reinterpret_cast<const void*>(&tileRowSink<int16_t>)
-                            : reinterpret_cast<const void*>(&tileCompRowSink<int16_t>);
+        hosted.row_fn = reinterpret_cast<const void*>(&tileCompRowSink<int16_t>);
       }
       else if(tileSamples == TileSamples::Uint16)
       {
         hosted.samples = MERCURY_ROWS_U16;
-        hosted.row_fn = uniformSubsampling
-                            ? reinterpret_cast<const void*>(&tileRowSink<uint16_t>)
-                            : reinterpret_cast<const void*>(&tileCompRowSink<uint16_t>);
+        hosted.row_fn = reinterpret_cast<const void*>(&tileCompRowSink<uint16_t>);
       }
       else
       {
         hosted.samples = MERCURY_ROWS_I32;
-        hosted.row_fn = uniformSubsampling
-                            ? reinterpret_cast<const void*>(&tileRowSink<int32_t>)
-                            : reinterpret_cast<const void*>(&tileCompRowSink<int32_t>);
+        hosted.row_fn = reinterpret_cast<const void*>(&tileCompRowSink<int32_t>);
       }
+      hosted.row_open = tileRowOpen;
+      hosted.row_close = tileRowClose;
+      hosted.rows_done = tileRowsDone;
       hosted.row_ctx = &weave->sink;
       hosted.submit = submitTask;
       hosted.submit_ctx = this;
@@ -1177,6 +1183,83 @@ namespace
       return true;
     }
 
+    bool waitForBand(AsyncTile& tile, uint32_t band, std::unique_lock<std::mutex>& lock)
+    {
+      auto bandAllowed = [&] {
+        return cancel.load() || unbounded || band < tile.neededBands ||
+               band < tile.releasedBands + maxBandsAhead;
+      };
+      if(!bandAllowed())
+      {
+        // TileCompletion::wait is only woken every 64 rows
+        lock.unlock();
+        completion->notifyProgress();
+        lock.lock();
+        cv.wait(lock, bandAllowed);
+      }
+      return keepReleasedTiles || band >= tile.releasedBands;
+    }
+
+    GrkImage* rowOpen(AsyncTile& tile, uint32_t row, uint64_t width, void** comps,
+                      uint32_t numComps)
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      if(cancel || tile.rowOverflow || tile.allocFailed)
+        return nullptr;
+      if(numComps != composite->numcomps)
+      {
+        tile.rowOverflow = true;
+        return nullptr;
+      }
+      for(uint32_t c = 0; c < numComps; c++)
+      {
+        if(row >= tile.compRows[c])
+        {
+          tile.rowOverflow = true;
+          return nullptr;
+        }
+      }
+      const uint32_t band = row / tile.bandRows;
+      if(tile.bands.size() > 1 && !waitForBand(tile, band, lock))
+        return nullptr;
+      if(cancel)
+        return nullptr;
+      GrkImage* image = tile.bands[band].get();
+      for(uint32_t c = 0; c < numComps; c++)
+      {
+        auto& comp = image->comps[c];
+        if(width > comp.w)
+        {
+          tile.rowOverflow = true;
+          return nullptr;
+        }
+        if(!comp.data && !GrkImage::allocData(&comp))
+        {
+          tile.allocFailed = true;
+          return nullptr;
+        }
+      }
+      const size_t elem = tileSampleBytes(tileSamples);
+      for(uint32_t c = 0; c < numComps; c++)
+      {
+        auto& comp = image->comps[c];
+        comps[c] = static_cast<uint8_t*>(comp.data) +
+                   (size_t)(row - band * tile.bandRows) * comp.stride * elem;
+      }
+      // releaseBands may drop the band while a strip still writes into it
+      return grk_ref(image);
+    }
+
+    void rowsDone(AsyncTile& tile, uint32_t rows)
+    {
+      const uint32_t before = tile.filledRows[0].load(std::memory_order_relaxed);
+      for(uint16_t c = 0; c < composite->numcomps; c++)
+        tile.filledRows[c].store(rows, std::memory_order_release);
+      // a swath wait inside this tile can proceed once its rows are in
+      if((before >> 6) != (rows >> 6))
+        completion->notifyProgress();
+    }
+
     template<typename T>
     void row(AsyncTile& tile, uint32_t comp, const T* samples, uint64_t width)
     {
@@ -1199,22 +1282,10 @@ namespace
       // releaseBands frees bands under the mutex
       if(tile.bands.size() > 1)
       {
-        auto bandAllowed = [&] {
-          return cancel.load() || unbounded || band < tile.neededBands ||
-                 band < tile.releasedBands + maxBandsAhead;
-        };
         lock.lock();
-        if(!bandAllowed())
-        {
-          // TileCompletion::wait is only woken every 64 rows
-          lock.unlock();
-          completion->notifyProgress();
-          lock.lock();
-          cv.wait(lock, bandAllowed);
-        }
+        keep = waitForBand(tile, band, lock);
         if(cancel)
           return;
-        keep = keepReleasedTiles || band >= tile.releasedBands;
       }
       if(keep)
       {
@@ -1489,6 +1560,23 @@ namespace
   {
     auto ctx = static_cast<TileSinkCtx*>(c);
     ctx->state->row(*ctx->tile, comp, samples, width);
+  }
+
+  void* tileRowOpen(void* c, uint32_t row, uint64_t width, void** comps, uint32_t numComps)
+  {
+    auto ctx = static_cast<TileSinkCtx*>(c);
+    return ctx->state->rowOpen(*ctx->tile, row, width, comps, numComps);
+  }
+
+  void tileRowClose(void*, void* rowHandle)
+  {
+    grk_unref(static_cast<GrkImage*>(rowHandle));
+  }
+
+  void tileRowsDone(void* c, uint32_t rows)
+  {
+    auto ctx = static_cast<TileSinkCtx*>(c);
+    ctx->state->rowsDone(*ctx->tile, rows);
   }
 
   void tileWeaveDone(void* ctx, int32_t rc)
@@ -1846,6 +1934,9 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
   // one-block slices made TCI full resolution regions 9% slower and HiRISE ones 8 to 22% faster
   if(cs.tilesToDecompress_.getSlatedTileRect().area() < cores)
     mparams.slice_blocks = singleTile ? 1 : 2;
+  // one strip made HiRISE regions up to 31% slower and saved tiled images no time
+  if(singleTile)
+    mparams.max_strips = std::max(1u, cores / 4);
   if(!cs.region_.empty())
   {
     mparams.win_x0 = cs.region_.x0;
@@ -1956,9 +2047,6 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     auto state = std::make_unique<MercuryTileState>();
     state->header = std::move(coding);
     state->decodeParams = mparams;
-    // one strip made HiRISE regions up to 31% slower and saved tiled images no time
-    if(singleTile)
-      state->decodeParams.max_strips = std::max(1u, cores / 4);
     state->tlmEntries = std::move(mhTlm);
     state->readers = std::move(readers);
     if(walkedTLM)
@@ -2346,12 +2434,15 @@ bool mercuryFastPath(CodeStreamDecompress& cs)
     planes[c] = comp->data;
     strides[c] = comp->stride;
   }
-  RowCtx ctx{planes.data(), strides.data()};
+  RowCtx ctx{planes.data(), strides.data(), is16 ? sizeof(int16_t) : sizeof(int32_t)};
   int32_t rc;
   if(uniformSubsampling)
-    rc = is16 ? mercury_weave_i16(plan, mercury_grok_t1_decode, rowSink<int16_t>, &ctx,
-                                  mercuryThreads)
-              : mercury_weave(plan, mercury_grok_t1_decode, rowSink<int32_t>, &ctx, mercuryThreads);
+  {
+    MercurySegmentSink segments{planeRowOpen, planeRowClose, planeRowsDone, &ctx};
+    rc = mercury_weave_segments(plan, mercury_grok_t1_decode,
+                                is16 ? MERCURY_ROWS_I16 : MERCURY_ROWS_I32, &segments,
+                                mercuryThreads);
+  }
   else
     rc = is16 ? mercury_weave_comps_i16(plan, mercury_grok_t1_decode, compRowSink<int16_t>, &ctx,
                                         mercuryThreads)

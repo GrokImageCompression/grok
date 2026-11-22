@@ -320,12 +320,35 @@ typedef void (*mercury_host_run_fn)(void* pass);
 typedef void (*mercury_host_submit_fn)(void* ctx, mercury_host_run_fn run, void* pass);
 typedef void (*mercury_weave_done_fn)(void* ctx, int32_t rc);
 
+/* Segment delivery for joint rows: each column strip opens a row, writes its
+ * samples at comps[c] + x0 and closes it. Strips call concurrently on decode
+ * workers, rows of one strip in order. open fills comps[c] with the start of
+ * row `row` of component c, holding width samples of the hosted sample type,
+ * or leaves them null to drop the row, and returns a handle passed to close.
+ * rows_done reports that rows [0, rows) are written in every component; calls
+ * are serialized and rows only grows. None of them may throw. */
+typedef void* (*mercury_row_open_fn)(void* ctx, uint32_t row, uint64_t width, void** comps,
+                                     uint32_t num_comps);
+typedef void (*mercury_row_close_fn)(void* ctx, void* row_handle);
+typedef void (*mercury_rows_done_fn)(void* ctx, uint32_t rows);
+
+typedef struct MercurySegmentSink
+{
+  mercury_row_open_fn row_open;
+  mercury_row_close_fn row_close;
+  mercury_rows_done_fn rows_done;
+  void* row_ctx;
+} MercurySegmentSink;
+
 typedef struct MercuryHostedWeave
 {
   mercury_t1_fn t1;
   uint32_t samples;
   bool per_component;
   const void* row_fn;
+  mercury_row_open_fn row_open;
+  mercury_row_close_fn row_close;
+  mercury_rows_done_fn rows_done;
   void* row_ctx;
   mercury_host_submit_fn submit;
   void* submit_ctx;
@@ -334,6 +357,11 @@ typedef struct MercuryHostedWeave
 } MercuryHostedWeave;
 
 int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave);
+
+/* Decode plan to completion on threads workers (0 uses one per core), delivering
+ * joint rows as segments. samples is one of MERCURY_ROWS_*. Consumes plan. */
+int32_t mercury_weave_segments(MercuryPlan* plan, mercury_t1_fn t1, uint32_t samples,
+                               const MercurySegmentSink* segments, uint32_t threads);
 
 typedef struct MercuryEncodeParams
 {
