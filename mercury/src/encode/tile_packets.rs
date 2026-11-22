@@ -4,10 +4,11 @@ use crate::codec::packet_order::{
 use crate::codec::params::{CodParams, SizParams};
 use crate::codec::tile_geom::TileGeom;
 
+use std::cell::RefCell;
 use std::cmp::Reverse;
 use std::ops::Range;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 
 use super::band_coder::CodedBand;
 use super::packet::{BandPacketSource, PrecinctCoder};
@@ -50,7 +51,6 @@ struct PrecinctPackets<'a> {
 
 pub(crate) struct WrittenPacket<'p> {
     pub slot: PacketSlot,
-    // counts the body even when its slices were not collected
     pub length: usize,
     pub header: &'p [u8],
     pub bodies: &'p [&'p [u8]],
@@ -138,12 +138,41 @@ impl TilePacketWriter {
         }
     }
 
+    pub fn order(&self) -> &[PacketSlot] {
+        &self.order
+    }
+
+    pub fn packet_lengths(&mut self, bands: &TileBands, included: &[Vec<u8>]) -> Vec<u32> {
+        thread_local! {
+            static HEADER_SCRATCH: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+        }
+        let order = &self.order;
+        let lengths: Vec<AtomicU32> = order.iter().map(|_| AtomicU32::new(0)).collect();
+        let tasks: Vec<_> = self
+            .precincts_by_block_count
+            .iter_mut()
+            .zip(&self.precinct_packets)
+            .collect();
+        run_tasks(tasks, self.threads, |(coder, packets)| {
+            HEADER_SCRATCH.with_borrow_mut(|header| {
+                let mut sources = Vec::with_capacity(3);
+                for &index in packets {
+                    let slot = order[index];
+                    band_sources(bands, included, slot, &mut sources);
+                    header.clear();
+                    let length = coder.write_packet(slot.layer, &sources, header, None);
+                    lengths[index].store(length as u32, Ordering::Relaxed);
+                }
+            })
+        });
+        lengths.into_iter().map(AtomicU32::into_inner).collect()
+    }
+
     // `included` holds the passes each block includes, per band of `bands`
     pub fn write_packets<'a>(
         &mut self,
         bands: &TileBands<'a>,
         included: &'a [Vec<u8>],
-        with_body: bool,
     ) -> WrittenPackets<'a, '_> {
         let order = &self.order;
         let tasks: Vec<_> = self
@@ -157,25 +186,16 @@ impl TilePacketWriter {
                 bodies: Vec::new(),
                 packets: Vec::with_capacity(packets.len()),
             };
-            let mut sources: Vec<BandPacketSource> = Vec::with_capacity(3);
+            let mut sources = Vec::with_capacity(3);
             for &index in packets {
                 let slot = order[index];
-                let (c, r) = (slot.comp as usize, slot.res as usize);
-                let first = bands.first_band[c][r];
-                let count = if r == 0 { 1 } else { 3 };
-                sources.clear();
-                sources.extend((first..first + count).map(|b| BandPacketSource {
-                    coded: bands.bands[b].coded,
-                    blocks_across: bands.bands[b].blocks_across,
-                    max_bit_planes: bands.bands[b].max_bit_planes,
-                    included_passes: &included[b],
-                }));
+                band_sources(bands, included, slot, &mut sources);
                 let (header_start, bodies_start) = (written.headers.len(), written.bodies.len());
                 let length = coder.write_packet(
                     slot.layer,
                     &sources,
                     &mut written.headers,
-                    with_body.then_some(&mut written.bodies),
+                    Some(&mut written.bodies),
                 );
                 written.packets.push(PacketExtent {
                     header: header_start..written.headers.len(),
@@ -191,6 +211,24 @@ impl TilePacketWriter {
             precincts,
         }
     }
+}
+
+fn band_sources<'a>(
+    bands: &TileBands<'a>,
+    included: &'a [Vec<u8>],
+    slot: PacketSlot,
+    sources: &mut Vec<BandPacketSource<'a>>,
+) {
+    let (c, r) = (slot.comp as usize, slot.res as usize);
+    let first = bands.first_band[c][r];
+    let count = if r == 0 { 1 } else { 3 };
+    sources.clear();
+    sources.extend((first..first + count).map(|b| BandPacketSource {
+        coded: bands.bands[b].coded,
+        blocks_across: bands.bands[b].blocks_across,
+        max_bit_planes: bands.bands[b].max_bit_planes,
+        included_passes: &included[b],
+    }));
 }
 
 pub(crate) fn run_tasks<T: Send, R: Send>(

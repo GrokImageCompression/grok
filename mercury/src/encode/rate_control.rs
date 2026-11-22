@@ -126,11 +126,11 @@ pub(crate) fn allocate_image_rate(
             .collect();
         run_tasks(tasks, threads, |((writer, bands), included)| {
             layout(bands, included);
-            let written = writer.write_packets(bands, included, false);
-            let packets: u64 = written.iter().map(|packet| packet.length as u64).sum();
+            let lengths = writer.packet_lengths(bands, included);
+            let packets: u64 = lengths.iter().map(|&length| length as u64).sum();
             // classic counts PLT bytes only in its image-wide rate measurements
             let plt = if write_plt {
-                plt_markers(written.iter().map(|packet| packet.length as u32)).len() as u64
+                plt_markers(lengths.iter().copied()).len() as u64
             } else {
                 0
             };
@@ -388,9 +388,9 @@ impl<'w, 'a> Search<'w, 'a> {
 
     fn simulate(&mut self) -> u64 {
         self.component_bytes.fill(0);
-        let written = self.writer.write_packets(self.bands, &self.included, false);
-        for packet in written.iter() {
-            self.component_bytes[packet.slot.comp as usize] += packet.length as u64;
+        let lengths = self.writer.packet_lengths(self.bands, &self.included);
+        for (slot, length) in self.writer.order().iter().zip(lengths) {
+            self.component_bytes[slot.comp as usize] += length as u64;
         }
         self.component_bytes.iter().sum()
     }

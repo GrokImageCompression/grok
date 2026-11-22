@@ -82,24 +82,23 @@ const UNSET_NODE: TagNode = TagNode {
     known: false,
 };
 
-struct TagTreeEncoder {
+#[derive(Clone, Copy)]
+struct TagTreeShape {
     leaves_width: u32,
-    level_widths: Vec<u32>,
-    level_bases: Vec<u32>,
-    nodes: Vec<TagNode>,
+    leaves_height: u32,
+    levels: usize,
+    node_count: usize,
 }
 
-impl TagTreeEncoder {
+impl TagTreeShape {
     fn warp(width: u32, height: u32) -> Self {
         let (mut level_width, mut level_height) = (width, height);
-        let mut level_widths = Vec::new();
-        let mut level_bases = Vec::new();
-        let mut total = 0;
+        let mut levels = 0;
+        let mut node_count = 0;
         loop {
             let nodes_in_level = level_width * level_height;
-            level_widths.push(level_width);
-            level_bases.push(total);
-            total += nodes_in_level;
+            levels += 1;
+            node_count += nodes_in_level as usize;
             if nodes_in_level <= 1 {
                 break;
             }
@@ -108,31 +107,32 @@ impl TagTreeEncoder {
         }
         Self {
             leaves_width: width,
-            level_widths,
-            level_bases,
-            nodes: vec![UNSET_NODE; total as usize],
+            leaves_height: height,
+            levels,
+            node_count,
         }
-    }
-
-    fn reset(&mut self) {
-        self.nodes.fill(UNSET_NODE);
     }
 
     fn path_to_root(&self, leaf: u32) -> [usize; MAX_TREE_LEVELS] {
         let mut path = [0; MAX_TREE_LEVELS];
         let (mut row, mut column) = (leaf / self.leaves_width, leaf % self.leaves_width);
-        for (level, node) in path.iter_mut().take(self.level_widths.len()).enumerate() {
-            *node = (self.level_bases[level] + row * self.level_widths[level] + column) as usize;
+        let (mut level_width, mut level_height) = (self.leaves_width, self.leaves_height);
+        let mut level_base = 0;
+        for node in path.iter_mut().take(self.levels) {
+            *node = (level_base + row * level_width + column) as usize;
+            level_base += level_width * level_height;
+            level_width = level_width.div_ceil(2);
+            level_height = level_height.div_ceil(2);
             row >>= 1;
             column >>= 1;
         }
         path
     }
 
-    fn set(&mut self, leaf: u32, value: u16) {
+    fn set(&self, nodes: &mut [TagNode], leaf: u32, value: u16) {
         let path = self.path_to_root(leaf);
-        for &index in &path[..self.level_widths.len()] {
-            let node = &mut self.nodes[index];
+        for &index in &path[..self.levels] {
+            let node = &mut nodes[index];
             if node.value <= value {
                 break;
             }
@@ -140,11 +140,17 @@ impl TagTreeEncoder {
         }
     }
 
-    fn encode(&mut self, writer: &mut HeaderBitWriter, leaf: u32, threshold: u16) {
+    fn encode(
+        &self,
+        nodes: &mut [TagNode],
+        writer: &mut HeaderBitWriter,
+        leaf: u32,
+        threshold: u16,
+    ) {
         let path = self.path_to_root(leaf);
         let mut low = 0;
-        for &index in path[..self.level_widths.len()].iter().rev() {
-            let node = &mut self.nodes[index];
+        for &index in path[..self.levels].iter().rev() {
+            let node = &mut nodes[index];
             if node.low < low {
                 node.low = low;
             } else {
@@ -172,11 +178,26 @@ struct BlockHeaderState {
     length_bits: u8,
 }
 
-struct PrecinctBandCoder {
+struct PrecinctBand {
     range: PrecBand,
-    inclusion: TagTreeEncoder,
-    imsb: TagTreeEncoder,
-    blocks: Vec<BlockHeaderState>,
+    tree: TagTreeShape,
+    first_node: usize,
+    first_block: usize,
+}
+
+impl PrecinctBand {
+    fn inclusion_nodes<'n>(&self, nodes: &'n mut [TagNode]) -> &'n mut [TagNode] {
+        &mut nodes[self.first_node..self.first_node + self.tree.node_count]
+    }
+
+    fn imsb_nodes<'n>(&self, nodes: &'n mut [TagNode]) -> &'n mut [TagNode] {
+        let first = self.first_node + self.tree.node_count;
+        &mut nodes[first..first + self.tree.node_count]
+    }
+
+    fn block_count(&self) -> usize {
+        (self.range.nbw * self.range.nbh) as usize
+    }
 }
 
 pub(crate) struct BandPacketSource<'a> {
@@ -189,25 +210,39 @@ pub(crate) struct BandPacketSource<'a> {
 
 // header state of one precinct, kept across its layers
 pub(crate) struct PrecinctCoder {
-    bands: Vec<PrecinctBandCoder>,
+    bands: Vec<PrecinctBand>,
+    nodes: Vec<TagNode>,
+    blocks: Vec<BlockHeaderState>,
 }
 
 impl PrecinctCoder {
     pub fn warp(ranges: Vec<PrecBand>) -> Self {
-        let bands = ranges
+        let mut node_count = 0;
+        let mut block_count = 0;
+        let bands: Vec<PrecinctBand> = ranges
             .into_iter()
-            .map(|range| PrecinctBandCoder {
-                inclusion: TagTreeEncoder::warp(range.nbw, range.nbh),
-                imsb: TagTreeEncoder::warp(range.nbw, range.nbh),
-                blocks: vec![BlockHeaderState::default(); (range.nbw * range.nbh) as usize],
-                range,
+            .map(|range| {
+                let tree = TagTreeShape::warp(range.nbw, range.nbh);
+                let band = PrecinctBand {
+                    range,
+                    tree,
+                    first_node: node_count,
+                    first_block: block_count,
+                };
+                node_count += 2 * tree.node_count;
+                block_count += band.block_count();
+                band
             })
             .collect();
-        Self { bands }
+        Self {
+            bands,
+            nodes: vec![UNSET_NODE; node_count],
+            blocks: vec![BlockHeaderState::default(); block_count],
+        }
     }
 
     pub fn block_count(&self) -> usize {
-        self.bands.iter().map(|band| band.blocks.len()).sum()
+        self.blocks.len()
     }
 
     fn band_block_index(range: &PrecBand, blocks_across: u32, precinct_block: u32) -> usize {
@@ -216,7 +251,7 @@ impl PrecinctCoder {
         (y * blocks_across + x) as usize
     }
 
-    // the returned length counts the body even when its slices are not collected
+    // the returned length counts the body even when `bodies` is None
     pub fn write_packet<'s>(
         &mut self,
         layer: u16,
@@ -224,18 +259,19 @@ impl PrecinctCoder {
         out: &mut Vec<u8>,
         mut bodies: Option<&mut Vec<&'s [u8]>>,
     ) -> usize {
+        let Self {
+            bands,
+            nodes,
+            blocks,
+        } = self;
         let start = out.len();
         let mut body_length = 0;
         let mut writer = HeaderBitWriter::warp(out);
-        for (band, source) in self.bands.iter_mut().zip(sources) {
-            if band.blocks.is_empty() {
-                continue;
-            }
-            if layer == 0 {
-                band.inclusion.reset();
-                band.imsb.reset();
-                for (precinct_block, state) in band.blocks.iter_mut().enumerate() {
-                    *state = BlockHeaderState::default();
+        if layer == 0 {
+            nodes.fill(UNSET_NODE);
+            blocks.fill(BlockHeaderState::default());
+            for (band, source) in bands.iter().zip(sources) {
+                for precinct_block in 0..band.block_count() {
                     let index = Self::band_block_index(
                         &band.range,
                         source.blocks_across,
@@ -247,7 +283,8 @@ impl PrecinctCoder {
                         "code-block has {numbps} bit planes, band maximum {}",
                         source.max_bit_planes
                     );
-                    band.imsb.set(
+                    band.tree.set(
+                        band.imsb_nodes(nodes),
                         precinct_block as u32,
                         (source.max_bit_planes - numbps) as u16,
                     );
@@ -257,18 +294,20 @@ impl PrecinctCoder {
 
         // classic always signals a non-empty packet
         writer.write_bit(true);
-        for (band, source) in self.bands.iter_mut().zip(sources) {
-            for (precinct_block, state) in band.blocks.iter().enumerate() {
+        for (band, source) in bands.iter().zip(sources) {
+            let band_blocks = &mut blocks[band.first_block..band.first_block + band.block_count()];
+            for (precinct_block, state) in band_blocks.iter().enumerate() {
                 let index = Self::band_block_index(
                     &band.range,
                     source.blocks_across,
                     precinct_block as u32,
                 );
                 if state.passes_written == 0 && source.included_passes[index] > 0 {
-                    band.inclusion.set(precinct_block as u32, layer);
+                    band.tree
+                        .set(band.inclusion_nodes(nodes), precinct_block as u32, layer);
                 }
             }
-            for (precinct_block, state) in band.blocks.iter_mut().enumerate() {
+            for (precinct_block, state) in band_blocks.iter_mut().enumerate() {
                 let index = Self::band_block_index(
                     &band.range,
                     source.blocks_across,
@@ -276,8 +315,12 @@ impl PrecinctCoder {
                 );
                 let new_passes = source.included_passes[index] - state.passes_written;
                 if state.passes_written == 0 {
-                    band.inclusion
-                        .encode(&mut writer, precinct_block as u32, layer + 1);
+                    band.tree.encode(
+                        band.inclusion_nodes(nodes),
+                        &mut writer,
+                        precinct_block as u32,
+                        layer + 1,
+                    );
                 } else {
                     writer.write_bit(new_passes > 0);
                 }
@@ -286,8 +329,12 @@ impl PrecinctCoder {
                 }
                 if state.passes_written == 0 {
                     state.length_bits = INITIAL_LENGTH_BITS;
-                    band.imsb
-                        .encode(&mut writer, precinct_block as u32, IMSB_THRESHOLD);
+                    band.tree.encode(
+                        band.imsb_nodes(nodes),
+                        &mut writer,
+                        precinct_block as u32,
+                        IMSB_THRESHOLD,
+                    );
                 }
                 writer.write_pass_count(new_passes);
                 // only a block's final pass is terminated, so the new passes are one segment
@@ -312,8 +359,9 @@ impl PrecinctCoder {
         writer.flush();
         let header_length = out.len() - start;
 
-        for (band, source) in self.bands.iter_mut().zip(sources) {
-            for (precinct_block, state) in band.blocks.iter_mut().enumerate() {
+        for (band, source) in bands.iter().zip(sources) {
+            let band_blocks = &mut blocks[band.first_block..band.first_block + band.block_count()];
+            for (precinct_block, state) in band_blocks.iter_mut().enumerate() {
                 let index = Self::band_block_index(
                     &band.range,
                     source.blocks_across,

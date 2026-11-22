@@ -488,7 +488,7 @@ impl ImageEncoder {
             .zip(&allocation.included)
             .collect();
         let written = run_tasks(tasks, self.threads, |((writer, bands), included)| {
-            writer.write_packets(bands, included, true)
+            writer.write_packets(bands, included)
         });
 
         for (tile, written) in written.iter().enumerate() {
