@@ -18,7 +18,6 @@
 #pragma once
 
 #include <atomic>
-#include <cfloat>
 #include <cstdint>
 #include <climits>
 #include <memory>
@@ -47,9 +46,6 @@ struct RateControlStats
     // feasible algorithm stats
     minimumSlope_.store(USHRT_MAX);
     maximumSlope_.store(0);
-    // simple algorithm stats
-    minRDSlope_.store(DBL_MAX);
-    maxRDSlope_.store(-1.0);
   }
 
   uint16_t numcomps_;
@@ -64,10 +60,6 @@ struct RateControlStats
   std::atomic<uint16_t> minimumSlope_{USHRT_MAX};
   std::atomic<uint16_t> maximumSlope_{0};
 
-  // Simple bisect: min/max raw RD slopes (double-domain)
-  std::atomic<double> minRDSlope_{DBL_MAX};
-  std::atomic<double> maxRDSlope_{-1.0};
-
   void updateMinSlope(uint16_t val)
   {
     auto cur = minimumSlope_.load(std::memory_order_relaxed);
@@ -80,22 +72,6 @@ struct RateControlStats
   {
     auto cur = maximumSlope_.load(std::memory_order_relaxed);
     while(val > cur && !maximumSlope_.compare_exchange_weak(cur, val, std::memory_order_relaxed))
-    {
-    }
-  }
-
-  void updateMinRDSlope(double val)
-  {
-    auto cur = minRDSlope_.load(std::memory_order_relaxed);
-    while(val < cur && !minRDSlope_.compare_exchange_weak(cur, val, std::memory_order_relaxed))
-    {
-    }
-  }
-
-  void updateMaxRDSlope(double val)
-  {
-    auto cur = maxRDSlope_.load(std::memory_order_relaxed);
-    while(val > cur && !maxRDSlope_.compare_exchange_weak(cur, val, std::memory_order_relaxed))
     {
     }
   }

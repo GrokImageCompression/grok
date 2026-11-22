@@ -55,7 +55,7 @@ size_t decodeAndCountDifferences(std::vector<uint8_t>& stream, uint64_t length)
 }
 
 // returns the differing sample count, SIZE_MAX on a failed encode or decode
-size_t roundTrip(GRK_RATE_CONTROL_ALGORITHM algorithm, double ratio, uint64_t* length)
+size_t roundTrip(double ratio, uint64_t* length)
 {
   grk_image_comp components[3] = {};
   for(auto& c : components)
@@ -89,7 +89,6 @@ size_t roundTrip(GRK_RATE_CONTROL_ALGORITHM algorithm, double ratio, uint64_t* l
   params.irreversible = false;
   params.allocation_by_rate_distortion = true;
   params.layer_rate[0] = ratio;
-  params.rate_control_algorithm = algorithm;
 
   std::vector<uint8_t> stream((size_t)kWidth * kHeight * 3 * 4);
   grk_stream_params streamParams = {};
@@ -109,35 +108,20 @@ int main()
 {
   grk_initialize(nullptr, 0, nullptr);
   int failures = 0;
-  grk_cparameters defaultParameters;
-  grk_compress_set_default_params(&defaultParameters);
-  if(defaultParameters.rate_control_algorithm != GRK_RATE_CONTROL_PCRD_OPT)
-  {
-    std::fprintf(stderr, "FAIL: default rate control is not PCRD_OPT\n");
-    ++failures;
-  }
   const uint64_t rawBytes = (uint64_t)kWidth * kHeight * 3 * 12 / 8;
-  const GRK_RATE_CONTROL_ALGORITHM algorithms[] = {GRK_RATE_CONTROL_BISECT,
-                                                   GRK_RATE_CONTROL_PCRD_OPT};
-  const char* names[] = {"bisect", "pcrd"};
   // the pattern compresses to under a tenth of its raw size, so all of these fit
   const double ratios[] = {1.0, 1.5, 3.0};
-  for(int a = 0; a < 2; ++a)
+  for(double ratio : ratios)
   {
-    for(double ratio : ratios)
+    uint64_t length = 0;
+    size_t differences = roundTrip(ratio, &length);
+    std::printf("%.1f:1: %llu bytes against a %llu byte budget, %zu samples differ\n", ratio,
+                (unsigned long long)length, (unsigned long long)(rawBytes / ratio), differences);
+    if(differences != 0)
     {
-      uint64_t length = 0;
-      size_t differences = roundTrip(algorithms[a], ratio, &length);
-      std::printf("%s at %.1f:1: %llu bytes against a %llu byte budget, %zu samples differ\n",
-                  names[a], ratio, (unsigned long long)length,
-                  (unsigned long long)(rawBytes / ratio), differences);
-      if(differences != 0)
-      {
-        std::fprintf(stderr,
-                     "FAIL: %s at %.1f:1 lost samples under a budget the whole stream fits\n",
-                     names[a], ratio);
-        ++failures;
-      }
+      std::fprintf(stderr, "FAIL: %.1f:1 lost samples under a budget the whole stream fits\n",
+                   ratio);
+      ++failures;
     }
   }
   grk_deinitialize();

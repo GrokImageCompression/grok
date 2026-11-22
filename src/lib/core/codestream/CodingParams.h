@@ -403,8 +403,6 @@ struct EncodingParams
   bool writePlt_;
   /* write TLM marker */
   bool writeTlm_;
-  /* rate control algorithm */
-  uint32_t rateControlAlgorithm_;
   /* progressive rate control during T1 encoding */
   bool progressiveRateControl_;
   /* log domain slope threshold carried over from a previous frame, 0 for none */

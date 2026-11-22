@@ -299,17 +299,6 @@ typedef struct _grk_raw_cparameters
 } grk_raw_cparameters;
 
 /**
- * @brief Rate control algorithms
- * @param GRK_RATE_CONTROL_BISECT: bisect with all truncation points
- * @param GRK_RATE_CONTROL_PCRD_OPT: PCRD: bisect with only feasible truncation points
- */
-typedef enum _GRK_RATE_CONTROL_ALGORITHM
-{
-  GRK_RATE_CONTROL_BISECT,
-  GRK_RATE_CONTROL_PCRD_OPT
-} GRK_RATE_CONTROL_ALGORITHM;
-
-/**
  * @brief Metadata types written to JP2 UUID boxes during compression.
  *
  * Combine these values in @ref grk_cparameters::metadata_write_flags. Zero
@@ -1836,7 +1825,6 @@ typedef struct _grk_cparameters
 
   bool apply_icc; /* apply ICC */
 
-  GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm; /* rate control algorithm */
   uint32_t num_threads; /* number of threads. 1 => the codec compresses on its own
                            inline executor instead of the global thread pool, so
                            concurrent single-threaded compresses are independent */

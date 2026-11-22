@@ -333,7 +333,6 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
       slopeEstimator_->updateStats(slopes, rates, numPasses, num_pix);
     }
 
-    // Collect slope stats for both bisect algorithms
     for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
     {
       auto pass = cblk->getPass(passno);
@@ -343,26 +342,6 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
       {
         rateControlStats_.updateMinSlope(pass->slope_);
         rateControlStats_.updateMaxSlope(pass->slope_);
-      }
-
-      // Simple bisect: track min/max raw RD slopes
-      int32_t dr;
-      double dd;
-      if(passno == 0)
-      {
-        dr = (int32_t)pass->rate_;
-        dd = pass->distortiondec_;
-      }
-      else
-      {
-        dr = (int32_t)(pass->rate_ - cblk->getPass(passno - 1)->rate_);
-        dd = pass->distortiondec_ - cblk->getPass(passno - 1)->distortiondec_;
-      }
-      if(dr != 0)
-      {
-        double rdslope = dd / dr;
-        rateControlStats_.updateMinRDSlope(rdslope);
-        rateControlStats_.updateMaxRDSlope(rdslope);
       }
     }
   }

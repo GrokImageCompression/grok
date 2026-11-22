@@ -125,8 +125,7 @@ uint64_t
     compressImage(GRK_SUPPORTED_FILE_FMT format, uint32_t profileBytes,
                   std::initializer_list<double> rates, uint32_t tileSize, bool irreversible,
                   std::vector<uint8_t>* stream,
-                  StrictCompressionRatios strictCompressionRatios = StrictCompressionRatios::no,
-                  GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT)
+                  StrictCompressionRatios strictCompressionRatios = StrictCompressionRatios::no)
 {
   auto image = makeImage(profileBytes);
   if(!image)
@@ -141,7 +140,6 @@ uint64_t
   params.irreversible = irreversible;
   params.allocation_by_rate_distortion = true;
   params.strict_compression_ratios = strictCompressionRatios == StrictCompressionRatios::yes;
-  params.rate_control_algorithm = rateControlAlgorithm;
   params.numlayers = 0;
   for(double rate : rates)
     params.layer_rate[params.numlayers++] = rate;
@@ -269,14 +267,11 @@ void expectDecodes(const char* name, GRK_SUPPORTED_FILE_FMT format, uint32_t pro
               differences);
 }
 
-void expectEmptyInitialLayers(
-    const char* name, uint32_t profileBytes, std::initializer_list<double> rates,
-    uint16_t emptyLayers,
-    GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT)
+void expectEmptyInitialLayers(const char* name, uint32_t profileBytes,
+                              std::initializer_list<double> rates, uint16_t emptyLayers)
 {
   std::vector<uint8_t> stream;
-  uint64_t length = compressImage(GRK_FMT_JP2, profileBytes, rates, 0, true, &stream,
-                                  StrictCompressionRatios::no, rateControlAlgorithm);
+  uint64_t length = compressImage(GRK_FMT_JP2, profileBytes, rates, 0, true, &stream);
   auto firstLayer = length == 0 ? std::vector<int32_t>{} : decompressSamples(stream, length, 1);
   auto allLayers = length == 0 ? std::vector<int32_t>{} : decompressSamples(stream, length);
   bool invalid = firstLayer.empty() || allLayers.empty() || firstLayer == allLayers;
@@ -307,12 +302,8 @@ int main()
                 {80.0, 40.0, 20.0, 4.0}, 0, true, false, kFinalBudget + 1024);
   expectEmptyInitialLayers("consecutive empty layers remain identical", kOversizeProfile,
                            {80.0, 40.0, 20.0, 4.0}, 3);
-  expectEmptyInitialLayers("bisect keeps consecutive empty layers identical", kOversizeProfile,
-                           {80.0, 40.0, 20.0, 4.0}, 3, GRK_RATE_CONTROL_BISECT);
   expectEmptyInitialLayers("empty first layer before a lossless layer", kOversizeProfile,
                            {40.0, 0.0}, 1);
-  expectEmptyInitialLayers("bisect empty first layer before a lossless layer", kOversizeProfile,
-                           {40.0, 0.0}, 1, GRK_RATE_CONTROL_BISECT);
   expectDecodes("single layer keeps its data under a large profile", GRK_FMT_JP2, kOversizeProfile,
                 {40.0}, 0, false, true, 0);
   expectDecodes("single layer keeps its data below the tile-part overhead", GRK_FMT_J2K, 0,

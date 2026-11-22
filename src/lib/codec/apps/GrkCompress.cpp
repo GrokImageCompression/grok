@@ -395,7 +395,6 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     if(initParams.parameters.cod_format == GRK_FMT_MJ2 && initParams.inputFolder.set_imgdir)
     {
       auto mct = initParams.parameters.mct;
-      auto rate_control_algorithm = initParams.parameters.rate_control_algorithm;
       std::string mj2OutputPath = initParams.parameters.outfile;
       grk_object* codec = nullptr;
       bool first = true;
@@ -426,7 +425,6 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
       {
         spdlog::info("Frame {}: \"{}\"", frameCount, filePath.filename().string());
         initParams.parameters.mct = mct;
-        initParams.parameters.rate_control_algorithm = rate_control_algorithm;
         initParams.parameters.decod_format = GRK_FMT_UNK;
 
         grk_image* image = loadInputImage(filePath.string().c_str(), &initParams.parameters);
@@ -785,7 +783,6 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   /* parse input and get user compressing parameters */
   initParams->parameters.mct =
       255; /* This will be set later according to the input image or the provided option */
-  initParams->parameters.rate_control_algorithm = GRK_RATE_CONTROL_PCRD_OPT;
   GrkRC parseRc = parseCommandLine(argc, argv, initParams);
   if(parseRc != GrkRCSuccess)
     return parseRc;
@@ -856,7 +853,6 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   // 3. directory encode (non-MJ2)
   {
     auto mct = initParams->parameters.mct;
-    auto rate_control_algorithm = initParams->parameters.rate_control_algorithm;
     GrkRC rc = GrkRCFail;
     for(const auto& entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
     {
@@ -868,7 +864,6 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
         continue;
       }
       initParams->parameters.mct = mct;
-      initParams->parameters.rate_control_algorithm = rate_control_algorithm;
       if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
         break;
     }
@@ -942,8 +937,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   int32_t deviceId;
   uint8_t resolutions;
   uint32_t qfactor = 0;
-  uint32_t rateControlAlgorithm, repetitions, numThreads, kernelBuildOptions, duration, mode,
-      guardBits, mct;
+  uint32_t repetitions, numThreads, kernelBuildOptions, duration, mode, guardBits, mct;
   std::string tileParts;
   uint16_t rsiz;
   uint16_t slopeHint;
@@ -953,9 +947,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC, strictCompressionRatios;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
-  auto rateControlAlgorithmOpt =
-      app.add_option("-A,--rate-control-algorithm", rateControlAlgorithm, "Rate control algorithm")
-          ->default_val(0);
   auto codeBlockDimsOpt =
       app.add_option("-b,--code-block-dims", codeBlockDims, "Code block dimensions");
   auto precinctDimsOpt = app.add_option("-c,--precinct-dims", precinctDims, "Precinct dimensions");
@@ -1105,14 +1096,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->apply_xyz_transform = true;
   if(repetitionsOpt->count() > 0)
     parameters->repeats = repetitions;
-  if(rateControlAlgorithmOpt->count() > 0)
-  {
-    uint32_t algo = rateControlAlgorithm;
-    if(algo > GRK_RATE_CONTROL_PCRD_OPT)
-      spdlog::warn("Rate control algorithm %u is not valid. Using default");
-    else
-      parameters->rate_control_algorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgorithm;
-  }
   if(numThreadsOpt->count() > 0)
     parameters->num_threads = numThreads;
   if(deviceIdOpt->count() > 0)

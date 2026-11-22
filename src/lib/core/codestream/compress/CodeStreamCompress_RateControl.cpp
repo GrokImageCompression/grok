@@ -97,7 +97,7 @@ bool CodeStreamCompress::usesImageWideRateControl(uint32_t numTiles)
 {
   auto& enc = cp_.codingParams_.enc_;
   if(numTiles <= 1 || !enc.allocationByRateDistortion_ || enc.allocationByFixedQuality_ ||
-     enc.maxComponentRate_ || enc.rateControlAlgorithm_ == GRK_RATE_CONTROL_BISECT)
+     enc.maxComponentRate_)
     return false;
   for(uint32_t tileIndex = 0; tileIndex < numTiles; ++tileIndex)
   {

@@ -120,12 +120,6 @@ Apply ICC profile before compression, if present.
 
 Select the metadata written to JP2 UUID boxes. The flags are `1` for EXIF, `2` for IPTC, `4` for XMP and `8` for none. Add the values to select more than one type. The default `0` writes all three types. The none flag overrides the type flags. GeoTIFF metadata is always written.
 
-`-A, --rate--control-algorithm [0|1]`
-
-Select algorithm used for rate control.
-* 0: Bisection search for optimal threshold using all code passes in code blocks. Slightly higher PSNR than algorithm 1.
-* 1: Bisection search for optimal threshold using only feasible truncation points, on convex hull (default). Faster than algorithm 0.
-
 `-r, --compression-ratios [<compression ratio>,<compression ratio>,...]`
 
 Note: not supported for Part 15 (HTJ2K) compression
@@ -255,8 +249,7 @@ Interoperable Master Format (IMF) compliant codestream.
 
 `-P, -POC [T<tile number 0>=resolution number start>,component number start,layer number end,resolution number end,component number end,progression order/T<tile number 1>= ...]`
 
-)HELPTEXT"
-    R"HELPTEXT(Progression order change. This specifies a list of progression orders and their bounds if a progression order change is desired.
+Progression order change. This specifies a list of progression orders and their bounds if a progression order change is desired.
 Note: there must be at least two progression orders specified.
 
 Example:
@@ -270,7 +263,8 @@ SOP marker is added before each packet. Default: no SOP.
 
 EPH marker is added after each packet header. Default: no EPH.
 
-`-M, -mode [value]`
+)HELPTEXT"
+    R"HELPTEXT(`-M, -mode [value]`
 
 Non-default encode modes. There are 7 modes available.
 The first six are:

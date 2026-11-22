@@ -117,12 +117,6 @@ typedef enum
   GPUP_CODEC_MJ2
 } gpup_codec_fmt;
 
-typedef enum
-{
-  GPUP_RATE_CONTROL_BISECT,
-  GPUP_RATE_CONTROL_PCRD_OPT
-} gpup_rate_control;
-
 /* layout of the frames an in-memory batch is fed */
 typedef enum
 {
@@ -365,7 +359,6 @@ typedef struct _gpup_compress_params
   uint64_t max_comp_size;
   uint16_t rsiz;
   uint16_t framerate;
-  gpup_rate_control rateControlAlgorithm;
   uint32_t numThreads;
   int32_t deviceId;
   uint32_t duration;

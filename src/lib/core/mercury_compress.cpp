@@ -92,7 +92,6 @@ namespace
            parameters->mct != 2 && !parameters->mct_data && !parameters->qfactor &&
            !parameters->quant_step_shift && !(parameters->csty & (CP_CSTY_SOP | CP_CSTY_EPH)) &&
            !parameters->progressive_rate_control &&
-           parameters->rate_control_algorithm == GRK_RATE_CONTROL_PCRD_OPT &&
            !(parameters->rsiz & GRK_PROFILE_PART2) && parameters->tx0 == 0 && parameters->ty0 == 0;
   }
 

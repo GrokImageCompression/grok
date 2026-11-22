@@ -209,16 +209,6 @@ The default \f[CR]0\f[R] writes all three types.
 The none flag overrides the type flags.
 GeoTIFF metadata is always written.
 .PP
-\f[CR]\-A, \-\-rate\-\-control\-algorithm [0|1]\f[R]
-.PP
-Select algorithm used for rate control.
-* 0: Bisection search for optimal threshold using all code passes in
-code blocks.
-Slightly higher PSNR than algorithm 1.
-* 1: Bisection search for optimal threshold using only feasible
-truncation points, on convex hull (default).
-Faster than algorithm 0.
-.PP
 \f[CR]\-r, \-\-compression\-ratios [<compression ratio>,<compression ratio>,...]\f[R]
 .PP
 Note: not supported for Part 15 (HTJ2K) compression

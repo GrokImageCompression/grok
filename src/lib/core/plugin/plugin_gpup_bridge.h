@@ -70,7 +70,6 @@ inline void grk_to_gpup_compress_params(const grk_cparameters* src, gpup_compres
   dst->max_comp_size = src->max_comp_size;
   dst->rsiz = src->rsiz;
   dst->framerate = src->framerate;
-  dst->rateControlAlgorithm = (gpup_rate_control)src->rate_control_algorithm;
   dst->numThreads = src->num_threads;
   dst->deviceId = src->device_id;
   dst->duration = src->duration;

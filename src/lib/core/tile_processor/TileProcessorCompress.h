@@ -110,8 +110,6 @@ private:
   bool layerNeedsMinimumSizeCheck(uint16_t layno, bool disableRateControl);
   bool makeSingleLosslessLayer();
   void makeLayerFinal(uint16_t layno);
-  bool pcrdBisectSimple(uint32_t* p_data_written, bool disableRateControl);
-  void makeLayerSimple(uint16_t layno, double thresh, bool finalAttempt);
   bool pcrdBisectFeasible(uint32_t* p_data_written, bool disableRateControl);
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
   void syncPluginCodeBlockData();

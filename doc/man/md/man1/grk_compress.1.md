@@ -132,12 +132,6 @@ Apply ICC profile before compression, if present.
 
 Select the metadata written to JP2 UUID boxes. The flags are `1` for EXIF, `2` for IPTC, `4` for XMP and `8` for none. Add the values to select more than one type. The default `0` writes all three types. The none flag overrides the type flags. GeoTIFF metadata is always written.
 
-`-A, --rate--control-algorithm [0|1]`
-
-Select algorithm used for rate control.
-* 0: Bisection search for optimal threshold using all code passes in code blocks. Slightly higher PSNR than algorithm 1.
-* 1: Bisection search for optimal threshold using only feasible truncation points, on convex hull (default). Faster than algorithm 0.
-
 `-r, --compression-ratios [<compression ratio>,<compression ratio>,...]`
 
 Note: not supported for Part 15 (HTJ2K) compression
