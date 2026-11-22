@@ -940,9 +940,6 @@ static inline uint32_t uint_floorlog2(uint32_t a)
   return l;
 }
 
-// 64 rows encoded fastest against 16, 256 and 1024 on 5 and 120 megapixel RGB
-const uint32_t pnmRowsPerRead = 64;
-
 template<typename WT, typename T>
 bool PNMFormat::readRows(uint32_t rows, T* const* planes, size_t stride,
                          std::vector<uint8_t>& fileBytes, std::vector<T>& wideSamples)
@@ -1003,9 +1000,9 @@ bool PNMFormat::readByteAlignedSamples(grk_image* image)
   std::vector<uint8_t> fileBytes;
   std::vector<T> wideSamples;
   std::vector<T*> planes(numcomps_);
-  for(uint32_t row = 0; row < height; row += pnmRowsPerRead)
+  for(uint32_t row = 0; row < height; row += stripReadRows)
   {
-    uint32_t rows = (std::min)(pnmRowsPerRead, height - row);
+    uint32_t rows = (std::min)(stripReadRows, height - row);
     for(uint16_t c = 0; c < numcomps_; ++c)
       planes[c] = (T*)image->comps[c].data + row * stride;
     bool read = prec_ <= 8
@@ -1142,7 +1139,7 @@ bool PNMFormat::pushStrips(grk_object* codec)
 {
   uint32_t width = pnmHeader_.width;
   uint32_t height = pnmHeader_.height;
-  uint32_t rowsPerStrip = (std::min)(pnmRowsPerRead, height);
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height);
   std::vector<uint8_t> fileBytes;
   std::vector<T> wideSamples;
   std::vector<T*> planePointers(numcomps_);

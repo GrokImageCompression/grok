@@ -87,7 +87,7 @@ METHODDEF(void) my_error_exit(j_common_ptr cinfo)
  * temporary files are deleted if the program is interrupted.  See libjpeg.txt.
  */
 
-class JPEGFormat : public ImageFormat
+class JPEGFormat : public ImageFormat, public IStripReader
 {
 public:
   JPEGFormat(void);
@@ -104,10 +104,18 @@ public:
   std::optional<ImageFileHeader> readHeader(const std::string& filename,
                                             grk_cparameters* parameters) override;
   grk_image* readPixels(grk_cparameters* parameters, grk_data_type dataType) override;
+  grk_image* readStripHeader(grk_cparameters* parameters, grk_data_type dataType) override;
+  bool pushStrips(grk_object* codec, grk_data_type dataType) override;
 
 private:
+  grk_image* startImage(grk_cparameters* parameters, grk_data_type dataType, bool allocData);
   template<typename T>
-  void readScanlines(JSAMPARRAY rowBuffer);
+  bool readRows(uint32_t rows, T* const* planes, size_t stride);
+  bool destroyDecompress(void);
+  bool finishDecompress(void);
+  template<typename T>
+  bool pushStrips(grk_object* codec);
+  JSAMPARRAY rowBuffer_ = nullptr;
   bool imagetojpeg(grk_image* image, const char* filename, uint32_t compression_level);
 
   bool success;
@@ -195,7 +203,30 @@ cleanup:
   return std::nullopt;
 }
 
-inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+inline bool JPEGFormat::destroyDecompress(void)
+{
+  jpeg_destroy_decompress(&decompressInfo_);
+  if(decompressErrorManager_.pub.num_warnings != 0)
+  {
+    spdlog::warn("JPEG library reported {} of corrupt data warnings",
+                 (int)decompressErrorManager_.pub.num_warnings);
+  }
+  return fileIO_->close();
+}
+
+inline bool JPEGFormat::finishDecompress(void)
+{
+  if(setjmp(decompressErrorManager_.setjmp_buffer))
+  {
+    destroyDecompress();
+    return false;
+  }
+  jpeg_finish_decompress(&decompressInfo_);
+  return destroyDecompress();
+}
+
+inline grk_image* JPEGFormat::startImage(grk_cparameters* parameters, grk_data_type dataType,
+                                         bool allocData)
 {
   JDIMENSION w = decompressInfo_.image_width;
   JDIMENSION h = decompressInfo_.image_height;
@@ -203,14 +234,11 @@ inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_t
   grk_image_comp cmptparm[3]; /* mono or RGB */
   JOCTET* icc_data_ptr = nullptr;
   unsigned int icc_data_len = 0;
-  JSAMPARRAY rowBuffer; /* Output row buffer */
-  int row_stride; /* physical row width in output buffer */
+  // locals assigned after setjmp keep their value through libjpeg's longjmp only when volatile
+  grk_image* volatile image = nullptr;
 
   if(setjmp(decompressErrorManager_.setjmp_buffer))
-  {
-    success = false;
     goto cleanup;
-  }
 
   // read ICC profile
   if(!read_icc_profile(&decompressInfo_, &icc_data_ptr, &icc_data_len))
@@ -218,12 +246,7 @@ inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_t
     spdlog::warn("jpegtoimage: Failed to read ICC profile");
   }
 
-  /* Step 5: Start decompressor */
-
   jpeg_start_decompress(&decompressInfo_);
-  /* We can ignore the return value since suspension is not possible
-   * with the stdio data source.
-   */
 
   memset(&cmptparm[0], 0, 3 * sizeof(grk_image_comp));
   for(int j = 0; j < decompress_num_comps; j++)
@@ -236,18 +259,12 @@ inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_t
     cmptparm[j].h = h;
   }
 
-  image_ = grk_image_new(decompress_num_comps, &cmptparm[0],
-                         decompress_num_comps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY, true);
-  if(!image_)
-  {
-    success = false;
+  image = grk_image_new(decompress_num_comps, &cmptparm[0],
+                        decompress_num_comps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY, allocData);
+  if(!image)
     goto cleanup;
-  }
   if(icc_data_ptr && icc_data_len)
-  {
-    copyICC(image_, icc_data_ptr, icc_data_len);
-    icc_data_len = 0;
-  }
+    copyICC(image, icc_data_ptr, icc_data_len);
   free(icc_data_ptr);
   icc_data_ptr = nullptr;
   // extract EXIF from APP1 markers
@@ -259,129 +276,117 @@ inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_t
       size_t exif_len = marker->data_length - 6;
       if(exif_len > 0)
       {
-        createMeta(image_);
-        image_->meta->exif_len = exif_len;
-        image_->meta->exif_buf = new uint8_t[exif_len];
-        memcpy(image_->meta->exif_buf, marker->data + 6, exif_len);
+        createMeta(image);
+        image->meta->exif_len = exif_len;
+        image->meta->exif_buf = new uint8_t[exif_len];
+        memcpy(image->meta->exif_buf, marker->data + 6, exif_len);
       }
       break;
     }
   }
-  /* set image_ offset and reference grid */
-  image_->x0 = parameters->image_offset_x0;
-  image_->x1 = !image_->x0 ? (w - 1) * 1 + 1 : image_->x0 + (w - 1) * 1 + 1;
-  if(image_->x1 <= image_->x0)
+  /* set image offset and reference grid */
+  image->x0 = parameters->image_offset_x0;
+  image->x1 = !image->x0 ? (w - 1) * 1 + 1 : image->x0 + (w - 1) * 1 + 1;
+  if(image->x1 <= image->x0)
   {
-    spdlog::error("jpegtoimage: Bad value for image_->x1({}) vs. "
-                  "image_->x0({}).",
-                  image_->x1, image_->x0);
-    success = false;
+    spdlog::error("jpegtoimage: Bad value for image->x1({}) vs. "
+                  "image->x0({}).",
+                  image->x1, image->x0);
     goto cleanup;
   }
 
-  image_->y0 = parameters->image_offset_y0;
-  image_->y1 = !image_->y0 ? (h - 1) * 1 + 1 : image_->y0 + (h - 1) * 1 + 1;
+  image->y0 = parameters->image_offset_y0;
+  image->y1 = !image->y0 ? (h - 1) * 1 + 1 : image->y0 + (h - 1) * 1 + 1;
 
-  if(image_->y1 <= image_->y0)
+  if(image->y1 <= image->y0)
   {
-    spdlog::error("jpegtoimage: Bad value for image_->y1({}) vs. "
-                  "image_->y0({}).",
-                  image_->y1, image_->y0);
-    success = false;
+    spdlog::error("jpegtoimage: Bad value for image->y1({}) vs. "
+                  "image->y0({}).",
+                  image->y1, image->y0);
     goto cleanup;
   }
 
-  /* We may need to do some setup of our own at this point before reading
-   * the data.  After jpeg_start_decompress() we have the correct scaled
-   * output image_ dimensions available, as well as the output colormap
-   * if we asked for color quantization.
-   * In this example, we need to make an output work buffer of the right size.
-   */
-  /* JSAMPLEs per row in output buffer */
-  row_stride = (int)decompressInfo_.output_width * decompressInfo_.output_components;
-  /* Make a one-row-high sample array that will go away when done with image_ */
-  rowBuffer = (*decompressInfo_.mem->alloc_sarray)((j_common_ptr)&decompressInfo_, JPOOL_IMAGE,
-                                                   (JDIMENSION)row_stride, 1);
-  if(!rowBuffer)
-  {
-    success = false;
-    goto cleanup;
-  }
-  success = readSamplesAs(dataType, [&](auto sample) {
-    readScanlines<decltype(sample)>(rowBuffer);
-    return true;
-  });
+  // libjpeg frees JPOOL_IMAGE allocations when decompression finishes or fails
+  rowBuffer_ = (*decompressInfo_.mem->alloc_sarray)(
+      (j_common_ptr)&decompressInfo_, JPOOL_IMAGE,
+      decompressInfo_.output_width * (JDIMENSION)decompressInfo_.output_components, 1);
+  return image;
 
-  /* Step 7: Finish decompression */
-
-  jpeg_finish_decompress(&decompressInfo_);
-/* We can ignore the return value since suspension is not possible
- * with the stdio data source.
- */
 cleanup:
   free(icc_data_ptr);
-  jpeg_destroy_decompress(&decompressInfo_);
-
-  /* At this point you may want to check to see whether any corrupt-data
-   * warnings occurred (test whether jerr.pub.num_warnings is nonzero).
-   */
-  if(decompressErrorManager_.pub.num_warnings != 0)
-  {
-    spdlog::warn("JPEG library reported {} of corrupt data warnings",
-                 (int)decompressErrorManager_.pub.num_warnings);
-  }
-
-  if(!success)
-  {
-    grk_object_unref(&image_->obj);
-    image_ = nullptr;
-  }
-  /* After finish_decompress, we can close the input file.
-   * Here we postpone it until after no more JPEG errors are possible,
-   * so as to simplify the setjmp error logic above.  (Actually, I don't
-   * think that jpeg_destroy can do an error exit, but why assume anything...)
-   */
-  if(!fileIO_->close())
-  {
-    image_ = nullptr;
-  }
-  return image_;
+  destroyDecompress();
+  if(image)
+    grk_object_unref(&image->obj);
+  return nullptr;
 }
 
 template<typename T>
-void JPEGFormat::readScanlines(JSAMPARRAY rowBuffer)
+bool JPEGFormat::readRows(uint32_t rows, T* const* planes, size_t stride)
 {
-  JDIMENSION w = decompressInfo_.image_width;
-  uint16_t decompress_num_comps = image_->numcomps;
-  uint32_t dest_stride = image_->comps[0].stride;
-  T* planes[3];
-  for(uint16_t j = 0; j < decompress_num_comps; j++)
-    planes[j] = (T*)image_->comps[j].data;
-  // libjpeg frees JPOOL_IMAGE allocations when decompression finishes or fails
-  auto row = (T*)(*decompressInfo_.mem->alloc_large)((j_common_ptr)&decompressInfo_, JPOOL_IMAGE,
-                                                     (size_t)w * decompress_num_comps * sizeof(T));
-
-  /* Here we use the library's state variable cinfo.output_scanline as the
-   * loop counter, so that we don't have to keep track ourselves.
-   */
-  while(decompressInfo_.output_scanline < decompressInfo_.output_height)
+  if(setjmp(decompressErrorManager_.setjmp_buffer))
+    return false;
+  JDIMENSION w = decompressInfo_.output_width;
+  uint16_t numcomps = (uint16_t)decompressInfo_.output_components;
+  T* rowPlanes[3];
+  for(uint32_t r = 0; r < rows; ++r)
   {
-    /* jpeg_read_scanlines expects an array of pointers to scanlines.
-     * Here the array is only one element long, but you could ask for
-     * more than one scanline at a time if that's more convenient.
-     */
-    jpeg_read_scanlines(&decompressInfo_, rowBuffer, 1);
-
-    // convert 8 bit buffer to sample buffer
-    for(size_t i = 0; i < w * decompress_num_comps; i++)
-      row[i] = rowBuffer[0][i];
-
-    // convert to planar
-    grk::hwy_deinterleave(row, planes, w, decompress_num_comps);
-
-    for(uint16_t j = 0; j < decompress_num_comps; j++)
-      planes[j] += dest_stride;
+    jpeg_read_scanlines(&decompressInfo_, rowBuffer_, 1);
+    for(uint16_t c = 0; c < numcomps; ++c)
+      rowPlanes[c] = planes[c] + r * stride;
+    grk::hwy_deinterleave((const uint8_t*)rowBuffer_[0], rowPlanes, w, numcomps);
   }
+  return true;
+}
+
+inline grk_image* JPEGFormat::readPixels(grk_cparameters* parameters, grk_data_type dataType)
+{
+  auto image = startImage(parameters, dataType, true);
+  if(!image)
+    return nullptr;
+  bool read = readSamplesAs(dataType, [&](auto sample) {
+    using T = decltype(sample);
+    T* planes[3];
+    for(uint16_t c = 0; c < image->numcomps; ++c)
+      planes[c] = (T*)image->comps[c].data;
+    return readRows<T>(decompressInfo_.output_height, planes, image->comps[0].stride);
+  });
+  bool closed = read ? finishDecompress() : destroyDecompress();
+  if(read && closed)
+    return image;
+  grk_object_unref(&image->obj);
+  return nullptr;
+}
+
+inline grk_image* JPEGFormat::readStripHeader(grk_cparameters* parameters, grk_data_type dataType)
+{
+  return startImage(parameters, dataType, false);
+}
+
+template<typename T>
+bool JPEGFormat::pushStrips(grk_object* codec)
+{
+  uint32_t width = decompressInfo_.output_width;
+  uint32_t height = decompressInfo_.output_height;
+  auto numcomps = (uint16_t)decompressInfo_.output_components;
+  uint32_t rowsPerStrip = (std::min)(stripReadRows, height);
+  std::vector<T*> planePointers(numcomps);
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
+    uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
+    for(uint16_t c = 0; c < numcomps; ++c)
+      planePointers[c] = planes[c].data();
+    return readRows<T>(rows, planePointers.data(), width);
+  };
+  if(!pushStripsReadAhead<T>(codec, numcomps, width, height, rowsPerStrip, readStrip))
+  {
+    destroyDecompress();
+    return false;
+  }
+  return finishDecompress();
+}
+
+inline bool JPEGFormat::pushStrips(grk_object* codec, grk_data_type dataType)
+{
+  return readSamplesAs(dataType, [&](auto sample) { return pushStrips<decltype(sample)>(codec); });
 }
 
 inline JPEGFormat::JPEGFormat(void)

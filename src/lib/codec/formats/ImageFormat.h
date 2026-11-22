@@ -48,6 +48,9 @@ bool readSamplesAs(grk_data_type dataType, ReadSamples readSamples)
   }
 }
 
+// 64 rows encoded fastest against 16, 256 and 1024 on 5 and 120 megapixel RGB PNM
+const uint32_t stripReadRows = 64;
+
 template<typename T, typename ReadStrip>
 bool pushStripsReadAhead(grk_object* codec, uint16_t numcomps, uint32_t width, uint32_t height,
                          uint32_t rowsPerStrip, ReadStrip readStrip)

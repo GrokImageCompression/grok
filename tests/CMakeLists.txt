@@ -911,6 +911,14 @@ add_executable(grk_pnm_strip_read_test GrkPnmStripReadTest.cpp)
 target_link_libraries(grk_pnm_strip_read_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_pnm_strip_read_test COMMAND grk_pnm_strip_read_test)
 
+if(GROK_HAVE_LIBJPEG)
+  add_executable(grk_jpeg_strip_read_test GrkJpegStripReadTest.cpp)
+  target_include_directories(grk_jpeg_strip_read_test PRIVATE ${JPEG_INCLUDE_DIRS})
+  target_link_libraries(grk_jpeg_strip_read_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME}
+                        ${JPEG_LIBNAME})
+  add_test(NAME grk_jpeg_strip_read_test COMMAND grk_jpeg_strip_read_test)
+endif()
+
 add_executable(grk_bmp_row_order_test GrkBmpRowOrderTest.cpp)
 target_link_libraries(grk_bmp_row_order_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_bmp_row_order_test COMMAND grk_bmp_row_order_test)
