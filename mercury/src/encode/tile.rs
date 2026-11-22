@@ -467,7 +467,7 @@ impl ImageEncoder {
             .map(|(tile, geom)| tile_bands(tile, geom, &self.max_bit_planes))
             .collect();
         let allocation = if single_tile {
-            let allocation = allocate_rate(&mut writers[0], &bands[0], &self.rate)
+            let allocation = allocate_rate(&mut writers[0], &bands[0], &self.rate, self.threads)
                 .expect("rate control finds a fit");
             ImageRateAllocation {
                 included: vec![allocation.included],

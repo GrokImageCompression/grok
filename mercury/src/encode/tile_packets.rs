@@ -4,8 +4,10 @@ use crate::codec::packet_order::{
 use crate::codec::params::{CodParams, SizParams};
 use crate::codec::tile_geom::TileGeom;
 
+use std::cmp::Reverse;
 use std::ops::Range;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::band_coder::CodedBand;
 use super::packet::{BandPacketSource, PrecinctCoder};
@@ -26,7 +28,7 @@ pub(crate) struct TileBands<'a> {
 
 pub(crate) struct TilePacketWriter {
     order: Vec<PacketSlot>,
-    precincts: Vec<PrecinctCoder>,
+    precincts_by_block_count: Vec<PrecinctCoder>,
     // [precinct] indices in `order` of its packets
     precinct_packets: Vec<Vec<usize>>,
     // [order index] precinct, and the packet's index among the precinct's packets
@@ -83,37 +85,53 @@ impl TilePacketWriter {
         let grids = chart_precinct_grids(cod, geom);
         let positions = chart_precinct_positions(cod, siz, geom, &grids);
         let order = order_packets(cod, &grids, &positions).expect("encoder POCs are valid");
-        let mut precincts = Vec::new();
+        let mut precinct_coordinates = Vec::new();
         let mut first_precinct = Vec::with_capacity(grids.len());
         for (c, comp_grids) in grids.iter().enumerate() {
-            let style = &cod.comps[c];
             let mut comp_first = Vec::with_capacity(comp_grids.len());
             for (r, &(px0, py0, npx, npy)) in comp_grids.iter().enumerate() {
-                comp_first.push(precincts.len());
-                let res = &geom.components[c].resolutions[r];
-                let ps = style.precinct_span(r as u8);
-                let (block_w, block_h) = style.block_span(r as u8);
+                comp_first.push(precinct_coordinates.len());
                 for py in py0..py0 + npy {
                     for px in px0..px0 + npx {
-                        precincts.push(PrecinctCoder::warp(chart_prec_bands(
-                            res, px, py, ps, r, block_w, block_h,
-                        )));
+                        precinct_coordinates.push((c, r, px, py));
                     }
                 }
             }
             first_precinct.push(comp_first);
         }
-        let mut precinct_packets = vec![Vec::new(); precincts.len()];
+        let precincts = run_tasks(precinct_coordinates, threads, |(c, r, px, py)| {
+            let style = &cod.comps[c];
+            let (block_w, block_h) = style.block_span(r as u8);
+            PrecinctCoder::warp(chart_prec_bands(
+                &geom.components[c].resolutions[r],
+                px,
+                py,
+                style.precinct_span(r as u8),
+                r,
+                block_w,
+                block_h,
+            ))
+        });
+        let mut by_block_count: Vec<(usize, PrecinctCoder)> =
+            precincts.into_iter().enumerate().collect();
+        by_block_count.sort_by_cached_key(|(_, coder)| Reverse(coder.block_count()));
+        let mut sorted_position = vec![0; by_block_count.len()];
+        for (position, &(precinct, _)) in by_block_count.iter().enumerate() {
+            sorted_position[precinct] = position;
+        }
+        let precincts_by_block_count: Vec<PrecinctCoder> =
+            by_block_count.into_iter().map(|(_, coder)| coder).collect();
+        let mut precinct_packets = vec![Vec::new(); precincts_by_block_count.len()];
         let mut packet_positions = Vec::with_capacity(order.len());
         for (index, slot) in order.iter().enumerate() {
-            let precinct =
-                first_precinct[slot.comp as usize][slot.res as usize] + slot.prec as usize;
+            let precinct = sorted_position
+                [first_precinct[slot.comp as usize][slot.res as usize] + slot.prec as usize];
             packet_positions.push((precinct, precinct_packets[precinct].len()));
             precinct_packets[precinct].push(index);
         }
         Self {
             order,
-            precincts,
+            precincts_by_block_count,
             precinct_packets,
             packet_positions,
             threads,
@@ -128,8 +146,12 @@ impl TilePacketWriter {
         with_body: bool,
     ) -> WrittenPackets<'a, '_> {
         let order = &self.order;
-        let precinct_count = self.precincts.len();
-        let write_precinct = |coder: &mut PrecinctCoder, packets: &[usize]| {
+        let tasks: Vec<_> = self
+            .precincts_by_block_count
+            .iter_mut()
+            .zip(&self.precinct_packets)
+            .collect();
+        let precincts = run_tasks(tasks, self.threads, |(coder, packets)| {
             let mut written = PrecinctPackets {
                 headers: Vec::new(),
                 bodies: Vec::new(),
@@ -162,27 +184,11 @@ impl TilePacketWriter {
                 });
             }
             written
-        };
-        let mut tasks: Vec<(usize, &mut PrecinctCoder)> =
-            self.precincts.iter_mut().enumerate().collect();
-        tasks.sort_by_key(|(_, coder)| coder.block_count());
-        let precinct_packets = &self.precinct_packets;
-        let finished = run_tasks(tasks, self.threads, |(precinct, coder)| {
-            (precinct, write_precinct(coder, &precinct_packets[precinct]))
         });
-        let mut written: Vec<Option<PrecinctPackets>> = std::iter::repeat_with(|| None)
-            .take(precinct_count)
-            .collect();
-        for (precinct, packets) in finished {
-            written[precinct] = Some(packets);
-        }
         WrittenPackets {
             order,
             packet_positions: &self.packet_positions,
-            precincts: written
-                .into_iter()
-                .map(|packets| packets.expect("every precinct is written"))
-                .collect(),
+            precincts,
         }
     }
 }
@@ -193,13 +199,23 @@ pub(crate) fn run_tasks<T: Send, R: Send>(
     work: impl Fn(T) -> R + Sync,
 ) -> Vec<R> {
     let count = tasks.len();
-    let queue = Mutex::new(tasks.into_iter().enumerate().collect::<Vec<_>>());
+    let slots: Vec<Mutex<Option<T>>> = tasks
+        .into_iter()
+        .map(|task| Mutex::new(Some(task)))
+        .collect();
+    let next = AtomicUsize::new(0);
     let run = || {
         let mut done = Vec::new();
         loop {
-            let Some((index, task)) = queue.lock().unwrap().pop() else {
+            let index = next.fetch_add(1, Ordering::Relaxed);
+            if index >= count {
                 return done;
-            };
+            }
+            let task = slots[index]
+                .lock()
+                .unwrap()
+                .take()
+                .expect("each task is taken once");
             done.push((index, work(task)));
         }
     };
