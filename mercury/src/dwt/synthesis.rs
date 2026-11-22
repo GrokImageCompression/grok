@@ -179,13 +179,22 @@ impl AlignedVec {
             .get_mut(class)
             .and_then(Vec::pop);
         let ptr = match reused {
-            Some(address) => address as *mut u8,
-            None => unsafe {
-                alloc::alloc(Layout::from_size_align(1 << class, simd_align()).unwrap())
-            },
+            Some(address) => {
+                let ptr = address as *mut u8;
+                unsafe { ptr::write_bytes(ptr, 0, size) };
+                ptr
+            }
+            None => {
+                // rust's alloc_zeroed calls calloc only up to 16 byte alignment, and calloc leaves fresh pages untouched
+                let base = unsafe {
+                    alloc::alloc_zeroed(
+                        Layout::from_size_align((1 << class) + simd_align(), 16).unwrap(),
+                    )
+                };
+                assert!(!base.is_null(), "allocation failed");
+                unsafe { base.add(base.align_offset(simd_align())) }
+            }
         };
-        assert!(!ptr.is_null(), "allocation failed");
-        unsafe { ptr::write_bytes(ptr, 0, size) };
         let block = Arc::new(RingBlock { ptr, size });
         let layout = Layout::from_size_align(size, simd_align()).unwrap();
         (0..count)
