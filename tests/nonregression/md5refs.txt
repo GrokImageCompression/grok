@@ -132,7 +132,7 @@ fc2f14d304e38bc9f6876573b1da2abb  p0_14_png-10.png
 fc2f14d304e38bc9f6876573b1da2abb  p0_14_png-12.png
 fc2f14d304e38bc9f6876573b1da2abb  p0_14_png-14.png
 fc2f14d304e38bc9f6876573b1da2abb  p0_14_png-16.png
-eec903b51156fb8f00234a7db87b2e2d  p0_14_tif-1.tif
+3784b70b8198e72619f8536eef9e7cf4  p0_14_tif-1.tif
 37e542471a29c71ebd59cb7a68158216  p0_14_tif-2.tif
 56e36a3223c584300c725f697f355115  p0_14_tif-3.tif
 3039e26ab0f78e8a3b7020801129d643  p0_14_tif-4.tif
@@ -269,7 +269,7 @@ d7ce6e6d56f96d50130c0b2a47619ad0  issue653-zero-unknownbox.jp2.png
 d7ce6e6d56f96d50130c0b2a47619ad0  issue818.png
 20aef012fe4a1169f6b84f7b4d7f6251  Bretagne2_ht_lossy.png
 521a6d328e3b803e3d033791b15e9f02  Bretagne2_ht.png
-c5a60776242ba70551ab92e8822ae195  a1_mono_tif-1.tif
+851c0cc47d94ae9ba6c8113885207474  a1_mono_tif-1.tif
 2e3ee8fec7d018ded06286199425dded  a1_mono_tif-2.tif
 9d814f9f3444d92db750fb54fa1cfa91  a1_mono_tif-3.tif
 a4b3a044dd046dbd903a977f9ed99067  a1_mono_tif-4.tif
@@ -285,7 +285,7 @@ e52b10e4ece3fef160142073ec503043  a1_mono_tif-13.tif
 c4dd797ffc0c9eb5227caa60333484bb  a1_mono_tif-14.tif
 aee67f5f41f708e3a265a8076be76f33  a1_mono_tif-15.tif
 0540bf20562dc37deb0fd2f6a021bc20  a1_mono_tif-16.tif
-c5a60776242ba70551ab92e8822ae195  a1_mono_png-1.png
+851c0cc47d94ae9ba6c8113885207474  a1_mono_png-1.png
 0540bf20562dc37deb0fd2f6a021bc20  a1_mono_png-10.png
 0540bf20562dc37deb0fd2f6a021bc20  a1_mono_png-12.png
 0540bf20562dc37deb0fd2f6a021bc20  a1_mono_png-14.png

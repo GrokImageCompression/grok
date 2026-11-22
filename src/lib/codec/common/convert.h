@@ -103,7 +103,7 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
     {
       uint32_t val = *src++;
       for(size_t j = 0; j < w; ++j)
-        dest[i + j] = INV((T)(val >> (7 - j)), 1, invert);
+        dest[i + j] = INV((T)((val >> (7 - j)) & 0x1U), 1, invert);
     }
   }
   else if constexpr(N == 2)
