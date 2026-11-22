@@ -59,6 +59,8 @@ struct Case
   bool icc = false;
   bool pocSplitDiffersByTile = false;
   bool plt = false;
+  // 0 for no cap
+  uint64_t componentCap = 0;
 };
 
 void recordInfo(const char* message, void*)
@@ -180,6 +182,7 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
   params.allocation_by_rate_distortion = true;
   params.write_tlm = true;
   params.write_plt = test.plt;
+  params.max_comp_size = test.componentCap;
   if(test.precinctSide)
   {
     params.csty |= 0x01;
@@ -500,6 +503,43 @@ int main()
        0, true, GRK_INT_32, true},
       {"icc rgb 8 bit tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1,
        false, 256, true, GRK_INT_32, true},
+      {"no rate rgb 8 bit defaults", 1001, 733, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 0.0,
+       1, false, 0, true},
+      {"no rate gray 16 bit rlcp", 999, 317, 1, 16, false, 4, 64, GRK_RLCP, 0, false, false, 0.0, 1,
+       false, 0, true},
+      {"no rate int16 rgb 10 bit rpcl precincts", 777, 515, 3, 10, true, 5, 32, GRK_RPCL, 128,
+       false, false, 0.0, 1, false, 0, true, GRK_INT_16},
+      {"no rate rpcl poc", 700, 500, 3, 8, true, 6, 64, GRK_RPCL, 0, false, true, 0.0, 1, false, 0,
+       true},
+      {.name = "no rate tiled plt cprl split by component",
+       .width = 1001,
+       .height = 733,
+       .numcomps = 3,
+       .precision = 10,
+       .mct = true,
+       .resolutions = 6,
+       .blockSide = 32,
+       .order = GRK_CPRL,
+       .precinctSide = 64,
+       .splitByComponent = true,
+       .ratio = 0.0,
+       .layers = 1,
+       .tileSide = 300,
+       .expectMercury = true,
+       .plt = true},
+      {.name = "no rate component cap",
+       .width = 640,
+       .height = 480,
+       .numcomps = 3,
+       .precision = 8,
+       .mct = true,
+       .resolutions = 6,
+       .blockSide = 64,
+       .order = GRK_LRCP,
+       .ratio = 0.0,
+       .layers = 1,
+       .expectMercury = false,
+       .componentCap = 1u << 30},
   };
   bool ok = true;
   for(const auto& test : cases)

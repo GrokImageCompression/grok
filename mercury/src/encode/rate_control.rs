@@ -33,6 +33,14 @@ pub(crate) fn allocate_rate(
     targets: &RateTargets,
     threads: usize,
 ) -> Option<RateAllocation> {
+    if targets.max_layer_length == 0 {
+        let mut included = no_passes(bands);
+        every_pass(bands, &mut included);
+        return Some(RateAllocation {
+            included,
+            slope_threshold: 0,
+        });
+    }
     let mut search = Search::warp(writer, bands, targets, threads);
     if let Some(allocation) = search.allocate(false, false) {
         return Some(allocation);

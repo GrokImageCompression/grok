@@ -88,11 +88,12 @@ namespace
   bool parametersMatchMercury(const grk_cparameters* parameters)
   {
     return parameters->cod_format != GRK_FMT_MJ2 && parameters->numlayers == 1 &&
-           !parameters->allocation_by_quality && parameters->layer_rate[0] > 0.0 &&
+           !parameters->allocation_by_quality &&
+           (parameters->layer_rate[0] > 0.0 || !parameters->max_comp_size) &&
            parameters->mct != 2 && !parameters->mct_data && !parameters->qfactor &&
            !parameters->quant_step_shift && !(parameters->csty & (CP_CSTY_SOP | CP_CSTY_EPH)) &&
-           !parameters->progressive_rate_control &&
-           !(parameters->rsiz & GRK_PROFILE_PART2) && parameters->tx0 == 0 && parameters->ty0 == 0;
+           !parameters->progressive_rate_control && !(parameters->rsiz & GRK_PROFILE_PART2) &&
+           parameters->tx0 == 0 && parameters->ty0 == 0;
   }
 
   bool progressionsAreCprl(TileCodingParams* tcp)
