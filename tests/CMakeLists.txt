@@ -911,6 +911,10 @@ add_executable(grk_pnm_strip_read_test GrkPnmStripReadTest.cpp)
 target_link_libraries(grk_pnm_strip_read_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_pnm_strip_read_test COMMAND grk_pnm_strip_read_test)
 
+add_executable(grk_bmp_row_order_test GrkBmpRowOrderTest.cpp)
+target_link_libraries(grk_bmp_row_order_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
+add_test(NAME grk_bmp_row_order_test COMMAND grk_bmp_row_order_test)
+
 add_executable(grk_bmp_1bit_row_overrun_test GrkBmp1BitRowOverrunTest.cpp)
 target_link_libraries(grk_bmp_1bit_row_overrun_test ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 add_test(NAME grk_bmp_1bit_row_overrun_test COMMAND grk_bmp_1bit_row_overrun_test)

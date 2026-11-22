@@ -116,11 +116,11 @@ private:
   template<typename T>
   bool readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image);
   template<typename T>
-  grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, bool topDown);
+  grk_image* bmp8toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
   template<typename T>
-  grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
+  grk_image* bmp4toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
   template<typename T>
-  grk_image* bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
+  grk_image* bmp1toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
   bool readFileHeader(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINFOHEADER* infoHeader);
   bool readRawData(uint8_t* pData, uint32_t stride, uint32_t height);
@@ -151,13 +151,13 @@ private:
                   uint32_t width, uint32_t height);
 
   template<typename T>
-  void mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
+  void mask32toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image, uint32_t redMask,
                      uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
   template<typename T>
-  void mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image, uint32_t redMask,
+  void mask16toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image, uint32_t redMask,
                      uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
   template<typename T>
-  void bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image);
+  void bmp24toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image);
   void maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_t* prec);
 };
 
@@ -464,36 +464,31 @@ inline bool BMPFormat::writeFinish(void)
 }
 
 template<typename T>
-grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+grk_image* BMPFormat::bmp1toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
-  auto pSrc = pData + (height - 1U) * srcStride;
-  conv_1u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
-             width, height);
+  conv_1u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
+             height);
   return image;
 }
 
 template<typename T>
-grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+grk_image* BMPFormat::bmp4toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
-  auto pSrc = pData + (height - 1U) * srcStride;
-  conv_4u32s(pSrc, -(int32_t)srcStride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride,
-             width, height);
+  conv_4u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
+             height);
   return image;
 }
 
 template<typename T>
-grk_image* BMPFormat::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
-                                  bool topDown)
+grk_image* BMPFormat::bmp8toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
 {
   uint32_t width = image->decompress_width;
   uint32_t height = image->decompress_height;
-  auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
-  int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
-  conv_8u32s(pSrc, s_stride, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
+  conv_8u32s(firstRow, rowStep, (T*)image->comps[0].data, (int32_t)image->comps[0].stride, width,
              height);
   return image;
 }
@@ -1076,6 +1071,9 @@ template<typename T>
 bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image* image)
 {
   bool handled = true;
+  auto lastRow = pData + (size_t)(image->decompress_height - 1U) * bmpStride;
+  auto firstRow = topDown_ ? pData : lastRow;
+  int32_t rowStep = topDown_ ? (int32_t)bmpStride : -(int32_t)bmpStride;
   /* Read the data */
   switch(infoHeader_.biCompression)
   {
@@ -1083,23 +1081,23 @@ bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image*
       switch(infoHeader_.biBitCount)
       {
         case 32: /* RGBX */
-          mask32toimage<T>(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
+          mask32toimage<T>(firstRow, rowStep, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
                            0x00000000U);
           break;
         case 24: /*RGB */
-          bmp24toimage<T>(pData, bmpStride, image);
+          bmp24toimage<T>(firstRow, rowStep, image);
           break;
         case 16: /*RGBX */
-          mask16toimage<T>(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
+          mask16toimage<T>(firstRow, rowStep, image, 0x7C00U, 0x03E0U, 0x001FU, 0x0000U);
           break;
         case 8: /* RGB 8bpp Indexed */
-          bmp8toimage<T>(pData, bmpStride, image, topDown_);
+          bmp8toimage<T>(firstRow, rowStep, image);
           break;
         case 4: /* RGB 4bpp Indexed */
-          bmp4toimage<T>(pData, bmpStride, image);
+          bmp4toimage<T>(firstRow, rowStep, image);
           break;
         case 1: /* Grayscale 1bpp Indexed */
-          bmp1toimage<T>(pData, bmpStride, image);
+          bmp1toimage<T>(firstRow, rowStep, image);
           break;
         default:
           handled = false;
@@ -1110,7 +1108,7 @@ bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image*
       switch(infoHeader_.biBitCount)
       {
         case 8: /*RLE8*/
-          bmp8toimage<T>(pData, bmpStride, image, topDown_);
+          bmp8toimage<T>(firstRow, rowStep, image);
           break;
         default:
           handled = false;
@@ -1121,8 +1119,7 @@ bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image*
       switch(infoHeader_.biBitCount)
       {
         case 4: /*RLE4*/
-          bmp8toimage<T>(pData, bmpStride, image,
-                         topDown_); /* RLE 4 gets decoded as 8 bits data for now */
+          bmp8toimage<T>(firstRow, rowStep, image); /* RLE 4 gets decoded as 8 bits data for now */
           break;
         default:
           handled = false;
@@ -1193,7 +1190,7 @@ bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image*
             break;
           }
 
-          mask32toimage<T>(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+          mask32toimage<T>(firstRow, rowStep, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
                            infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
           break;
         case 16: /* BITFIELDS bit mask*/
@@ -1204,7 +1201,7 @@ bool BMPFormat::readSamples(const uint8_t* pData, uint32_t bmpStride, grk_image*
             infoHeader_.biGreenMask = 0x07E0U;
             infoHeader_.biBlueMask = 0x001FU;
           }
-          mask16toimage<T>(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+          mask16toimage<T>(firstRow, rowStep, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
                            infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
           break;
         default:
@@ -1284,7 +1281,7 @@ void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, T* pDst, int3
 }
 
 template<typename T>
-void BMPFormat::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image)
+void BMPFormat::bmp24toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image)
 {
   uint32_t index;
   uint32_t width, height;
@@ -1292,7 +1289,7 @@ void BMPFormat::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image
   width = image->decompress_width;
   height = image->decompress_height;
   index = 0;
-  pSrc = pData + (height - 1U) * srcStride;
+  pSrc = firstRow;
   uint32_t stride_diff = image->comps[0].stride - image->decompress_width;
   auto r = (T*)image->comps[0].data;
   auto g = (T*)image->comps[1].data;
@@ -1309,7 +1306,7 @@ void BMPFormat::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image
       src_index += 3;
     }
     index += stride_diff;
-    pSrc -= srcStride;
+    pSrc += rowStep;
   }
 }
 
@@ -1335,7 +1332,7 @@ inline void BMPFormat::maskGetShiftAndPrec(uint32_t mask, uint8_t* shift, uint8_
 }
 
 template<typename T>
-void BMPFormat::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
+void BMPFormat::mask32toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image,
                               uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
                               uint32_t alphaMask)
 {
@@ -1359,7 +1356,7 @@ void BMPFormat::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
     image->comps[3].prec = alphaPrec;
   uint32_t index = 0;
   uint32_t x, y;
-  auto pSrc = pData + (height - 1U) * srcStride;
+  auto pSrc = firstRow;
   auto r = (T*)image->comps[0].data;
   auto g = (T*)image->comps[1].data;
   auto b = (T*)image->comps[2].data;
@@ -1386,12 +1383,12 @@ void BMPFormat::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
       src_index += 4;
     }
     index += stride_diff;
-    pSrc -= srcStride;
+    pSrc += rowStep;
   }
 }
 
 template<typename T>
-void BMPFormat::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
+void BMPFormat::mask16toimage(const uint8_t* firstRow, int32_t rowStep, grk_image* image,
                               uint32_t redMask, uint32_t greenMask, uint32_t blueMask,
                               uint32_t alphaMask)
 {
@@ -1415,7 +1412,7 @@ void BMPFormat::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
     image->comps[3].prec = alphaPrec;
   uint32_t index = 0;
   uint32_t x, y;
-  auto pSrc = pData + (height - 1U) * srcStride;
+  auto pSrc = firstRow;
   auto r = (T*)image->comps[0].data;
   auto g = (T*)image->comps[1].data;
   auto b = (T*)image->comps[2].data;
@@ -1439,6 +1436,6 @@ void BMPFormat::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
       src_index += 2;
     }
     index += stride_diff;
-    pSrc -= srcStride;
+    pSrc += rowStep;
   }
 }
