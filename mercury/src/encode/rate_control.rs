@@ -1,4 +1,5 @@
-use super::tile_packets::{TileBands, TilePacketWriter, plt_markers, run_tasks};
+use super::task_pool::TaskPool;
+use super::tile_packets::{TileBands, TilePacketWriter, plt_markers};
 
 const SLOPE_BUCKETS: usize = u16::MAX as usize + 1;
 const MAX_SLOPE: u32 = u16::MAX as u32;
@@ -31,7 +32,7 @@ pub(crate) fn allocate_rate(
     writer: &mut TilePacketWriter,
     bands: &TileBands,
     targets: &RateTargets,
-    threads: usize,
+    pool: &TaskPool,
 ) -> Option<RateAllocation> {
     if targets.max_layer_length == 0 {
         let mut included = no_passes(bands);
@@ -41,7 +42,7 @@ pub(crate) fn allocate_rate(
             slope_threshold: 0,
         });
     }
-    let mut search = Search::warp(writer, bands, targets, threads);
+    let mut search = Search::warp(writer, bands, targets, pool);
     if let Some(allocation) = search.allocate(false, false) {
         return Some(allocation);
     }
@@ -75,9 +76,9 @@ fn for_each_hull_pass(bands: &TileBands, mut visit: impl FnMut(usize, u32, u32))
     }
 }
 
-fn feasible_passes(bands: &TileBands, thresh: u32, included: &mut [Vec<u8>], threads: usize) {
+fn feasible_passes(bands: &TileBands, thresh: u32, included: &mut [Vec<u8>], pool: &TaskPool) {
     let tasks: Vec<_> = bands.bands.iter().zip(included).collect();
-    run_tasks(tasks, threads, |(band, included)| {
+    pool.run(tasks, |(band, included)| {
         for (block, slot) in band.coded.blocks.iter().zip(included.iter_mut()) {
             let mut passes = 0;
             for (passno, pass) in band.coded.block_passes(block).iter().enumerate() {
@@ -121,7 +122,7 @@ pub(crate) fn allocate_image_rate(
     tiles: &[TileBands],
     targets: &RateTargets,
     write_plt: bool,
-    threads: usize,
+    pool: &TaskPool,
 ) -> ImageRateAllocation {
     let mut included: Vec<Vec<Vec<u8>>> = tiles.iter().map(no_passes).collect();
     let mut simulate = |included: &mut Vec<Vec<Vec<u8>>>,
@@ -132,7 +133,7 @@ pub(crate) fn allocate_image_rate(
             .zip(tiles)
             .zip(included.iter_mut())
             .collect();
-        run_tasks(tasks, threads, |((writer, bands), included)| {
+        pool.run(tasks, |((writer, bands), included)| {
             layout(bands, included);
             let lengths = writer.packet_lengths(bands, included);
             let packets: u64 = lengths.iter().map(|&length| length as u64).sum();
@@ -213,7 +214,7 @@ pub(crate) fn allocate_image_rate(
             break;
         }
         let total = simulate(&mut included, &|bands, included| {
-            feasible_passes(bands, thresh, included, 1)
+            feasible_passes(bands, thresh, included, pool)
         });
         measured_passes = passes_above[thresh as usize + 1];
         measured_headers = total - bytes_above[thresh as usize + 1];
@@ -241,8 +242,8 @@ pub(crate) fn allocate_image_rate(
         }) <= budget;
     if !takes_every_pass {
         let tasks: Vec<_> = tiles.iter().zip(included.iter_mut()).collect();
-        run_tasks(tasks, threads, |(bands, included)| {
-            feasible_passes(bands, fitting, included, 1)
+        pool.run(tasks, |(bands, included)| {
+            feasible_passes(bands, fitting, included, pool)
         });
     }
     ImageRateAllocation {
@@ -255,7 +256,7 @@ struct Search<'w, 'a> {
     writer: &'w mut TilePacketWriter,
     bands: &'w TileBands<'a>,
     targets: &'w RateTargets,
-    threads: usize,
+    pool: &'w TaskPool,
     num_comps: usize,
     included: Vec<Vec<u8>>,
     component_bytes: Vec<u64>,
@@ -277,7 +278,7 @@ impl<'w, 'a> Search<'w, 'a> {
         writer: &'w mut TilePacketWriter,
         bands: &'w TileBands<'a>,
         targets: &'w RateTargets,
-        threads: usize,
+        pool: &'w TaskPool,
     ) -> Self {
         let num_comps = bands.first_band.len();
         let mut min_slope = MAX_SLOPE;
@@ -299,7 +300,7 @@ impl<'w, 'a> Search<'w, 'a> {
             writer,
             bands,
             targets,
-            threads,
+            pool,
             num_comps,
             included: no_passes(bands),
             component_bytes: vec![0; num_comps],
@@ -387,7 +388,7 @@ impl<'w, 'a> Search<'w, 'a> {
     }
 
     fn make_layer_feasible(&mut self, thresh: u32) {
-        feasible_passes(self.bands, thresh, &mut self.included, self.threads);
+        feasible_passes(self.bands, thresh, &mut self.included, self.pool);
     }
 
     fn make_layer_final(&mut self) {

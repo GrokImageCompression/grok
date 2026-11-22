@@ -200,6 +200,11 @@ namespace
     auto sink = (MercuryTilePartSink*)context;
     sink->written = sink->written && sink->stream->writeBytes(bytes, length) == length;
   }
+
+  void submitMercuryTask(void* context, mercury_host_run_fn run, void* pass)
+  {
+    static_cast<tf::Executor*>(context)->silent_async([run, pass] { run(pass); });
+  }
 } // namespace
 
 bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, GrkImage* image)
@@ -271,7 +276,11 @@ bool CodeStreamCompress::createMercuryEncoder(void)
   params.split_by_component = enc.enableTilePartGeneration_;
   params.write_plt = enc.writePlt_;
   params.xyz_source_precision = mercuryXyzSourcePrecision_.value_or(0);
-  params.threads = (uint32_t)TFSingleton::num_threads();
+  if(!localExecutor_)
+    mercuryGlobalExecutor_ = TFSingleton::acquire();
+  params.threads = (uint32_t)(localExecutor_ ? localNumThreads_ : TFSingleton::num_threads());
+  params.submit = submitMercuryTask;
+  params.submit_ctx = localExecutor_ ? localExecutor_.get() : mercuryGlobalExecutor_.get();
   const uint8_t levels = (uint8_t)(tcp->tccps_[0].numresolutions_ - 1);
   std::vector<int32_t> levelFactors(levels);
   std::vector<double> bandScales((size_t)levels * t1::BAND_NUM_ORIENTATIONS);

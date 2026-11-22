@@ -1955,6 +1955,8 @@ pub struct MercuryEncodeParams {
     pub xyz_source_precision: u32,
     // 0 for every core
     pub threads: u32,
+    pub submit: Option<HostSubmitFn>,
+    pub submit_ctx: *mut c_void,
     // int16 planes take grok's int16 9/7, int32 planes the float 9/7
     pub int16_planes: bool,
     pub int16_fraction_bits: u32,
@@ -2029,6 +2031,9 @@ pub unsafe extern "C" fn mercury_encoder_new(
         return MERCURY_EBADARG;
     };
     let params = unsafe { &*params };
+    let Some(submit) = params.submit else {
+        return MERCURY_EBADARG;
+    };
     let rect = header.siz.tile_rect(0);
     let tiled = header.siz.tiles_across() * header.siz.tiles_down() > 1;
     let xyz = params.xyz_source_precision != 0;
@@ -2065,6 +2070,10 @@ pub unsafe extern "C" fn mercury_encoder_new(
         threads: match params.threads {
             0 => std::thread::available_parallelism().map_or(1, |count| count.get()),
             count => count as usize,
+        },
+        host: HostExecutor {
+            submit,
+            ctx: params.submit_ctx,
         },
         int16_planes: params.int16_planes,
         int16_wavelet: int16_wavelet.then(|| crate::encode::tile::Int16Wavelet {

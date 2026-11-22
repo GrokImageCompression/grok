@@ -18,9 +18,11 @@
 #pragma once
 
 #include <algorithm>
+#include <condition_variable>
+#include <exception>
 #include <functional>
-#include <future>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 #include "FileStandardIO.h"
@@ -59,26 +61,70 @@ bool pushStripsReadAhead(grk_object* codec, uint16_t numcomps, uint32_t width, u
   std::vector<std::vector<T>> stripPlanes[2];
   for(auto& planes : stripPlanes)
     planes.assign(numcomps, std::vector<T>((size_t)rowsPerStrip * width));
-  if(!readStrip(0, stripPlanes[0]))
-    return false;
+  std::mutex mutex;
+  std::condition_variable changed;
+  uint32_t stripsRead = 0;
+  uint32_t stripsPushed = 0;
+  bool readFailed = false;
+  bool stopReading = false;
+  std::exception_ptr readError;
+  std::thread reader([&] {
+    for(uint32_t strip = 0; strip < strips; ++strip)
+    {
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        changed.wait(lock, [&] { return stopReading || strip < stripsPushed + 2; });
+        if(stopReading)
+          return;
+      }
+      bool readOk = false;
+      try
+      {
+        readOk = readStrip(strip, stripPlanes[strip % 2]);
+      }
+      catch(...)
+      {
+        readError = std::current_exception();
+      }
+      std::lock_guard<std::mutex> lock(mutex);
+      readFailed = !readOk;
+      if(readOk)
+        stripsRead = strip + 1;
+      changed.notify_all();
+      if(!readOk)
+        return;
+    }
+  });
+  bool pushed = true;
   std::vector<const void*> planePointers(numcomps);
-  for(uint32_t strip = 0; strip < strips; ++strip)
+  for(uint32_t strip = 0; strip < strips && pushed; ++strip)
   {
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      changed.wait(lock, [&] { return readFailed || stripsRead > strip; });
+      pushed = !readFailed;
+    }
+    if(!pushed)
+      break;
     auto& planes = stripPlanes[strip % 2];
-    std::future<bool> nextRead;
-    if(strip + 1 < strips)
-      nextRead = std::async(std::launch::async, readStrip, strip + 1,
-                            std::ref(stripPlanes[(strip + 1) % 2]));
     for(uint16_t c = 0; c < numcomps; ++c)
       planePointers[c] = planes[c].data();
     uint32_t rows = (std::min)(rowsPerStrip, height - strip * rowsPerStrip);
-    grk_strip pushed = {rows, planePointers.data(), width};
-    bool pushOk = grk_compress_push_strip(codec, &pushed);
-    bool readOk = !nextRead.valid() || nextRead.get();
-    if(!pushOk || !readOk)
-      return false;
+    grk_strip stripRows = {rows, planePointers.data(), width};
+    pushed = grk_compress_push_strip(codec, &stripRows);
+    std::lock_guard<std::mutex> lock(mutex);
+    stripsPushed = strip + 1;
+    changed.notify_all();
   }
-  return true;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    stopReading = true;
+    changed.notify_all();
+  }
+  reader.join();
+  if(readError)
+    std::rethrow_exception(readError);
+  return pushed;
 }
 
 class ImageFormat : public IImageFormat

@@ -5,6 +5,7 @@ use crate::codec::packet_order::PacketSlot;
 use crate::codec::params::{MAX_LEVELS, QcdParams, QuantStyle, step_ranging};
 use crate::codec::tile_geom::{TileGeom, chart_tile_geom};
 use crate::decode::plan::MainHeaderIn;
+use crate::weft::rt::HostExecutor;
 
 use super::band_coder::{CodedBand, PendingBand};
 use super::component::{
@@ -13,7 +14,8 @@ use super::component::{
 };
 use super::rate_control::{ImageRateAllocation, RateTargets, allocate_image_rate, allocate_rate};
 use super::stripe_queue::{StripeQueue, StripeWorkers};
-use super::tile_packets::{TileBand, TileBands, TilePacketWriter, plt_markers, run_tasks};
+use super::task_pool::TaskPool;
+use super::tile_packets::{TileBand, TileBands, TilePacketWriter, plt_markers};
 
 const STRIPES_QUEUED_PER_WORKER: usize = 2;
 const SOT: u16 = 0xFF90;
@@ -30,6 +32,7 @@ pub(crate) struct TileEncodeParams<'a> {
     // RGB at this precision, converted like classic's applyXYZTransform
     pub xyz_source_precision: Option<u32>,
     pub threads: usize,
+    pub host: HostExecutor,
     pub int16_planes: bool,
     // None for int32 planes, the float 9/7 and the 5/3
     pub int16_wavelet: Option<Int16Wavelet<'a>>,
@@ -114,8 +117,8 @@ pub(crate) trait TilePartOutput {
 type PendingTile = Vec<Vec<Vec<PendingBand>>>;
 type CodedTile = Vec<Vec<Vec<CodedBand>>>;
 
-fn collect_tiles(pending: Vec<PendingTile>, threads: usize) -> Vec<CodedTile> {
-    run_tasks(pending, threads, |components| {
+fn collect_tiles(pending: Vec<PendingTile>, pool: &TaskPool) -> Vec<CodedTile> {
+    pool.run(pending, |components| {
         components
             .into_iter()
             .map(|resolutions| {
@@ -230,11 +233,11 @@ fn push_tile_row<T: CoefficientSample, S: Sync>(
     tile_columns: &[(usize, usize)],
     planes: &[&[S]],
     first_sample: usize,
-    threads: usize,
+    pool: &TaskPool,
     feed: impl Fn(&mut [ComponentEncoder<T>], &[&[S]], usize) + Sync,
 ) {
     let tasks: Vec<_> = coder.row_encoders.iter_mut().zip(tile_columns).collect();
-    run_tasks(tasks, threads, |(encoders, &(x0, width))| {
+    pool.run(tasks, |(encoders, &(x0, width))| {
         let tile_planes: Vec<&[S]> = planes
             .iter()
             .map(|plane| &plane[first_sample + x0..])
@@ -301,7 +304,7 @@ pub(crate) struct ImageEncoder {
     rate: RateTargets,
     split_by_component: bool,
     write_plt: bool,
-    threads: usize,
+    pool: Arc<TaskPool>,
     // [component][band number]
     max_bit_planes: Vec<Vec<u8>>,
     samples: TileSamples,
@@ -409,7 +412,7 @@ impl ImageEncoder {
             rate: params.rate,
             split_by_component: params.split_by_component,
             write_plt: params.write_plt,
-            threads: params.threads,
+            pool: Arc::new(TaskPool::warp(params.host, params.threads)),
             max_bit_planes,
             samples,
             unwritten_tiles: Vec::new(),
@@ -466,7 +469,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    self.threads,
+                    &self.pool,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 (TileSamples::Int16 { coder, feed }, TileRows::Int16(planes)) => push_tile_row(
@@ -474,7 +477,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    self.threads,
+                    &self.pool,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 (
@@ -489,7 +492,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    self.threads,
+                    &self.pool,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 (
@@ -504,7 +507,7 @@ impl ImageEncoder {
                     columns,
                     planes,
                     first_sample,
-                    self.threads,
+                    &self.pool,
                     |encoders, tile, width| feed.feed(encoders, tile, stride, width, count),
                 ),
                 _ => panic!("plane type does not match the encoder"),
@@ -526,7 +529,7 @@ impl ImageEncoder {
         };
         // without a rate target no later tile changes this row's packets
         if self.rate.max_layer_length == 0 {
-            let coded = collect_tiles(finished, self.threads);
+            let coded = collect_tiles(finished, &self.pool);
             self.write_tiles(coded);
         } else {
             self.unwritten_tiles.extend(finished);
@@ -543,7 +546,7 @@ impl ImageEncoder {
         if self.unwritten_tiles.is_empty() {
             return 0;
         }
-        let coded = collect_tiles(std::mem::take(&mut self.unwritten_tiles), self.threads);
+        let coded = collect_tiles(std::mem::take(&mut self.unwritten_tiles), &self.pool);
         self.write_tiles(coded)
     }
 
@@ -551,11 +554,11 @@ impl ImageEncoder {
         let (siz, cod) = (&self.header.siz, &self.header.cod);
         let first_tile = self.tiles_written;
         let single_tile = siz.tiles_across() * siz.tiles_down() == 1;
-        let packet_threads = if single_tile { self.threads } else { 1 };
-        let (geoms, mut writers): (Vec<TileGeom>, Vec<TilePacketWriter>) =
-            run_tasks((0..coded.len()).collect(), self.threads, |index| {
+        let pool = &self.pool;
+        let (geoms, mut writers): (Vec<TileGeom>, Vec<TilePacketWriter>) = pool
+            .run((0..coded.len()).collect(), |index| {
                 let geom = chart_tile_geom(siz, cod, (first_tile + index) as u16);
-                let writer = TilePacketWriter::warp(cod, siz, &geom, packet_threads);
+                let writer = TilePacketWriter::warp(cod, siz, &geom, pool);
                 (geom, writer)
             })
             .into_iter()
@@ -566,27 +569,21 @@ impl ImageEncoder {
             .map(|(tile, geom)| tile_bands(tile, geom, &self.max_bit_planes))
             .collect();
         let allocation = if single_tile {
-            let allocation = allocate_rate(&mut writers[0], &bands[0], &self.rate, self.threads)
+            let allocation = allocate_rate(&mut writers[0], &bands[0], &self.rate, &self.pool)
                 .expect("rate control finds a fit");
             ImageRateAllocation {
                 included: vec![allocation.included],
                 slope_threshold: allocation.slope_threshold,
             }
         } else {
-            allocate_image_rate(
-                &mut writers,
-                &bands,
-                &self.rate,
-                self.write_plt,
-                self.threads,
-            )
+            allocate_image_rate(&mut writers, &bands, &self.rate, self.write_plt, &self.pool)
         };
         let tasks: Vec<_> = writers
             .iter_mut()
             .zip(&bands)
             .zip(&allocation.included)
             .collect();
-        let written = run_tasks(tasks, self.threads, |((writer, bands), included)| {
+        let written = self.pool.run(tasks, |((writer, bands), included)| {
             writer.write_packets(bands, included)
         });
 

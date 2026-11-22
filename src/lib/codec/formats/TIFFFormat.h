@@ -2623,30 +2623,38 @@ bool TIFFFormat::pushStrips(grk_object* codec)
   TIFFGetFieldDefaulted(tif_, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
   rowsPerStrip = (std::min)(rowsPerStrip, imageHeight_);
   uint32_t stripsPerPlane = (imageHeight_ + rowsPerStrip - 1) / rowsPerStrip;
+  uint32_t stripsPerRead = (std::max)(1U, stripReadRows / rowsPerStrip);
+  uint32_t rowsPerRead = (std::min)(rowsPerStrip * stripsPerRead, imageHeight_);
   tsize_t stripSize = TIFFStripSize(tif_);
   std::vector<uint8_t> stripBytes((size_t)stripSize);
   std::vector<T> rowBuffer;
   std::vector<T*> rowPlanes(targetPlanes);
-  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
-    uint32_t rows = (std::min)(rowsPerStrip, imageHeight_ - strip * rowsPerStrip);
-    tsize_t expectedBytes = (tsize_t)rows * rowStride;
-    for(uint16_t plane = 0; plane < numcomps_; plane += targetPlanes)
+  auto readRows = [&](uint32_t read, std::vector<std::vector<T>>& planes) {
+    uint32_t firstRow = read * rowsPerRead;
+    uint32_t rows = (std::min)(rowsPerRead, imageHeight_ - firstRow);
+    for(uint32_t row = 0; row < rows; row += rowsPerStrip)
     {
-      uint32_t stripIndex = (separatePlanes ? plane * stripsPerPlane : 0) + strip;
-      tsize_t readBytes = TIFFReadEncodedStrip(tif_, stripIndex, stripBytes.data(), stripSize);
-      if(readBytes < expectedBytes)
+      uint32_t strip = (firstRow + row) / rowsPerStrip;
+      uint32_t stripRows = (std::min)(rowsPerStrip, rows - row);
+      tsize_t expectedBytes = (tsize_t)stripRows * rowStride;
+      for(uint16_t plane = 0; plane < numcomps_; plane += targetPlanes)
       {
-        spdlog::error("TIFF strip {} has {} bytes, {} expected", stripIndex, (long long)readBytes,
-                      (long long)expectedBytes);
-        return false;
-      }
-      for(uint32_t r = 0; r < rows; ++r)
-      {
-        for(uint16_t k = 0; k < targetPlanes; ++k)
-          rowPlanes[k] = planes[plane + k].data() + (size_t)r * imageWidth_;
-        if(!deinterleaveTiffRow(stripBytes.data() + (size_t)r * (size_t)rowStride, rowPlanes.data(),
-                                rowFormat, rowBuffer))
+        uint32_t stripIndex = (separatePlanes ? plane * stripsPerPlane : 0) + strip;
+        tsize_t readBytes = TIFFReadEncodedStrip(tif_, stripIndex, stripBytes.data(), stripSize);
+        if(readBytes < expectedBytes)
+        {
+          spdlog::error("TIFF strip {} has {} bytes, {} expected", stripIndex, (long long)readBytes,
+                        (long long)expectedBytes);
           return false;
+        }
+        for(uint32_t r = 0; r < stripRows; ++r)
+        {
+          for(uint16_t k = 0; k < targetPlanes; ++k)
+            rowPlanes[k] = planes[plane + k].data() + (size_t)(row + r) * imageWidth_;
+          if(!deinterleaveTiffRow(stripBytes.data() + (size_t)r * (size_t)rowStride,
+                                  rowPlanes.data(), rowFormat, rowBuffer))
+            return false;
+        }
       }
     }
     for(uint16_t c = 0; rescaleTo12Bit_ && c < numcomps_; ++c)
@@ -2661,8 +2669,7 @@ bool TIFFFormat::pushStrips(grk_object* codec)
     }
     return true;
   };
-  return pushStripsReadAhead<T>(codec, numcomps_, imageWidth_, imageHeight_, rowsPerStrip,
-                                readStrip);
+  return pushStripsReadAhead<T>(codec, numcomps_, imageWidth_, imageHeight_, rowsPerRead, readRows);
 }
 
 inline bool TIFFFormat::pushStrips(grk_object* codec, grk_data_type dataType)

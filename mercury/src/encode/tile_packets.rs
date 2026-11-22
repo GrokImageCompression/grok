@@ -7,11 +7,12 @@ use crate::codec::tile_geom::TileGeom;
 use std::cell::RefCell;
 use std::cmp::Reverse;
 use std::ops::Range;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::band_coder::CodedBand;
 use super::packet::{BandPacketSource, PrecinctCoder};
+use super::task_pool::TaskPool;
 
 pub(crate) struct TileBand<'a> {
     pub compno: usize,
@@ -34,7 +35,7 @@ pub(crate) struct TilePacketWriter {
     precinct_packets: Vec<Vec<usize>>,
     // [order index] precinct, and the packet's index among the precinct's packets
     packet_positions: Vec<(usize, usize)>,
-    threads: usize,
+    pool: Arc<TaskPool>,
 }
 
 struct PacketExtent {
@@ -81,7 +82,7 @@ impl WrittenPackets<'_, '_> {
 }
 
 impl TilePacketWriter {
-    pub fn warp(cod: &CodParams, siz: &SizParams, geom: &TileGeom, threads: usize) -> Self {
+    pub fn warp(cod: &CodParams, siz: &SizParams, geom: &TileGeom, pool: &Arc<TaskPool>) -> Self {
         let grids = chart_precinct_grids(cod, geom);
         let positions = chart_precinct_positions(cod, siz, geom, &grids);
         let order = order_packets(cod, &grids, &positions).expect("encoder POCs are valid");
@@ -99,7 +100,7 @@ impl TilePacketWriter {
             }
             first_precinct.push(comp_first);
         }
-        let precincts = run_tasks(precinct_coordinates, threads, |(c, r, px, py)| {
+        let precincts = pool.run(precinct_coordinates, |(c, r, px, py)| {
             let style = &cod.comps[c];
             let (block_w, block_h) = style.block_span(r as u8);
             PrecinctCoder::warp(chart_prec_bands(
@@ -134,7 +135,7 @@ impl TilePacketWriter {
             precincts_by_block_count,
             precinct_packets,
             packet_positions,
-            threads,
+            pool: pool.clone(),
         }
     }
 
@@ -153,7 +154,7 @@ impl TilePacketWriter {
             .iter_mut()
             .zip(&self.precinct_packets)
             .collect();
-        run_tasks(tasks, self.threads, |(coder, packets)| {
+        self.pool.run(tasks, |(coder, packets)| {
             HEADER_SCRATCH.with_borrow_mut(|header| {
                 let mut sources = Vec::with_capacity(3);
                 for &index in packets {
@@ -180,7 +181,7 @@ impl TilePacketWriter {
             .iter_mut()
             .zip(&self.precinct_packets)
             .collect();
-        let precincts = run_tasks(tasks, self.threads, |(coder, packets)| {
+        let precincts = self.pool.run(tasks, |(coder, packets)| {
             let mut written = PrecinctPackets {
                 headers: Vec::new(),
                 bodies: Vec::new(),
@@ -229,50 +230,6 @@ fn band_sources<'a>(
         max_bit_planes: bands.bands[b].max_bit_planes,
         included_passes: &included[b],
     }));
-}
-
-pub(crate) fn run_tasks<T: Send, R: Send>(
-    tasks: Vec<T>,
-    threads: usize,
-    work: impl Fn(T) -> R + Sync,
-) -> Vec<R> {
-    let count = tasks.len();
-    let slots: Vec<Mutex<Option<T>>> = tasks
-        .into_iter()
-        .map(|task| Mutex::new(Some(task)))
-        .collect();
-    let next = AtomicUsize::new(0);
-    let run = || {
-        let mut done = Vec::new();
-        loop {
-            let index = next.fetch_add(1, Ordering::Relaxed);
-            if index >= count {
-                return done;
-            }
-            let task = slots[index]
-                .lock()
-                .unwrap()
-                .take()
-                .expect("each task is taken once");
-            done.push((index, work(task)));
-        }
-    };
-    let helpers = threads.min(count).saturating_sub(1);
-    let mut results: Vec<Option<R>> = std::iter::repeat_with(|| None).take(count).collect();
-    std::thread::scope(|scope| {
-        let handles: Vec<_> = (0..helpers).map(|_| scope.spawn(run)).collect();
-        let mut finished = run();
-        for handle in handles {
-            finished.extend(handle.join().expect("task thread panicked"));
-        }
-        for (index, result) in finished {
-            results[index] = Some(result);
-        }
-    });
-    results
-        .into_iter()
-        .map(|result| result.expect("every task ran"))
-        .collect()
 }
 
 const PLT: u16 = 0xFF58;

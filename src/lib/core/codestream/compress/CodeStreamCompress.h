@@ -77,6 +77,8 @@ private:
   bool createMercuryEncoder(void);
   bool pushMercuryRows(const void* const* planes, uint32_t stride, uint32_t rows);
   uint64_t compressWithMercury(void);
+  // the global executor, held while mercury submits to it from pushes outside compress()
+  std::shared_ptr<tf::Executor> mercuryGlobalExecutor_;
   std::unique_ptr<MercuryEncoder, MercuryEncoderFree> mercuryEncoder_;
   MercuryTilePartSink mercuryTilePartSink_;
   bool stripInput_ = false;

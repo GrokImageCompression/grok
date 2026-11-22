@@ -349,6 +349,9 @@ typedef struct MercuryEncodeParams
   uint32_t xyz_source_precision;
   /* 0 for every core */
   uint32_t threads;
+  /* every parallel step of the encode runs on the passes submitted here */
+  mercury_host_submit_fn submit;
+  void* submit_ctx;
   /* int16 planes take grok's int16 9/7, int32 planes the float 9/7, both kinds the int32 5/3 */
   bool int16_planes;
   uint32_t int16_fraction_bits;
