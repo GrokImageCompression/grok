@@ -96,7 +96,7 @@ namespace HWY_NAMESPACE
 
   /* 9/7 lifting constants (inside HWY_NAMESPACE for multi-target compilation) */
   static const float hwy_K = 1.230174105f;
-  static const float hwy_invK = 0.812866211f;
+  static const float hwy_invK = (float)(1.0 / 1.230174105);
   static const float hwy_dwt_alpha = 1.586134342f;
   static const float hwy_dwt_beta = 0.052980118f;
   static const float hwy_dwt_gamma = -0.882911075f;
@@ -656,7 +656,7 @@ static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K = 1.230174105f; /*  10078 */
-static const float invK = 0.812866211f;
+static const float invK = (float)(1.0 / 1.230174105);
 
 struct Params97
 {

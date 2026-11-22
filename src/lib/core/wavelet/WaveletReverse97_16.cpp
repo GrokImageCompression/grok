@@ -118,7 +118,7 @@
  *  Synthesis must undo this BEFORE the lifting steps:
  *
  *    even *= K     = 1.230174105
- *    odd  *= 2/K   = 1.625732422
+ *    odd  *= 2/K   = 1.625786132
  *
  *  In this 16-bit path, K/invK scaling is fused into the interleave phase
  *  (when loading subband data into the scratch buffer).  See Section 6 for
@@ -189,8 +189,8 @@
  *    K = 1.230174105 > 1.0 → decompose: x×K = x + mf15(x, K−1)
  *      K−1 = 0.230174105 → fp15 = round(0.230174105 × 2^15) = 7542
  *
- *    2/K = 1.625732422 > 1.0 → decompose: x×(2/K) = x + mf15(x, 2/K−1)
- *      2/K−1 = 0.625732422 → fp15 = round(0.625732422 × 2^15) = 20504
+ *    2/K = 1.625786132 > 1.0 → decompose: x×(2/K) = x + mf15(x, 2/K−1)
+ *      2/K−1 = 0.625786132 → fp15 = round(0.625786132 × 2^15) = 20506
  *
  *
  *  7. NEIGHBOR-SUM-FIRST FLAG AND BIBO HEADROOM
@@ -477,13 +477,14 @@ namespace HWY_NAMESPACE
   /*
    * 2/K Scaling — Odd (high-pass) samples
    * --------------------------------------
-   * Synthesis un-scales odd samples by multiplying by 2/K = 1.625732422.
+   * Synthesis un-scales odd samples by multiplying by 2/K = 1.625786132.
    * Since 2/K > 1.0, we decompose:  x × (2/K) = x + MulFixedPoint15(x, 2/K−1)
    *
-   *   2/K − 1 = 0.625732422
-   *   scale_invK_frac = round(0.625732422 × 2^15) = 20504
+   *   2/K − 1 = 0.625786132
+   *   scale_invK_frac = round(0.625786132 × 2^15) = 20506
    */
-  static const int16_t scale_invK_frac = (int16_t)(0.5 + 0.625732422 * (double)(1 << 15));
+  static const int16_t scale_invK_frac =
+      (int16_t)(0.5 + (2.0 / 1.230174105 - 1.0) * (double)(1 << 15));
 
   /**************************************************************************
    *  Scalar Helper Functions
@@ -557,7 +558,7 @@ namespace HWY_NAMESPACE
   /**
    * @brief Apply 2/K scaling to an odd (high-pass) sample.
    *
-   * Computes x × (2/K) = x + round(x × (2/K−1)) where 2/K = 1.625732422.
+   * Computes x × (2/K) = x + round(x × (2/K−1)) where 2/K = 1.625786132.
    * Uses additive decomposition since 2/K > 1.0 (see Section 6).
    */
   static inline int16_t apply_invK_scale(int16_t x)
