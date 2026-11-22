@@ -27,6 +27,14 @@ namespace grk
 {
 struct TileProcessorCompress;
 
+struct MercuryTilePartSink
+{
+  IStream* stream = nullptr;
+  TLMMarker* tlm = nullptr;
+  uint32_t parts = 0;
+  bool written = true;
+};
+
 class CodeStreamCompress : public CodeStream, public ICompressor
 {
 public:
@@ -70,6 +78,7 @@ private:
   bool pushMercuryRows(const void* const* planes, uint32_t stride, uint32_t rows);
   uint64_t compressWithMercury(void);
   std::unique_ptr<MercuryEncoder, MercuryEncoderFree> mercuryEncoder_;
+  MercuryTilePartSink mercuryTilePartSink_;
   bool stripInput_ = false;
   grk_data_type stripDataType_ = GRK_INT_32;
   std::vector<uint8_t> stripSourcePrecisions_;

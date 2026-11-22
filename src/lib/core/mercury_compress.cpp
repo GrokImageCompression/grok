@@ -181,14 +181,6 @@ namespace
     return planeGeometryMatchesMercury(image);
   }
 
-  struct MercuryTilePartSink
-  {
-    IStream* stream;
-    TLMMarker* tlm;
-    uint32_t parts = 0;
-    bool written = true;
-  };
-
   void startMercuryTilePart(void* context, uint16_t tile, uint64_t length)
   {
     auto sink = (MercuryTilePartSink*)context;
@@ -223,12 +215,13 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, Gr
 bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
 {
   uint32_t numTiles = (uint32_t)cp_.t_grid_width_ * cp_.t_grid_height_;
-  mercuryEncode_ = !mercuryEncodeDisabled() && parametersMatchMercury(parameters) &&
-                   codingMatchesMercury(cp_, cp_.tcps_.get(0), headerImage_->numcomps) &&
-                   (numTiles == 1 || usesImageWideRateControl(numTiles)) &&
-                   tilesMatchMercury(cp_, headerImage_->numcomps) &&
-                   (stripInput_ ? planeGeometryMatchesMercury(headerImage_)
-                                : imagePlanesMatchMercury(headerImage_));
+  mercuryEncode_ =
+      !mercuryEncodeDisabled() && parametersMatchMercury(parameters) &&
+      codingMatchesMercury(cp_, cp_.tcps_.get(0), headerImage_->numcomps) &&
+      (numTiles == 1 || parameters->layer_rate[0] == 0.0 || usesImageWideRateControl(numTiles)) &&
+      tilesMatchMercury(cp_, headerImage_->numcomps) &&
+      (stripInput_ ? planeGeometryMatchesMercury(headerImage_)
+                   : imagePlanesMatchMercury(headerImage_));
   if(mercuryEncode_ || !mercuryXyzSourcePrecision_)
     return true;
   auto xyzSourcePrecision = *mercuryXyzSourcePrecision_;
@@ -289,8 +282,10 @@ bool CodeStreamCompress::createMercuryEncoder(void)
     params.int16_level_factors = levelFactors.data();
     params.int16_band_scales = bandScales.data();
   }
+  mercuryTilePartSink_ = {stream_, cp_.tlmMarkers_.get()};
   MercuryEncoder* encoder = nullptr;
-  int32_t rc = mercury_encoder_new(&coding.header, &params, &encoder);
+  int32_t rc = mercury_encoder_new(&coding.header, &params, startMercuryTilePart, writeMercuryBytes,
+                                   &mercuryTilePartSink_, &encoder);
   if(rc != MERCURY_OK)
   {
     grklog.error("mercury failed to start the encode, error %d", rc);
@@ -322,24 +317,23 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
        !pushMercuryRows(planes.data(), image->comps[0].stride, image->comps[0].h))
       return 0;
   }
-  MercuryTilePartSink sink{stream_, cp_.tlmMarkers_.get()};
   uint16_t threshold = 0;
-  int32_t rc = mercury_encoder_finish(mercuryEncoder_.release(), startMercuryTilePart,
-                                      writeMercuryBytes, &sink, &threshold);
+  int32_t rc = mercury_encoder_finish(mercuryEncoder_.release(), &threshold);
   if(rc != MERCURY_OK)
   {
     grklog.error("mercury failed to compress the image, error %d", rc);
     return 0;
   }
-  if(!sink.written)
+  if(!mercuryTilePartSink_.written)
     return 0;
   uint32_t numTiles = (uint32_t)cp_.t_grid_width_ * cp_.t_grid_height_;
   uint32_t signalledParts = 0;
   for(uint32_t tile = 0; tile < numTiles; ++tile)
     signalledParts += cp_.tcps_.get((uint16_t)tile)->signalledNumTileParts_;
-  if(sink.parts != signalledParts)
+  if(mercuryTilePartSink_.parts != signalledParts)
   {
-    grklog.error("mercury wrote %u tile-parts, the header signals %u", sink.parts, signalledParts);
+    grklog.error("mercury wrote %u tile-parts, the header signals %u", mercuryTilePartSink_.parts,
+                 signalledParts);
     return 0;
   }
   recordSlopeThreshold(threshold);

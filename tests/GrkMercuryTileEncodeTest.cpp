@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <vector>
 
 #include <lcms2.h>
@@ -61,6 +62,7 @@ struct Case
   bool plt = false;
   // 0 for no cap
   uint64_t componentCap = 0;
+  bool allocateByRateDistortion = true;
 };
 
 void recordInfo(const char* message, void*)
@@ -125,7 +127,7 @@ uint64_t nextRandom(uint64_t& state)
   return state >> 33;
 }
 
-std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
+grk_image* makeImage(const Case& test)
 {
   std::vector<grk_image_comp> comps(test.numcomps);
   for(auto& comp : comps)
@@ -162,6 +164,11 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
       }
     }
   }
+  return image;
+}
+
+grk_cparameters makeParameters(const Case& test, grk_image* image)
+{
   grk_cparameters params;
   grk_compress_set_default_params(&params);
   params.cod_format = GRK_FMT_J2K;
@@ -179,7 +186,7 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
   params.numlayers = test.layers;
   for(uint16_t layer = 0; layer < test.layers; ++layer)
     params.layer_rate[layer] = test.ratio * (test.layers - layer);
-  params.allocation_by_rate_distortion = true;
+  params.allocation_by_rate_distortion = test.allocateByRateDistortion;
   params.write_tlm = true;
   params.write_plt = test.plt;
   params.max_comp_size = test.componentCap;
@@ -230,6 +237,13 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
     params.t_width = test.tileSide;
     params.t_height = test.tileSide;
   }
+  return params;
+}
+
+std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
+{
+  auto image = makeImage(test);
+  auto params = makeParameters(test, image);
   std::vector<uint8_t> out(OUTPUT_CAPACITY);
   grk_stream_params stream = {};
   stream.buf = out.data();
@@ -352,6 +366,57 @@ bool stripMisuseFails()
   grk_object_unref(&image->obj);
   if(ok)
     printf("strip misuse fails\n");
+  return ok;
+}
+
+bool tileRowWrittenBeforeNextRow()
+{
+  const Case test = {.name = "no rate tile row written before the next row",
+                     .width = 640,
+                     .height = 480,
+                     .numcomps = 3,
+                     .precision = 8,
+                     .mct = true,
+                     .resolutions = 6,
+                     .blockSide = 64,
+                     .order = GRK_LRCP,
+                     .ratio = 0.0,
+                     .layers = 1,
+                     .tileSide = 256,
+                     .expectMercury = true};
+  const uint16_t lastTileOfFirstRow = 2;
+  auto image = makeImage(test);
+  auto params = makeParameters(test, image);
+  std::vector<uint8_t> out(OUTPUT_CAPACITY);
+  grk_stream_params stream = {};
+  stream.buf = out.data();
+  stream.buf_len = out.size();
+  setMercuryEncode(true);
+  auto hasSot = [&out](uint16_t tile) {
+    const uint8_t sot[] = {0xFF, 0x90, 0x00, 0x0A, (uint8_t)(tile >> 8), (uint8_t)tile};
+    return std::search(out.begin(), out.end(), std::begin(sot), std::end(sot)) != out.end();
+  };
+  std::vector<const void*> planes(test.numcomps);
+  const uint32_t stride = image->comps[0].stride;
+  auto codec = grk_compress_init_strips(&stream, &params, image);
+  bool ok = codec != nullptr;
+  for(uint32_t y = 0; ok && y < test.height; y += test.tileSide)
+  {
+    for(uint16_t c = 0; c < test.numcomps; ++c)
+      planes[c] = (const int32_t*)image->comps[c].data + (size_t)y * stride;
+    grk_strip strip = {std::min(test.tileSide, test.height - y), planes.data(), stride};
+    ok = grk_compress_push_strip(codec, &strip);
+    if(ok && y == 0 && !(hasSot(lastTileOfFirstRow) && !hasSot(lastTileOfFirstRow + 1)))
+    {
+      fprintf(stderr, "%s: the first tile row was not written alone after its rows\n", test.name);
+      ok = false;
+    }
+  }
+  ok = ok && grk_compress(codec, nullptr) != 0;
+  grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+  if(ok)
+    printf("%s\n", test.name);
   return ok;
 }
 
@@ -527,6 +592,22 @@ int main()
        .tileSide = 300,
        .expectMercury = true,
        .plt = true},
+      {.name = "no rate tiled rpcl poc without rate distortion allocation",
+       .width = 700,
+       .height = 500,
+       .numcomps = 3,
+       .precision = 8,
+       .mct = true,
+       .resolutions = 6,
+       .blockSide = 64,
+       .order = GRK_RPCL,
+       .poc = true,
+       .ratio = 0.0,
+       .layers = 1,
+       .tileSide = 256,
+       .expectMercury = true,
+       .plt = true,
+       .allocateByRateDistortion = false},
       {.name = "no rate component cap",
        .width = 640,
        .height = 480,
@@ -545,6 +626,7 @@ int main()
   for(const auto& test : cases)
     ok = runCase(test) && ok;
   ok = stripMisuseFails() && ok;
+  ok = tileRowWrittenBeforeNextRow() && ok;
   grk_deinitialize();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

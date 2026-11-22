@@ -100,6 +100,29 @@ fn sot_segment(tile: u16, index: u8, count: u8, psot: u32) -> [u8; SOT_BYTES] {
     header
 }
 
+pub(crate) trait TilePartOutput {
+    fn start_tile_part(&mut self, tile: u16, length: usize);
+    fn write(&mut self, bytes: &[u8]);
+}
+
+// [component][resolution][band]
+type PendingTile = Vec<Vec<Vec<PendingBand>>>;
+type CodedTile = Vec<Vec<Vec<CodedBand>>>;
+
+fn collect_tiles(pending: Vec<PendingTile>, threads: usize) -> Vec<CodedTile> {
+    run_tasks(pending, threads, |components| {
+        components
+            .into_iter()
+            .map(|resolutions| {
+                resolutions
+                    .into_iter()
+                    .map(|bands| bands.into_iter().map(PendingBand::collect).collect())
+                    .collect()
+            })
+            .collect()
+    })
+}
+
 struct ComponentCoding<T: CoefficientSample> {
     band_stepsizes: Vec<f32>,
     band_inverse_steps: Vec<f64>,
@@ -113,8 +136,6 @@ struct TileCoder<T: CoefficientSample> {
     workers: Option<StripeWorkers<T>>,
     // [tile of the current tile row][component]
     row_encoders: Vec<Vec<ComponentEncoder<T>>>,
-    // [tile][component][resolution][band]
-    pending: Vec<Vec<Vec<Vec<PendingBand>>>>,
 }
 
 impl<T: CoefficientSample> TileCoder<T> {
@@ -136,7 +157,6 @@ impl<T: CoefficientSample> TileCoder<T> {
                 .map(|queue| StripeWorkers::spawn(queue, workers)),
             stripe_queue,
             row_encoders: Vec::new(),
-            pending: Vec::new(),
         };
         coder.start_row(header, 0);
         coder
@@ -172,32 +192,31 @@ impl<T: CoefficientSample> TileCoder<T> {
             .collect();
     }
 
-    fn finish_row(&mut self) {
-        for encoders in self.row_encoders.drain(..) {
-            self.pending.push(
+    fn finish_row(
+        &mut self,
+        header: &MainHeaderIn,
+        next_tile_row: Option<u32>,
+    ) -> Vec<PendingTile> {
+        let pending = self
+            .row_encoders
+            .drain(..)
+            .map(|encoders| {
                 encoders
                     .into_iter()
                     .map(ComponentEncoder::into_pending)
-                    .collect(),
-            );
+                    .collect()
+            })
+            .collect();
+        if let Some(tile_row) = next_tile_row {
+            self.start_row(header, tile_row);
         }
+        pending
     }
 
-    fn finish(mut self, threads: usize) -> Vec<Vec<Vec<Vec<CodedBand>>>> {
+    fn stop_workers(&mut self) {
         if let Some(workers) = self.workers.take() {
             workers.finish();
         }
-        run_tasks(self.pending, threads, |components| {
-            components
-                .into_iter()
-                .map(|resolutions| {
-                    resolutions
-                        .into_iter()
-                        .map(|bands| bands.into_iter().map(PendingBand::collect).collect())
-                        .collect()
-                })
-                .collect()
-        })
     }
 }
 
@@ -276,6 +295,9 @@ pub(crate) struct ImageEncoder {
     // [component][band number]
     max_bit_planes: Vec<Vec<u8>>,
     samples: TileSamples,
+    unwritten_tiles: Vec<PendingTile>,
+    tiles_written: usize,
+    output: Box<dyn TilePartOutput>,
     // first column and width of each tile in a tile row
     tile_columns: Vec<(usize, usize)>,
     width: usize,
@@ -284,7 +306,12 @@ pub(crate) struct ImageEncoder {
 }
 
 impl ImageEncoder {
-    pub fn warp(header: MainHeaderIn, params: TileEncodeParams, t1: MercuryT1EncodeFn) -> Self {
+    pub fn warp(
+        header: MainHeaderIn,
+        params: TileEncodeParams,
+        t1: MercuryT1EncodeFn,
+        output: Box<dyn TilePartOutput>,
+    ) -> Self {
         let (siz, cod) = (&header.siz, &header.cod);
         let precision = siz.components[0].precision as u32;
         let quantization: Vec<Vec<BandQuantization>> = header
@@ -357,6 +384,9 @@ impl ImageEncoder {
             threads: params.threads,
             max_bit_planes,
             samples,
+            unwritten_tiles: Vec::new(),
+            tiles_written: 0,
+            output,
             tile_columns,
             width: siz.x_siz as usize,
             height: siz.y_siz as usize,
@@ -423,39 +453,41 @@ impl ImageEncoder {
     }
 
     fn finish_tile_row(&mut self, next_tile_row: u32) {
-        let more = next_tile_row < self.header.siz.tiles_down();
-        match &mut self.samples {
-            TileSamples::Int32 { coder, .. } => {
-                coder.finish_row();
-                if more {
-                    coder.start_row(&self.header, next_tile_row);
-                }
-            }
-            TileSamples::Int16 { coder, .. } => {
-                coder.finish_row();
-                if more {
-                    coder.start_row(&self.header, next_tile_row);
-                }
-            }
+        let next = (next_tile_row < self.header.siz.tiles_down()).then_some(next_tile_row);
+        let finished = match &mut self.samples {
+            TileSamples::Int32 { coder, .. } => coder.finish_row(&self.header, next),
+            TileSamples::Int16 { coder, .. } => coder.finish_row(&self.header, next),
+        };
+        // without a rate target no later tile changes this row's packets
+        if self.rate.max_layer_length == 0 {
+            let coded = collect_tiles(finished, self.threads);
+            self.write_tiles(coded);
+        } else {
+            self.unwritten_tiles.extend(finished);
         }
     }
 
-    pub fn finish(
-        self,
-        mut start_tile_part: impl FnMut(u16, usize),
-        mut write: impl FnMut(&[u8]),
-    ) -> u16 {
+    pub fn finish(mut self) -> u16 {
         assert_eq!(self.rows_left(), 0, "rows still to push");
+        match &mut self.samples {
+            TileSamples::Int32 { coder, .. } => coder.stop_workers(),
+            TileSamples::Int16 { coder, .. } => coder.stop_workers(),
+        }
+        if self.unwritten_tiles.is_empty() {
+            return 0;
+        }
+        let coded = collect_tiles(std::mem::take(&mut self.unwritten_tiles), self.threads);
+        self.write_tiles(coded)
+    }
+
+    fn write_tiles(&mut self, coded: Vec<CodedTile>) -> u16 {
         let (siz, cod) = (&self.header.siz, &self.header.cod);
-        let coded = match self.samples {
-            TileSamples::Int32 { coder, .. } => coder.finish(self.threads),
-            TileSamples::Int16 { coder, .. } => coder.finish(self.threads),
-        };
-        let single_tile = coded.len() == 1;
+        let first_tile = self.tiles_written;
+        let single_tile = siz.tiles_across() * siz.tiles_down() == 1;
         let packet_threads = if single_tile { self.threads } else { 1 };
         let (geoms, mut writers): (Vec<TileGeom>, Vec<TilePacketWriter>) =
-            run_tasks((0..coded.len()).collect(), self.threads, |tile| {
-                let geom = chart_tile_geom(siz, cod, tile as u16);
+            run_tasks((0..coded.len()).collect(), self.threads, |index| {
+                let geom = chart_tile_geom(siz, cod, (first_tile + index) as u16);
                 let writer = TilePacketWriter::warp(cod, siz, &geom, packet_threads);
                 (geom, writer)
             })
@@ -491,7 +523,9 @@ impl ImageEncoder {
             writer.write_packets(bands, included)
         });
 
-        for (tile, written) in written.iter().enumerate() {
+        let output = &mut self.output;
+        for (offset, written) in written.iter().enumerate() {
+            let tile = (first_tile + offset) as u16;
             // classic starts a tile-part at every POC volume
             let mut parts: Vec<TilePart> = Vec::new();
             for packet in written.iter() {
@@ -522,18 +556,19 @@ impl ImageEncoder {
             for (index, part) in parts.iter().enumerate() {
                 let markers: &[u8] = if index == 0 { &plt } else { &[] };
                 let psot = SOT_SOD_BYTES + markers.len() + part.length;
-                start_tile_part(tile as u16, psot);
-                write(&sot_segment(tile as u16, index as u8, count, psot as u32));
-                write(markers);
-                write(&SOD.to_be_bytes());
+                output.start_tile_part(tile, psot);
+                output.write(&sot_segment(tile, index as u8, count, psot as u32));
+                output.write(markers);
+                output.write(&SOD.to_be_bytes());
                 for packet in packets.by_ref().take(part.packets) {
-                    write(packet.header);
+                    output.write(packet.header);
                     for body in packet.bodies {
-                        write(body);
+                        output.write(body);
                     }
                 }
             }
         }
+        self.tiles_written += coded.len();
         allocation.slope_threshold
     }
 }

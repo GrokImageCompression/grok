@@ -198,7 +198,8 @@ typedef struct MercuryDecodeParams
   uint32_t slice_blocks; /* code blocks per subband column slice, 0 means 16 */
   bool int16_dwt; /* nonzero runs the reversible 5/3 on int16 samples */
   bool int16_irreversible; /* nonzero runs the 9/7 on int16 fixed point above 8 bits */
-  uint32_t max_strips; /* most column strips one tile component's synthesis splits into, 0 means 1 */
+  uint32_t
+      max_strips; /* most column strips one tile component's synthesis splits into, 0 means 1 */
   bool fetch_window;
   /* threads that parse packet headers when PLT markers give every packet's start,
    * 0 and 1 parse on the calling thread */
@@ -364,15 +365,16 @@ typedef void (*mercury_write_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
 
 typedef struct MercuryEncoder MercuryEncoder;
 
+/* tile-parts are written from pushes and the finish, a tile row at a time without a rate target */
 int32_t mercury_encoder_new(const MercuryMainHeader* header, const MercuryEncodeParams* params,
-                            MercuryEncoder** encoder);
+                            mercury_tile_part_start_fn start_tile_part, mercury_write_fn write,
+                            void* write_ctx, MercuryEncoder** encoder);
 /* planes holds one pointer per component to rows rows of int16 samples with int16_planes, else
  * int32, stride samples apart. After a failed push only mercury_encoder_free is valid */
 int32_t mercury_encoder_push_rows(MercuryEncoder* encoder, const void* const* planes,
                                   uint32_t stride, uint32_t rows);
 /* frees the encoder whatever the result */
-int32_t mercury_encoder_finish(MercuryEncoder* encoder, mercury_tile_part_start_fn start_tile_part,
-                               mercury_write_fn write, void* write_ctx, uint16_t* slope_threshold);
+int32_t mercury_encoder_finish(MercuryEncoder* encoder, uint16_t* slope_threshold);
 /* for an encoder that is not finished */
 void mercury_encoder_free(MercuryEncoder* encoder);
 

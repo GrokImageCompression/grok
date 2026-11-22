@@ -1992,13 +1992,33 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
 
 pub struct MercuryEncoder(crate::encode::tile::ImageEncoder);
 
+struct CallbackOutput {
+    start_tile_part: MercuryTilePartStartFn,
+    write: MercuryWriteFn,
+    context: *mut c_void,
+}
+
+impl crate::encode::tile::TilePartOutput for CallbackOutput {
+    fn start_tile_part(&mut self, tile: u16, length: usize) {
+        (self.start_tile_part)(self.context, tile, length as u64)
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        (self.write)(self.context, bytes.as_ptr(), bytes.len() as u64)
+    }
+}
+
 /// # Safety
 /// `header` is valid as for `mercury_warp_loom`, `params` points to one value whose int16 tables
-/// span the decomposition levels, and `encoder` to one pointer.
+/// span the decomposition levels, and `encoder` to one pointer. The callbacks get `write_ctx`
+/// from pushes and the finish until the encoder is finished or freed.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn mercury_encoder_new(
     header: *const MercuryMainHeader,
     params: *const MercuryEncodeParams,
+    start_tile_part: MercuryTilePartStartFn,
+    write: MercuryWriteFn,
+    write_ctx: *mut c_void,
     encoder: *mut *mut MercuryEncoder,
 ) -> i32 {
     if params.is_null() || encoder.is_null() {
@@ -2059,6 +2079,11 @@ pub unsafe extern "C" fn mercury_encoder_new(
             header,
             encode_params,
             crate::ffi_dwt::mercury_t1_encode_block,
+            Box::new(CallbackOutput {
+                start_tile_part,
+                write,
+                context: write_ctx,
+            }),
         )
     }));
     let Ok(tile_encoder) = r else {
@@ -2119,9 +2144,6 @@ pub unsafe extern "C" fn mercury_encoder_push_rows(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn mercury_encoder_finish(
     encoder: *mut MercuryEncoder,
-    start_tile_part: MercuryTilePartStartFn,
-    write: MercuryWriteFn,
-    write_ctx: *mut c_void,
     slope_threshold: *mut u16,
 ) -> i32 {
     if encoder.is_null() {
@@ -2131,12 +2153,7 @@ pub unsafe extern "C" fn mercury_encoder_finish(
     if slope_threshold.is_null() || encoder.rows_left() != 0 {
         return MERCURY_EBADARG;
     }
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        encoder.finish(
-            |tile, length| start_tile_part(write_ctx, tile, length as u64),
-            |bytes| write(write_ctx, bytes.as_ptr(), bytes.len() as u64),
-        )
-    }));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| encoder.finish()));
     let Ok(threshold) = r else {
         return MERCURY_EPANIC;
     };

@@ -21,21 +21,43 @@ impl<T: QuantizedSample> StripeJob<T> {
     }
 }
 
+#[derive(Default)]
+struct StoredStripes {
+    slots: Vec<Option<CodedBand>>,
+    stored: usize,
+    abandoned: bool,
+}
+
 // one band's coded stripes, filled in any order
 #[derive(Default)]
-pub(crate) struct StripeResults(Mutex<Vec<Option<CodedBand>>>);
+pub(crate) struct StripeResults {
+    stripes: Mutex<StoredStripes>,
+    changed: Condvar,
+}
 
 impl StripeResults {
     fn store(&self, index: usize, coded: CodedBand) {
-        let mut slots = self.0.lock().unwrap();
-        if slots.len() <= index {
-            slots.resize_with(index + 1, || None);
+        let mut stripes = self.stripes.lock().unwrap();
+        if stripes.slots.len() <= index {
+            stripes.slots.resize_with(index + 1, || None);
         }
-        slots[index] = Some(coded);
+        stripes.slots[index] = Some(coded);
+        stripes.stored += 1;
+        self.changed.notify_all();
     }
 
-    pub fn take(&self) -> Vec<CodedBand> {
-        std::mem::take(&mut *self.0.lock().unwrap())
+    fn abandon(&self) {
+        self.stripes.lock().unwrap().abandoned = true;
+        self.changed.notify_all();
+    }
+
+    pub fn take(&self, stripes_sent: usize) -> Vec<CodedBand> {
+        let mut stripes = self.stripes.lock().unwrap();
+        while stripes.stored < stripes_sent {
+            assert!(!stripes.abandoned, "a stripe worker panicked");
+            stripes = self.changed.wait(stripes).unwrap();
+        }
+        std::mem::take(&mut stripes.slots)
             .into_iter()
             .map(|slot| slot.expect("every stripe is coded"))
             .collect()
@@ -122,7 +144,16 @@ impl<T: QuantizedSample> StripeWorkers<T> {
             pool.handles.push(std::thread::spawn(move || {
                 let mut block = Vec::new();
                 while let Some(job) = queue.pop() {
-                    queue.recycle(job.code(&mut block));
+                    let results = job.results.clone();
+                    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        job.code(&mut block)
+                    })) {
+                        Ok(samples) => queue.recycle(samples),
+                        Err(panic) => {
+                            results.abandon();
+                            std::panic::resume_unwind(panic);
+                        }
+                    }
                 }
             }));
         }

@@ -324,23 +324,30 @@ impl<T: QuantizedSample> BandCoder<T> {
     pub fn into_pending(self) -> PendingBand {
         PendingBand {
             coded: self.coded,
-            results: self.pooled.map(|pooled| pooled.results),
+            sent: self.pooled.map(|pooled| SentStripes {
+                results: pooled.results,
+                count: pooled.stripes_sent,
+            }),
         }
     }
 }
 
+struct SentStripes {
+    results: Arc<StripeResults>,
+    count: usize,
+}
+
 pub(crate) struct PendingBand {
     coded: CodedBand,
-    results: Option<Arc<StripeResults>>,
+    sent: Option<SentStripes>,
 }
 
 impl PendingBand {
-    // after the workers have finished
     pub fn collect(self) -> CodedBand {
-        let Some(results) = self.results else {
+        let Some(sent) = self.sent else {
             return self.coded;
         };
-        let stripes = results.take();
+        let stripes = sent.results.take(sent.count);
         let mut coded = self.coded;
         coded
             .blocks

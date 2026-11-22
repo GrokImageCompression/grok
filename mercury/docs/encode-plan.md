@@ -29,6 +29,7 @@ What gets held:
 |---|---|
 | PCRD | every packet of the tile |
 | PLT | every packet of the tile, the lengths precede SOD |
+| no rate control, tiled | the coded bytes of one tile row |
 | no rate control, PCRL, precincts covering a strip at every resolution | about one strip of packets |
 | no rate control, LRCP with whole-resolution precincts | everything, the first packet needs the whole image |
 
@@ -120,7 +121,7 @@ passes together.
    - Done. Untiled s2 with 16x16 blocks and 128 precincts, about 30000 precincts: 1002 ms against 1477 ms before and 830 ms for the reference encoder. The precinct coders are built in parallel and sorted by block count once, `feasible_passes` runs band by band in parallel, and `run_tasks` hands out tasks with an atomic counter in place of one locked queue. Rate simulations then wrote packet headers into `PrecinctPackets` that the main thread assembled and freed, about 20 ms per simulation, and freeing about 660000 precinct coder allocations took 60 ms on one thread at the end. `TilePacketWriter::packet_lengths` writes only the lengths, in packet order, and each `PrecinctCoder` keeps its tag tree nodes and block states in two vectors, with level offsets computed on the walk to the root: 1081 to 807 ms and 324 to 233 MB peak, against 829 ms for the reference encoder on the same machine. Tiled s2 from `compare_reference.sh` went from 869 to 820 ms.
 11. **Encodes without a rate target.**
    - Done. 9/7 without `-r`: every pass of every block goes in the layer, as in classic's `makeLayerFinal`, and packets are written at the end. A component cap without a rate target stays on classic. `grk_mercury_tile_encode_test` compares six parameter sets with classic, tiled, int16, POC and PLT included. s2 at 16 threads with `-I`: 540 ms and 160 MB peak, against 830 ms and 786 MB for classic. Distortion lookups in T1 cost about 1 percent of cycles and the convex hull 0.1 percent, so both still run.
-   - Tiled images written one tile row at a time, as each tile row finishes.
+   - Done. Tiled images without a rate target are written one tile row at a time. When a tile row's last rows are pushed, its bands wait for their own stripes, and its tiles are collected and written from that push. `mercury_encoder_new` takes the write callbacks for this. Tiled images whose rate allocation is not by rate distortion, which is `grk_compress` without `-r`, now go to mercury too. Tiled s2 from `compare_reference.sh` with `-I` and no `-r` at 16 threads: 730 ms and 87 MB peak, against 790 ms and 237 MB with every tile held to the end, and 1200 ms and 1075 MB for classic. `grk_mercury_tile_encode_test` checks that the first tile row's tile-parts are in the output after its rows are pushed.
    - Lossless 5/3.
    - Open: writing each packet as soon as the next one in progression order is ready, with Psot patched afterwards. Only PCRL with precincts and the first component of CPRL write early.
 
