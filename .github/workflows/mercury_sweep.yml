@@ -79,19 +79,6 @@ jobs:
         ln -s ${{ github.workspace }}/build/bin/compare_images sde-bin/compare_images
         python3 tests/mercury_ab_sweep.py sde-bin build/sweepwork-avx512 sde-corpus
 
-    - name: lossy encode under an emulated cpu without avx
-      # sde -p4p is a pentium 4, which runs only the sse2 and scalar highway targets
-      run: |
-        input=$DATA_ROOT/input/nonregression/Bretagne1.ppm
-        build/bin/grk_compress -i $input -o native.j2k -I -r 20
-        # ubuntu's dynamic loader runs avx code under -p4p, and sde matches images by their real file name
-        images="-chip_check_image grk_compress"
-        for library in build/bin/libgrokj2k.so build/bin/libgrokj2kcodec.so; do
-          images="$images -chip_check_image $(basename "$(readlink -f $library)")"
-        done
-        sde-external-9.48.0-2024-11-25-lin/sde64 -p4p $images -- build/bin/grk_compress -i $input -o p4p.j2k -I -r 20
-        cmp native.j2k p4p.j2k
-
     - name: ctest with classic forced
       # mercury_ab_sweep.py already compares classic and mercury pixels over the whole corpus
       working-directory: ${{ github.workspace }}/build
@@ -110,3 +97,33 @@ jobs:
           ${{ github.workspace }}/build/sweepwork
           ${{ github.workspace }}/build/sweepwork-avx512
         if-no-files-found: ignore
+
+  no-avx:
+    # ubuntu-latest installs ubuntu's amd64v3 packages, whose libraries need avx2
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    steps:
+    - name: dependencies
+      run: |
+        apt-get update && apt-get install -y git curl xz-utils build-essential cmake
+        curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: build
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DGRK_ENABLE_LIBCURL=OFF
+        cmake --build build -j$(nproc) --target grk_compress
+
+    - name: lossy encode under an emulated cpu without avx
+      # sde -p4p is a pentium 4, which runs only the sse2 and scalar highway targets
+      run: |
+        curl -sSfL -o sde.tar.xz https://github.com/xtensor-stack/xsimd-testing-resources/releases/download/2.0.0/sde-external-9.48.0-2024-11-25-lin.tar.xz
+        tar xf sde.tar.xz
+        curl -sSfL -o Bretagne1.ppm https://raw.githubusercontent.com/GrokImageCompression/grok-test-data/$DATA_BRANCH/input/nonregression/Bretagne1.ppm
+        build/bin/grk_compress -i Bretagne1.ppm -o native.j2k -I -r 20
+        sde-external-9.48.0-2024-11-25-lin/sde64 -p4p -- build/bin/grk_compress -i Bretagne1.ppm -o p4p.j2k -I -r 20
+        cmp native.j2k p4p.j2k
