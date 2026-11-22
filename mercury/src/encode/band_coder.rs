@@ -321,23 +321,39 @@ impl<T: QuantizedSample> BandCoder<T> {
         }
     }
 
+    pub fn into_pending(self) -> PendingBand {
+        PendingBand {
+            coded: self.coded,
+            results: self.pooled.map(|pooled| pooled.results),
+        }
+    }
+}
+
+pub(crate) struct PendingBand {
+    coded: CodedBand,
+    results: Option<Arc<StripeResults>>,
+}
+
+impl PendingBand {
     // after the workers have finished
-    pub fn collect_stripes(&mut self) {
-        let Some(pooled) = self.pooled.take() else {
-            return;
+    pub fn collect(self) -> CodedBand {
+        let Some(results) = self.results else {
+            return self.coded;
         };
-        let stripes = pooled.results.take();
-        self.coded
+        let stripes = results.take();
+        let mut coded = self.coded;
+        coded
             .blocks
             .reserve(stripes.iter().map(|stripe| stripe.blocks.len()).sum());
-        self.coded
+        coded
             .passes
             .reserve(stripes.iter().map(|stripe| stripe.passes.len()).sum());
-        self.coded
+        coded
             .bytes
             .reserve(stripes.iter().map(|stripe| stripe.bytes.len()).sum());
         for stripe in stripes {
-            self.coded.append(stripe);
+            coded.append(stripe);
         }
+        coded
     }
 }

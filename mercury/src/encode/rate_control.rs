@@ -1,15 +1,18 @@
-use super::tile_packets::{TileBands, TilePacketWriter};
+use super::tile_packets::{TileBands, TilePacketWriter, run_tasks};
 
 const SLOPE_BUCKETS: usize = u16::MAX as usize + 1;
 const MAX_SLOPE: u32 = u16::MAX as u32;
 // two octaves either side of the hint
 const HINT_BRACKET_HALF_WIDTH: u32 = 512;
 const MAX_MEASUREMENTS: u32 = 12;
+// classic's kMaxLayerMeasurements
+const IMAGE_MAX_MEASUREMENTS: u32 = 16;
 const UNTESTED: u32 = u32::MAX;
-const NO_BUDGET: u32 = u32::MAX;
+const NO_BUDGET: u64 = u64::MAX;
 
 pub(crate) struct RateTargets {
-    pub max_layer_length: u32,
+    // the sum over the tiles with several tiles
+    pub max_layer_length: u64,
     // 0 for no per-component cap
     pub component_cap: u64,
     pub tolerance: f64,
@@ -41,6 +44,198 @@ pub(crate) fn allocate_rate(
     search.allocate(true, true)
 }
 
+fn for_each_hull_pass(bands: &TileBands, mut visit: impl FnMut(usize, u32, u32)) {
+    for band in &bands.bands {
+        for block in &band.coded.blocks {
+            let mut previous_rate = 0u32;
+            let mut effective_slope = MAX_SLOPE;
+            for pass in band.coded.block_passes(block) {
+                if pass.slope == 0 {
+                    continue;
+                }
+                // a threshold stops at the first hull pass at or under it
+                effective_slope = effective_slope.min(pass.slope as u32);
+                visit(
+                    band.compno,
+                    effective_slope,
+                    pass.rate as u32 - previous_rate,
+                );
+                previous_rate = pass.rate as u32;
+            }
+        }
+    }
+}
+
+fn feasible_passes(bands: &TileBands, thresh: u32, included: &mut [Vec<u8>]) {
+    for (band, included) in bands.bands.iter().zip(included) {
+        for (block, slot) in band.coded.blocks.iter().zip(included.iter_mut()) {
+            let mut passes = 0;
+            for (passno, pass) in band.coded.block_passes(block).iter().enumerate() {
+                if pass.slope == 0 {
+                    continue;
+                }
+                if pass.slope as u32 <= thresh {
+                    break;
+                }
+                passes = passno as u8 + 1;
+            }
+            *slot = passes;
+        }
+    }
+}
+
+fn every_pass(bands: &TileBands, included: &mut [Vec<u8>]) {
+    for (band, included) in bands.bands.iter().zip(included) {
+        for (block, slot) in band.coded.blocks.iter().zip(included.iter_mut()) {
+            *slot = block.passes;
+        }
+    }
+}
+
+fn no_passes(bands: &TileBands) -> Vec<Vec<u8>> {
+    bands
+        .bands
+        .iter()
+        .map(|band| vec![0; band.coded.blocks.len()])
+        .collect()
+}
+
+fn packet_bytes(writer: &mut TilePacketWriter, bands: &TileBands, included: &[Vec<u8>]) -> u64 {
+    let written = writer.write_packets(bands, included, false);
+    written.iter().map(|packet| packet.length as u64).sum()
+}
+
+pub(crate) struct ImageRateAllocation {
+    // [tile][band] passes included per block
+    pub included: Vec<Vec<Vec<u8>>>,
+    pub slope_threshold: u16,
+}
+
+pub(crate) fn allocate_image_rate(
+    writers: &mut [TilePacketWriter],
+    tiles: &[TileBands],
+    targets: &RateTargets,
+    threads: usize,
+) -> ImageRateAllocation {
+    let mut included: Vec<Vec<Vec<u8>>> = tiles.iter().map(no_passes).collect();
+    let mut simulate = |included: &mut Vec<Vec<Vec<u8>>>,
+                        layout: &(dyn Fn(&TileBands, &mut [Vec<u8>]) + Sync)|
+     -> u64 {
+        let tasks: Vec<_> = writers
+            .iter_mut()
+            .zip(tiles)
+            .zip(included.iter_mut())
+            .collect();
+        run_tasks(tasks, threads, |((writer, bands), included)| {
+            layout(bands, included);
+            packet_bytes(writer, bands, included)
+        })
+        .into_iter()
+        .sum()
+    };
+    let every_pass_everywhere = |mut included: Vec<Vec<Vec<u8>>>| {
+        for (bands, included) in tiles.iter().zip(included.iter_mut()) {
+            every_pass(bands, included);
+        }
+        ImageRateAllocation {
+            included,
+            slope_threshold: 0,
+        }
+    };
+    let budget = targets.max_layer_length;
+    if budget == 0 {
+        return every_pass_everywhere(included);
+    }
+
+    let mut min_slope = MAX_SLOPE;
+    let mut bytes_above = vec![0u64; SLOPE_BUCKETS + 1];
+    let mut passes_above = vec![0u64; SLOPE_BUCKETS + 1];
+    for bands in tiles {
+        for_each_hull_pass(bands, |_, slope, bytes| {
+            min_slope = min_slope.min(slope);
+            bytes_above[slope as usize] += bytes as u64;
+            passes_above[slope as usize] += 1;
+        });
+    }
+    // bytes_above[t] counts what a threshold of t - 1 includes
+    for slope in (0..SLOPE_BUCKETS).rev() {
+        bytes_above[slope] += bytes_above[slope + 1];
+        passes_above[slope] += passes_above[slope + 1];
+    }
+
+    // packet headers grow with the number of included passes
+    let mut measured_headers = 0u64;
+    let mut measured_passes = 0u64;
+    // every pass at or under the threshold is left out, so one below the minimum keeps every
+    // hull pass
+    let every_hull_pass = min_slope.saturating_sub(1);
+    let mut failing = every_hull_pass as i64 - 1;
+    let mut fitting = MAX_SLOPE;
+    let mut have_fit = false;
+    for _ in 0..IMAGE_MAX_MEASUREMENTS {
+        let lower = (failing + 1) as u32;
+        let upper = if have_fit { fitting } else { MAX_SLOPE };
+        if have_fit && lower >= upper {
+            break;
+        }
+        let estimate = |thresh: u32| {
+            let headers = (measured_headers * passes_above[thresh as usize + 1])
+                .checked_div(measured_passes)
+                .unwrap_or(measured_headers);
+            bytes_above[thresh as usize + 1] + headers
+        };
+        // smallest threshold the estimate says fits
+        let (mut low, mut high) = (lower, upper);
+        while low < high {
+            let mid = (low + high) / 2;
+            if estimate(mid) <= budget {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+        let thresh = low;
+        if have_fit && thresh == fitting {
+            break;
+        }
+        let total = simulate(&mut included, &|bands, included| {
+            feasible_passes(bands, thresh, included)
+        });
+        measured_passes = passes_above[thresh as usize + 1];
+        measured_headers = total - bytes_above[thresh as usize + 1];
+        if total <= budget {
+            fitting = thresh;
+            have_fit = true;
+            if targets.tolerance > 0.0 && total as f64 >= budget as f64 * (1.0 - targets.tolerance)
+            {
+                break;
+            }
+        } else {
+            failing = thresh as i64;
+            if thresh == MAX_SLOPE {
+                break;
+            }
+        }
+    }
+    if !have_fit {
+        return every_pass_everywhere(included);
+    }
+    // passes after a block's last hull pass need every pass taken to be included
+    let takes_every_pass = fitting == every_hull_pass
+        && simulate(&mut included, &|bands, included| {
+            every_pass(bands, included)
+        }) <= budget;
+    if !takes_every_pass {
+        for (bands, included) in tiles.iter().zip(included.iter_mut()) {
+            feasible_passes(bands, fitting, included);
+        }
+    }
+    ImageRateAllocation {
+        included,
+        slope_threshold: fitting as u16,
+    }
+}
+
 struct Search<'w, 'a> {
     writer: &'w mut TilePacketWriter,
     bands: &'w TileBands<'a>,
@@ -52,7 +247,7 @@ struct Search<'w, 'a> {
     // [comp][slope + 1]: body bytes of the passes a threshold at slope keeps
     body_bytes_above: Vec<u32>,
     passes_above: Vec<u32>,
-    max_layer_length: u32,
+    max_layer_length: u64,
     measured_headers: Vec<u64>,
     measured_passes: u64,
     have_estimate: bool,
@@ -71,24 +266,11 @@ impl<'w, 'a> Search<'w, 'a> {
         let mut min_slope = MAX_SLOPE;
         let mut body_bytes_above = vec![0u32; num_comps * (SLOPE_BUCKETS + 1)];
         let mut passes_above = vec![0u32; SLOPE_BUCKETS + 1];
-        for band in &bands.bands {
-            let bytes_above = &mut body_bytes_above[band.compno * (SLOPE_BUCKETS + 1)..];
-            for block in &band.coded.blocks {
-                let mut previous_rate = 0u32;
-                let mut effective_slope = MAX_SLOPE;
-                for pass in band.coded.block_passes(block) {
-                    if pass.slope == 0 {
-                        continue;
-                    }
-                    min_slope = min_slope.min(pass.slope as u32);
-                    // a threshold stops at the first hull pass at or under it
-                    effective_slope = effective_slope.min(pass.slope as u32);
-                    bytes_above[effective_slope as usize] += pass.rate as u32 - previous_rate;
-                    passes_above[effective_slope as usize] += 1;
-                    previous_rate = pass.rate as u32;
-                }
-            }
-        }
+        for_each_hull_pass(bands, |compno, slope, bytes| {
+            min_slope = min_slope.min(slope);
+            body_bytes_above[compno * (SLOPE_BUCKETS + 1) + slope as usize] += bytes;
+            passes_above[slope as usize] += 1;
+        });
         for slope in (0..SLOPE_BUCKETS).rev() {
             passes_above[slope] += passes_above[slope + 1];
             for compno in 0..num_comps {
@@ -101,11 +283,7 @@ impl<'w, 'a> Search<'w, 'a> {
             bands,
             targets,
             num_comps,
-            included: bands
-                .bands
-                .iter()
-                .map(|band| vec![0; band.coded.blocks.len()])
-                .collect(),
+            included: no_passes(bands),
             component_bytes: vec![0; num_comps],
             min_slope,
             body_bytes_above,
@@ -191,29 +369,11 @@ impl<'w, 'a> Search<'w, 'a> {
     }
 
     fn make_layer_feasible(&mut self, thresh: u32) {
-        for (band, included) in self.bands.bands.iter().zip(&mut self.included) {
-            for (block, slot) in band.coded.blocks.iter().zip(included.iter_mut()) {
-                let mut passes = 0;
-                for (passno, pass) in band.coded.block_passes(block).iter().enumerate() {
-                    if pass.slope == 0 {
-                        continue;
-                    }
-                    if pass.slope as u32 <= thresh {
-                        break;
-                    }
-                    passes = passno as u8 + 1;
-                }
-                *slot = passes;
-            }
-        }
+        feasible_passes(self.bands, thresh, &mut self.included);
     }
 
     fn make_layer_final(&mut self) {
-        for (band, included) in self.bands.bands.iter().zip(&mut self.included) {
-            for (block, slot) in band.coded.blocks.iter().zip(included.iter_mut()) {
-                *slot = block.passes;
-            }
-        }
+        every_pass(self.bands, &mut self.included);
     }
 
     fn simulate(&mut self) -> u64 {
@@ -232,7 +392,7 @@ impl<'w, 'a> Search<'w, 'a> {
 
     fn simulate_within_budget(&mut self) -> bool {
         let total = self.simulate();
-        total <= self.max_layer_length as u64 && self.components_within_cap()
+        total <= self.max_layer_length && self.components_within_cap()
     }
 
     fn body_bytes_at(&self, compno: usize, thresh: u32) -> u64 {
@@ -256,7 +416,7 @@ impl<'w, 'a> Search<'w, 'a> {
             }
             total += bytes;
         }
-        total <= self.max_layer_length as u64
+        total <= self.max_layer_length
     }
 
     fn measure(&mut self, thresh: u32) -> bool {
@@ -278,7 +438,7 @@ impl<'w, 'a> Search<'w, 'a> {
             self.measured_headers[0] = total - body;
         }
         self.have_estimate = true;
-        if total > self.max_layer_length as u64 || !self.components_within_cap() {
+        if total > self.max_layer_length || !self.components_within_cap() {
             return false;
         }
         self.last_measured_fits = true;

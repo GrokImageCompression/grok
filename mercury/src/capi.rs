@@ -1942,7 +1942,8 @@ const MAX_XYZ_SOURCE_PRECISION: u32 = 16;
 
 #[repr(C)]
 pub struct MercuryEncodeParams {
-    pub max_layer_length: u32,
+    // summed over the tiles
+    pub max_layer_length: u64,
     // 0 for no per-component cap
     pub max_comp_size: u64,
     pub slope_hint: u16,
@@ -1961,7 +1962,7 @@ pub struct MercuryEncodeParams {
     pub int16_band_scales: *const f64,
 }
 
-pub type MercuryTilePartStartFn = extern "C" fn(ctx: *mut c_void, length: u64);
+pub type MercuryTilePartStartFn = extern "C" fn(ctx: *mut c_void, tile: u16, length: u64);
 pub type MercuryWriteFn = extern "C" fn(ctx: *mut c_void, bytes: *const u8, len: u64);
 
 fn tile_encodable(header: &MainHeaderIn) -> bool {
@@ -1976,7 +1977,8 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
             && style.num_levels > 0
             && style.num_levels == cod.comps[0].num_levels
     });
-    siz.tiles_across() * siz.tiles_down() == 1
+    siz.xt_o_siz == 0
+        && siz.yt_o_siz == 0
         && siz.x_o_siz == 0
         && siz.y_o_siz == 0
         && cod.num_layers == 1
@@ -1987,7 +1989,7 @@ fn tile_encodable(header: &MainHeaderIn) -> bool {
         && styles_match
 }
 
-pub struct MercuryEncoder(crate::encode::tile::TileEncoder);
+pub struct MercuryEncoder(crate::encode::tile::ImageEncoder);
 
 /// # Safety
 /// `header` is valid as for `mercury_warp_loom`, `params` points to one value whose int16 tables
@@ -2006,6 +2008,7 @@ pub unsafe extern "C" fn mercury_encoder_new(
     };
     let params = unsafe { &*params };
     let rect = header.siz.tile_rect(0);
+    let tiled = header.siz.tiles_across() * header.siz.tiles_down() > 1;
     let xyz = params.xyz_source_precision != 0;
     let xyz_supported = !xyz
         || (header.cod.use_ycc
@@ -2016,6 +2019,8 @@ pub unsafe extern "C" fn mercury_encoder_new(
     if !tile_encodable(&header)
         || !xyz_supported
         || !int16_tables_given
+        // classic's image-wide rate control applies no component cap
+        || (tiled && params.max_comp_size != 0)
         || rect.x1 == rect.x0
         || rect.y1 == rect.y0
     {
@@ -2048,7 +2053,7 @@ pub unsafe extern "C" fn mercury_encoder_new(
             }),
     };
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        crate::encode::tile::TileEncoder::warp(
+        crate::encode::tile::ImageEncoder::warp(
             header,
             encode_params,
             crate::ffi_dwt::mercury_t1_encode_block,
@@ -2126,7 +2131,7 @@ pub unsafe extern "C" fn mercury_encoder_finish(
     }
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         encoder.finish(
-            |length| start_tile_part(write_ctx, length as u64),
+            |tile, length| start_tile_part(write_ctx, tile, length as u64),
             |bytes| write(write_ctx, bytes.as_ptr(), bytes.len() as u64),
         )
     }));

@@ -8,7 +8,7 @@ use crate::ffi_dwt::{
     mercury_xyz_tables_free, mercury_xyz_tables_new,
 };
 
-use super::band_coder::{BandCoder, BandGeometry, BandT1Params, CodedBand, QuantizedSample};
+use super::band_coder::{BandCoder, BandGeometry, BandT1Params, PendingBand, QuantizedSample};
 use super::stripe_queue::StripeQueue;
 
 pub(crate) trait CoefficientSample: AnalysisSample + QuantizedSample {}
@@ -160,19 +160,16 @@ impl<T: CoefficientSample> ComponentEncoder<T> {
     }
 
     // [resolution][band], LL alone at resolution 0, then HL, LH, HH
-    pub fn into_coded_bands(self) -> Vec<Vec<CodedBand>> {
-        let mut resolutions = vec![vec![self.lowest.coded]];
+    pub fn into_pending(self) -> Vec<Vec<PendingBand>> {
+        let mut resolutions = vec![vec![self.lowest.into_pending()]];
         for [hl, lh, hh] in self.details.into_iter().rev() {
-            resolutions.push(vec![hl.coded, lh.coded, hh.coded]);
+            resolutions.push(vec![
+                hl.into_pending(),
+                lh.into_pending(),
+                hh.into_pending(),
+            ]);
         }
         resolutions
-    }
-
-    pub fn collect_stripes(&mut self) {
-        self.lowest.collect_stripes();
-        for band in self.details.iter_mut().flatten() {
-            band.collect_stripes();
-        }
     }
 }
 

@@ -57,6 +57,7 @@ struct Case
   bool expectMercury;
   grk_data_type dataType = GRK_INT_32;
   bool icc = false;
+  bool pocSplitDiffersByTile = false;
 };
 
 void recordInfo(const char* message, void*)
@@ -193,18 +194,30 @@ std::vector<uint8_t> encode(const Case& test, bool mercury, Input input)
   }
   if(test.poc)
   {
-    params.progression[0] = {};
-    params.progression[0].res_e = 3;
-    params.progression[0].comp_e = test.numcomps;
-    params.progression[0].lay_e = test.layers;
-    params.progression[0].specified_compression_poc_prog = test.order;
-    params.progression[1] = {};
-    params.progression[1].res_s = 3;
-    params.progression[1].res_e = test.resolutions;
-    params.progression[1].comp_e = test.numcomps;
-    params.progression[1].lay_e = test.layers;
-    params.progression[1].specified_compression_poc_prog = test.order;
-    params.numpocs = 1;
+    uint32_t numTiles = 1;
+    if(test.tileSide)
+      numTiles = ((test.width + test.tileSide - 1) / test.tileSide) *
+                 ((test.height + test.tileSide - 1) / test.tileSide);
+    // grok fails a tile with no progression of its own
+    for(uint32_t tile = 0; tile < numTiles; ++tile)
+    {
+      uint8_t splitResolution = test.pocSplitDiffersByTile && tile > 0 ? 2 : 3;
+      auto progression = params.progression + 2 * tile;
+      progression[0] = {};
+      progression[0].tileno = tile;
+      progression[0].res_e = splitResolution;
+      progression[0].comp_e = test.numcomps;
+      progression[0].lay_e = test.layers;
+      progression[0].specified_compression_poc_prog = test.order;
+      progression[1] = {};
+      progression[1].tileno = tile;
+      progression[1].res_s = splitResolution;
+      progression[1].res_e = test.resolutions;
+      progression[1].comp_e = test.numcomps;
+      progression[1].lay_e = test.layers;
+      progression[1].specified_compression_poc_prog = test.order;
+    }
+    params.numpocs = 2 * numTiles - 1;
   }
   if(test.tileSide)
   {
@@ -365,7 +378,35 @@ int main()
       {"two layers", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 2, false, 0,
        false},
       {"sop", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, true, 0, false},
-      {"tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false, 256, false},
+      {"tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false, 256, true},
+      {"int16 tiled partial edges", 1001, 733, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 24.0,
+       1, false, 300, true, GRK_INT_16},
+      {"tiled cprl split by component", 800, 600, 3, 10, true, 6, 32, GRK_CPRL, 64, true, false,
+       12.0, 1, false, 300, true},
+      {"tiled rpcl poc", 700, 500, 3, 8, true, 6, 64, GRK_RPCL, 0, false, true, 20.0, 1, false, 256,
+       true},
+      {"tiled poc differs by tile",
+       700,
+       500,
+       3,
+       8,
+       true,
+       6,
+       64,
+       GRK_RPCL,
+       0,
+       false,
+       true,
+       20.0,
+       1,
+       false,
+       256,
+       false,
+       GRK_INT_32,
+       false,
+       true},
+      {"small tiles", 200, 150, 1, 12, false, 4, 32, GRK_LRCP, 0, false, false, 16.0, 1, false, 40,
+       true},
       {"int16 rgb 8 bit defaults", 1001, 733, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 24.0, 1,
        false, 0, true, GRK_INT_16},
       {"int16 rgb 10 bit rpcl precincts", 777, 515, 3, 10, true, 5, 32, GRK_RPCL, 128, false, false,
@@ -387,7 +428,7 @@ int main()
       {"icc gray 16 bit", 515, 777, 1, 16, false, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1, false,
        0, true, GRK_INT_32, true},
       {"icc rgb 8 bit tiled", 640, 480, 3, 8, true, 6, 64, GRK_LRCP, 0, false, false, 20.0, 1,
-       false, 256, false, GRK_INT_32, true},
+       false, 256, true, GRK_INT_32, true},
   };
   bool ok = true;
   for(const auto& test : cases)

@@ -108,7 +108,7 @@ namespace
 
   bool codingMatchesMercury(const CodingParams& cp, TileCodingParams* tcp, uint16_t numcomps)
   {
-    if(cp.t_grid_width_ * cp.t_grid_height_ != 1 || (tcp->mct_ && numcomps != 3))
+    if(tcp->mct_ && numcomps != 3)
       return false;
     const auto& enc = cp.codingParams_.enc_;
     if(enc.enableTilePartGeneration_ &&
@@ -127,6 +127,22 @@ namespace
                                   first.precHeightExp_);
       if(!sameStyle || tccp.qmfbid_ != 0 || tccp.cblkStyle_ != 0 || tccp.roishift_ != 0 ||
          tccp.numresolutions_ < 2)
+        return false;
+    }
+    return true;
+  }
+
+  bool tilesMatchMercury(CodingParams& cp, uint16_t numcomps)
+  {
+    uint32_t numTiles = (uint32_t)cp.t_grid_width_ * cp.t_grid_height_;
+    // mercury takes every pass where classic's tiled rate control fails the encode
+    if(numTiles > 1 && cp.codingParams_.enc_.failOnRateControlOvershoot_)
+      return false;
+    // mercury writes no tile-part POC markers
+    auto first = cp.tcps_.get(0);
+    for(uint32_t tile = 1; tile < numTiles; ++tile)
+    {
+      if(!cp.tcps_.get((uint16_t)tile)->sameProgressions(first, numcomps))
         return false;
     }
     return true;
@@ -169,12 +185,12 @@ namespace
     bool written = true;
   };
 
-  void startMercuryTilePart(void* context, uint64_t length)
+  void startMercuryTilePart(void* context, uint16_t tile, uint64_t length)
   {
     auto sink = (MercuryTilePartSink*)context;
     ++sink->parts;
     if(sink->tlm)
-      sink->tlm->add(0, (uint32_t)length);
+      sink->tlm->add(tile, (uint32_t)length);
   }
 
   void writeMercuryBytes(void* context, const uint8_t* bytes, uint64_t length)
@@ -202,8 +218,11 @@ bool CodeStreamCompress::deferXyzToMercury(const grk_cparameters* parameters, Gr
 
 bool CodeStreamCompress::selectMercuryEncode(const grk_cparameters* parameters)
 {
+  uint32_t numTiles = (uint32_t)cp_.t_grid_width_ * cp_.t_grid_height_;
   mercuryEncode_ = !mercuryEncodeDisabled() && parametersMatchMercury(parameters) &&
                    codingMatchesMercury(cp_, cp_.tcps_.get(0), headerImage_->numcomps) &&
+                   (numTiles == 1 || usesImageWideRateControl(numTiles)) &&
+                   tilesMatchMercury(cp_, headerImage_->numcomps) &&
                    (stripInput_ ? planeGeometryMatchesMercury(headerImage_)
                                 : imagePlanesMatchMercury(headerImage_));
   if(mercuryEncode_ || !mercuryXyzSourcePrecision_)
@@ -234,8 +253,14 @@ bool CodeStreamCompress::createMercuryEncoder(void)
   fillMercuryCodingHeader(coding, cp_, *tcp, *image, *image);
   const auto& enc = cp_.codingParams_.enc_;
   MercuryEncodeParams params = {};
-  // classic's rate control rounds the layer budget up
-  params.max_layer_length = (uint32_t)std::ceil(tcp->rates_[0]);
+  uint32_t numTiles = (uint32_t)cp_.t_grid_width_ * cp_.t_grid_height_;
+  // classic's rate control rounds each tile's layer budget up
+  for(uint32_t tile = 0; tile < numTiles; ++tile)
+  {
+    double rate = cp_.tcps_.get((uint16_t)tile)->rates_[0];
+    if(rate > 0.0)
+      params.max_layer_length += (uint64_t)std::ceil(rate);
+  }
   params.max_comp_size = enc.maxComponentRate_;
   params.slope_hint = enc.rateControlSlopeHint_;
   params.rate_tolerance = enc.rateControlTolerance_;
@@ -283,7 +308,6 @@ bool CodeStreamCompress::pushMercuryRows(const void* const* planes, uint32_t str
 uint64_t CodeStreamCompress::compressWithMercury(void)
 {
   auto image = headerImage_;
-  auto tcp = cp_.tcps_.get(0);
   if(!stripInput_)
   {
     std::vector<const void*> planes(image->numcomps);
@@ -304,10 +328,13 @@ uint64_t CodeStreamCompress::compressWithMercury(void)
   }
   if(!sink.written)
     return 0;
-  if(sink.parts != tcp->signalledNumTileParts_)
+  uint32_t numTiles = (uint32_t)cp_.t_grid_width_ * cp_.t_grid_height_;
+  uint32_t signalledParts = 0;
+  for(uint32_t tile = 0; tile < numTiles; ++tile)
+    signalledParts += cp_.tcps_.get((uint16_t)tile)->signalledNumTileParts_;
+  if(sink.parts != signalledParts)
   {
-    grklog.error("mercury wrote %u tile-parts, the header signals %u", sink.parts,
-                 tcp->signalledNumTileParts_);
+    grklog.error("mercury wrote %u tile-parts, the header signals %u", sink.parts, signalledParts);
     return 0;
   }
   recordSlopeThreshold(threshold);

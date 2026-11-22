@@ -336,7 +336,8 @@ int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave)
 
 typedef struct MercuryEncodeParams
 {
-  uint32_t max_layer_length;
+  /* summed over the tiles */
+  uint64_t max_layer_length;
   /* 0 for no per-component cap */
   uint64_t max_comp_size;
   uint16_t slope_hint;
@@ -355,8 +356,8 @@ typedef struct MercuryEncodeParams
   const double* int16_band_scales;
 } MercuryEncodeParams;
 
-/* called before each tile-part's bytes with its length from SOT to the last packet */
-typedef void (*mercury_tile_part_start_fn)(void* ctx, uint64_t length);
+/* called before each tile-part's bytes with its tile and its length from SOT to the last packet */
+typedef void (*mercury_tile_part_start_fn)(void* ctx, uint16_t tile, uint64_t length);
 /* called with the codestream bytes in order, a tile-part in many pieces */
 typedef void (*mercury_write_fn)(void* ctx, const uint8_t* bytes, uint64_t len);
 

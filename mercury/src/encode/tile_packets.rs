@@ -166,31 +166,16 @@ impl TilePacketWriter {
         let mut tasks: Vec<(usize, &mut PrecinctCoder)> =
             self.precincts.iter_mut().enumerate().collect();
         tasks.sort_by_key(|(_, coder)| coder.block_count());
-        let tasks = Mutex::new(tasks);
         let precinct_packets = &self.precinct_packets;
-        let run_tasks = || {
-            let mut done = Vec::new();
-            loop {
-                let Some((precinct, coder)) = tasks.lock().unwrap().pop() else {
-                    return done;
-                };
-                done.push((precinct, write_precinct(coder, &precinct_packets[precinct])));
-            }
-        };
-        let helpers = self.threads.min(precinct_count).saturating_sub(1);
+        let finished = run_tasks(tasks, self.threads, |(precinct, coder)| {
+            (precinct, write_precinct(coder, &precinct_packets[precinct]))
+        });
         let mut written: Vec<Option<PrecinctPackets>> = std::iter::repeat_with(|| None)
             .take(precinct_count)
             .collect();
-        std::thread::scope(|scope| {
-            let handles: Vec<_> = (0..helpers).map(|_| scope.spawn(run_tasks)).collect();
-            let mut finished = run_tasks();
-            for handle in handles {
-                finished.extend(handle.join().expect("packet thread panicked"));
-            }
-            for (precinct, packets) in finished {
-                written[precinct] = Some(packets);
-            }
-        });
+        for (precinct, packets) in finished {
+            written[precinct] = Some(packets);
+        }
         WrittenPackets {
             order,
             packet_positions: &self.packet_positions,
@@ -200,4 +185,38 @@ impl TilePacketWriter {
                 .collect(),
         }
     }
+}
+
+pub(crate) fn run_tasks<T: Send, R: Send>(
+    tasks: Vec<T>,
+    threads: usize,
+    work: impl Fn(T) -> R + Sync,
+) -> Vec<R> {
+    let count = tasks.len();
+    let queue = Mutex::new(tasks.into_iter().enumerate().collect::<Vec<_>>());
+    let run = || {
+        let mut done = Vec::new();
+        loop {
+            let Some((index, task)) = queue.lock().unwrap().pop() else {
+                return done;
+            };
+            done.push((index, work(task)));
+        }
+    };
+    let helpers = threads.min(count).saturating_sub(1);
+    let mut results: Vec<Option<R>> = std::iter::repeat_with(|| None).take(count).collect();
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..helpers).map(|_| scope.spawn(run)).collect();
+        let mut finished = run();
+        for handle in handles {
+            finished.extend(handle.join().expect("task thread panicked"));
+        }
+        for (index, result) in finished {
+            results[index] = Some(result);
+        }
+    });
+    results
+        .into_iter()
+        .map(|result| result.expect("every task ran"))
+        .collect()
 }
