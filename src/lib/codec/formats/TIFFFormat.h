@@ -40,6 +40,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -2624,14 +2625,9 @@ bool TIFFFormat::pushStrips(grk_object* codec)
   uint32_t stripsPerPlane = (imageHeight_ + rowsPerStrip - 1) / rowsPerStrip;
   tsize_t stripSize = TIFFStripSize(tif_);
   std::vector<uint8_t> stripBytes((size_t)stripSize);
-  std::vector<std::vector<T>> planes(numcomps_, std::vector<T>((size_t)rowsPerStrip * imageWidth_));
-  std::vector<const void*> planePointers(numcomps_);
-  for(uint16_t c = 0; c < numcomps_; ++c)
-    planePointers[c] = planes[c].data();
   std::vector<T> rowBuffer;
   std::vector<T*> rowPlanes(targetPlanes);
-  for(uint32_t strip = 0; strip < stripsPerPlane; ++strip)
-  {
+  auto readStrip = [&](uint32_t strip, std::vector<std::vector<T>>& planes) {
     uint32_t rows = (std::min)(rowsPerStrip, imageHeight_ - strip * rowsPerStrip);
     tsize_t expectedBytes = (tsize_t)rows * rowStride;
     for(uint16_t plane = 0; plane < numcomps_; plane += targetPlanes)
@@ -2663,8 +2659,28 @@ bool TIFFFormat::pushStrips(grk_object* codec)
       comp.data = planes[c].data();
       scaleComponent<T>(&comp, 12);
     }
+    return true;
+  };
+  std::vector<std::vector<T>> stripPlanes[2];
+  for(auto& planes : stripPlanes)
+    planes.assign(numcomps_, std::vector<T>((size_t)rowsPerStrip * imageWidth_));
+  if(!readStrip(0, stripPlanes[0]))
+    return false;
+  std::vector<const void*> planePointers(numcomps_);
+  for(uint32_t strip = 0; strip < stripsPerPlane; ++strip)
+  {
+    auto& planes = stripPlanes[strip % 2];
+    std::future<bool> nextRead;
+    if(strip + 1 < stripsPerPlane)
+      nextRead = std::async(std::launch::async, readStrip, strip + 1,
+                            std::ref(stripPlanes[(strip + 1) % 2]));
+    for(uint16_t c = 0; c < numcomps_; ++c)
+      planePointers[c] = planes[c].data();
+    uint32_t rows = (std::min)(rowsPerStrip, imageHeight_ - strip * rowsPerStrip);
     grk_strip pushed = {rows, planePointers.data(), imageWidth_};
-    if(!grk_compress_push_strip(codec, &pushed))
+    bool pushOk = grk_compress_push_strip(codec, &pushed);
+    bool readOk = !nextRead.valid() || nextRead.get();
+    if(!pushOk || !readOk)
       return false;
   }
   return true;

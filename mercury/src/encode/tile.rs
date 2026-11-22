@@ -178,6 +178,7 @@ pub(crate) struct TileEncoder {
     header: MainHeaderIn,
     rate: RateTargets,
     split_by_component: bool,
+    threads: usize,
     // [component][band number]
     max_bit_planes: Vec<Vec<u8>>,
     samples: TileSamples,
@@ -251,6 +252,7 @@ impl TileEncoder {
         Self {
             rate: params.rate,
             split_by_component: params.split_by_component,
+            threads: params.threads,
             max_bit_planes,
             samples,
             width: (rect.x1 - rect.x0) as usize,
@@ -325,7 +327,7 @@ impl TileEncoder {
             first_band.push(comp_first);
         }
         let bands = TileBands { bands, first_band };
-        let mut packets = TilePacketWriter::warp(cod, siz, &geom);
+        let mut packets = TilePacketWriter::warp(cod, siz, &geom, self.threads);
         let allocation =
             allocate_rate(&mut packets, &bands, &self.rate).expect("rate control finds a fit");
 

@@ -206,6 +206,10 @@ impl PrecinctCoder {
         Self { bands }
     }
 
+    pub fn block_count(&self) -> usize {
+        self.bands.iter().map(|band| band.blocks.len()).sum()
+    }
+
     fn band_block_index(range: &PrecBand, blocks_across: u32, precinct_block: u32) -> usize {
         let x = range.bx0 + precinct_block % range.nbw;
         let y = range.by0 + precinct_block / range.nbw;
