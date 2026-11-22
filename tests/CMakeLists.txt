@@ -247,6 +247,12 @@ target_link_libraries(grk_rescale_test ${GROK_CORE_NAME})
 add_test(NAME grk_rescale_test COMMAND grk_rescale_test)
 
 if(GRK_ENABLE_MERCURY)
+  if(BUILD_SHARED_LIBS AND CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF" AND CMAKE_NM)
+    add_test(NAME grk_mercury_elf_symbols_test
+      COMMAND ${CMAKE_COMMAND} -DNM=${CMAKE_NM} -DLIBRARY=$<TARGET_FILE:${GROK_CORE_NAME}>
+              -P ${CMAKE_CURRENT_SOURCE_DIR}/GrkMercuryElfSymbolsTest.cmake)
+  endif()
+
   add_executable(grk_mercury_stream_input_test GrkMercuryStreamInputTest.cpp)
   target_link_libraries(grk_mercury_stream_input_test ${GROK_CORE_NAME} spdlog::spdlog)
   if(GRK_DATA_ROOT)

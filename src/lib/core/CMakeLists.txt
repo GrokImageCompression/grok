@@ -403,6 +403,13 @@ if(GRK_ENABLE_MERCURY)
   else()
     target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} mercury_kernels dl)
   endif()
+  if(BUILD_SHARED_LIBS AND CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
+    # Keep Mercury's Rust runtime private so an embedding Rust application
+    # cannot interpose its allocator on only some of Mercury's allocations.
+    set(MERCURY_ELF_SYMBOL_MAP ${CMAKE_CURRENT_SOURCE_DIR}/mercury_elf.map)
+    target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:--version-script,${MERCURY_ELF_SYMBOL_MAP}")
+    set_property(TARGET ${GROK_CORE_NAME} APPEND PROPERTY LINK_DEPENDS ${MERCURY_ELF_SYMBOL_MAP})
+  endif()
   if(NOT BUILD_SHARED_LIBS)
     # static grokj2k keeps mercury_kernels in its link interface, so the
     # export set must carry it

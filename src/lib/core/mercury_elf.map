@@ -1,0 +1,8 @@
+{
+  local:
+    # Rust v0 and legacy mangling (the latter ends in a 16-digit hash).
+    _R*;
+    _ZN*17h????????????????E;
+    __rust_*;
+    rust_eh_personality;
+};
