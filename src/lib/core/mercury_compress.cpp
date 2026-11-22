@@ -124,8 +124,12 @@ namespace
                                   first.precWidthExp_) &&
                        std::equal(tccp.precHeightExp_, tccp.precHeightExp_ + tccp.numresolutions_,
                                   first.precHeightExp_);
+      // mercury's COD check rejects precincts one sample wide or high above resolution 0
+      auto oneSamplePrecincts =
+          std::count(tccp.precWidthExp_ + 1, tccp.precWidthExp_ + tccp.numresolutions_, 0) +
+          std::count(tccp.precHeightExp_ + 1, tccp.precHeightExp_ + tccp.numresolutions_, 0);
       if(!sameStyle || tccp.qmfbid_ != 0 || tccp.cblkStyle_ != 0 || tccp.roishift_ != 0 ||
-         tccp.numresolutions_ < 2)
+         tccp.numresolutions_ < 2 || oneSamplePrecincts > 0)
         return false;
     }
     return true;
