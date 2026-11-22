@@ -686,14 +686,32 @@ impl Sample for f32 {
     }
     /// Inverse ICT: f32 FMA, G from Cr then Cb.
     fn untangle_color(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
-        for x in 0..y.len() {
-            let (yv, cbv, crv) = (y[x], cb[x], cr[x]);
-            let green = crv.mul_add(-CR_FACT_G, yv);
-            y[x] = crv.mul_add(CR_FACT_R, yv);
-            cb[x] = cbv.mul_add(-CB_FACT_G, green);
-            cr[x] = cbv.mul_add(CB_FACT_B, yv);
+        #[cfg(target_arch = "x86_64")]
+        if std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma")
+        {
+            // SAFETY: the cpu has avx2 and fma
+            return unsafe { untangle_f32_avx2(y, cb, cr) };
         }
+        untangle_f32(y, cb, cr);
     }
+}
+
+#[inline(always)]
+fn untangle_f32(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
+    for ((y, cb), cr) in y.iter_mut().zip(cb.iter_mut()).zip(cr.iter_mut()) {
+        let (yv, cbv, crv) = (*y, *cb, *cr);
+        let green = crv.mul_add(-CR_FACT_G, yv);
+        *y = crv.mul_add(CR_FACT_R, yv);
+        *cb = cbv.mul_add(-CB_FACT_G, green);
+        *cr = cbv.mul_add(CB_FACT_B, yv);
+    }
+}
+
+// x86-64 without fma turns mul_add into a call to fmaf
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn untangle_f32_avx2(y: &mut [f32], cb: &mut [f32], cr: &mut [f32]) {
+    untangle_f32(y, cb, cr);
 }
 
 /// Q13 fixed-point sample (int16, see dwt::fixed97).
@@ -713,15 +731,33 @@ impl Sample for Q13Sample {
     /// scale-invariant), rounded back per sample — the classic int16 path
     /// does the same, so no fixed-point ICT error accumulates.
     fn untangle_color(y: &mut [Q13Sample], cb: &mut [Q13Sample], cr: &mut [Q13Sample]) {
-        let q = |v: f32| Q13Sample(v.round_ties_even().clamp(-32768.0, 32767.0) as i16);
-        for x in 0..y.len() {
-            let (yv, cbv, crv) = (y[x].0 as f32, cb[x].0 as f32, cr[x].0 as f32);
-            let green = crv.mul_add(-CR_FACT_G, yv);
-            y[x] = q(crv.mul_add(CR_FACT_R, yv));
-            cb[x] = q(cbv.mul_add(-CB_FACT_G, green));
-            cr[x] = q(cbv.mul_add(CB_FACT_B, yv));
+        #[cfg(target_arch = "x86_64")]
+        if std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma")
+        {
+            // SAFETY: the cpu has avx2 and fma
+            return unsafe { untangle_q13_avx2(y, cb, cr) };
         }
+        untangle_q13(y, cb, cr);
     }
+}
+
+#[inline(always)]
+fn untangle_q13(y: &mut [Q13Sample], cb: &mut [Q13Sample], cr: &mut [Q13Sample]) {
+    let q = |v: f32| Q13Sample(v.round_ties_even().clamp(-32768.0, 32767.0) as i16);
+    for ((y, cb), cr) in y.iter_mut().zip(cb.iter_mut()).zip(cr.iter_mut()) {
+        let (yv, cbv, crv) = (y.0 as f32, cb.0 as f32, cr.0 as f32);
+        let green = crv.mul_add(-CR_FACT_G, yv);
+        *y = q(crv.mul_add(CR_FACT_R, yv));
+        *cb = q(cbv.mul_add(-CB_FACT_G, green));
+        *cr = q(cbv.mul_add(CB_FACT_B, yv));
+    }
+}
+
+// x86-64 without sse4.1 turns round_ties_even into a call to rintf
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn untangle_q13_avx2(y: &mut [Q13Sample], cb: &mut [Q13Sample], cr: &mut [Q13Sample]) {
+    untangle_q13(y, cb, cr);
 }
 
 impl<T: Sample> Node for MergeSinkNode<T> {

@@ -1288,6 +1288,23 @@ impl OutputSample for i16 {
 
 /// Convert one component's row to absolute samples (see module doc).
 fn dye_row<T: OutputSample>(row: CompRow<'_>, prec: u32, signed: bool, out: &mut [T]) {
+    #[cfg(target_arch = "x86_64")]
+    if std::arch::is_x86_feature_detected!("avx2") {
+        // SAFETY: the cpu has avx2
+        return unsafe { dye_row_avx2(row, prec, signed, out) };
+    }
+    dye_row_any_cpu(row, prec, signed, out);
+}
+
+// x86-64 without sse4.1 turns round_ties_even into a call to rintf
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn dye_row_avx2<T: OutputSample>(row: CompRow<'_>, prec: u32, signed: bool, out: &mut [T]) {
+    dye_row_any_cpu(row, prec, signed, out);
+}
+
+#[inline(always)]
+fn dye_row_any_cpu<T: OutputSample>(row: CompRow<'_>, prec: u32, signed: bool, out: &mut [T]) {
     let dc = 1i32 << (prec - 1);
     let mx = (1i64 << prec) as i32 - 1;
     match row {
