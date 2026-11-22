@@ -188,9 +188,10 @@ void check(const Geometry& geometry, const Pattern& pattern)
                                           sampleAt(component, (size_t)y * component->stride + x)));
     }
   }
-  // 13 - precision fraction bits leave three at 10 bits, adding a code of rounding
+  // classic's int16 forward and inverse 9/7 each keep three fraction bits at 10 bits, and their
+  // rounding adds up to three codes on a 3-component checkerboard
   const bool fewFractionBits = geometry.dataType == GRK_INT_16 && geometry.precision > 8;
-  const int32_t maxErrorAllowed = MAX_ERROR_ALLOWED + (fewFractionBits ? 1 : 0);
+  const int32_t maxErrorAllowed = MAX_ERROR_ALLOWED + (fewFractionBits ? 3 : 0);
   bool ok = maxError >= 0 && maxError <= maxErrorAllowed;
   std::printf("%s %s %ux%ux%u %u bit %u resolutions %-18s max error %d\n", ok ? "ok  " : "FAIL",
               geometry.dataType == GRK_INT_16 ? "int16" : "int32", width, height,
