@@ -16,7 +16,9 @@
  */
 
 #include <filesystem>
+#include <map>
 #include <string>
+#include <vector>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -85,11 +87,11 @@ static void dump_help_display(void)
   fprintf(stdout, "    OPTIONAL\n");
   fprintf(stdout, "    Output file where file info will be dump.\n");
   fprintf(stdout, "    By default it will be in the stdout.\n");
-  fprintf(stdout, "  -f, --flag <flags>\n");
+  fprintf(stdout, "  -f, --flag <sections>\n");
   fprintf(stdout, "    OPTIONAL\n");
-  fprintf(stdout, "    Sum of the sections to dump. Default is 19 (1 + 2 + 16).\n");
-  fprintf(stdout, "    1: image info, 2: main header, 8: all tile headers,\n");
-  fprintf(stdout, "    16: main header marker list, 64: TLM marker segments\n");
+  fprintf(stdout, "    Comma-separated sections to dump. Default is image,header,markers.\n");
+  fprintf(stdout, "    image: image info, header: main header, tiles: all tile headers,\n");
+  fprintf(stdout, "    markers: main header marker list, tlm: TLM marker segments\n");
 }
 
 static void listImages(dircnt* dirptr, char* imgdirpath)
@@ -135,13 +137,20 @@ static int parseCommandLine(int argc, const char* argv[], grk_decompress_paramet
   std::string inputFile;
   std::string outputFile;
   std::string imageDirectory;
-  uint32_t flag = 0;
+  std::vector<std::string> sections;
+  const std::map<std::string, uint32_t> sectionFlags = {{"image", GRK_IMG_INFO},
+                                                        {"header", GRK_MH_INFO},
+                                                        {"tiles", GRK_TCH_INFO},
+                                                        {"markers", GRK_MH_IND},
+                                                        {"tlm", GRK_TLM_IND}};
 
   // Pointers to options
   auto* inputFileOpt = app.add_option("-i,--input", inputFile, "input file");
   auto* outputFileOpt = app.add_option("-o,--output", outputFile, "output file");
   auto* imageDirectoryOpt = app.add_option("-y,--batch-src", imageDirectory, "image directory");
-  auto* flagOpt = app.add_option("-f,--flag", flag, "flag")->default_val(0);
+  auto* sectionsOpt = app.add_option("-f,--flag", sections, "sections to dump")
+                          ->delimiter(',')
+                          ->check(CLI::IsMember(sectionFlags));
 
   app.set_help_flag("-h", "Show abreviated usage");
   app.add_flag("--help", "Show detailed usage");
@@ -194,8 +203,12 @@ static int parseCommandLine(int argc, const char* argv[], grk_decompress_paramet
     strcpy(inputFolder->imgdirpath, imageDirectory.c_str());
     inputFolder->set_imgdir = true;
   }
-  if(flagOpt->count() > 0)
-    inputFolder->flag = flag;
+  if(sectionsOpt->count() > 0)
+  {
+    inputFolder->flag = 0;
+    for(const auto& section : sections)
+      inputFolder->flag |= sectionFlags.at(section);
+  }
 
   /* check for possible errors */
   if(inputFolder->set_imgdir)

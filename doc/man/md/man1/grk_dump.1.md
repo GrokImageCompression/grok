@@ -43,13 +43,15 @@ Output file. Default: stdout.
 
 Path to image files directory. Required if `-i` option is not provided.
 
-`-f, --flag [value]`
+`-f, --flag [sections]`
 
-Flag value. Default: `0`.
+Comma-separated list of sections to dump. Default: `image,header,markers`.
 
-* `0` : dump header only
-* `1` : dump codestream only
-* `2` : dump both header and codestream
+* `image` : image info
+* `header` : main header
+* `tiles` : all tile headers
+* `markers` : main header marker list
+* `tlm` : TLM marker segments present in the file
 
 
 FILES
