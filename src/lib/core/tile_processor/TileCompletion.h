@@ -146,6 +146,9 @@ public:
             grklog.debug("Completed tiles until index %d", localContiguousEnd_);
           }
         }
+        // tileRowsReady_ can finish a swath before the contiguous end reaches its last tile
+        if(tileRowsReady_)
+          completionCV_.notify_one();
       }
       else
       {

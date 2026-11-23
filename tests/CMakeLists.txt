@@ -1157,6 +1157,11 @@ target_link_libraries(grk_async_swath_backlog_test ${GROK_CORE_NAME})
 add_test(NAME grk_async_swath_backlog_test COMMAND grk_async_swath_backlog_test)
 set_tests_properties(grk_async_swath_backlog_test PROPERTIES TIMEOUT 60)
 
+add_executable(grk_swath_wait_across_tile_rows_test GrkSwathWaitAcrossTileRowsTest.cpp)
+target_link_libraries(grk_swath_wait_across_tile_rows_test ${GROK_CORE_NAME})
+add_test(NAME grk_swath_wait_across_tile_rows_test COMMAND grk_swath_wait_across_tile_rows_test)
+set_tests_properties(grk_swath_wait_across_tile_rows_test PROPERTIES TIMEOUT 120)
+
 # GrkPerfBench.cpp uses pread and getrusage
 if(UNIX)
   add_executable(grk_perf_bench GrkPerfBench.cpp)
