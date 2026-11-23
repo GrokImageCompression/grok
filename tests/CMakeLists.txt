@@ -462,6 +462,14 @@ add_test(NAME grk_termall_zero_length_segment_test
           ${CMAKE_CURRENT_SOURCE_DIR}/data/termall_zero_length_segment.j2k)
 set_tests_properties(grk_termall_zero_length_segment_test PROPERTIES TIMEOUT 60)
 
+# Regression for an OSS-Fuzz null read: a bypass code block with no data in its early segments
+add_executable(grk_part1_missing_segment_data_test GrkPart1MissingSegmentDataTest.cpp)
+target_link_libraries(grk_part1_missing_segment_data_test ${GROK_CORE_NAME})
+add_test(NAME grk_part1_missing_segment_data_test
+  COMMAND grk_part1_missing_segment_data_test
+          ${CMAKE_CURRENT_SOURCE_DIR}/data/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5409749750054912)
+set_tests_properties(grk_part1_missing_segment_data_test PROPERTIES TIMEOUT 60)
+
 # Regression for an OSS-Fuzz timeout: a bogus precinct grid with PLT markers made
 # T2 packet parsing skip corrupt packets across the whole grid without end. The
 # test must RETURN; the TIMEOUT turns a regression hang into a failure.

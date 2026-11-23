@@ -631,7 +631,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     //  AND this is the final layer so no more passes are possible
     //  OR there are now more data parsed segments
     //  THEN we can deduce that the previous decode reached end of segment
-    if(passno_ == seg->totalPasses_ &&
+    if(passno_ == seg->totalPasses_ && seg->totalPasses_ == seg->headerTotalPasses_ &&
        (dataParsedLayers_ == numLayers_ || seg != segBegin + numDataParsedSegments_ - 1))
       nextToBeDecompressedSegment(seg, coder);
 
@@ -673,6 +673,10 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       // we don't know yet whether this segment has ended
       if(passno_ == seg->totalPasses_ && dataParsedLayers_ != numLayers_ &&
          seg == segBegin + numDataParsedSegments_ - 1)
+        break;
+
+      // passes after a segment with missing data cannot be decoded in order
+      if(seg->totalPasses_ < seg->headerTotalPasses_)
         break;
 
       // force end of segment when bitPlanesToDecompress_ reaches zero
