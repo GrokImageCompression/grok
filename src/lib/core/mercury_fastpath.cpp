@@ -582,8 +582,6 @@ namespace
     bool started = false;
     bool complete = false;
     uint64_t imageBytes = 0;
-    // guarded by MercuryTileState::mutex
-    const MercuryWeaveGate* gate = nullptr;
   };
 
   struct MercuryTileState;
@@ -608,7 +606,6 @@ namespace
   void* tileRowOpen(void* c, uint32_t row, uint64_t width, void** comps, uint32_t numComps);
   void tileRowClose(void* c, void* rowHandle);
   void tileRowsDone(void* c, uint32_t rows);
-  uint32_t tileRowLimit(void* c);
 
   enum class TileSamples
   {
@@ -661,7 +658,6 @@ namespace
     // TileCompletion::wait calls tileRowsReady with its mutex locked
     int32_t clearedTileY = -1;
     static constexpr uint32_t loneTileBandRows = 1024;
-    static constexpr uint32_t multiTileBandRows = 256;
     static constexpr uint32_t maxBandsAhead = 4;
     bool unbounded = false;
     // full resolution canvas rows of the latest swath wait
@@ -698,10 +694,6 @@ namespace
         coresWarming->store(false, std::memory_order_relaxed);
       // mercury has no cancel entry, a running weave runs out while the sink drops rows
       cancel = true;
-      {
-        std::lock_guard<std::mutex> lock(mutex);
-        openGates();
-      }
       cv.notify_all();
       stop();
       for(auto& tile : tiles)
@@ -892,9 +884,6 @@ namespace
       {
         std::lock_guard<std::mutex> lock(mutex);
         tile.complete = true;
-        if(tile.gate)
-          mercury_weave_gate_free(tile.gate);
-        tile.gate = nullptr;
       }
       completion->complete(tile.index);
       cv.notify_all();
@@ -978,9 +967,8 @@ namespace
         completeTile(tile);
         return;
       }
-      const uint32_t wantedBandRows = tiles.size() == 1 ? loneTileBandRows : multiTileBandRows;
-      const bool banded = uniformSubsampling && maxRows > wantedBandRows;
-      const uint32_t bandRows = banded ? wantedBandRows : maxRows;
+      const bool banded = tiles.size() == 1 && uniformSubsampling && maxRows > loneTileBandRows;
+      const uint32_t bandRows = banded ? loneTileBandRows : maxRows;
       std::vector<std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>> bands;
       for(uint32_t top = 0; top < maxRows; top += bandRows)
       {
@@ -1037,13 +1025,6 @@ namespace
       hosted.row_open = tileRowOpen;
       hosted.row_close = tileRowClose;
       hosted.rows_done = tileRowsDone;
-      if(tile.bands.size() > 1)
-      {
-        std::lock_guard<std::mutex> lock(mutex);
-        tile.gate = mercury_weave_gate_new();
-        hosted.row_limit = tileRowLimit;
-        hosted.gate = tile.gate;
-      }
       hosted.row_ctx = &weave->sink;
       hosted.submit = submitTask;
       hosted.submit_ctx = this;
@@ -1243,12 +1224,11 @@ namespace
         }
       }
       const uint32_t band = row / tile.bandRows;
-      GrkImage* image = tile.bands[band].get();
-      if(!image)
-      {
-        tile.rowOverflow = true;
+      if(tile.bands.size() > 1 && !waitForBand(tile, band, lock))
         return nullptr;
-      }
+      if(cancel)
+        return nullptr;
+      GrkImage* image = tile.bands[band].get();
       for(uint32_t c = 0; c < numComps; c++)
       {
         auto& comp = image->comps[c];
@@ -1307,9 +1287,7 @@ namespace
       if(tile.bands.size() > 1)
       {
         lock.lock();
-        // with several tiles a band wait deadlocks, it blocks the scheduler thread that starts them
-        if(tiles.size() == 1)
-          keep = waitForBand(tile, band, lock);
+        keep = waitForBand(tile, band, lock);
         if(cancel)
           return;
       }
@@ -1389,10 +1367,10 @@ namespace
           std::unique_lock<std::mutex> lock(mutex);
           // classic's back-pressure: rowsAhead tile rows past the cleared row, or a needed row
           cv.wait(lock, [&] {
-            // tiles stopped by their row limit stay in flight and can fill the in-flight cap
-            return cancel.load() || failed.load() || ty < completion->getNeededTileY1() ||
+            return cancel.load() || failed.load() ||
                    (inFlight.load() < maxTilesInFlight &&
-                    (unbounded || (ty - clearedTileY <= rowsAhead && heldBytesAllow(tile))));
+                    (unbounded || ty < completion->getNeededTileY1() ||
+                     (ty - clearedTileY <= rowsAhead && heldBytesAllow(tile))));
           });
           if(cancel)
             return;
@@ -1430,31 +1408,14 @@ namespace
         swathY1 = y1;
         for(auto& tile : tiles)
         {
-          if(!keepReleasedTiles && tile->complete && static_cast<int32_t>(tile->tileY) <= cleared)
-            tile->bands.clear();
-          else if(tile->bands.size() > 1)
+          if(tile->bands.size() > 1)
             releaseBands(*tile, swathY0, swathY1);
-          if(tile->gate)
-            mercury_weave_gate_open(tile->gate);
+          else if(!keepReleasedTiles && tile->complete &&
+                  static_cast<int32_t>(tile->tileY) <= cleared)
+            tile->bands.clear();
         }
       }
       cv.notify_all();
-    }
-
-    uint32_t rowLimit(const AsyncTile& tile)
-    {
-      std::lock_guard<std::mutex> lock(mutex);
-      if(cancel || unbounded)
-        return UINT32_MAX;
-      const uint64_t bands = std::max(tile.neededBands, tile.releasedBands + maxBandsAhead);
-      return (uint32_t)std::min<uint64_t>(bands * tile.bandRows, UINT32_MAX);
-    }
-
-    void openGates()
-    {
-      for(auto& tile : tiles)
-        if(tile->gate)
-          mercury_weave_gate_open(tile->gate);
     }
 
     GrkImage* imageForTile(uint16_t tileIndex) override
@@ -1527,7 +1488,6 @@ namespace
     {
       std::unique_lock<std::mutex> lock(mutex);
       unbounded = true;
-      openGates();
       cv.notify_all();
       AsyncTile* tile = tileAt(tileIndex);
       if(!tile)
@@ -1543,7 +1503,6 @@ namespace
         std::lock_guard<std::mutex> lock(mutex);
         clearedTileY = INT16_MAX;
         unbounded = true;
-        openGates();
       }
       cv.notify_all();
       stop();
@@ -1624,12 +1583,6 @@ namespace
   {
     auto ctx = static_cast<TileSinkCtx*>(c);
     ctx->state->rowsDone(*ctx->tile, rows);
-  }
-
-  uint32_t tileRowLimit(void* c)
-  {
-    auto ctx = static_cast<TileSinkCtx*>(c);
-    return ctx->state->rowLimit(*ctx->tile);
   }
 
   void tileWeaveDone(void* ctx, int32_t rc)

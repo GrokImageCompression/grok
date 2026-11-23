@@ -331,8 +331,6 @@ typedef void* (*mercury_row_open_fn)(void* ctx, uint32_t row, uint64_t width, vo
                                      uint32_t num_comps);
 typedef void (*mercury_row_close_fn)(void* ctx, void* row_handle);
 typedef void (*mercury_rows_done_fn)(void* ctx, uint32_t rows);
-typedef uint32_t (*mercury_row_limit_fn)(void* ctx);
-typedef struct MercuryWeaveGate MercuryWeaveGate;
 
 typedef struct MercurySegmentSink
 {
@@ -356,16 +354,7 @@ typedef struct MercuryHostedWeave
   void* submit_ctx;
   mercury_weave_done_fn done;
   void* done_ctx;
-  /* optional, joint rows only: open is called only for rows below row_limit(row_ctx).
-   * Raise the limit, then call mercury_weave_gate_open(gate) to resume the weave. */
-  mercury_row_limit_fn row_limit;
-  const MercuryWeaveGate* gate;
 } MercuryHostedWeave;
-
-const MercuryWeaveGate* mercury_weave_gate_new(void);
-void mercury_weave_gate_open(const MercuryWeaveGate* gate);
-/* call once the weave is done or will never be opened again */
-void mercury_weave_gate_free(const MercuryWeaveGate* gate);
 
 int32_t mercury_weave_hosted(MercuryPlan* plan, const MercuryHostedWeave* weave);
 
