@@ -48,7 +48,7 @@ use crate::dwt::synthesis::SamplePrec;
 use crate::dwt::synthesis::{AlignedVec, PullStatus, RowSource, Synthesis};
 use crate::weft::Node;
 use crate::weft::ring::{BlockRowProducer, Consumer, Producer, spin, spin_block_rows};
-use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId, StillnessFn};
+use crate::weft::rt::{Builder, Ctx, HostExecutor, NodeId, SinkHold, StillnessFn};
 
 /// Ring capacity in rows per subband: two block-row stripes so T1 always has
 /// a full stripe of working room ahead of the tree (1.5 stripes saves ~6 MB
@@ -611,6 +611,43 @@ pub type SegmentWrite = Box<dyn Fn(u32, usize, Rows<'_>) + Send + Sync>;
 pub struct SegmentSink {
     pub write: SegmentWrite,
     pub rows_done: Box<dyn Fn(u32) + Send + Sync>,
+    pub admit: Option<RowAdmit>,
+}
+
+pub struct RowAdmit {
+    pub limit: Box<dyn Fn() -> u32 + Send + Sync>,
+    pub gate: Arc<SinkGate>,
+}
+
+#[derive(Default)]
+pub struct SinkGate {
+    armed: Mutex<Option<ArmedGate>>,
+}
+
+struct ArmedGate {
+    hold: SinkHold,
+    sinks: Vec<NodeId>,
+}
+
+impl SinkGate {
+    fn arm(&self, hold: SinkHold, sinks: Vec<NodeId>) {
+        *self.armed.lock().unwrap() = Some(ArmedGate { hold, sinks });
+    }
+
+    pub fn open(&self) {
+        if let Some(armed) = &*self.armed.lock().unwrap() {
+            for &id in &armed.sinks {
+                armed.hold.tug(id);
+            }
+        }
+    }
+
+    pub fn disarm(&self) {
+        // the hold keeps the graph alive, and the graph's sink nodes keep this gate alive
+        let armed = self.armed.lock().unwrap().take();
+        // dropping the hold can run the done callback, which calls disarm again
+        drop(armed);
+    }
 }
 
 /// One tile column's tree outputs feeding the merge sink.
@@ -925,6 +962,7 @@ impl<T: Sample> Node for StripSinkNode<T> {
         if ready == 0 {
             return;
         }
+        let mut consumed = 0;
         if strip.discard > 0 {
             let dropped = (strip.discard as usize).min(ready);
             for input in &mut strip.col.inputs {
@@ -932,6 +970,16 @@ impl<T: Sample> Node for StripSinkNode<T> {
             }
             strip.discard -= dropped as u32;
             ready -= dropped;
+            consumed += dropped;
+        }
+        if let Some(admit) = &strip.sink.admit {
+            let next = strip.row_base + strip.rows_seen;
+            ready = ready.min((admit.limit)().saturating_sub(next) as usize);
+        }
+        consumed += ready;
+        if consumed == 0 {
+            // full input rings stop the producers until the consumer opens the gate
+            return;
         }
         let (src_off, width) = (strip.col.src_off, strip.col.width);
         for i in 0..ready {
@@ -1082,6 +1130,7 @@ impl<T: Sample> Node for CompMergeSinkNode<T> {
 pub struct WeftDecoder {
     loom: Builder,
     kick: Vec<NodeId>,
+    strip_sinks: Vec<NodeId>,
     /// Rows this tile row emits, per component.
     pub rows_total: Vec<u32>,
 }
@@ -1255,6 +1304,11 @@ fn launch_sink(
         )
     });
     let runtime = dec.loom.dress_hosted(host);
+    if let EmitSink::Segments(segments) = &sink {
+        if let Some(admit) = &segments.admit {
+            admit.gate.arm(runtime.hold_sink(), dec.strip_sinks);
+        }
+    }
     match &plan.feed_link {
         Some(link) => link.launch_graph(runtime, &dec.kick, on_still),
         None => runtime.launch(&dec.kick, on_still),
@@ -1875,6 +1929,7 @@ fn dress_tile_loom(
             rows_written: cols.iter().map(|_| AtomicU32::new(0)).collect(),
             rows_done: Mutex::new(0),
         });
+        let mut sinks = Vec::with_capacity(cols.len());
         for (index, col) in cols.into_iter().enumerate() {
             let strip_sink = StripSink {
                 col,
@@ -1904,11 +1959,16 @@ fn dress_tile_loom(
                     sample: PhantomData,
                 }),
             };
-            assert_eq!(b.mount(node), NodeId::heddle(first_sink + index as u32));
+            sinks.push(b.mount(node));
+            assert_eq!(
+                *sinks.last().unwrap(),
+                NodeId::heddle(first_sink + index as u32)
+            );
         }
         return Ok(Some(WeftDecoder {
             loom: b,
             kick,
+            strip_sinks: sinks,
             rows_total,
         }));
     }
@@ -1932,6 +1992,7 @@ fn dress_tile_loom(
     Ok(Some(WeftDecoder {
         loom: b,
         kick,
+        strip_sinks: Vec::new(),
         rows_total,
     }))
 }

@@ -4837,6 +4837,7 @@ mod tests {
                 );
                 done_reported.lock().unwrap().push(done);
             }),
+            admit: None,
         };
         weave_segments_with_coder(Arc::new(stream.to_vec()), plan, 4, sink, patterned_coder)
             .expect("decode must run");

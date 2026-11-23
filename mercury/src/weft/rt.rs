@@ -123,6 +123,7 @@ impl Builder {
             failure: Mutex::new(None),
             host,
             host_tasks: AtomicUsize::new(0),
+            sink_held: AtomicBool::new(false),
             on_still: Mutex::new(None),
         })
     }
@@ -154,6 +155,8 @@ struct Inner {
     host: Option<HostExecutor>,
     // passes submitted to the host and not finished, plus one while launch kicks the graph
     host_tasks: AtomicUsize,
+    // a SinkHold counts in host_tasks until it drops or the graph fails
+    sink_held: AtomicBool,
     on_still: Mutex<Option<StillnessFn>>,
 }
 
@@ -199,9 +202,19 @@ impl Inner {
         }
         self.failed.store(true, Ordering::Release);
         self.shutdown.store(true, Ordering::Relaxed);
-        let _guard = self.queue.lock().unwrap();
-        self.work_cv.notify_all();
-        self.done_cv.notify_all();
+        {
+            let _guard = self.queue.lock().unwrap();
+            self.work_cv.notify_all();
+            self.done_cv.notify_all();
+        }
+        // a sink waiting for its consumer would otherwise hold off stillness forever
+        self.release_sink();
+    }
+
+    fn release_sink(&self) {
+        if self.sink_held.swap(false, Ordering::AcqRel) {
+            self.end_host_task();
+        }
     }
 
     fn spool(self: &Arc<Self>, id: NodeId) {
@@ -379,6 +392,15 @@ pub struct HostedRuntime {
 }
 
 impl HostedRuntime {
+    pub fn hold_sink(&self) -> SinkHold {
+        let was_held = self.inner.sink_held.swap(true, Ordering::AcqRel);
+        assert!(!was_held, "a graph has one sink hold");
+        self.inner.host_tasks.fetch_add(1, Ordering::AcqRel);
+        SinkHold {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+
     pub fn launch(self, kick: &[NodeId], on_still: StillnessFn) {
         drop(self.launch_held(kick, on_still));
     }
@@ -416,6 +438,22 @@ impl GraphHold {
 impl Drop for GraphHold {
     fn drop(&mut self) {
         self.inner.end_host_task();
+    }
+}
+
+pub struct SinkHold {
+    inner: Arc<Inner>,
+}
+
+impl SinkHold {
+    pub fn tug(&self, id: NodeId) {
+        self.inner.tug_external(id);
+    }
+}
+
+impl Drop for SinkHold {
+    fn drop(&mut self) {
+        self.inner.release_sink();
     }
 }
 
@@ -493,6 +531,74 @@ mod tests {
         assert_eq!(passes_at_stillness, 2);
         let caller = std::thread::current().id();
         assert!(ran_on.lock().unwrap().iter().all(|id| *id != caller));
+    }
+
+    struct LimitedSink {
+        limit: Arc<AtomicUsize>,
+        rows: usize,
+        total: usize,
+        hold: Arc<Mutex<Option<SinkHold>>>,
+    }
+
+    impl Node for LimitedSink {
+        fn shuttle(&mut self, _ctx: &mut Ctx<'_>) {
+            self.rows = self.limit.load(Ordering::SeqCst).min(self.total);
+            if self.rows == self.total {
+                self.hold.lock().unwrap().take();
+            }
+        }
+    }
+
+    #[test]
+    fn stillness_waits_for_a_sink_stopped_on_its_consumer() {
+        let limit = Arc::new(AtomicUsize::new(2));
+        let hold = Arc::new(Mutex::new(None));
+        let mut b = Builder::warp();
+        let sink = b.mount(Box::new(LimitedSink {
+            limit: Arc::clone(&limit),
+            rows: 0,
+            total: 5,
+            hold: Arc::clone(&hold),
+        }));
+        let runtime = b.dress_hosted(HostExecutor {
+            submit: spawn_pass,
+            ctx: std::ptr::null_mut(),
+        });
+        *hold.lock().unwrap() = Some(runtime.hold_sink());
+        let (sender, receiver) = std::sync::mpsc::channel();
+        runtime.launch(&[sink], Box::new(move |result| sender.send(result).unwrap()));
+        let stopped = receiver.recv_timeout(std::time::Duration::from_millis(200));
+        assert!(stopped.is_err(), "a stopped sink must hold off stillness");
+        limit.store(5, Ordering::SeqCst);
+        if let Some(hold) = &*hold.lock().unwrap() {
+            hold.tug(sink);
+        }
+        let still = receiver.recv_timeout(std::time::Duration::from_secs(10));
+        assert_eq!(still.unwrap(), Ok(()));
+    }
+
+    struct Failing;
+
+    impl Node for Failing {
+        fn shuttle(&mut self, ctx: &mut Ctx<'_>) {
+            ctx.fail("bad block".to_string());
+        }
+    }
+
+    #[test]
+    fn failure_releases_the_sink_hold() {
+        let mut b = Builder::warp();
+        let node = b.mount(Box::new(Failing));
+        let runtime = b.dress_hosted(HostExecutor {
+            submit: spawn_pass,
+            ctx: std::ptr::null_mut(),
+        });
+        let hold = runtime.hold_sink();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        runtime.launch(&[node], Box::new(move |result| sender.send(result).unwrap()));
+        let still = receiver.recv_timeout(std::time::Duration::from_secs(10));
+        assert_eq!(still.unwrap(), Err("bad block".to_string()));
+        drop(hold);
     }
 
     #[test]

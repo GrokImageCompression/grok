@@ -34,7 +34,7 @@ use crate::codec::tile_geom::Dims;
 use crate::decode::graph::{
     launch_comps_with_coder, launch_segments_with_coder, uniform_subsampling,
     weave_comps_with_coder, weave_segments_with_coder, weave_with_coder, CompRow, CompRowSink,
-    RowSink, Rows, SegmentSink, WovenFn,
+    RowAdmit, RowSink, Rows, SegmentSink, SinkGate, WovenFn,
 };
 use crate::decode::plan::{
     draft, DecodePlan, Drafted, FetchedPacketFeed, MainHeaderIn, PacketFeed, PltUse,
@@ -1563,7 +1563,7 @@ fn weave_segments<T: OutputSample>(
         return MERCURY_EBADARG;
     };
     let (sink, height) =
-        match segment_row_sink::<T>(&plan, open, close, rows_done, segments.row_ctx) {
+        match segment_row_sink::<T>(&plan, open, close, rows_done, segments.row_ctx, None) {
             Ok(sink) => sink,
             Err(rc) => return rc,
         };
@@ -1650,6 +1650,7 @@ pub type MercuryRowOpenFn = extern "C" fn(
 ) -> *mut c_void;
 pub type MercuryRowCloseFn = extern "C" fn(ctx: *mut c_void, row_handle: *mut c_void);
 pub type MercuryRowsDoneFn = extern "C" fn(ctx: *mut c_void, rows: u32);
+pub type MercuryRowLimitFn = extern "C" fn(ctx: *mut c_void) -> u32;
 
 #[repr(C)]
 pub struct MercuryHostedWeave {
@@ -1665,6 +1666,28 @@ pub struct MercuryHostedWeave {
     pub submit_ctx: *mut c_void,
     pub done: Option<MercuryWeaveDoneFn>,
     pub done_ctx: *mut c_void,
+    pub row_limit: Option<MercuryRowLimitFn>,
+    pub gate: *const SinkGate,
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn mercury_weave_gate_new() -> *const SinkGate {
+    Arc::into_raw(Arc::new(SinkGate::default()))
+}
+
+/// # Safety
+/// `gate` comes from `mercury_weave_gate_new` and is not freed yet.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_weave_gate_open(gate: *const SinkGate) {
+    unsafe { &*gate }.open();
+}
+
+/// # Safety
+/// `gate` comes from `mercury_weave_gate_new` and is not freed yet.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mercury_weave_gate_free(gate: *const SinkGate) {
+    let gate = unsafe { Arc::from_raw(gate) };
+    gate.disarm();
 }
 
 fn hosted_done(weave: &MercuryHostedWeave, expected: Vec<u64>) -> Option<WovenFn> {
@@ -1686,6 +1709,7 @@ fn segment_row_sink<T: OutputSample>(
     close: MercuryRowCloseFn,
     rows_done: MercuryRowsDoneFn,
     row_ctx: *mut c_void,
+    gate: Option<(MercuryRowLimitFn, Arc<SinkGate>)>,
 ) -> Result<(SegmentSink, u64), i32> {
     if !plan
         .siz
@@ -1724,11 +1748,34 @@ fn segment_row_sink<T: OutputSample>(
         }
         close(ctx.0, handle);
     });
+    let done_gate = gate.as_ref().map(|(_, gate)| Arc::clone(gate));
     let rows_done = Box::new(move |rows: u32| {
         let ctx = &done_ctx;
         rows_done(ctx.0, rows);
+        if rows as u64 == height {
+            if let Some(gate) = &done_gate {
+                gate.disarm();
+            }
+        }
     });
-    Ok((SegmentSink { write, rows_done }, height))
+    let admit = gate.map(|(limit, gate)| {
+        let limit_ctx = SendPtr(row_ctx);
+        RowAdmit {
+            limit: Box::new(move || {
+                let ctx = &limit_ctx;
+                limit(ctx.0)
+            }),
+            gate,
+        }
+    });
+    Ok((
+        SegmentSink {
+            write,
+            rows_done,
+            admit,
+        },
+        height,
+    ))
 }
 
 fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWeave) -> i32 {
@@ -1744,10 +1791,19 @@ fn launch_rows<T: OutputSample>(plan: *mut MercuryPlan, weave: &MercuryHostedWea
     ) else {
         return MERCURY_EBADARG;
     };
-    let (sink, height) = match segment_row_sink::<T>(&plan, open, close, rows_done, weave.row_ctx) {
-        Ok(sink) => sink,
-        Err(rc) => return rc,
+    let gate = match (weave.row_limit, weave.gate.is_null()) {
+        (Some(limit), false) => {
+            unsafe { Arc::increment_strong_count(weave.gate) };
+            Some((limit, unsafe { Arc::from_raw(weave.gate) }))
+        }
+        (None, true) => None,
+        _ => return MERCURY_EBADARG,
     };
+    let (sink, height) =
+        match segment_row_sink::<T>(&plan, open, close, rows_done, weave.row_ctx, gate) {
+            Ok(sink) => sink,
+            Err(rc) => return rc,
+        };
     let Some(woven) = hosted_done(weave, vec![height]) else {
         return MERCURY_EBADARG;
     };
