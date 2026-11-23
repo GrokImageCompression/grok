@@ -297,11 +297,12 @@ private:
     const size_t page_bytes = 4096;
     const size_t mapped = (bytes + page_bytes - 1) & ~(page_bytes - 1);
     const size_t span = mapped + huge_page_bytes;
-    auto base = (uint8_t*)mmap(nullptr, span, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
-                               -1, 0);
+    auto base =
+        (uint8_t*)mmap(nullptr, span, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if(base == MAP_FAILED)
       return nullptr;
-    auto ptr = (uint8_t*)(((uintptr_t)base + huge_page_bytes - 1) & ~(uintptr_t)(huge_page_bytes - 1));
+    auto ptr =
+        (uint8_t*)(((uintptr_t)base + huge_page_bytes - 1) & ~(uintptr_t)(huge_page_bytes - 1));
     if(ptr > base)
       munmap(base, (size_t)(ptr - base));
     const size_t tail = (size_t)(base + span - (ptr + mapped));

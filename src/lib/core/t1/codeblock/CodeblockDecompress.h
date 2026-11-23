@@ -55,8 +55,8 @@ struct CodeblockDecompress : public Codeblock
   {
     return getImpl()->getSegment(segmentIndex);
   }
-  void readPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes,
-                        uint16_t layno, uint8_t cblk_sty)
+  void readPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes, uint16_t layno,
+                        uint8_t cblk_sty)
   {
     getImpl()->readPacketHeader(bio, signalledLayerDataBytes, layno, cblk_sty);
   }

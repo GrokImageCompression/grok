@@ -79,8 +79,7 @@ grk_image* makeImage(void)
     uint32_t stride = image->comps[componentNumber].stride;
     for(uint32_t y = 0; y < IMAGE_SIZE; ++y)
       for(uint32_t x = 0; x < IMAGE_SIZE; ++x)
-        data[(size_t)y * stride + x] =
-            (int32_t)((x * 7 + y * 13 + componentNumber * 17) & 0xFF);
+        data[(size_t)y * stride + x] = (int32_t)((x * 7 + y * 13 + componentNumber * 17) & 0xFF);
   }
   return image;
 }

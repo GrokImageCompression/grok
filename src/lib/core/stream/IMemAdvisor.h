@@ -28,4 +28,4 @@ enum class GrkAccessPattern
   ACCESS_DONTNEED
 };
 
-}
+} // namespace grk

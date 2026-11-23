@@ -80,4 +80,4 @@ static const bool mqc_packed_next_filled = [] {
   }
   return true;
 }();
-}
+} // namespace mercury_native::t1enc

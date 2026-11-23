@@ -106,8 +106,8 @@ namespace
   {
     auto ctx = (RowCtx*)c;
     for(uint32_t i = 0; i < numComps; i++)
-      comps[i] = static_cast<uint8_t*>(ctx->planes[i]) +
-                 (size_t)row * ctx->strides[i] * ctx->sampleBytes;
+      comps[i] =
+          static_cast<uint8_t*>(ctx->planes[i]) + (size_t)row * ctx->strides[i] * ctx->sampleBytes;
     return nullptr;
   }
 
@@ -602,8 +602,7 @@ namespace
   void tileWeaveDone(void* ctx, int32_t rc);
 
   template<typename T>
-  void tileRowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps,
-                   uint64_t width);
+  void tileRowSink(void* c, uint32_t row, const T* const* comps, uint32_t numComps, uint64_t width);
   template<typename T>
   void tileCompRowSink(void* c, uint32_t comp, uint32_t row, const T* samples, uint64_t width);
   void* tileRowOpen(void* c, uint32_t row, uint64_t width, void** comps, uint32_t numComps);
@@ -686,7 +685,9 @@ namespace
     {
       if(std::getenv("GRK_MERCURY_DEBUG"))
       {
-        double wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+        double wallMs =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started)
+                .count();
         fprintf(stderr,
                 "mercury tiles: %u tiles, rows ahead %d, peak concurrency %u, "
                 "warp %.1f ms, weave %.1f ms (summed), wall %.1f ms\n",
@@ -1110,7 +1111,8 @@ namespace
       completeTile(tile);
     }
 
-    std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> emptyTileImage(const AsyncTile& tile) const
+    std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>>
+        emptyTileImage(const AsyncTile& tile) const
     {
       std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> image(new GrkImage(),
                                                                    RefCountedDeleter<GrkImage>());
@@ -1145,14 +1147,15 @@ namespace
     uint32_t tileRowAt(const AsyncTile& tile, uint32_t canvasY) const
     {
       Rect32 rect = compRect(tile.window, 0);
-      uint32_t row = ceildivpow2<uint32_t>(ceildiv<uint32_t>(canvasY, composite->comps[0].dy), reduce);
+      uint32_t row =
+          ceildivpow2<uint32_t>(ceildiv<uint32_t>(canvasY, composite->comps[0].dy), reduce);
       return std::min(std::max(row, rect.y0), rect.y1) - rect.y0;
     }
 
     void releaseBands(AsyncTile& tile, uint32_t swathY0, uint32_t swathY1)
     {
-      tile.neededBands = std::max(
-          tile.neededBands, ceildiv<uint32_t>(tileRowAt(tile, swathY1), tile.bandRows));
+      tile.neededBands =
+          std::max(tile.neededBands, ceildiv<uint32_t>(tileRowAt(tile, swathY1), tile.bandRows));
       uint32_t released = tileRowAt(tile, swathY0) / tile.bandRows;
       if(released <= tile.releasedBands)
         return;
@@ -1192,7 +1195,8 @@ namespace
                          (uint32_t)tile.index);
             return false;
           }
-          memcpy(static_cast<uint8_t*>(comp->data) + (size_t)(src.y0 - comp->y0) * comp->stride * elem,
+          memcpy(static_cast<uint8_t*>(comp->data) +
+                     (size_t)(src.y0 - comp->y0) * comp->stride * elem,
                  src.data, (size_t)src.h * src.stride * elem);
         }
       }
@@ -1348,7 +1352,8 @@ namespace
       uint32_t y1 = fullResY1;
       for(uint16_t c = 0; c < composite->numcomps; c++)
       {
-        uint32_t needed = ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, composite->comps[c].dy), reduce);
+        uint32_t needed =
+            ceildivpow2<uint32_t>(ceildiv<uint32_t>(y1, composite->comps[c].dy), reduce);
         uint32_t compY0 = compRect(tile->window, c).y0;
         needed = needed > compY0 ? needed - compY0 : 0;
         if(tile->filledRows[c].load(std::memory_order_acquire) < needed)
@@ -1566,9 +1571,10 @@ namespace
       std::lock_guard<std::mutex> lock(mutex);
       for(auto& tile : tiles)
       {
-        bool released = !tile->compRows.empty() &&
-                        (tile->bands.empty() || std::any_of(tile->bands.begin(), tile->bands.end(),
-                                                            [](const auto& band) { return !band; }));
+        bool released =
+            !tile->compRows.empty() &&
+            (tile->bands.empty() || std::any_of(tile->bands.begin(), tile->bands.end(),
+                                                [](const auto& band) { return !band; }));
         if(released)
         {
           grklog.error("mercury tile %u: rows already released by swath waits",

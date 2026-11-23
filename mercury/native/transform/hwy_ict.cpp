@@ -160,8 +160,8 @@ namespace HWY_NAMESPACE
     auto x = xyz_component(df, di, tables, r, g, b, M00, M01, M02);
     auto yy = xyz_component(df, di, tables, r, g, b, M10, M11, M12);
     auto z = xyz_component(df, di, tables, r, g, b, M20, M21, M22);
-    ict(df, ConvertTo(df, x + dcShift), ConvertTo(df, yy + dcShift), ConvertTo(df, z + dcShift),
-        y, u, v);
+    ict(df, ConvertTo(df, x + dcShift), ConvertTo(df, yy + dcShift), ConvertTo(df, z + dcShift), y,
+        u, v);
   }
 
   static void Impl_forward_xyz_ict(const MercuryXyzTables* tables, const int32_t* red,
@@ -232,8 +232,7 @@ extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict(const int32_t* red, cons
                                                          chroma_blue, chroma_red, samples);
 }
 
-extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict_16(const int16_t* red,
-                                                           const int16_t* green,
+extern "C" MERCURY_ICT_API void mercury_hwy_forward_ict_16(const int16_t* red, const int16_t* green,
                                                            const int16_t* blue, int32_t dc_shift,
                                                            uint32_t fraction_bits, int16_t* luma,
                                                            int16_t* chroma_blue,

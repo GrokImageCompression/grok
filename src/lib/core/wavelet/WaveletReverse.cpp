@@ -1565,7 +1565,8 @@ void WaveletReverse::h_16_53(uint8_t res, TileComponentWindow<int16_t>* tileBuff
     numTasks[orient] = height[orient] < num_threads ? height[orient] : num_threads;
     height[orient] = (orient == 0) ? vertPool16_[0].sn : resHeight - vertPool16_[0].sn;
     numTasks[orient] = height[orient] < num_threads ? height[orient] : num_threads;
-    numTasks[orient] = cappedTasks(numTasks[orient], (uint64_t)height[orient] * (horiz16_.sn + horiz16_.dn));
+    numTasks[orient] =
+        cappedTasks(numTasks[orient], (uint64_t)height[orient] * (horiz16_.sn + horiz16_.dn));
   }
   for(uint32_t orient = 0; orient < 2; ++orient)
   {
@@ -1839,9 +1840,9 @@ void WaveletReverse::v_16_53(uint8_t res, TileComponentWindow<int16_t>* buf, uin
   auto resFlow = imageComponentFlow->getResflow(res - 1);
   if(!resFlow)
     return;
-  const uint32_t widthIncr = verticalTaskWidth(
-      resWidth, get_PLL_COLS_16_53(),
-      cappedTasks(num_threads, (uint64_t)resWidth * (vert16_.sn + vert16_.dn)));
+  const uint32_t widthIncr =
+      verticalTaskWidth(resWidth, get_PLL_COLS_16_53(),
+                        cappedTasks(num_threads, (uint64_t)resWidth * (vert16_.sn + vert16_.dn)));
   const uint32_t numTasks = (resWidth + widthIncr - 1) / widthIncr;
   for(uint32_t j = 0; j < numTasks; j++)
   {

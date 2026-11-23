@@ -35,8 +35,8 @@ extern "C" void mercury_hwy_forward_xyz_ict(const MercuryXyzTables* tables, cons
                                             const int32_t* green, const int32_t* blue,
                                             int32_t dc_shift, float* luma, float* chroma_blue,
                                             float* chroma_red, int samples);
-extern "C" void grk_classic_forward_ict(int32_t* red, int32_t* green, int32_t* blue, int32_t dcShift,
-                                        uint64_t samples);
+extern "C" void grk_classic_forward_ict(int32_t* red, int32_t* green, int32_t* blue,
+                                        int32_t dcShift, uint64_t samples);
 extern "C" void mercury_hwy_forward_ict(const int32_t* red, const int32_t* green,
                                         const int32_t* blue, int32_t dc_shift, float* luma,
                                         float* chroma_blue, float* chroma_red, int samples);

@@ -2149,7 +2149,8 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       return;
     }
 
-    // linux counts a fault on every thread whose first write lands on a page another thread is faulting in
+    // linux counts a fault on every thread whose first write lands on a page another thread is
+    // faulting in
     const uint32_t swathRows = buf->y1 - buf->y0;
     const auto numRowBands =
         static_cast<uint32_t>(std::min<size_t>(TFSingleton::get().num_workers(), swathRows));

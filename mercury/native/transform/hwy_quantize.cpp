@@ -118,8 +118,8 @@ extern "C" uint32_t mercury_hwy_quantize_97(const float* stripe, int stride, int
                                                                 quant, block);
 }
 
-extern "C" uint32_t mercury_hwy_quantize_16(const int16_t* stripe, int stride, int columns, int rows,
-                                            double inverse_step, int32_t* block)
+extern "C" uint32_t mercury_hwy_quantize_16(const int16_t* stripe, int stride, int columns,
+                                            int rows, double inverse_step, int32_t* block)
 {
   return HWY_DYNAMIC_DISPATCH(mercury_native::Impl_quantize_16)(stripe, stride, columns, rows,
                                                                 inverse_step, block);

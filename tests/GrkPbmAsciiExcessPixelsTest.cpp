@@ -82,8 +82,8 @@ bool decodedSamplesMatch(const std::string& codestream)
     for(uint32_t x = 0; x < kWidth; ++x)
     {
       size_t index = (size_t)y * comp->stride + x;
-      int32_t got = int16Samples ? ((const int16_t*)comp->data)[index]
-                                 : ((const int32_t*)comp->data)[index];
+      int32_t got =
+          int16Samples ? ((const int16_t*)comp->data)[index] : ((const int32_t*)comp->data)[index];
       if(got != expectedSample(y, x))
       {
         fprintf(stderr, "(%u,%u) is %d, expected %d\n", x, y, got, expectedSample(y, x));

@@ -71,8 +71,8 @@ const uint16_t MAX_BLOCK_SIDE = 64;
 extern "C" GRK_MERCURY_SHIM_API int32_t mercury_grok_t1_encode(
     const int32_t* samples, int32_t num_cols, int32_t num_rows, uint32_t max_magnitude,
     int32_t orientation, int32_t compno, int32_t level, double stepsize, int32_t mct,
-    uint16_t early_stop_slope, const uint8_t** coded_data, uint16_t* pass_rates, double* pass_distortions,
-    uint8_t* pass_terminated, int32_t* numbps)
+    uint16_t early_stop_slope, const uint8_t** coded_data, uint16_t* pass_rates,
+    double* pass_distortions, uint8_t* pass_terminated, int32_t* numbps)
 {
   using namespace grk;
   using namespace grk::t1;
@@ -100,7 +100,8 @@ extern "C" GRK_MERCURY_SHIM_API int32_t mercury_grok_t1_encode(
   block.data = stream.data() + grk_cblk_enc_compressed_data_pad_left;
   const double* mctNorms = mct ? Mct::get_norms_irrev() : nullptr;
   coder->compress_cblk(&block, max_magnitude, (uint8_t)orientation, (uint16_t)compno,
-                       (uint8_t)level, 0, stepsize, 0, mctNorms, mct ? 3 : 0, true, early_stop_slope);
+                       (uint8_t)level, 0, stepsize, 0, mctNorms, mct ? 3 : 0, true,
+                       early_stop_slope);
 
   for(uint8_t i = 0; i < block.numPassesTotal; ++i)
   {
@@ -115,9 +116,8 @@ extern "C" GRK_MERCURY_SHIM_API int32_t mercury_grok_t1_encode(
 
 // classic's irreversible step size of band `orientation` at resolution `resno`
 extern "C" GRK_MERCURY_SHIM_API float mercury_grok_band_stepsize(uint8_t num_resolutions,
-                                                                  uint8_t precision,
-                                                                  uint8_t resno,
-                                                                  uint8_t orientation)
+                                                                 uint8_t precision, uint8_t resno,
+                                                                 uint8_t orientation)
 {
   using namespace grk;
   Quantizer quantizer(false, 0);

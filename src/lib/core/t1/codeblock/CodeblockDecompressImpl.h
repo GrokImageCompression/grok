@@ -202,8 +202,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
    * @param layno layer number
    * @param cblk_sty code block style
    */
-  void readPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes,
-                        uint16_t layno, uint8_t cblk_sty)
+  void readPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes, uint16_t layno,
+                        uint8_t cblk_sty)
   {
     // 1. read signalled passes in layer
     uint8_t remainingPassesInLayer;
@@ -296,8 +296,8 @@ struct CodeblockDecompressImpl : public CodeblockImpl
    * passes share another. In mixed mode a non-zero length where only placeholders
    * could be reveals a Part 1 code block, which then follows the Part 1 rules.
    */
-  void readHTPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes,
-                          uint16_t layno, uint8_t remainingPassesInLayer, uint8_t cblk_sty)
+  void readHTPacketHeader(t1_t2::BitIO* bio, uint32_t& signalledLayerDataBytes, uint16_t layno,
+                          uint8_t remainingPassesInLayer, uint8_t cblk_sty)
   {
     bool mixed = (cblk_sty & GRK_CBLKSTY_HT_MIXED) == GRK_CBLKSTY_HT_MIXED;
     if(htState_ == HTState::placeholders)

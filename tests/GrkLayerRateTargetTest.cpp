@@ -101,11 +101,7 @@ int main()
   grk_initialize(nullptr, 0, nullptr);
   int failures = 0;
   const std::initializer_list<double> rateSets[] = {
-      {8},
-      {16, 8},
-      {9, 8},
-      {11, 8},
-      {362, 256, 181, 128, 90, 64, 45, 32, 22, 16, 11, 8},
+      {8}, {16, 8}, {9, 8}, {11, 8}, {362, 256, 181, 128, 90, 64, 45, 32, 22, 16, 11, 8},
   };
   for(bool tiled : {false, true})
   {
@@ -119,8 +115,8 @@ int main()
       double lastRate = *(rates.end() - 1);
       uint64_t budget = (uint64_t)std::ceil((double)kRawBytes / lastRate);
       uint64_t length = compress(rates, tiled);
-      std::printf("%s: %llu bytes against a %llu byte budget\n", label,
-                  (unsigned long long)length, (unsigned long long)budget);
+      std::printf("%s: %llu bytes against a %llu byte budget\n", label, (unsigned long long)length,
+                  (unsigned long long)budget);
       if(length == 0)
       {
         std::fprintf(stderr, "FAIL: %s: compress failed\n", label);
@@ -135,8 +131,7 @@ int main()
       else if((double)length < (double)budget * (1.0 - kMaxShortfall))
       {
         std::fprintf(stderr, "FAIL: %s: %llu bytes is %.1f%% under budget\n", label,
-                     (unsigned long long)length,
-                     100.0 * (1.0 - (double)length / (double)budget));
+                     (unsigned long long)length, 100.0 * (1.0 - (double)length / (double)budget));
         ++failures;
       }
     }

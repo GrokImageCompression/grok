@@ -149,7 +149,8 @@ private:
     size_t offset = (chunkUsed_ + alignof(CodePass) - 1) & ~(alignof(CodePass) - 1);
     if(chunks_.empty() || offset + length > chunkCapacity_)
     {
-      chunkCapacity_ = std::max<size_t>(length, std::clamp<size_t>(2 * chunkCapacity_, 4096, 262144));
+      chunkCapacity_ =
+          std::max<size_t>(length, std::clamp<size_t>(2 * chunkCapacity_, 4096, 262144));
       chunks_.emplace_back(new uint8_t[chunkCapacity_]);
       offset = 0;
     }

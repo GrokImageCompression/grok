@@ -516,8 +516,8 @@ bool reuseMatches(const ReuseStream& stream, const DecodeResult& reused, const D
   return !fresh.decoded || (reused.decoded && reused.samples.size() == fresh.samples.size());
 }
 
-using DecodeStep = std::function<DecodeResult(grk_object* codec, const grk_header_info& header,
-                                              size_t step)>;
+using DecodeStep =
+    std::function<DecodeResult(grk_object* codec, const grk_header_info& header, size_t step)>;
 
 bool runReuseSequence(const std::string& label, const ReuseStream& stream, bool mercury,
                       const grk_decompress_parameters& openParams, size_t numSteps,
@@ -573,11 +573,8 @@ struct WindowFractions
   double x0, y0, x1, y1;
 };
 
-const WindowFractions REUSE_WINDOWS[] = {{0, 0, 0.25, 0.25},
-                                         {0.75, 0.75, 1, 1},
-                                         {0, 0, 0.25, 0.25},
-                                         {0.3, 0.2, 0.7, 0.6},
-                                         {0, 0, 1, 1}};
+const WindowFractions REUSE_WINDOWS[] = {
+    {0, 0, 0.25, 0.25}, {0.75, 0.75, 1, 1}, {0, 0, 0.25, 0.25}, {0.3, 0.2, 0.7, 0.6}, {0, 0, 1, 1}};
 
 struct PixelWindow
 {
@@ -629,8 +626,7 @@ std::vector<int32_t> copySwaths(grk_object* codec, const grk_header_info& header
   std::vector<uint8_t> buffer;
   for(uint32_t y = window.y0; y < window.y1;)
   {
-    const uint32_t y1 =
-        std::min(((y - swathGridY0) / rows + 1) * rows + swathGridY0, window.y1);
+    const uint32_t y1 = std::min(((y - swathGridY0) / rows + 1) * rows + swathGridY0, window.y1);
     grk_wait_swath swath = {};
     swath.x0 = window.x0;
     swath.y0 = y;
@@ -672,8 +668,8 @@ bool runSwathWindowSequence(const std::string& label, const ReuseStream& stream,
     auto reduced = [&](uint32_t v) {
       return (uint32_t)(((uint64_t)v + (1u << reduce) - 1) >> reduce);
     };
-    const PixelWindow window = {reduced(unreduced.x0), reduced(unreduced.y0),
-                                reduced(unreduced.x1), reduced(unreduced.y1)};
+    const PixelWindow window = {reduced(unreduced.x0), reduced(unreduced.y0), reduced(unreduced.x1),
+                                reduced(unreduced.y1)};
     grk_decompress_parameters params = openParams;
     params.core.reduce = reduce;
     // grok keeps a single tile's pixels in the composite image
@@ -717,7 +713,8 @@ bool runReuseSequences(const ReuseStream& stream)
   {
     uint32_t strategy;
     const char* name;
-  } cacheStrategies[] = {{GRK_TILE_CACHE_NONE, "cache none"}, {GRK_TILE_CACHE_IMAGE, "cache image"}};
+  } cacheStrategies[] = {{GRK_TILE_CACHE_NONE, "cache none"},
+                         {GRK_TILE_CACHE_IMAGE, "cache image"}};
   const uint8_t reductions[] = {0, 1};
 
   bool ok = true;
