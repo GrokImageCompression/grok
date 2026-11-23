@@ -1,6 +1,5 @@
  
-build
-build-gpu
+build*/
 obj-x86_64-linux-gnu
 debian/tmp
 nohup.out
