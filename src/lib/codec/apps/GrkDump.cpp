@@ -85,6 +85,11 @@ static void dump_help_display(void)
   fprintf(stdout, "    OPTIONAL\n");
   fprintf(stdout, "    Output file where file info will be dump.\n");
   fprintf(stdout, "    By default it will be in the stdout.\n");
+  fprintf(stdout, "  -f, --flag <flags>\n");
+  fprintf(stdout, "    OPTIONAL\n");
+  fprintf(stdout, "    Sum of the sections to dump. Default is 19 (1 + 2 + 16).\n");
+  fprintf(stdout, "    1: image info, 2: main header, 8: all tile headers,\n");
+  fprintf(stdout, "    16: main header marker list, 64: TLM marker segments\n");
 }
 
 static void listImages(dircnt* dirptr, char* imgdirpath)

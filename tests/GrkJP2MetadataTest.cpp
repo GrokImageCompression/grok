@@ -21,6 +21,8 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <optional>
 #include <vector>
 
@@ -1492,6 +1494,38 @@ static int testTranscodeWithTLM(const std::string& tmpDir)
   if(!grk_decompress_read_header(dstCodec, &dstHeader))
   {
     spdlog::error("Transcode TLM: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  std::string tlmDump;
+  if(FILE* dumpFile = tmpfile())
+  {
+    grk_dump_codec(dstCodec, GRK_TLM_IND, dumpFile);
+    rewind(dumpFile);
+    for(int ch; (ch = fgetc(dumpFile)) != EOF;)
+      tlmDump.push_back((char)ch);
+    fclose(dumpFile);
+  }
+  std::ifstream dstFile(dstPath, std::ios::binary);
+  std::string dstBytes((std::istreambuf_iterator<char>(dstFile)), std::istreambuf_iterator<char>());
+  const std::string sotStart("\xFF\x90\x00\x0A", 4);
+  auto sot = dstBytes.find(sotStart);
+  if(sot == std::string::npos || sot + 10 > dstBytes.size())
+  {
+    spdlog::error("Transcode TLM: SOT marker not found in output file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+  uint32_t psot = 0;
+  for(size_t i = sot + 6; i < sot + 10; ++i)
+    psot = (psot << 8) | (uint8_t)dstBytes[i];
+  std::string expectedTilePart = "tile=0, length=" + std::to_string(psot) + "\n";
+  if(tlmDump.find("tile parts=1 {") == std::string::npos ||
+     tlmDump.find(expectedTilePart) == std::string::npos)
+  {
+    spdlog::error("Transcode TLM: TLM dump does not list tile 0 with length {}:\n{}", psot,
+                  tlmDump);
     grk_object_unref(dstCodec);
     return 1;
   }

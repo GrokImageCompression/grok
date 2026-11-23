@@ -2108,7 +2108,7 @@ GRK_API uint64_t GRK_CALLCONV grk_transcode(grk_stream_params* src_stream,
  *
  * The @p info_flag controls which sections are emitted; combine the
  * GRK_IMG_INFO, GRK_MH_INFO, GRK_TH_INFO, GRK_TCH_INFO, GRK_MH_IND,
- * and GRK_TH_IND flags as needed.
+ * GRK_TH_IND and GRK_TLM_IND flags as needed.
  *
  * @param codec          codec (decompression or compression — see @ref grk_object)
  * @param info_flag      bitmask of GRK_*_INFO / GRK_*_IND flags
@@ -2144,6 +2144,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* 
 #define GRK_TCH_INFO 8 /** Tile/Component information of all tiles */
 #define GRK_MH_IND 16 /** Codestream index based only on the main header */
 #define GRK_TH_IND 32 /** Tile index based on the current tile */
+#define GRK_TLM_IND 64 /* TLM marker segments from the main header */
 
 /* Code block styles */
 #define GRK_CBLKSTY_LAZY 0x01 /** Selective arithmetic coding bypass */

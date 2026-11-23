@@ -160,6 +160,14 @@ private:
   bool valid_;
 };
 
+struct TLMSegment
+{
+  uint8_t markerIndex;
+  uint8_t tileIndexBytes;
+  uint8_t lengthBytes;
+  std::vector<TilePartLength<uint32_t>> tileParts;
+};
+
 struct SotWalkPosition
 {
   uint64_t nextSot;
@@ -270,6 +278,7 @@ struct TLMMarker
   void readComplete(uint64_t tileStreamStart) noexcept;
 
   const TPSEQ_VEC& getTileParts(void) const;
+  const std::vector<TLMSegment>& getSegments(void) const noexcept;
 
   static std::unique_ptr<TLMMarker> forSotWalk(uint16_t numSignalledTiles);
   bool builtFromSotWalk() const noexcept;
@@ -331,6 +340,8 @@ private:
    * parsed from markers
    */
   uint64_t tilePartStart_ = 0;
+
+  std::vector<TLMSegment> segments_;
 
   bool builtFromSotWalk_ = false;
   std::vector<uint8_t> tileComplete_;

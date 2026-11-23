@@ -174,6 +174,8 @@ bool TLMMarker::read(std::span<uint8_t> headerData, uint16_t headerSize)
   // the whole image with multiple tiles can have max 65535 tile parts
   size_t numTilePartsInMarker = headerSize / quotient;
   assert(numTilePartsInMarker <= USHRT_MAX);
+  auto& segment =
+      segments_.emplace_back(TLMSegment{i_TLM, (uint8_t)L_iT, bytesPerTilePartLength, {}});
 
   uint16_t Ttlm_i = 0;
   uint32_t Ptlm_i = 0;
@@ -196,6 +198,7 @@ bool TLMMarker::read(std::span<uint8_t> headerData, uint16_t headerSize)
       }
     }
     auto info = TilePartLength<uint32_t>(hasTileIndices_ ? Ttlm_i : tileCount_++, Ptlm_i);
+    segment.tileParts.push_back(info);
     if(info.tileIndex_ >= numSignalledTiles_)
     {
       grklog.warn(
@@ -241,6 +244,11 @@ void TLMMarker::rewind() noexcept
 const TPSEQ_VEC& TLMMarker::getTileParts(void) const
 {
   return tilePartsPerTile_;
+}
+
+const std::vector<TLMSegment>& TLMMarker::getSegments(void) const noexcept
+{
+  return segments_;
 }
 
 std::unique_ptr<TLMMarker> TLMMarker::forSotWalk(uint16_t numSignalledTiles)

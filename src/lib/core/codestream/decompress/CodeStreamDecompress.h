@@ -214,6 +214,7 @@ protected:
    * @param outputFileStream output file stream
    */
   void dumpMainHeader(FILE* outputFileStream);
+  void dumpTLM(FILE* outputFileStream);
 
   /**
    * @brief Dumps an image header structure.

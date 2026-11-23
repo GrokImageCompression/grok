@@ -32,6 +32,7 @@
 #include "IDecompressor.h"
 #include "MarkerParser.h"
 #include "PLMarker.h"
+#include "TLMMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
 namespace grk
@@ -139,6 +140,29 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* out)
   /* Dump the code stream index from main header */
   if((flag & GRK_MH_IND) && markerCache_)
     markerCache_->dump(out);
+
+  if(flag & GRK_TLM_IND)
+    dumpTLM(out);
+}
+void CodeStreamDecompress::dumpTLM(FILE* out)
+{
+  if(!cp_.tlmMarkers_ || cp_.tlmMarkers_->getSegments().empty())
+  {
+    fprintf(out, "TLM markers: none\n");
+    return;
+  }
+  fprintf(out, "TLM markers: {\n");
+  fprintf(out, "\t valid=%u\n", cp_.tlmMarkers_->valid() ? 1U : 0U);
+  for(const auto& segment : cp_.tlmMarkers_->getSegments())
+  {
+    fprintf(out, "\t Ztlm=%u, tile index bytes=%u, length bytes=%u, tile parts=%zu {\n",
+            segment.markerIndex, segment.tileIndexBytes, segment.lengthBytes,
+            segment.tileParts.size());
+    for(const auto& tilePart : segment.tileParts)
+      fprintf(out, "\t\t tile=%u, length=%u\n", tilePart.tileIndex_, tilePart.length_);
+    fprintf(out, "\t }\n");
+  }
+  fprintf(out, "}\n");
 }
 void CodeStreamDecompress::dumpMainHeader(FILE* out)
 {
