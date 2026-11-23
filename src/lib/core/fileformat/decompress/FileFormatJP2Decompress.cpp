@@ -191,6 +191,27 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
       image->meta->ipr_data = new uint8_t[ipr.num_elts()];
       memcpy(image->meta->ipr_data, ipr.buf(), ipr.num_elts());
     }
+
+    if(xml.buf() && xml.num_elts() && !image->meta->xml_buf)
+    {
+      image->meta->xml_len = xml.num_elts();
+      image->meta->xml_buf = new uint8_t[xml.num_elts()];
+      memcpy(image->meta->xml_buf, xml.buf(), xml.num_elts());
+    }
+
+    if(!root_asoc.children.empty() && !image->meta->asoc_boxes)
+    {
+      std::vector<grk_asoc> asocs(GRK_NUM_ASOC_BOXES_SUPPORTED);
+      uint32_t numAsocs = 0;
+      for(auto child : root_asoc.children)
+        serializeAsoc(child, asocs.data(), &numAsocs, 0);
+      if(!grk_image_meta_set_asocs(image->meta, asocs.data(), numAsocs))
+      {
+        grklog.error("Failed to copy ASOC boxes to image meta data");
+        headerError_ = true;
+        return false;
+      }
+    }
   }
 
   return true;

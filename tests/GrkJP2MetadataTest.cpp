@@ -1270,6 +1270,117 @@ static int testTranscode(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test: Transcode keeps the source asoc and XML boxes
+//==============================================================================
+static int testTranscodeKeepsAsocAndXml(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode keeps asoc and XML boxes ===");
+
+  const char* gmlXml = "<gml:FeatureCollection xmlns:gml=\"http://www.opengis.net/gml\">"
+                       "<test>7</test></gml:FeatureCollection>";
+  grk_asoc asocs[2]{};
+  asocs[0].level = 0;
+  asocs[0].label = "gml.data";
+  asocs[1].level = 1;
+  asocs[1].label = "gml.root-instance";
+  asocs[1].xml = (uint8_t*)gmlXml;
+  asocs[1].xml_len = (uint32_t)strlen(gmlXml);
+  const char* xmlData = "<test>source_xml_box</test>";
+  size_t xmlLen = strlen(xmlData);
+
+  auto* meta = grk_image_meta_new();
+  if(!grk_image_meta_set_asocs(meta, asocs, 2) ||
+     !grk_image_meta_set_field(meta, "xml", (const uint8_t*)xmlData, xmlLen))
+  {
+    spdlog::error("TranscodeAsocXml: failed to set source metadata");
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+  std::string srcPath = tmpDir + "/transcode_asoc_src.jp2";
+  bool compressed = compressWithMeta(srcPath, meta);
+  grk_object_unref(&meta->obj);
+  if(!compressed)
+    return 1;
+
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+  grk_decompress_parameters dparams{};
+  auto* srcCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!srcCodec)
+  {
+    spdlog::error("TranscodeAsocXml: failed to init decompressor for source");
+    return 1;
+  }
+  grk_header_info srcHeader{};
+  auto* srcImage = grk_decompress_read_header(srcCodec, &srcHeader)
+                       ? grk_decompress_get_image(srcCodec)
+                       : nullptr;
+  if(!srcImage)
+  {
+    spdlog::error("TranscodeAsocXml: failed to read source header");
+    grk_object_unref(srcCodec);
+    return 1;
+  }
+
+  std::string dstPath = tmpDir + "/transcode_asoc_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+  if(grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage) == 0)
+  {
+    spdlog::error("TranscodeAsocXml: grk_transcode returned 0");
+    grk_object_unref(srcCodec);
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  grk_image* dstImage = nullptr;
+  grk_object* dstCodec = nullptr;
+  if(!decompressAndReadHeader(dstPath, &dstHeader, &dstImage, &dstCodec))
+  {
+    grk_object_unref(srcCodec);
+    return 1;
+  }
+
+  bool ok = true;
+  if(srcHeader.num_asocs == 0 || dstHeader.num_asocs != srcHeader.num_asocs)
+  {
+    spdlog::error("TranscodeAsocXml: {} asoc entries in source, {} after transcode",
+                  srcHeader.num_asocs, dstHeader.num_asocs);
+    ok = false;
+  }
+  for(uint32_t i = 0; ok && i < srcHeader.num_asocs; ++i)
+  {
+    auto& src = srcHeader.asocs[i];
+    auto& dst = dstHeader.asocs[i];
+    bool sameLabel = strcmp(src.label ? src.label : "", dst.label ? dst.label : "") == 0;
+    bool sameXml = src.xml_len == dst.xml_len &&
+                   (src.xml_len == 0 || memcmp(src.xml, dst.xml, src.xml_len) == 0);
+    if(src.level != dst.level || !sameLabel || !sameXml)
+    {
+      spdlog::error("TranscodeAsocXml: asoc entry {} differs after transcode", i);
+      ok = false;
+    }
+  }
+  if(dstHeader.xml_data_len != xmlLen || memcmp(dstHeader.xml_data, xmlData, xmlLen) != 0)
+  {
+    spdlog::error("TranscodeAsocXml: XML box missing or changed after transcode");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode keeps asoc and XML boxes: PASSED");
+
+  grk_object_unref(dstCodec);
+  grk_object_unref(srcCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Test: Transcode with TLM — rewrite codestream with TLM marker
 //==============================================================================
 static int testTranscodeWithTLM(const std::string& tmpDir)
@@ -2593,6 +2704,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testMetadataSelection(tmpDir.string());
   failures += testAsocBoxes(tmpDir.string());
   failures += testTranscode(tmpDir.string());
+  failures += testTranscodeKeepsAsocAndXml(tmpDir.string());
   failures += testTranscodeWithTLM(tmpDir.string());
   failures += testTranscodeWithPLT(tmpDir.string());
   failures += testTranscodeWithSOP(tmpDir.string());
